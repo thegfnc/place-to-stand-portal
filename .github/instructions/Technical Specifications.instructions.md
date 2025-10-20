@@ -67,6 +67,7 @@ applyTo: '**'
 * **Database Workflow:** Manage schema updates via Supabase CLI migrations. Describe migration intent and run diff checks when applicable.
 * **Secrets & Config:** Reference environment variables through `process.env` with typed helpers in `src/lib/utils.ts`. Never hardcode secrets.
 * **RBAC Implementation:** Enforce role-based access control both at the Supabase level and within application logic to protect sensitive data and actions.
+* **Form Errors:** Surface field level errors from Zod on the field instead of just a single error state for the form. For every disabled button, add a tooltip hover explaining why it's disabled
 
 ## **3. Non-Functional Requirements**
 
