@@ -30,6 +30,9 @@ applyTo: '**'
 * **State Management & Data Fetching:** React Query
 * **Charting Library:** Recharts
 * **Rich Text Editor:** TipTap
+* **Drag-and-Drop:** dnd-kit
+* **Date Handling:** date-fns
+* **Icons:** Font Awesome
 
 ### **1.2 Platform Services**
 * **Deployment & Hosting:** Vercel
@@ -67,6 +70,7 @@ applyTo: '**'
 
 ## **3. Non-Functional Requirements**
 
+* **Deletion & Data Retention:** Implement soft deletes for all records unless stated otherwise. All delete actions should have a conbfirmation step.
 * **UI/UX:** Maintain a clean, professional aesthetic using the default shadcn theme. Favor consistent spacing, typography, and interactive states sourced from Tailwind design tokens.
 * **Responsiveness:** Support 320px+ viewports with mobile-first layouts, accessible navigation, and no horizontal scroll.
 * **Accessibility:** Meet WCAG 2.1 AA. Provide keyboard access, ARIA labels when semantic HTML is insufficient, focus outlines, and respect `prefers-reduced-motion`.
