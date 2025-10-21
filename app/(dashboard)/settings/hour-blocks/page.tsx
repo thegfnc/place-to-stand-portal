@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 import { HourBlocksSettingsTable } from "./hour-blocks-table";
 import { requireRole } from "@/lib/auth/session";
-import { getSupabaseServerClient } from "@/lib/supabase/server";
+import { getSupabaseServiceClient } from "@/lib/supabase/service";
 import type { Database } from "@/supabase/types/database";
 
 type HourBlockRow = Database["public"]["Tables"]["hour_blocks"]["Row"];
@@ -17,9 +17,9 @@ export const metadata: Metadata = {
 export default async function HourBlocksSettingsPage() {
   await requireRole("ADMIN");
 
-  const supabase = getSupabaseServerClient();
+  const supabase = getSupabaseServiceClient();
 
-  const [{ data: hourBlocks }, { data: projects }] = await Promise.all([
+  const [{ data: hourBlocks, error: hourBlocksError }, { data: projects, error: projectsError }] = await Promise.all([
     supabase
       .from("hour_blocks")
       .select(
@@ -47,6 +47,14 @@ export default async function HourBlocksSettingsPage() {
       .order("updated_at", { ascending: false }),
     supabase.from("projects").select("id, name, deleted_at").order("name"),
   ]);
+
+  if (hourBlocksError) {
+    console.error("Failed to load hour blocks for settings", hourBlocksError);
+  }
+
+  if (projectsError) {
+    console.error("Failed to load projects for hour block settings", projectsError);
+  }
 
   return (
     <HourBlocksSettingsTable

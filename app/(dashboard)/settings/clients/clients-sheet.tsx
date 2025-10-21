@@ -4,8 +4,10 @@ import { useEffect, useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { DisabledFieldTooltip } from "@/components/ui/disabled-field-tooltip";
 import {
   Form,
   FormControl,
@@ -24,6 +26,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { useToast } from "@/components/ui/use-toast";
 import type { Database } from "@/supabase/types/database";
 
 import { saveClient, softDeleteClient } from "./actions";
@@ -53,6 +56,8 @@ export function ClientSheet({ open, onOpenChange, onComplete, client }: Props) {
   const isEditing = Boolean(client);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const { toast } = useToast();
+  const pendingReason = "Please wait for the current request to finish.";
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -95,16 +100,23 @@ export function ClientSheet({ open, onOpenChange, onComplete, client }: Props) {
         return;
       }
 
+      toast({
+        title: isEditing ? "Client updated" : "Client created",
+        description: isEditing
+          ? "Changes saved successfully."
+          : "The client is ready for new projects.",
+      });
+
       onOpenChange(false);
       onComplete();
     });
   };
 
-  const handleArchive = () => {
+  const handleDelete = () => {
     if (!client) return;
 
     const confirmed = window.confirm(
-      "Archiving this client hides it from selectors and reporting. Existing projects stay linked."
+      "Deleting this client hides it from selectors and reporting. Existing projects stay linked."
     );
 
     if (!confirmed) return;
@@ -118,10 +130,20 @@ export function ClientSheet({ open, onOpenChange, onComplete, client }: Props) {
         return;
       }
 
+      toast({
+        title: "Client deleted",
+        description: `${client.name} is hidden from selectors but remains available for history.`,
+      });
+
       onOpenChange(false);
       onComplete();
     });
   };
+
+  const deleteDisabled = isPending;
+  const deleteDisabledReason = deleteDisabled ? pendingReason : null;
+  const submitDisabled = isPending;
+  const submitDisabledReason = submitDisabled ? pendingReason : null;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -130,7 +152,7 @@ export function ClientSheet({ open, onOpenChange, onComplete, client }: Props) {
           <SheetTitle>{isEditing ? "Edit client" : "Add client"}</SheetTitle>
           <SheetDescription>
             {isEditing
-              ? "Adjust display details or archive the organization."
+              ? "Adjust display details or delete the organization."
               : "Register a client so projects and reporting stay organized."}
           </SheetDescription>
         </SheetHeader>
@@ -142,78 +164,102 @@ export function ClientSheet({ open, onOpenChange, onComplete, client }: Props) {
             <FormField
               control={form.control}
               name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Name</FormLabel>
-                  <FormControl>
-                    <Input
-                      {...field}
-                      placeholder="Acme Corp"
-                      disabled={isPending}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+              render={({ field }) => {
+                const disabled = isPending;
+                const reason = disabled ? pendingReason : null;
+
+                return (
+                  <FormItem>
+                    <FormLabel>Name</FormLabel>
+                    <FormControl>
+                      <DisabledFieldTooltip disabled={disabled} reason={reason}>
+                        <Input
+                          {...field}
+                          value={field.value ?? ""}
+                          placeholder="Acme Corp"
+                          disabled={disabled}
+                        />
+                      </DisabledFieldTooltip>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
             />
             <FormField
               control={form.control}
               name="slug"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Slug (optional)</FormLabel>
-                  <FormControl>
-                    <Input
-                      {...field}
-                      value={field.value ?? ""}
-                      placeholder="acme"
-                      disabled={isPending}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+              render={({ field }) => {
+                const disabled = isPending;
+                const reason = disabled ? pendingReason : null;
+
+                return (
+                  <FormItem>
+                    <FormLabel>Slug (optional)</FormLabel>
+                    <FormControl>
+                      <DisabledFieldTooltip disabled={disabled} reason={reason}>
+                        <Input
+                          {...field}
+                          value={field.value ?? ""}
+                          placeholder="acme"
+                          disabled={disabled}
+                        />
+                      </DisabledFieldTooltip>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
             />
             <FormField
               control={form.control}
               name="notes"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Notes</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      {...field}
-                      value={field.value ?? ""}
-                      placeholder="Context or points of contact"
-                      disabled={isPending}
-                      rows={4}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+              render={({ field }) => {
+                const disabled = isPending;
+                const reason = disabled ? pendingReason : null;
+
+                return (
+                  <FormItem>
+                    <FormLabel>Notes</FormLabel>
+                    <FormControl>
+                      <DisabledFieldTooltip disabled={disabled} reason={reason}>
+                        <Textarea
+                          {...field}
+                          value={field.value ?? ""}
+                          placeholder="Context or points of contact"
+                          disabled={disabled}
+                          rows={4}
+                        />
+                      </DisabledFieldTooltip>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
             />
             {feedback ? (
               <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
                 {feedback}
               </p>
             ) : null}
-            <SheetFooter className="flex items-center justify-between gap-2 px-0 pb-0 pt-6">
+            <SheetFooter className="flex items-center justify-end gap-3 px-0 pb-0 pt-6">
               {isEditing ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleArchive}
-                  disabled={isPending}
-                >
-                  Archive
+                <DisabledFieldTooltip disabled={deleteDisabled} reason={deleteDisabledReason}>
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    onClick={handleDelete}
+                    disabled={deleteDisabled}
+                  >
+                    <Trash2 className="h-4 w-4" /> Delete
+                  </Button>
+                </DisabledFieldTooltip>
+              ) : null}
+              <DisabledFieldTooltip disabled={submitDisabled} reason={submitDisabledReason}>
+                <Button type="submit" disabled={submitDisabled}>
+                  {isPending ? "Saving..." : isEditing ? "Save changes" : "Create client"}
                 </Button>
-              ) : (
-                <span />
-              )}
-              <Button type="submit" disabled={isPending}>
-                {isPending ? "Saving..." : isEditing ? "Save changes" : "Create client"}
-              </Button>
+              </DisabledFieldTooltip>
             </SheetFooter>
           </form>
         </Form>

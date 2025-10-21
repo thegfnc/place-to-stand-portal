@@ -26,6 +26,10 @@ const deleteUserSchema = z.object({
   id: z.string().uuid(),
 });
 
+const restoreUserSchema = z.object({
+  id: z.string().uuid(),
+});
+
 type ActionResult = {
   error?: string;
 };
@@ -159,9 +163,46 @@ export async function softDeleteUser(input: { id: string }): Promise<ActionResul
   }
 
   const adminUpdate = await adminClient.auth.admin.updateUserById(id, {
-    ban_duration: "permanent",
     user_metadata: {
       deleted_at: deletionTimestamp,
+    },
+  });
+
+  if (adminUpdate.error) {
+    console.error("Failed to update auth record", adminUpdate.error);
+    return { error: adminUpdate.error.message };
+  }
+
+  revalidatePath("/settings/users");
+
+  return {};
+}
+
+export async function restoreUser(input: { id: string }): Promise<ActionResult> {
+  await requireRole("ADMIN");
+
+  const parsed = restoreUserSchema.safeParse(input);
+
+  if (!parsed.success) {
+    return { error: "Invalid restore request." };
+  }
+
+  const { id } = parsed.data;
+  const adminClient = getSupabaseServiceClient();
+
+  const { error: profileError } = await adminClient
+    .from("users")
+    .update({ deleted_at: null })
+    .eq("id", id);
+
+  if (profileError) {
+    console.error("Failed to restore user profile", profileError);
+    return { error: profileError.message };
+  }
+
+  const adminUpdate = await adminClient.auth.admin.updateUserById(id, {
+    user_metadata: {
+      deleted_at: null,
     },
   });
 

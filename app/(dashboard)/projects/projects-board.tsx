@@ -252,7 +252,7 @@ export function ProjectsBoard({ projects, clients, currentUserId, currentUserRol
             </SelectContent>
           </Select>
           <Button onClick={openCreateSheet} disabled={!activeProject || !canManageTasks}>
-            <Plus className="mr-2 h-4 w-4" /> Add task
+            <Plus className="h-4 w-4" /> Add task
           </Button>
         </div>
       </div>

@@ -1,7 +1,7 @@
 'use client';
 
-import { useTransition } from "react";
-import { Loader2, LogOut } from "lucide-react";
+import { useState, useTransition } from "react";
+import { Loader2, LogOut, UserCog } from "lucide-react";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -17,12 +17,16 @@ import {
 import type { AppUser } from "@/lib/auth/session";
 import { signOut } from "@/app/(dashboard)/_actions/sign-out";
 
+import { EditProfileDialog } from "./edit-profile-dialog";
+
 type Props = {
   user: AppUser;
 };
 
 export function UserMenu({ user }: Props) {
   const [isPending, startTransition] = useTransition();
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false);
 
   const initials = user.full_name
     ? user.full_name
@@ -33,8 +37,16 @@ export function UserMenu({ user }: Props) {
         .toUpperCase()
     : user.email.slice(0, 2).toUpperCase();
 
+  const handleProfileDialogChange = (open: boolean) => {
+    setIsProfileDialogOpen(open);
+    if (!open) {
+      setIsMenuOpen(false);
+    }
+  };
+
   return (
-    <DropdownMenu>
+    <>
+      <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen}>
       <DropdownMenuTrigger className="flex items-center gap-3 rounded-full border px-3 py-2 text-sm font-medium transition hover:bg-muted">
         <Avatar className="h-8 w-8">
           <AvatarFallback>{initials}</AvatarFallback>
@@ -54,9 +66,21 @@ export function UserMenu({ user }: Props) {
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
           <DropdownMenuItem
+            onSelect={(event) => {
+              event.preventDefault();
+              setIsMenuOpen(false);
+              setIsProfileDialogOpen(true);
+            }}
+            className="flex items-center gap-2"
+          >
+            <UserCog className="h-4 w-4" />
+            <span>Edit profile</span>
+          </DropdownMenuItem>
+          <DropdownMenuItem
             disabled={isPending}
             onSelect={(event) => {
               event.preventDefault();
+              setIsMenuOpen(false);
               startTransition(async () => {
                 await signOut();
               });
@@ -72,6 +96,12 @@ export function UserMenu({ user }: Props) {
           </DropdownMenuItem>
         </DropdownMenuGroup>
       </DropdownMenuContent>
-    </DropdownMenu>
+      </DropdownMenu>
+      <EditProfileDialog
+        user={user}
+        open={isProfileDialogOpen}
+        onOpenChange={handleProfileDialogChange}
+      />
+    </>
   );
 }

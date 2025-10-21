@@ -1,8 +1,9 @@
 'use client';
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { format } from "date-fns";
-import { Building2, FolderKanban, Pencil, Plus } from "lucide-react";
+import { Building2, FolderKanban, Pencil, Plus, Trash2 } from "lucide-react";
 
 import {
   Table,
@@ -14,12 +15,14 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { useToast } from "@/components/ui/use-toast";
 import type { Database } from "@/supabase/types/database";
 
 import { cn } from "@/lib/utils";
 import { getProjectStatusLabel } from "@/lib/constants";
 
 import { ProjectSheet } from "./project-sheet";
+import { softDeleteProject } from "./actions";
 
 type ProjectRow = Database["public"]["Tables"]["projects"]["Row"];
 type ClientRow = Pick<Database["public"]["Tables"]["clients"]["Row"], "id" | "name" | "deleted_at">;
@@ -32,8 +35,12 @@ type Props = {
 };
 
 export function ProjectsSettingsTable({ projects, clients }: Props) {
+  const router = useRouter();
   const [sheetOpen, setSheetOpen] = useState(false);
   const [selectedProject, setSelectedProject] = useState<ProjectWithClient | null>(null);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
+  const { toast } = useToast();
 
   const sortedProjects = useMemo(
     () =>
@@ -67,6 +74,44 @@ export function ProjectsSettingsTable({ projects, clients }: Props) {
     setSheetOpen(false);
   };
 
+  const handleDelete = (project: ProjectWithClient) => {
+    if (project.deleted_at) {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      "Deleting this project hides it from active views but keeps the history intact."
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setPendingDeleteId(project.id);
+    startTransition(async () => {
+      try {
+        const result = await softDeleteProject({ id: project.id });
+
+        if (result.error) {
+          toast({
+            title: "Unable to delete project",
+            description: result.error,
+            variant: "destructive",
+          });
+          return;
+        }
+
+        toast({
+          title: "Project deleted",
+          description: `${project.name} is hidden from active views but remains in historical reporting.`,
+        });
+        router.refresh();
+      } finally {
+        setPendingDeleteId(null);
+      }
+    });
+  };
+
   const formatRange = (start?: string | null, end?: string | null) => {
     if (!start && !end) return "—";
 
@@ -98,14 +143,14 @@ export function ProjectsSettingsTable({ projects, clients }: Props) {
           <Tooltip>
             <TooltipTrigger asChild>
               <Button className="ml-auto" onClick={openCreate} disabled={createDisabled}>
-                <Plus className="mr-2 h-4 w-4" /> Add project
+                <Plus className="h-4 w-4" /> Add project
               </Button>
             </TooltipTrigger>
             <TooltipContent>{createDisabledReason}</TooltipContent>
           </Tooltip>
         ) : (
           <Button className="ml-auto" onClick={openCreate} disabled={createDisabled}>
-            <Plus className="mr-2 h-4 w-4" /> Add project
+            <Plus className="h-4 w-4" /> Add project
           </Button>
         )}
       </div>
@@ -119,7 +164,7 @@ export function ProjectsSettingsTable({ projects, clients }: Props) {
               <TableHead>Code</TableHead>
               <TableHead>Timeline</TableHead>
               <TableHead>Updated</TableHead>
-              <TableHead className="w-24 text-right">Actions</TableHead>
+              <TableHead className="w-28 text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -128,6 +173,8 @@ export function ProjectsSettingsTable({ projects, clients }: Props) {
               const updatedAt = project.updated_at
                 ? format(new Date(project.updated_at), "MMM d, yyyy")
                 : "—";
+              const deleting = isPending && pendingDeleteId === project.id;
+              const deleteDisabled = deleting || Boolean(project.deleted_at);
 
               return (
                 <TableRow
@@ -173,14 +220,28 @@ export function ProjectsSettingsTable({ projects, clients }: Props) {
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">{updatedAt}</TableCell>
                   <TableCell className="text-right">
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => openEdit(project)}
-                      title="Edit project"
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => openEdit(project)}
+                        title="Edit project"
+                        disabled={deleting}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        size="icon"
+                        onClick={() => handleDelete(project)}
+                        title={deleteDisabled ? "Project already deleted" : "Delete project"}
+                        aria-label="Delete project"
+                        disabled={deleteDisabled}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        <span className="sr-only">Delete</span>
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               );

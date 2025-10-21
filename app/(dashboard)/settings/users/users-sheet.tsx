@@ -7,6 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { DisabledFieldTooltip } from "@/components/ui/disabled-field-tooltip";
 import {
   Form,
   FormControl,
@@ -25,6 +26,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { useToast } from "@/components/ui/use-toast";
 import type { Database } from "@/supabase/types/database";
 
 import { createUser, softDeleteUser, updateUser } from "./actions";
@@ -59,6 +61,9 @@ export function UserSheet({
   const isEditing = Boolean(user);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const { toast } = useToast();
+  const pendingReason = "Please wait for the current request to finish.";
+  const emailChangeRestriction = "Email cannot be changed after the account is created.";
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -103,6 +108,11 @@ export function UserSheet({
           setFeedback(result.error);
           return;
         }
+
+        toast({
+          title: "User updated",
+          description: "Changes saved successfully.",
+        });
       } else {
         if (!values.password || values.password.trim().length < 8) {
           setFeedback("Password must be at least 8 characters.");
@@ -120,6 +130,11 @@ export function UserSheet({
           setFeedback(result.error);
           return;
         }
+
+        toast({
+          title: "User created",
+          description: "The new teammate can sign in immediately.",
+        });
       }
 
       onOpenChange(false);
@@ -127,14 +142,14 @@ export function UserSheet({
     });
   };
 
-  const handleSoftDelete = () => {
+  const handleDelete = () => {
     if (!user || user.id === currentUserId) {
-      setFeedback("You cannot deactivate your own account.");
+      setFeedback("You cannot delete your own account.");
       return;
     }
 
     const confirmed = window.confirm(
-      "Deactivating this user will remove their access. Proceed?"
+      "Deleting this user will remove their access. Proceed?"
     );
 
     if (!confirmed) return;
@@ -150,8 +165,24 @@ export function UserSheet({
 
       onOpenChange(false);
       onComplete();
+      toast({
+        title: "User deleted",
+        description: `${user.full_name ?? user.email} can no longer access the portal.`,
+      });
     });
   };
+
+  const deleteDisabled = isPending || user?.id === currentUserId;
+  const deleteDisabledReason = deleteDisabled
+    ? isPending
+      ? pendingReason
+      : user?.id === currentUserId
+        ? "You cannot delete your own account."
+        : null
+    : null;
+
+  const submitDisabled = isPending;
+  const submitDisabledReason = submitDisabled ? pendingReason : null;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -172,102 +203,139 @@ export function UserSheet({
             <FormField
               control={form.control}
               name="fullName"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Full name</FormLabel>
-                  <FormControl>
-                    <Input
-                      {...field}
-                      placeholder="Ada Lovelace"
-                      disabled={isPending}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+              render={({ field }) => {
+                const disabled = isPending;
+                const reason = disabled ? pendingReason : null;
+
+                return (
+                  <FormItem>
+                    <FormLabel>Full name</FormLabel>
+                    <FormControl>
+                      <DisabledFieldTooltip disabled={disabled} reason={reason}>
+                        <Input
+                          {...field}
+                          value={field.value ?? ""}
+                          placeholder="Ada Lovelace"
+                          disabled={disabled}
+                        />
+                      </DisabledFieldTooltip>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
             />
             <FormField
               control={form.control}
               name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email</FormLabel>
-                  <FormControl>
-                    <Input
-                      {...field}
-                      type="email"
-                      placeholder="ada@example.com"
-                      disabled={isPending || isEditing}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+              render={({ field }) => {
+                const disabled = isPending || isEditing;
+                const reason = disabled
+                  ? isPending
+                    ? pendingReason
+                    : emailChangeRestriction
+                  : null;
+
+                return (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
+                      <DisabledFieldTooltip disabled={disabled} reason={reason}>
+                        <Input
+                          {...field}
+                          value={field.value ?? ""}
+                          type="email"
+                          placeholder="ada@example.com"
+                          autoComplete="email"
+                          disabled={disabled}
+                        />
+                      </DisabledFieldTooltip>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
             />
             <FormField
               control={form.control}
               name="role"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Role</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value} disabled={isPending}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select role" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {USER_ROLES.map((role) => (
-                        <SelectItem key={role} value={role}>
-                          {role.charAt(0) + role.slice(1).toLowerCase()}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
+              render={({ field }) => {
+                const disabled = isPending;
+                const reason = disabled ? pendingReason : null;
+
+                return (
+                  <FormItem>
+                    <FormLabel>Role</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value} disabled={disabled}>
+                      <FormControl>
+                        <DisabledFieldTooltip disabled={disabled} reason={reason}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select role" />
+                          </SelectTrigger>
+                        </DisabledFieldTooltip>
+                      </FormControl>
+                      <SelectContent>
+                        {USER_ROLES.map((role) => (
+                          <SelectItem key={role} value={role}>
+                            {role.charAt(0) + role.slice(1).toLowerCase()}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
             />
             <FormField
               control={form.control}
               name="password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{isEditing ? "New password" : "Temporary password"}</FormLabel>
-                  <FormControl>
-                    <Input
-                      {...field}
-                      value={field.value ?? ""}
-                      type="password"
-                      placeholder="••••••••"
-                      disabled={isPending}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+              render={({ field }) => {
+                const disabled = isPending;
+                const reason = disabled ? pendingReason : null;
+
+                return (
+                  <FormItem>
+                    <FormLabel>{isEditing ? "New password" : "Temporary password"}</FormLabel>
+                    <FormControl>
+                      <DisabledFieldTooltip disabled={disabled} reason={reason}>
+                        <Input
+                          {...field}
+                          value={field.value ?? ""}
+                          type="password"
+                          autoComplete="new-password"
+                          disabled={disabled}
+                        />
+                      </DisabledFieldTooltip>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
             />
             {feedback ? (
               <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
                 {feedback}
               </p>
             ) : null}
-            <SheetFooter className="flex items-center justify-between gap-2 px-0 pb-0 pt-6">
+            <SheetFooter className="flex items-center justify-end gap-3 px-0 pb-0 pt-6">
               {isEditing ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleSoftDelete}
-                  disabled={isPending || user?.id === currentUserId}
-                >
-                  <Trash2 className="mr-2 h-4 w-4" /> Deactivate
+                <DisabledFieldTooltip disabled={deleteDisabled} reason={deleteDisabledReason}>
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    onClick={handleDelete}
+                    disabled={deleteDisabled}
+                  >
+                    <Trash2 className="h-4 w-4" /> Delete
+                  </Button>
+                </DisabledFieldTooltip>
+              ) : null}
+              <DisabledFieldTooltip disabled={submitDisabled} reason={submitDisabledReason}>
+                <Button type="submit" disabled={submitDisabled}>
+                  {isPending ? "Saving..." : isEditing ? "Save changes" : "Create user"}
                 </Button>
-              ) : (
-                <span />
-              )}
-              <Button type="submit" disabled={isPending}>
-                {isPending ? "Saving..." : isEditing ? "Save changes" : "Create user"}
-              </Button>
+              </DisabledFieldTooltip>
             </SheetFooter>
           </form>
         </Form>

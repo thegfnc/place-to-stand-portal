@@ -1,9 +1,9 @@
 'use client';
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
-import { Pencil, Shield, UserPlus } from "lucide-react";
+import { Pencil, RefreshCw, Shield, Trash2, UserPlus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -14,9 +14,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useToast } from "@/components/ui/use-toast";
 import type { Database } from "@/supabase/types/database";
 
 import { UserSheet } from "@/app/(dashboard)/settings/users/users-sheet";
+import { restoreUser, softDeleteUser } from "./actions";
 
 const ROLE_LABELS: Record<Database["public"]["Enums"]["user_role"], string> = {
   ADMIN: "Admin",
@@ -34,6 +36,10 @@ export function UsersSettingsTable({ users, currentUserId }: Props) {
   const router = useRouter();
   const [sheetOpen, setSheetOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserRow | null>(null);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [pendingRestoreId, setPendingRestoreId] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
+  const { toast } = useToast();
 
   const sortedUsers = useMemo(
     () =>
@@ -58,6 +64,81 @@ export function UsersSettingsTable({ users, currentUserId }: Props) {
     void router.refresh();
   };
 
+  const handleDelete = (user: UserRow) => {
+    if (user.id === currentUserId) {
+      toast({
+        title: "Cannot delete your own account",
+        description: "Switch to another administrator before removing your access.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (user.deleted_at) {
+      return;
+    }
+
+    const confirmed = window.confirm("Deleting this user will remove their access. Proceed?");
+
+    if (!confirmed) {
+      return;
+    }
+
+    setPendingDeleteId(user.id);
+    startTransition(async () => {
+      try {
+        const result = await softDeleteUser({ id: user.id });
+
+        if (result.error) {
+          toast({
+            title: "Unable to delete user",
+            description: result.error,
+            variant: "destructive",
+          });
+          return;
+        }
+
+        toast({
+          title: "User deleted",
+          description: `${user.full_name ?? user.email} can no longer access the portal.`,
+        });
+        router.refresh();
+      } finally {
+        setPendingDeleteId(null);
+      }
+    });
+  };
+
+  const handleRestore = (user: UserRow) => {
+    if (!user.deleted_at) {
+      return;
+    }
+
+    setPendingRestoreId(user.id);
+    startTransition(async () => {
+      try {
+        const result = await restoreUser({ id: user.id });
+
+        if (result.error) {
+          toast({
+            title: "Unable to restore user",
+            description: result.error,
+            variant: "destructive",
+          });
+          return;
+        }
+
+        toast({
+          title: "User restored",
+          description: `${user.full_name ?? user.email} can access the portal again.`,
+        });
+        router.refresh();
+      } finally {
+        setPendingRestoreId(null);
+      }
+    });
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -68,7 +149,7 @@ export function UsersSettingsTable({ users, currentUserId }: Props) {
           </p>
         </div>
         <Button onClick={handleOpenCreate}>
-          <UserPlus className="mr-2 h-4 w-4" /> Add user
+          <UserPlus className="h-4 w-4" /> Add user
         </Button>
       </div>
       <div className="overflow-hidden rounded-xl border">
@@ -80,48 +161,83 @@ export function UsersSettingsTable({ users, currentUserId }: Props) {
               <TableHead>Role</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Joined</TableHead>
-              <TableHead className="w-24 text-right">Actions</TableHead>
+              <TableHead className="w-28 text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {sortedUsers.map((user) => (
-              <TableRow key={user.id} className={user.deleted_at ? "opacity-60" : undefined}>
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <Shield className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-medium">
-                      {user.full_name ?? user.email}
+            {sortedUsers.map((user) => {
+              const deleting = isPending && pendingDeleteId === user.id;
+              const restoring = isPending && pendingRestoreId === user.id;
+              const deleteDisabled = deleting || restoring || user.id === currentUserId || Boolean(user.deleted_at);
+              const restoreDisabled = restoring || deleting;
+
+              return (
+                <TableRow key={user.id} className={user.deleted_at ? "opacity-60" : undefined}>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <Shield className="h-4 w-4 text-muted-foreground" />
+                      <span className="font-medium">
+                        {user.full_name ?? user.email}
+                      </span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {user.email}
+                  </TableCell>
+                  <TableCell className="text-sm">
+                    {ROLE_LABELS[user.role]}
+                  </TableCell>
+                  <TableCell>
+                    <span
+                      className={user.deleted_at ? "text-xs font-medium text-destructive" : "text-xs font-medium text-emerald-600"}
+                    >
+                      {user.deleted_at ? "Inactive" : "Active"}
                     </span>
-                  </div>
-                </TableCell>
-                <TableCell className="text-sm text-muted-foreground">
-                  {user.email}
-                </TableCell>
-                <TableCell className="text-sm">
-                  {ROLE_LABELS[user.role]}
-                </TableCell>
-                <TableCell>
-                  <span
-                    className={user.deleted_at ? "text-xs font-medium text-destructive" : "text-xs font-medium text-emerald-600"}
-                  >
-                    {user.deleted_at ? "Inactive" : "Active"}
-                  </span>
-                </TableCell>
-                <TableCell className="text-sm text-muted-foreground">
-                  {format(new Date(user.created_at), "MMM d, yyyy")}
-                </TableCell>
-                <TableCell className="text-right">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => handleEdit(user)}
-                    title="Edit user"
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))}
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {format(new Date(user.created_at), "MMM d, yyyy")}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => handleEdit(user)}
+                        title="Edit user"
+                        disabled={deleting || restoring}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      {user.deleted_at ? (
+                        <Button
+                          variant="secondary"
+                          size="icon"
+                          onClick={() => handleRestore(user)}
+                          title="Restore user"
+                          aria-label="Restore user"
+                          disabled={restoreDisabled}
+                        >
+                          <RefreshCw className="h-4 w-4" />
+                          <span className="sr-only">Restore</span>
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="destructive"
+                          size="icon"
+                          onClick={() => handleDelete(user)}
+                          title={user.id === currentUserId ? "Cannot delete your own account" : "Delete user"}
+                          aria-label="Delete user"
+                          disabled={deleteDisabled}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          <span className="sr-only">Delete</span>
+                        </Button>
+                      )}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
             {sortedUsers.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} className="py-10 text-center text-sm text-muted-foreground">

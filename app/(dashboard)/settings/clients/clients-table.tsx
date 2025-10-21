@@ -1,8 +1,9 @@
 'use client';
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { format } from "date-fns";
-import { Building2, Pencil, Plus } from "lucide-react";
+import { Building2, Pencil, Plus, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -13,9 +14,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useToast } from "@/components/ui/use-toast";
 import type { Database } from "@/supabase/types/database";
 
 import { ClientSheet } from "@/app/(dashboard)/settings/clients/clients-sheet";
+import { softDeleteClient } from "./actions";
 
 type ClientRow = Database["public"]["Tables"]["clients"]["Row"] & {
   projects?: Array<{ id: string; deleted_at: string | null }> | null;
@@ -26,8 +29,12 @@ type Props = {
 };
 
 export function ClientsSettingsTable({ clients }: Props) {
+  const router = useRouter();
   const [sheetOpen, setSheetOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<ClientRow | null>(null);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
+  const { toast } = useToast();
 
   const sortedClients = useMemo(
     () =>
@@ -49,6 +56,44 @@ export function ClientsSettingsTable({ clients }: Props) {
     setSheetOpen(false);
   };
 
+  const handleDelete = (client: ClientRow) => {
+    if (client.deleted_at) {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      "Deleting this client hides it from selectors and reporting. Existing projects stay linked."
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setPendingDeleteId(client.id);
+    startTransition(async () => {
+      try {
+        const result = await softDeleteClient({ id: client.id });
+
+        if (result.error) {
+          toast({
+            title: "Unable to delete client",
+            description: result.error,
+            variant: "destructive",
+          });
+          return;
+        }
+
+        toast({
+          title: "Client deleted",
+          description: `${client.name} is hidden from selectors but remains available for history.`,
+        });
+        router.refresh();
+      } finally {
+        setPendingDeleteId(null);
+      }
+    });
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -59,7 +104,7 @@ export function ClientsSettingsTable({ clients }: Props) {
           </p>
         </div>
         <Button onClick={openCreate}>
-          <Plus className="mr-2 h-4 w-4" /> Add client
+          <Plus className="h-4 w-4" /> Add client
         </Button>
       </div>
       <div className="overflow-hidden rounded-xl border">
@@ -71,7 +116,7 @@ export function ClientsSettingsTable({ clients }: Props) {
               <TableHead>Active projects</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Updated</TableHead>
-              <TableHead className="w-24 text-right">Actions</TableHead>
+              <TableHead className="w-28 text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -81,6 +126,8 @@ export function ClientsSettingsTable({ clients }: Props) {
               const updatedAt = client.updated_at
                 ? format(new Date(client.updated_at), "MMM d, yyyy")
                 : "—";
+              const deleting = isPending && pendingDeleteId === client.id;
+              const deleteDisabled = deleting || Boolean(client.deleted_at);
 
               return (
                 <TableRow key={client.id} className={client.deleted_at ? "opacity-60" : undefined}>
@@ -103,14 +150,28 @@ export function ClientsSettingsTable({ clients }: Props) {
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">{updatedAt}</TableCell>
                   <TableCell className="text-right">
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => openEdit(client)}
-                      title="Edit client"
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => openEdit(client)}
+                        title="Edit client"
+                        disabled={deleting}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        size="icon"
+                        onClick={() => handleDelete(client)}
+                        title={deleteDisabled ? "Client already deleted" : "Delete client"}
+                        aria-label="Delete client"
+                        disabled={deleteDisabled}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        <span className="sr-only">Delete</span>
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               );

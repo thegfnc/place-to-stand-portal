@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 import { ProjectsSettingsTable } from "./projects-table";
 import { requireRole } from "@/lib/auth/session";
-import { getSupabaseServerClient } from "@/lib/supabase/server";
+import { getSupabaseServiceClient } from "@/lib/supabase/service";
 import type { Database } from "@/supabase/types/database";
 
 type ProjectRow = Database["public"]["Tables"]["projects"]["Row"];
@@ -17,9 +17,9 @@ export const metadata: Metadata = {
 export default async function ProjectsSettingsPage() {
   await requireRole("ADMIN");
 
-  const supabase = getSupabaseServerClient();
+  const supabase = getSupabaseServiceClient();
 
-  const [{ data: projects }, { data: clients }] = await Promise.all([
+  const [{ data: projects, error: projectsError }, { data: clients, error: clientsError }] = await Promise.all([
     supabase
       .from("projects")
       .select(
@@ -30,26 +30,32 @@ export default async function ProjectsSettingsPage() {
         status,
         description,
         client_id,
+  created_by,
         starts_on,
         ends_on,
         created_at,
         updated_at,
-        deleted_at,
-        client:clients (
-          id,
-          name,
-          deleted_at
-        )
+        deleted_at
       `
       )
       .order("name", { ascending: true }),
     supabase.from("clients").select("id, name, deleted_at").order("name"),
   ]);
 
-  return (
-    <ProjectsSettingsTable
-      projects={(projects ?? []) as ProjectWithClient[]}
-      clients={(clients ?? []) as ClientRow[]}
-    />
-  );
+  if (projectsError) {
+    console.error("Failed to load projects for settings", projectsError);
+  }
+
+  if (clientsError) {
+    console.error("Failed to load clients for project settings", clientsError);
+  }
+
+  const clientLookup = new Map((clients ?? []).map((client) => [client.id, client] as const));
+
+  const hydratedProjects: ProjectWithClient[] = (projects ?? []).map((project) => ({
+    ...project,
+    client: project.client_id ? clientLookup.get(project.client_id) ?? null : null,
+  }));
+
+  return <ProjectsSettingsTable projects={hydratedProjects} clients={(clients ?? []) as ClientRow[]} />;
 }

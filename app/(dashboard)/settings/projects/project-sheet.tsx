@@ -4,10 +4,11 @@ import { useEffect, useMemo, useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { DisabledFieldTooltip } from "@/components/ui/disabled-field-tooltip";
 import { useToast } from "@/components/ui/use-toast";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   Form,
   FormControl,
@@ -92,6 +93,8 @@ export function ProjectSheet({ open, onOpenChange, onComplete, project, clients 
   const [feedback, setFeedback] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
+  const pendingReason = "Please wait for the current request to finish.";
+  const missingClientReason = "Add a client before creating a project.";
 
   const sortedClients = useMemo(
     () => [...clients].sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" })),
@@ -187,13 +190,13 @@ export function ProjectSheet({ open, onOpenChange, onComplete, project, clients 
     });
   };
 
-  const handleArchive = () => {
+  const handleDelete = () => {
     if (!project || project.deleted_at) {
       return;
     }
 
     const confirmed = window.confirm(
-      "Archiving this project hides it from active views but keeps the history intact."
+      "Deleting this project hides it from active views but keeps the history intact."
     );
 
     if (!confirmed) return;
@@ -206,7 +209,7 @@ export function ProjectSheet({ open, onOpenChange, onComplete, project, clients 
       if (result.error) {
         setFeedback(result.error);
         toast({
-          title: "Unable to archive project",
+          title: "Unable to delete project",
           description: result.error,
           variant: "destructive",
         });
@@ -214,8 +217,8 @@ export function ProjectSheet({ open, onOpenChange, onComplete, project, clients 
       }
 
       toast({
-        title: "Project archived",
-        description: "You can still find it in archived reporting.",
+        title: "Project deleted",
+        description: "You can still find it in historical reporting.",
       });
 
       onOpenChange(false);
@@ -232,13 +235,13 @@ export function ProjectSheet({ open, onOpenChange, onComplete, project, clients 
         : null
     : null;
 
-  const archiveDisabled = isPending || Boolean(project?.deleted_at);
-  const archiveDisabledReason =
-    isEditing && archiveDisabled
+  const deleteDisabled = isPending || Boolean(project?.deleted_at);
+  const deleteDisabledReason =
+    isEditing && deleteDisabled
       ? isPending
         ? "Please wait for the current request to finish."
         : project?.deleted_at
-          ? "This project is already archived."
+          ? "This project is already deleted."
           : null
       : null;
 
@@ -251,7 +254,7 @@ export function ProjectSheet({ open, onOpenChange, onComplete, project, clients 
           <SheetTitle>{isEditing ? "Edit project" : "Add project"}</SheetTitle>
           <SheetDescription>
             {isEditing
-              ? "Adjust metadata, update its client, or archive the project."
+              ? "Adjust metadata, update its client, or delete the project."
               : "Create a project linked to an existing client so work can be tracked."}
           </SheetDescription>
         </SheetHeader>
@@ -263,145 +266,200 @@ export function ProjectSheet({ open, onOpenChange, onComplete, project, clients 
             <FormField
               control={form.control}
               name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Name</FormLabel>
-                  <FormControl>
-                      <Input
-                        {...field}
-                        value={field.value ?? ""}
-                        placeholder="Website redesign"
-                        disabled={isPending}
-                      />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+              render={({ field }) => {
+                const disabled = isPending;
+                const reason = disabled ? pendingReason : null;
+
+                return (
+                  <FormItem>
+                    <FormLabel>Name</FormLabel>
+                    <FormControl>
+                      <DisabledFieldTooltip disabled={disabled} reason={reason}>
+                        <Input
+                          {...field}
+                          value={field.value ?? ""}
+                          placeholder="Website redesign"
+                          disabled={disabled}
+                        />
+                      </DisabledFieldTooltip>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
             />
             <div className="grid gap-4 sm:grid-cols-2">
               <FormField
                 control={form.control}
                 name="clientId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Client</FormLabel>
-                    <Select
-                 value={field.value ?? ""}
-                      onValueChange={field.onChange}
-                      disabled={isPending || sortedClients.length === 0}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select client" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {sortedClients.map((client) => (
-                          <SelectItem key={client.id} value={client.id}>
-                            {client.name}
-                            {client.deleted_at ? " (Archived)" : ""}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
+                render={({ field }) => {
+                  const disabled = isPending || sortedClients.length === 0;
+                  const reason = disabled
+                    ? isPending
+                      ? pendingReason
+                      : sortedClients.length === 0
+                        ? missingClientReason
+                        : null
+                    : null;
+
+                  return (
+                    <FormItem>
+                      <FormLabel>Client</FormLabel>
+                      <Select
+                        value={field.value ?? ""}
+                        onValueChange={field.onChange}
+                        disabled={disabled}
+                      >
+                        <FormControl>
+                          <DisabledFieldTooltip disabled={disabled} reason={reason}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select client" />
+                            </SelectTrigger>
+                          </DisabledFieldTooltip>
+                        </FormControl>
+                        <SelectContent>
+                          {sortedClients.map((client) => (
+                            <SelectItem key={client.id} value={client.id}>
+                              {client.name}
+                              {client.deleted_at ? " (Deleted)" : ""}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
               />
               <FormField
                 control={form.control}
                 name="status"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Status</FormLabel>
-                    <Select
-                      value={field.value ?? ""}
-                      onValueChange={field.onChange}
-                      disabled={isPending}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select status" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {PROJECT_STATUS_OPTIONS.map((status) => (
-                          <SelectItem key={status.value} value={status.value}>
-                            {status.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
+                render={({ field }) => {
+                  const disabled = isPending;
+                  const reason = disabled ? pendingReason : null;
+
+                  return (
+                    <FormItem>
+                      <FormLabel>Status</FormLabel>
+                      <Select
+                        value={field.value ?? ""}
+                        onValueChange={field.onChange}
+                        disabled={disabled}
+                      >
+                        <FormControl>
+                          <DisabledFieldTooltip disabled={disabled} reason={reason}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select status" />
+                            </SelectTrigger>
+                          </DisabledFieldTooltip>
+                        </FormControl>
+                        <SelectContent>
+                          {PROJECT_STATUS_OPTIONS.map((status) => (
+                            <SelectItem key={status.value} value={status.value}>
+                              {status.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
               />
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <FormField
                 control={form.control}
                 name="code"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Internal code (optional)</FormLabel>
-                    <FormControl>
-                      <Input
-                        {...field}
-                          value={field.value ?? ""}
-                        placeholder="PTS-042"
-                        disabled={isPending}
-                        maxLength={32}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
+                render={({ field }) => {
+                  const disabled = isPending;
+                  const reason = disabled ? pendingReason : null;
+
+                  return (
+                    <FormItem>
+                      <FormLabel>Internal code (optional)</FormLabel>
+                      <FormControl>
+                        <DisabledFieldTooltip disabled={disabled} reason={reason}>
+                          <Input
+                            {...field}
+                            value={field.value ?? ""}
+                            placeholder="PTS-042"
+                            disabled={disabled}
+                            maxLength={32}
+                          />
+                        </DisabledFieldTooltip>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
               />
               <FormField
                 control={form.control}
                 name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Summary (optional)</FormLabel>
-                    <FormControl>
-                      <Input
-                        {...field}
-                          value={field.value ?? ""}
-                        placeholder="What success looks like"
-                        disabled={isPending}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
+                render={({ field }) => {
+                  const disabled = isPending;
+                  const reason = disabled ? pendingReason : null;
+
+                  return (
+                    <FormItem>
+                      <FormLabel>Summary (optional)</FormLabel>
+                      <FormControl>
+                        <DisabledFieldTooltip disabled={disabled} reason={reason}>
+                          <Input
+                            {...field}
+                            value={field.value ?? ""}
+                            placeholder="What success looks like"
+                            disabled={disabled}
+                          />
+                        </DisabledFieldTooltip>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
               />
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <FormField
                 control={form.control}
                 name="startsOn"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Start date (optional)</FormLabel>
-                    <FormControl>
-                      <Input {...field} value={field.value ?? ""} type="date" disabled={isPending} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
+                render={({ field }) => {
+                  const disabled = isPending;
+                  const reason = disabled ? pendingReason : null;
+
+                  return (
+                    <FormItem>
+                      <FormLabel>Start date (optional)</FormLabel>
+                      <FormControl>
+                        <DisabledFieldTooltip disabled={disabled} reason={reason}>
+                          <Input {...field} value={field.value ?? ""} type="date" disabled={disabled} />
+                        </DisabledFieldTooltip>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
               />
               <FormField
                 control={form.control}
                 name="endsOn"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>End date (optional)</FormLabel>
-                    <FormControl>
-                      <Input {...field} value={field.value ?? ""} type="date" disabled={isPending} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
+                render={({ field }) => {
+                  const disabled = isPending;
+                  const reason = disabled ? pendingReason : null;
+
+                  return (
+                    <FormItem>
+                      <FormLabel>End date (optional)</FormLabel>
+                      <FormControl>
+                        <DisabledFieldTooltip disabled={disabled} reason={reason}>
+                          <Input {...field} value={field.value ?? ""} type="date" disabled={disabled} />
+                        </DisabledFieldTooltip>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
               />
             </div>
             {feedback ? (
@@ -409,49 +467,24 @@ export function ProjectSheet({ open, onOpenChange, onComplete, project, clients 
                 {feedback}
               </p>
             ) : null}
-            <SheetFooter className="flex items-center justify-between gap-3 px-0 pb-0 pt-6">
+            <SheetFooter className="flex items-center justify-end gap-3 px-0 pb-0 pt-6">
               {isEditing ? (
-                archiveDisabledReason ? (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={handleArchive}
-                        disabled={archiveDisabled}
-                      >
-                        {project?.deleted_at ? "Archived" : "Archive"}
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>{archiveDisabledReason}</TooltipContent>
-                  </Tooltip>
-                ) : (
+                <DisabledFieldTooltip disabled={deleteDisabled} reason={deleteDisabledReason}>
                   <Button
                     type="button"
-                    variant="outline"
-                    onClick={handleArchive}
-                    disabled={archiveDisabled}
+                    variant="destructive"
+                    onClick={handleDelete}
+                    disabled={deleteDisabled}
                   >
-                    {project?.deleted_at ? "Archived" : "Archive"}
+                    <Trash2 className="h-4 w-4" /> Delete
                   </Button>
-                )
-              ) : (
-                <span />
-              )}
-              {submitDisabledReason ? (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button type="submit" disabled={submitDisabled}>
-                      {submitLabel}
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>{submitDisabledReason}</TooltipContent>
-                </Tooltip>
-              ) : (
+                </DisabledFieldTooltip>
+              ) : null}
+              <DisabledFieldTooltip disabled={submitDisabled} reason={submitDisabledReason}>
                 <Button type="submit" disabled={submitDisabled}>
                   {submitLabel}
                 </Button>
-              )}
+              </DisabledFieldTooltip>
             </SheetFooter>
           </form>
         </Form>

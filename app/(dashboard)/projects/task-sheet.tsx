@@ -5,8 +5,10 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { formatISO, parseISO } from "date-fns";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
+import { Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { DisabledFieldTooltip } from "@/components/ui/disabled-field-tooltip";
 import {
   Form,
   FormControl,
@@ -28,6 +30,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { useToast } from "@/components/ui/use-toast";
 
 import type { ProjectWithRelations, TaskWithRelations } from "@/lib/types";
 
@@ -88,6 +91,25 @@ type Props = {
 export function TaskSheet({ open, onOpenChange, project, task, canManage }: Props) {
   const [feedback, setFeedback] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const { toast } = useToast();
+  const pendingReason = "Please wait for the current request to finish.";
+  const managePermissionReason = "You need manage permissions to edit this task.";
+
+  const getDisabledReason = (disabled: boolean) => {
+    if (!disabled) {
+      return null;
+    }
+
+    if (!canManage) {
+      return managePermissionReason;
+    }
+
+    if (isPending) {
+      return pendingReason;
+    }
+
+    return null;
+  };
 
   const defaultValues: FormValues = useMemo(
     () => ({
@@ -132,6 +154,13 @@ export function TaskSheet({ open, onOpenChange, project, task, canManage }: Prop
         return;
       }
 
+      toast({
+        title: task ? "Task updated" : "Task created",
+        description: task
+          ? "Changes saved successfully."
+          : "The task was added to the project board.",
+      });
+
       onOpenChange(false);
     });
   };
@@ -148,9 +177,20 @@ export function TaskSheet({ open, onOpenChange, project, task, canManage }: Prop
         return;
       }
 
+      toast({
+        title: "Task deleted",
+        description: "The task has been removed from the board.",
+        variant: "destructive",
+      });
+
       onOpenChange(false);
     });
   };
+
+  const deleteDisabled = isPending || !canManage;
+  const deleteDisabledReason = getDisabledReason(deleteDisabled);
+  const submitDisabled = isPending || !canManage;
+  const submitDisabledReason = getDisabledReason(submitDisabled);
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -169,184 +209,229 @@ export function TaskSheet({ open, onOpenChange, project, task, canManage }: Prop
             <FormField
               control={form.control}
               name="title"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Title</FormLabel>
-                  <FormControl>
-                    <Input
-                      {...field}
-                      disabled={isPending || !canManage}
-                      placeholder="Give the task a clear name"
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+              render={({ field }) => {
+                const disabled = isPending || !canManage;
+                const reason = getDisabledReason(disabled);
+
+                return (
+                  <FormItem>
+                    <FormLabel>Title</FormLabel>
+                    <FormControl>
+                      <DisabledFieldTooltip disabled={disabled} reason={reason}>
+                        <Input
+                          {...field}
+                          value={field.value ?? ""}
+                          disabled={disabled}
+                          placeholder="Give the task a clear name"
+                        />
+                      </DisabledFieldTooltip>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
             />
             <FormField
               control={form.control}
               name="description"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Description</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      {...field}
-                      value={field.value ?? ""}
-                      disabled={isPending || !canManage}
-                      rows={4}
-                      placeholder="Add helpful context for collaborators"
-                    />
-                  </FormControl>
-                  <FormDescription>Supports basic Markdown.</FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
+              render={({ field }) => {
+                const disabled = isPending || !canManage;
+                const reason = getDisabledReason(disabled);
+
+                return (
+                  <FormItem>
+                    <FormLabel>Description</FormLabel>
+                    <FormControl>
+                      <DisabledFieldTooltip disabled={disabled} reason={reason}>
+                        <Textarea
+                          {...field}
+                          value={field.value ?? ""}
+                          disabled={disabled}
+                          rows={4}
+                          placeholder="Add helpful context for collaborators"
+                        />
+                      </DisabledFieldTooltip>
+                    </FormControl>
+                    <FormDescription>Supports basic Markdown.</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
             />
             <div className="grid gap-4 sm:grid-cols-2">
               <FormField
                 control={form.control}
                 name="status"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Status</FormLabel>
-                    <Select
-                      value={field.value}
-                      onValueChange={field.onChange}
-                      disabled={isPending || !canManage}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select status" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {TASK_STATUSES.map((status) => (
-                          <SelectItem key={status.value} value={status.value}>
-                            {status.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
+                render={({ field }) => {
+                  const disabled = isPending || !canManage;
+                  const reason = getDisabledReason(disabled);
+
+                  return (
+                    <FormItem>
+                      <FormLabel>Status</FormLabel>
+                      <Select
+                        value={field.value}
+                        onValueChange={field.onChange}
+                        disabled={disabled}
+                      >
+                        <FormControl>
+                          <DisabledFieldTooltip disabled={disabled} reason={reason}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select status" />
+                            </SelectTrigger>
+                          </DisabledFieldTooltip>
+                        </FormControl>
+                        <SelectContent>
+                          {TASK_STATUSES.map((status) => (
+                            <SelectItem key={status.value} value={status.value}>
+                              {status.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
               />
               <FormField
                 control={form.control}
                 name="priority"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Priority</FormLabel>
-                    <Select
-                      value={field.value}
-                      onValueChange={field.onChange}
-                      disabled={isPending || !canManage}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select priority" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {TASK_PRIORITIES.map((priority) => (
-                          <SelectItem key={priority.value} value={priority.value}>
-                            {priority.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
+                render={({ field }) => {
+                  const disabled = isPending || !canManage;
+                  const reason = getDisabledReason(disabled);
+
+                  return (
+                    <FormItem>
+                      <FormLabel>Priority</FormLabel>
+                      <Select
+                        value={field.value}
+                        onValueChange={field.onChange}
+                        disabled={disabled}
+                      >
+                        <FormControl>
+                          <DisabledFieldTooltip disabled={disabled} reason={reason}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select priority" />
+                            </SelectTrigger>
+                          </DisabledFieldTooltip>
+                        </FormControl>
+                        <SelectContent>
+                          {TASK_PRIORITIES.map((priority) => (
+                            <SelectItem key={priority.value} value={priority.value}>
+                              {priority.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
               />
               <FormField
                 control={form.control}
                 name="dueOn"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Due date</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="date"
-                        value={field.value ?? ""}
-                        onChange={field.onChange}
-                        disabled={isPending || !canManage}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
+                render={({ field }) => {
+                  const disabled = isPending || !canManage;
+                  const reason = getDisabledReason(disabled);
+
+                  return (
+                    <FormItem>
+                      <FormLabel>Due date</FormLabel>
+                      <FormControl>
+                        <DisabledFieldTooltip disabled={disabled} reason={reason}>
+                          <Input
+                            type="date"
+                            value={field.value ?? ""}
+                            onChange={field.onChange}
+                            disabled={disabled}
+                          />
+                        </DisabledFieldTooltip>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
               />
             </div>
             <FormField
               control={form.control}
               name="assigneeIds"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Assignees</FormLabel>
-                  <div className="space-y-2 rounded-md border p-3">
-                    {project.members.length === 0 ? (
-                      <p className="text-sm text-muted-foreground">
-                        No collaborators are assigned to this project yet.
-                      </p>
-                    ) : (
-                      project.members.map((member) => (
-                        <div key={member.user_id} className="flex items-center gap-2">
-                          <Checkbox
-                            checked={field.value?.includes(member.user_id) ?? false}
-                            disabled={isPending || !canManage}
-                            onCheckedChange={(next) => {
-                              const current = field.value ?? [];
+              render={({ field }) => {
+                const disabled = isPending || !canManage;
+                const reason = getDisabledReason(disabled);
 
-                              if (next === true) {
-                                if (!current.includes(member.user_id)) {
-                                  field.onChange([...current, member.user_id]);
-                                }
-                                return;
-                              }
+                return (
+                  <FormItem>
+                    <FormLabel>Assignees</FormLabel>
+                    <div className="space-y-2 rounded-md border p-3">
+                      {project.members.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">
+                          No collaborators are assigned to this project yet.
+                        </p>
+                      ) : (
+                        project.members.map((member) => (
+                          <div key={member.user_id} className="flex items-center gap-2">
+                            <DisabledFieldTooltip disabled={disabled} reason={reason}>
+                              <Checkbox
+                                checked={field.value?.includes(member.user_id) ?? false}
+                                disabled={disabled}
+                                onCheckedChange={(next) => {
+                                  const current = field.value ?? [];
 
-                              field.onChange(
-                                current.filter((id: string) => id !== member.user_id)
-                              );
-                            }}
-                          />
-                          <div className="flex flex-col text-sm leading-tight">
-                            <span className="font-medium">{member.user.full_name ?? member.user.email}</span>
-                            <span className="text-xs text-muted-foreground">
-                              {member.role.toLowerCase()} • {member.user.email}
-                            </span>
+                                  if (next === true) {
+                                    if (!current.includes(member.user_id)) {
+                                      field.onChange([...current, member.user_id]);
+                                    }
+                                    return;
+                                  }
+
+                                  field.onChange(
+                                    current.filter((id: string) => id !== member.user_id)
+                                  );
+                                }}
+                              />
+                            </DisabledFieldTooltip>
+                            <div className="flex flex-col text-sm leading-tight">
+                              <span className="font-medium">{member.user.full_name ?? member.user.email}</span>
+                              <span className="text-xs text-muted-foreground">
+                                {member.role.toLowerCase()} • {member.user.email}
+                              </span>
+                            </div>
                           </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                  <FormDescription>Only members assigned to this project can be selected.</FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
+                        ))
+                      )}
+                    </div>
+                    <FormDescription>Only members assigned to this project can be selected.</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
             />
             {feedback ? (
               <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
                 {feedback}
               </p>
             ) : null}
-            <SheetFooter className="flex items-center justify-between gap-2 px-0 pb-0 pt-6">
+            <SheetFooter className="flex items-center justify-end gap-3 px-0 pb-0 pt-6">
               {task ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleDelete}
-                  disabled={isPending || !canManage}
-                >
-                  Delete
+                <DisabledFieldTooltip disabled={deleteDisabled} reason={deleteDisabledReason}>
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    onClick={handleDelete}
+                    disabled={deleteDisabled}
+                  >
+                    <Trash2 className="h-4 w-4" /> Delete
+                  </Button>
+                </DisabledFieldTooltip>
+              ) : null}
+              <DisabledFieldTooltip disabled={submitDisabled} reason={submitDisabledReason}>
+                <Button type="submit" disabled={submitDisabled}>
+                  {isPending ? "Saving..." : task ? "Save changes" : "Create task"}
                 </Button>
-              ) : (
-                <span />
-              )}
-              <Button type="submit" disabled={isPending || !canManage}>
-                {isPending ? "Saving..." : task ? "Save changes" : "Create task"}
-              </Button>
+              </DisabledFieldTooltip>
             </SheetFooter>
           </form>
         </Form>

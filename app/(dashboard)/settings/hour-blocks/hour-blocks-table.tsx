@@ -1,8 +1,9 @@
 'use client';
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { format } from "date-fns";
-import { AlarmClock, FolderKanban, Pencil, Plus } from "lucide-react";
+import { AlarmClock, FolderKanban, Pencil, Plus, Trash2 } from "lucide-react";
 
 import {
   Table,
@@ -14,12 +15,14 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { useToast } from "@/components/ui/use-toast";
 import type { Database } from "@/supabase/types/database";
 
 import { cn } from "@/lib/utils";
 import { getHourBlockTypeLabel } from "@/lib/constants";
 
 import { HourBlockSheet } from "./hour-block-sheet";
+import { softDeleteHourBlock } from "./actions";
 
 type HourBlockRow = Database["public"]["Tables"]["hour_blocks"]["Row"];
 type ProjectRow = Pick<Database["public"]["Tables"]["projects"]["Row"], "id" | "name" | "deleted_at">;
@@ -32,8 +35,12 @@ type Props = {
 };
 
 export function HourBlocksSettingsTable({ hourBlocks, projects }: Props) {
+  const router = useRouter();
   const [sheetOpen, setSheetOpen] = useState(false);
   const [selectedBlock, setSelectedBlock] = useState<HourBlockWithProject | null>(null);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
+  const { toast } = useToast();
 
   const sortedBlocks = useMemo(
     () =>
@@ -65,6 +72,44 @@ export function HourBlocksSettingsTable({ hourBlocks, projects }: Props) {
 
   const handleClosed = () => {
     setSheetOpen(false);
+  };
+
+  const handleDelete = (block: HourBlockWithProject) => {
+    if (block.deleted_at) {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      "Deleting this block hides it from active reporting while keeping historical data intact."
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setPendingDeleteId(block.id);
+    startTransition(async () => {
+      try {
+        const result = await softDeleteHourBlock({ id: block.id });
+
+        if (result.error) {
+          toast({
+            title: "Unable to delete hour block",
+            description: result.error,
+            variant: "destructive",
+          });
+          return;
+        }
+
+        toast({
+          title: "Hour block deleted",
+          description: `${block.title} will be hidden from active tracking but remains available historically.`,
+        });
+        router.refresh();
+      } finally {
+        setPendingDeleteId(null);
+      }
+    });
   };
 
   const formatDate = (value?: string | null) => {
@@ -103,14 +148,14 @@ export function HourBlocksSettingsTable({ hourBlocks, projects }: Props) {
           <Tooltip>
             <TooltipTrigger asChild>
               <Button className="ml-auto" onClick={openCreate} disabled={createDisabled}>
-                <Plus className="mr-2 h-4 w-4" /> Add hour block
+                <Plus className="h-4 w-4" /> Add hour block
               </Button>
             </TooltipTrigger>
             <TooltipContent>{createDisabledReason}</TooltipContent>
           </Tooltip>
         ) : (
           <Button className="ml-auto" onClick={openCreate} disabled={createDisabled}>
-            <Plus className="mr-2 h-4 w-4" /> Add hour block
+            <Plus className="h-4 w-4" /> Add hour block
           </Button>
         )}
       </div>
@@ -126,7 +171,7 @@ export function HourBlocksSettingsTable({ hourBlocks, projects }: Props) {
               <TableHead>Period</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Updated</TableHead>
-              <TableHead className="w-24 text-right">Actions</TableHead>
+              <TableHead className="w-28 text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -134,6 +179,8 @@ export function HourBlocksSettingsTable({ hourBlocks, projects }: Props) {
               const project = block.project;
               const remaining = Math.max(block.hours_purchased - block.hours_consumed, 0);
               const updatedAt = block.updated_at ? formatDate(block.updated_at) : "—";
+              const deleting = isPending && pendingDeleteId === block.id;
+              const deleteDisabled = deleting || Boolean(block.deleted_at);
 
               return (
                 <TableRow
@@ -183,14 +230,28 @@ export function HourBlocksSettingsTable({ hourBlocks, projects }: Props) {
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">{updatedAt}</TableCell>
                   <TableCell className="text-right">
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => openEdit(block)}
-                      title="Edit hour block"
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => openEdit(block)}
+                        title="Edit hour block"
+                        disabled={deleting}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        size="icon"
+                        onClick={() => handleDelete(block)}
+                        title={deleteDisabled ? "Hour block already deleted" : "Delete hour block"}
+                        aria-label="Delete hour block"
+                        disabled={deleteDisabled}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        <span className="sr-only">Delete</span>
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               );
