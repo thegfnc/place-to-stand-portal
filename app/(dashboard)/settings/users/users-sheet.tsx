@@ -41,23 +41,27 @@ const baseSchema = z.object({
   role: z.enum(USER_ROLES),
 });
 
-const createSchema = baseSchema.extend({
-  password: z.string().trim().min(8, "Password must be at least 8 characters."),
-});
-
 const editSchema = baseSchema.extend({
   password: z
     .string()
-    .trim()
-    .refine(
-      (value) => value.length === 0 || value.length >= 8,
-      "Password must be at least 8 characters."
-    ),
+    .optional()
+    .superRefine((value, ctx) => {
+      const trimmed = value?.trim() ?? "";
+
+      if (trimmed.length > 0 && trimmed.length < 8) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Password must be at least 8 characters.",
+        });
+      }
+    }),
 });
 
 type FormValues = z.infer<typeof editSchema>;
 
-const createResolver: Resolver<FormValues> = zodResolver(createSchema);
+const createResolver = zodResolver(
+  baseSchema.extend({ password: z.string().optional() })
+) as Resolver<FormValues>;
 const editResolver: Resolver<FormValues> = zodResolver(editSchema);
 
 type Props = {
@@ -115,7 +119,7 @@ export function UserSheet({
     startTransition(async () => {
       setFeedback(null);
 
-      const trimmedPassword = values.password.trim();
+      const trimmedPassword = values.password?.trim() ?? "";
 
       if (isEditing && user) {
         const result = await updateUser({
@@ -139,7 +143,6 @@ export function UserSheet({
           email: values.email,
           fullName: values.fullName,
           role: values.role,
-          password: trimmedPassword,
         });
 
         if (result.error) {
@@ -148,8 +151,8 @@ export function UserSheet({
         }
 
         toast({
-          title: "User created",
-          description: "The new teammate can sign in immediately.",
+          title: "Invite sent",
+          description: "The new teammate received their login details via email.",
         });
       }
 
@@ -318,35 +321,40 @@ export function UserSheet({
                 );
               }}
             />
-            <FormField
-              control={form.control}
-              name="password"
-              render={({ field }) => {
-                const disabled = isPending;
-                const reason = disabled ? pendingReason : null;
+            {isEditing ? (
+              <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => {
+                  const disabled = isPending;
+                  const reason = disabled ? pendingReason : null;
 
-                return (
-                  <FormItem>
-                    <FormLabel>New password</FormLabel>
-                    <FormControl>
-                      <DisabledFieldTooltip disabled={disabled} reason={reason}>
-                        <Input
-                          {...field}
-                          value={field.value ?? ""}
-                          type="password"
-                          autoComplete="new-password"
-                          disabled={disabled}
-                          aria-required={!isEditing}
-                          aria-invalid={Boolean(form.formState.errors.password)}
-                        />
-                      </DisabledFieldTooltip>
-                    </FormControl>
-                    {isEditing ? <FormDescription>Leave blank to keep your current password.</FormDescription> : null}
-                    <FormMessage />
-                  </FormItem>
-                );
-              }}
-            />
+                  return (
+                    <FormItem>
+                      <FormLabel>New password</FormLabel>
+                      <FormControl>
+                        <DisabledFieldTooltip disabled={disabled} reason={reason}>
+                          <Input
+                            {...field}
+                            value={field.value ?? ""}
+                            type="password"
+                            autoComplete="new-password"
+                            disabled={disabled}
+                            aria-invalid={Boolean(form.formState.errors.password)}
+                          />
+                        </DisabledFieldTooltip>
+                      </FormControl>
+                      <FormDescription>Leave blank to keep the existing password. Setting a new one will require the user to update it on their next login.</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
+              />
+            ) : (
+              <div className="rounded-md border border-border/60 bg-muted/20 px-3 py-2 text-sm text-muted-foreground">
+                A secure temporary password will be generated and emailed to the teammate. They must set a new password when they first sign in.
+              </div>
+            )}
             {feedback ? (
               <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
                 {feedback}

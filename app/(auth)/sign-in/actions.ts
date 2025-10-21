@@ -64,5 +64,13 @@ export async function signInWithPassword(
 
   await ensureUserProfile(data.user);
 
+  const mustReset = Boolean(
+    (data.user.user_metadata?.must_reset_password as boolean | undefined)
+  );
+
+  if (mustReset) {
+    redirect("/force-reset-password");
+  }
+
   redirect(redirectTo ?? "/");
 }

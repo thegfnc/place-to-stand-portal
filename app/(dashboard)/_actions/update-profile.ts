@@ -57,8 +57,12 @@ export async function updateProfile(input: UpdateProfileInput): Promise<UpdatePr
     return { error: profileError.message };
   }
 
+  const userMetadata = password
+    ? { full_name: fullName, must_reset_password: false }
+    : { full_name: fullName };
+
   const { error: authError } = await supabase.auth.updateUser({
-    data: { full_name: fullName },
+    data: userMetadata,
     ...(password ? { password } : {}),
   });
 

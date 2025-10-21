@@ -1,7 +1,8 @@
-'use client';
+"use client";
 
 import { useActionState } from "react";
 import { Loader2 } from "lucide-react";
+import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -60,6 +61,14 @@ export function SignInForm({ redirectTo }: Props) {
           "Sign in"
         )}
       </Button>
+      <div className="text-center text-sm">
+        <Link
+          href={redirectTo ? `/forgot-password?redirect=${encodeURIComponent(redirectTo)}` : "/forgot-password"}
+          className="font-medium text-primary hover:underline"
+        >
+          Forgot password?
+        </Link>
+      </div>
     </form>
   );
 }

@@ -3,7 +3,8 @@ import { createServerClient } from "@supabase/ssr";
 
 import type { Database } from "@/supabase/types/database";
 
-const PUBLIC_PATHS = new Set(["/sign-in", "/unauthorized"]);
+const PUBLIC_PATHS = new Set(["/sign-in", "/unauthorized", "/forgot-password", "/reset-password"]);
+const FORCE_RESET_PATH = "/force-reset-password";
 
 export async function middleware(req: NextRequest) {
   const res = NextResponse.next();
@@ -39,6 +40,18 @@ export async function middleware(req: NextRequest) {
     redirectUrl.searchParams.set("redirect", req.nextUrl.pathname + req.nextUrl.search);
 
     return NextResponse.redirect(redirectUrl);
+  }
+
+  const mustResetPassword = Boolean(
+    session?.user.user_metadata?.must_reset_password
+  );
+
+  if (session && mustResetPassword && !pathname.startsWith(FORCE_RESET_PATH)) {
+    const resetUrl = req.nextUrl.clone();
+    resetUrl.pathname = FORCE_RESET_PATH;
+    resetUrl.searchParams.set("redirect", req.nextUrl.pathname + req.nextUrl.search);
+
+    return NextResponse.redirect(resetUrl);
   }
 
   if (session && pathname === "/sign-in") {
