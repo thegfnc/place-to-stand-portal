@@ -78,15 +78,20 @@ export function ClientSheet({ open, onOpenChange, onComplete, client }: Props) {
   }, [client, form]);
 
   const onSubmit = (values: FormValues) => {
+    if (isEditing && !values.slug?.trim()) {
+      form.setError("slug", { type: "manual", message: "Slug is required" });
+      return;
+    }
+
     startTransition(async () => {
       setFeedback(null);
 
       const payload = {
         id: client?.id,
         name: values.name.trim(),
-        slug: values.slug?.trim() ? values.slug.trim() : null,
+        slug: isEditing ? (values.slug?.trim() ? values.slug.trim() : null) : null,
         notes: values.notes?.trim() ? values.notes.trim() : null,
-      };
+      } satisfies Parameters<typeof saveClient>[0];
 
       if (payload.slug && payload.slug.length < 3) {
         setFeedback("Slug must be at least 3 characters when provided.");
@@ -186,31 +191,33 @@ export function ClientSheet({ open, onOpenChange, onComplete, client }: Props) {
                 );
               }}
             />
-            <FormField
-              control={form.control}
-              name="slug"
-              render={({ field }) => {
-                const disabled = isPending;
-                const reason = disabled ? pendingReason : null;
+            {isEditing ? (
+              <FormField
+                control={form.control}
+                name="slug"
+                render={({ field }) => {
+                  const disabled = isPending;
+                  const reason = disabled ? pendingReason : null;
 
-                return (
-                  <FormItem>
-                    <FormLabel>Slug (optional)</FormLabel>
-                    <FormControl>
-                      <DisabledFieldTooltip disabled={disabled} reason={reason}>
-                        <Input
-                          {...field}
-                          value={field.value ?? ""}
-                          placeholder="acme"
-                          disabled={disabled}
-                        />
-                      </DisabledFieldTooltip>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                );
-              }}
-            />
+                  return (
+                    <FormItem>
+                      <FormLabel>Slug</FormLabel>
+                      <FormControl>
+                        <DisabledFieldTooltip disabled={disabled} reason={reason}>
+                          <Input
+                            {...field}
+                            value={field.value ?? ""}
+                            placeholder="acme"
+                            disabled={disabled}
+                          />
+                        </DisabledFieldTooltip>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
+              />
+            ) : null}
             <FormField
               control={form.control}
               name="notes"
@@ -220,7 +227,7 @@ export function ClientSheet({ open, onOpenChange, onComplete, client }: Props) {
 
                 return (
                   <FormItem>
-                    <FormLabel>Notes</FormLabel>
+                      <FormLabel>Notes (optional)</FormLabel>
                     <FormControl>
                       <DisabledFieldTooltip disabled={disabled} reason={reason}>
                         <Textarea

@@ -16,6 +16,7 @@ export default async function ClientsSettingsPage() {
     .select(
       `id, name, slug, notes, created_by, created_at, updated_at, deleted_at, projects:projects ( id, deleted_at )`
     )
+    .is("deleted_at", null)
     .order("name");
 
   if (error) {

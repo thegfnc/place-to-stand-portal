@@ -2,7 +2,6 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { format } from "date-fns";
 import { Building2, Pencil, Plus, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -38,7 +37,9 @@ export function ClientsSettingsTable({ clients }: Props) {
 
   const sortedClients = useMemo(
     () =>
-      [...clients].sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" })),
+      clients
+        .filter((client) => !client.deleted_at)
+        .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" })),
     [clients]
   );
 
@@ -115,7 +116,6 @@ export function ClientsSettingsTable({ clients }: Props) {
               <TableHead>Slug</TableHead>
               <TableHead>Active projects</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead>Updated</TableHead>
               <TableHead className="w-28 text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -123,9 +123,6 @@ export function ClientsSettingsTable({ clients }: Props) {
             {sortedClients.map((client) => {
               const activeProjects = client.projects?.filter((project) => !project.deleted_at).length ?? 0;
               const statusLabel = client.deleted_at ? "Archived" : "Active";
-              const updatedAt = client.updated_at
-                ? format(new Date(client.updated_at), "MMM d, yyyy")
-                : "—";
               const deleting = isPending && pendingDeleteId === client.id;
               const deleteDisabled = deleting || Boolean(client.deleted_at);
 
@@ -148,7 +145,6 @@ export function ClientsSettingsTable({ clients }: Props) {
                       {statusLabel}
                     </span>
                   </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{updatedAt}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
                       <Button
@@ -178,7 +174,7 @@ export function ClientsSettingsTable({ clients }: Props) {
             })}
             {sortedClients.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="py-10 text-center text-sm text-muted-foreground">
+                <TableCell colSpan={5} className="py-10 text-center text-sm text-muted-foreground">
                   No clients yet. Create one to begin organizing projects.
                 </TableCell>
               </TableRow>

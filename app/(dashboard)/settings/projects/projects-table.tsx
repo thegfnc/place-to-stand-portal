@@ -163,16 +163,12 @@ export function ProjectsSettingsTable({ projects, clients }: Props) {
               <TableHead>Status</TableHead>
               <TableHead>Code</TableHead>
               <TableHead>Timeline</TableHead>
-              <TableHead>Updated</TableHead>
               <TableHead className="w-28 text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {sortedProjects.map((project) => {
               const client = project.client;
-              const updatedAt = project.updated_at
-                ? format(new Date(project.updated_at), "MMM d, yyyy")
-                : "—";
               const deleting = isPending && pendingDeleteId === project.id;
               const deleteDisabled = deleting || Boolean(project.deleted_at);
 
@@ -218,7 +214,6 @@ export function ProjectsSettingsTable({ projects, clients }: Props) {
                   <TableCell className="text-sm text-muted-foreground">
                     {formatRange(project.starts_on, project.ends_on)}
                   </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{updatedAt}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
                       <Button
@@ -248,7 +243,7 @@ export function ProjectsSettingsTable({ projects, clients }: Props) {
             })}
             {sortedProjects.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="py-10 text-center text-sm text-muted-foreground">
+                <TableCell colSpan={6} className="py-10 text-center text-sm text-muted-foreground">
                   No projects yet. Create one from the Projects view to see it here.
                 </TableCell>
               </TableRow>

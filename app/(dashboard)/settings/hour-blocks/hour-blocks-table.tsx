@@ -170,7 +170,6 @@ export function HourBlocksSettingsTable({ hourBlocks, projects }: Props) {
               <TableHead>Remaining</TableHead>
               <TableHead>Period</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead>Updated</TableHead>
               <TableHead className="w-28 text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -178,7 +177,6 @@ export function HourBlocksSettingsTable({ hourBlocks, projects }: Props) {
             {sortedBlocks.map((block) => {
               const project = block.project;
               const remaining = Math.max(block.hours_purchased - block.hours_consumed, 0);
-              const updatedAt = block.updated_at ? formatDate(block.updated_at) : "—";
               const deleting = isPending && pendingDeleteId === block.id;
               const deleteDisabled = deleting || Boolean(block.deleted_at);
 
@@ -228,7 +226,6 @@ export function HourBlocksSettingsTable({ hourBlocks, projects }: Props) {
                       {formatStatus(block)}
                     </span>
                   </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{updatedAt}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
                       <Button
@@ -258,7 +255,7 @@ export function HourBlocksSettingsTable({ hourBlocks, projects }: Props) {
             })}
             {sortedBlocks.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={9} className="py-10 text-center text-sm text-muted-foreground">
+                <TableCell colSpan={8} className="py-10 text-center text-sm text-muted-foreground">
                   No hour blocks recorded yet. Log a retainer or project block to monitor it here.
                 </TableCell>
               </TableRow>
