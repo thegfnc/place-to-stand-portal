@@ -30,7 +30,26 @@ import {
 import { useToast } from "@/components/ui/use-toast";
 import type { Database } from "@/supabase/types/database";
 
+import { AvatarUploadField } from "@/components/forms/avatar-upload-field";
 import { createUser, softDeleteUser, updateUser } from "./actions";
+
+function deriveInitials(fullName?: string | null, email?: string | null) {
+  const safeName = fullName?.trim();
+
+  if (safeName) {
+    const segments = safeName.split(/\s+/).filter(Boolean).slice(0, 2);
+
+    if (segments.length > 0) {
+      return segments.map((segment) => segment.charAt(0).toUpperCase()).join("") || "??";
+    }
+  }
+
+  if (email) {
+    return email.slice(0, 2).toUpperCase();
+  }
+
+  return "??";
+}
 
 const USER_ROLES = ["ADMIN", "CONTRACTOR", "CLIENT"] as const;
 type UserRow = Database["public"]["Tables"]["users"]["Row"];
@@ -39,6 +58,8 @@ const baseSchema = z.object({
   fullName: z.string().trim().min(1, "Full name is required"),
   email: z.string().trim().email("Provide a valid email"),
   role: z.enum(USER_ROLES),
+  avatarPath: z.string().trim().min(1).max(255).optional().nullable(),
+  avatarRemoved: z.boolean().optional(),
 });
 
 const editSchema = baseSchema.extend({
@@ -83,6 +104,7 @@ export function UserSheet({
   const editingSelf = isEditing && user?.id === currentUserId;
   const [feedback, setFeedback] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [avatarFieldKey, setAvatarFieldKey] = useState(0);
   const { toast } = useToast();
   const pendingReason = "Please wait for the current request to finish.";
   const emailChangeRestriction = "Email cannot be changed after the account is created.";
@@ -101,25 +123,36 @@ export function UserSheet({
       email: user?.email ?? "",
       role: user?.role ?? "CONTRACTOR",
       password: "",
+      avatarPath: user?.avatar_url ?? null,
+      avatarRemoved: false,
     },
   });
 
   useEffect(() => {
+    if (!open) {
+      return;
+    }
+
     form.reset({
       fullName: user?.full_name ?? "",
       email: user?.email ?? "",
       role: user?.role ?? "CONTRACTOR",
       password: "",
+      avatarPath: user?.avatar_url ?? null,
+      avatarRemoved: false,
     });
     form.clearErrors();
     setFeedback(null);
-  }, [form, user]);
+    setAvatarFieldKey((key) => key + 1);
+  }, [form, open, user]);
 
   const onSubmit = (values: FormValues) => {
     startTransition(async () => {
       setFeedback(null);
 
       const trimmedPassword = values.password?.trim() ?? "";
+      const normalizedAvatarPath = values.avatarPath?.trim() ? values.avatarPath.trim() : undefined;
+      const avatarRemoved = Boolean(values.avatarRemoved);
 
       if (isEditing && user) {
         const result = await updateUser({
@@ -127,6 +160,8 @@ export function UserSheet({
           fullName: values.fullName,
           role: editingSelf ? user.role : values.role,
           password: trimmedPassword.length >= 8 ? trimmedPassword : undefined,
+          avatarPath: normalizedAvatarPath,
+          avatarRemoved,
         });
 
         if (result.error) {
@@ -143,6 +178,7 @@ export function UserSheet({
           email: values.email,
           fullName: values.fullName,
           role: values.role,
+          avatarPath: normalizedAvatarPath,
         });
 
         if (result.error) {
@@ -202,6 +238,10 @@ export function UserSheet({
 
   const submitDisabled = isPending;
   const submitDisabledReason = submitDisabled ? pendingReason : null;
+  const watchedFullName = form.watch("fullName");
+  const watchedEmail = form.watch("email");
+  const avatarInitials = deriveInitials(watchedFullName || user?.full_name, watchedEmail || user?.email);
+  const avatarDisplayName = watchedFullName || user?.full_name || null;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -219,6 +259,34 @@ export function UserSheet({
             onSubmit={form.handleSubmit(onSubmit)}
             className="flex flex-1 flex-col gap-5 px-6 pb-6"
           >
+            <FormField
+              control={form.control}
+              name="avatarPath"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Avatar</FormLabel>
+                  <FormControl>
+                    <AvatarUploadField
+                      key={avatarFieldKey}
+                      value={field.value ?? null}
+                      onChange={(next) => {
+                        form.setValue("avatarPath", next, { shouldDirty: true });
+                      }}
+                      onRemovalChange={(removed) => {
+                        form.setValue("avatarRemoved", removed, { shouldDirty: true });
+                      }}
+                      initials={avatarInitials}
+                      displayName={avatarDisplayName}
+                      disabled={isPending}
+                      targetUserId={user?.id}
+                      existingUserId={user?.id ?? null}
+                    />
+                  </FormControl>
+                  <FormDescription>This image appears anywhere their initials would otherwise display.</FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             <FormField
               control={form.control}
               name="fullName"

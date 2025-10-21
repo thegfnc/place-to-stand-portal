@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { Loader2, LogOut, UserCog } from "lucide-react";
 
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -36,6 +36,9 @@ export function UserMenu({ user }: Props) {
         .slice(0, 2)
         .toUpperCase()
     : user.email.slice(0, 2).toUpperCase();
+  const avatarSrc = user.avatar_url
+    ? `/api/storage/user-avatar/${user.id}?v=${encodeURIComponent(user.updated_at ?? "")}`
+    : null;
 
   const handleProfileDialogChange = (open: boolean) => {
     setIsProfileDialogOpen(open);
@@ -49,6 +52,9 @@ export function UserMenu({ user }: Props) {
       <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen}>
       <DropdownMenuTrigger className="flex items-center gap-3 rounded-full border px-3 py-2 text-sm font-medium transition hover:bg-muted">
         <Avatar className="h-8 w-8">
+          {avatarSrc ? (
+            <AvatarImage src={avatarSrc} alt={user.full_name ?? user.email} />
+          ) : null}
           <AvatarFallback>{initials}</AvatarFallback>
         </Avatar>
         <div className="hidden flex-col text-left leading-tight sm:flex">

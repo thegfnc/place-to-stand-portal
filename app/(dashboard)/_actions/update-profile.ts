@@ -6,10 +6,17 @@ import { z } from "zod";
 import { requireUser } from "@/lib/auth/session";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { getSupabaseServiceClient } from "@/lib/supabase/service";
+import {
+  deleteAvatarObject,
+  ensureAvatarBucket,
+  moveAvatarToUserFolder,
+} from "@/lib/storage/avatar";
 
 type UpdateProfileInput = {
   fullName: string;
   password?: string | null;
+  avatarPath?: string | null;
+  avatarRemoved?: boolean;
 };
 
 type UpdateProfileResult = {
@@ -27,6 +34,8 @@ const updateProfileSchema = z.object({
     .trim()
     .min(8, "Password must be at least 8 characters")
     .optional(),
+  avatarPath: z.string().trim().min(1).max(255).optional(),
+  avatarRemoved: z.boolean().optional(),
 });
 
 export async function updateProfile(input: UpdateProfileInput): Promise<UpdateProfileResult> {
@@ -35,6 +44,8 @@ export async function updateProfile(input: UpdateProfileInput): Promise<UpdatePr
   const cleanedInput = {
     fullName: input.fullName?.trim() ?? "",
     password: input.password?.trim() ? input.password.trim() : undefined,
+    avatarPath: input.avatarPath?.trim() ? input.avatarPath.trim() : undefined,
+    avatarRemoved: input.avatarRemoved ?? false,
   };
 
   const parsed = updateProfileSchema.safeParse(cleanedInput);
@@ -43,13 +54,59 @@ export async function updateProfile(input: UpdateProfileInput): Promise<UpdatePr
     return { error: parsed.error.issues[0]?.message ?? "Invalid profile update payload." };
   }
 
-  const { fullName, password } = parsed.data;
+  const { fullName, password, avatarPath, avatarRemoved } = parsed.data;
   const supabase = getSupabaseServerClient();
   const supabaseAdmin = getSupabaseServiceClient();
 
+  let nextAvatarPath = user.avatar_url ?? null;
+
+  if (avatarRemoved) {
+    if (nextAvatarPath) {
+      try {
+        await deleteAvatarObject({ client: supabaseAdmin, path: nextAvatarPath });
+      } catch (error) {
+        console.error("Failed to remove existing avatar", error);
+        return { error: "Unable to remove avatar. Please try again." };
+      }
+    }
+
+    nextAvatarPath = null;
+  } else if (avatarPath) {
+    if (nextAvatarPath !== avatarPath) {
+      try {
+        await ensureAvatarBucket(supabaseAdmin);
+        const movedPath = await moveAvatarToUserFolder({
+          client: supabaseAdmin,
+          path: avatarPath,
+          userId: user.id,
+        });
+
+        if (nextAvatarPath && nextAvatarPath !== movedPath) {
+          try {
+            await deleteAvatarObject({ client: supabaseAdmin, path: nextAvatarPath });
+          } catch (error) {
+            console.error("Failed to delete previous avatar", error);
+          }
+        }
+
+        nextAvatarPath = movedPath ?? null;
+      } catch (error) {
+        console.error("Failed to process avatar update", error);
+        if (avatarPath) {
+          try {
+            await deleteAvatarObject({ client: supabaseAdmin, path: avatarPath });
+          } catch (cleanupError) {
+            console.error("Failed to clean up pending avatar after profile error", cleanupError);
+          }
+        }
+        return { error: "Unable to update avatar." };
+      }
+    }
+  }
+
   const { error: profileError } = await supabaseAdmin
     .from("users")
-    .update({ full_name: fullName })
+    .update({ full_name: fullName, avatar_url: nextAvatarPath })
     .eq("id", user.id);
 
   if (profileError) {
@@ -58,8 +115,8 @@ export async function updateProfile(input: UpdateProfileInput): Promise<UpdatePr
   }
 
   const userMetadata = password
-    ? { full_name: fullName, must_reset_password: false }
-    : { full_name: fullName };
+    ? { full_name: fullName, must_reset_password: false, avatar_url: nextAvatarPath }
+    : { full_name: fullName, avatar_url: nextAvatarPath };
 
   const { error: authError } = await supabase.auth.updateUser({
     data: userMetadata,

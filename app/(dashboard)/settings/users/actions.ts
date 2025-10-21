@@ -6,6 +6,11 @@ import { z } from "zod";
 
 import { requireRole } from "@/lib/auth/session";
 import { getSupabaseServiceClient } from "@/lib/supabase/service";
+import {
+  deleteAvatarObject,
+  ensureAvatarBucket,
+  moveAvatarToUserFolder,
+} from "@/lib/storage/avatar";
 import { sendPortalInviteEmail } from "@/lib/email/send-portal-invite";
 
 const USER_ROLES = ["ADMIN", "CONTRACTOR", "CLIENT"] as const;
@@ -14,6 +19,7 @@ const createUserSchema = z.object({
   email: z.string().email(),
   fullName: z.string().min(1),
   role: z.enum(USER_ROLES),
+  avatarPath: z.string().min(1).max(255).optional(),
 });
 
 const updateUserSchema = z.object({
@@ -21,6 +27,8 @@ const updateUserSchema = z.object({
   fullName: z.string().min(1),
   role: z.enum(USER_ROLES),
   password: z.string().min(8).optional(),
+  avatarPath: z.string().min(1).max(255).optional(),
+  avatarRemoved: z.boolean().optional(),
 });
 
 const deleteUserSchema = z.object({
@@ -53,7 +61,7 @@ export async function createUser(input: CreateUserInput): Promise<ActionResult> 
     return { error: "Please supply a valid email, full name, and role." };
   }
 
-  const { email, fullName, role } = parsed.data;
+  const { email, fullName, role, avatarPath } = parsed.data;
   const adminClient = getSupabaseServiceClient();
   const temporaryPassword = generateTemporaryPassword();
 
@@ -74,17 +82,74 @@ export async function createUser(input: CreateUserInput): Promise<ActionResult> 
   }
 
   const userId = createResult.data.user.id;
+
+  let normalizedAvatarPath: string | null = null;
+
+  if (avatarPath) {
+    try {
+      await ensureAvatarBucket(adminClient);
+      normalizedAvatarPath = await moveAvatarToUserFolder({
+        client: adminClient,
+        path: avatarPath,
+        userId,
+      });
+    } catch (error) {
+      console.error("Failed to finalize avatar for new user", error);
+      try {
+        await deleteAvatarObject({ client: adminClient, path: avatarPath });
+      } catch (cleanupError) {
+        console.error("Failed to clean up pending avatar", cleanupError);
+      }
+      normalizedAvatarPath = null;
+    }
+  }
+
   const { error: insertError } = await adminClient.from("users").insert({
     id: userId,
     email,
     full_name: fullName,
     role,
+    avatar_url: normalizedAvatarPath,
   });
 
   if (insertError) {
     console.error("Failed to insert user profile", insertError);
     await adminClient.auth.admin.deleteUser(userId);
+    if (normalizedAvatarPath) {
+      try {
+        await deleteAvatarObject({ client: adminClient, path: normalizedAvatarPath });
+      } catch (cleanupError) {
+        console.error("Failed to clean up avatar after profile insert failure", cleanupError);
+      }
+    }
     return { error: insertError.message };
+  }
+
+  if (normalizedAvatarPath) {
+    const existingMetadata = (createResult.data.user.user_metadata ?? {}) as Record<string, unknown>;
+    const metadataUpdate = {
+      ...existingMetadata,
+      full_name: fullName,
+      role,
+      must_reset_password: true,
+      avatar_url: normalizedAvatarPath,
+    };
+
+    const metadataResult = await adminClient.auth.admin.updateUserById(userId, {
+      user_metadata: metadataUpdate,
+    });
+
+    if (metadataResult.error) {
+      console.error("Failed to sync avatar metadata for new user", metadataResult.error);
+      await adminClient.from("users").delete().eq("id", userId);
+      await adminClient.auth.admin.deleteUser(userId);
+      try {
+        await deleteAvatarObject({ client: adminClient, path: normalizedAvatarPath });
+      } catch (cleanupError) {
+        console.error("Failed to clean up avatar after metadata failure", cleanupError);
+      }
+      return { error: metadataResult.error.message };
+    }
   }
 
   try {
@@ -97,6 +162,13 @@ export async function createUser(input: CreateUserInput): Promise<ActionResult> 
     console.error("Failed to dispatch portal invite", error);
     await adminClient.from("users").delete().eq("id", userId);
     await adminClient.auth.admin.deleteUser(userId);
+    if (normalizedAvatarPath) {
+      try {
+        await deleteAvatarObject({ client: adminClient, path: normalizedAvatarPath });
+      } catch (cleanupError) {
+        console.error("Failed to clean up avatar after invite failure", cleanupError);
+      }
+    }
     return { error: "Unable to send invite email. Please try again." };
   }
 
@@ -114,8 +186,67 @@ export async function updateUser(input: WithOptionalPassword): Promise<ActionRes
     return { error: "Invalid user update payload." };
   }
 
-  const { id, fullName, role, password } = parsed.data;
+  const { id, fullName, role, password, avatarPath, avatarRemoved } = parsed.data;
   const adminClient = getSupabaseServiceClient();
+
+  const { data: existingProfile, error: existingProfileError } = await adminClient
+    .from("users")
+    .select("avatar_url")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (existingProfileError) {
+    console.error("Failed to load user profile for avatar update", existingProfileError);
+    return { error: existingProfileError.message };
+  }
+
+  let nextAvatarPath = existingProfile?.avatar_url ?? null;
+
+  if (avatarRemoved) {
+    if (nextAvatarPath) {
+      try {
+        await deleteAvatarObject({ client: adminClient, path: nextAvatarPath });
+      } catch (error) {
+        console.error("Failed to delete existing avatar", error);
+        return { error: "Unable to remove current avatar." };
+      }
+    }
+
+    nextAvatarPath = null;
+  } else if (avatarPath) {
+    const normalizedTarget = avatarPath;
+
+    if (nextAvatarPath !== normalizedTarget) {
+      try {
+        await ensureAvatarBucket(adminClient);
+        const movedPath = await moveAvatarToUserFolder({
+          client: adminClient,
+          path: normalizedTarget,
+          userId: id,
+        });
+
+        if (nextAvatarPath && nextAvatarPath !== movedPath) {
+          try {
+            await deleteAvatarObject({ client: adminClient, path: nextAvatarPath });
+          } catch (error) {
+            console.error("Failed to delete previous avatar", error);
+          }
+        }
+
+        nextAvatarPath = movedPath ?? null;
+      } catch (error) {
+        console.error("Failed to process avatar update", error);
+        if (avatarPath) {
+          try {
+            await deleteAvatarObject({ client: adminClient, path: avatarPath });
+          } catch (cleanupError) {
+            console.error("Failed to clean up pending avatar after update error", cleanupError);
+          }
+        }
+        return { error: "Unable to update avatar." };
+      }
+    }
+  }
 
   const { error: profileError } = await adminClient
     .from("users")
@@ -123,6 +254,7 @@ export async function updateUser(input: WithOptionalPassword): Promise<ActionRes
       full_name: fullName,
       role,
       deleted_at: null,
+      avatar_url: nextAvatarPath,
     })
     .eq("id", id);
 
@@ -148,6 +280,7 @@ export async function updateUser(input: WithOptionalPassword): Promise<ActionRes
     full_name: fullName,
     role,
     deleted_at: null,
+    avatar_url: nextAvatarPath,
   };
 
   if (password) {

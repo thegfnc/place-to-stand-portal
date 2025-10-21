@@ -7,6 +7,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 import { updateProfile } from "@/app/(dashboard)/_actions/update-profile";
+import { AvatarUploadField } from "@/components/forms/avatar-upload-field";
 import { Button } from "@/components/ui/button";
 import { DisabledFieldTooltip } from "@/components/ui/disabled-field-tooltip";
 import {
@@ -30,6 +31,24 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
 import type { AppUser } from "@/lib/auth/session";
 
+function deriveInitials(fullName?: string | null, email?: string | null) {
+  const trimmed = fullName?.trim();
+
+  if (trimmed) {
+    const segments = trimmed.split(/\s+/).filter(Boolean).slice(0, 2);
+
+    if (segments.length > 0) {
+      return segments.map((segment) => segment.charAt(0).toUpperCase()).join("") || "??";
+    }
+  }
+
+  if (email) {
+    return email.slice(0, 2).toUpperCase();
+  }
+
+  return "??";
+}
+
 const formSchema = z.object({
   fullName: z
     .string()
@@ -41,6 +60,8 @@ const formSchema = z.object({
     .refine((value) => !value || value.trim().length >= 8, {
       message: "Password must be at least 8 characters.",
     }),
+  avatarPath: z.string().trim().min(1).max(255).optional().nullable(),
+  avatarRemoved: z.boolean().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -58,12 +79,15 @@ export function EditProfileDialog({ open, onOpenChange, user }: Props) {
   const { toast } = useToast();
   const [feedback, setFeedback] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [avatarFieldKey, setAvatarFieldKey] = useState(0);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       fullName: user.full_name ?? "",
       password: "",
+      avatarPath: user.avatar_url ?? null,
+      avatarRemoved: false,
     },
   });
 
@@ -71,9 +95,12 @@ export function EditProfileDialog({ open, onOpenChange, user }: Props) {
     form.reset({
       fullName: user.full_name ?? "",
       password: "",
+      avatarPath: user.avatar_url ?? null,
+      avatarRemoved: false,
     });
     setFeedback(null);
-  }, [form, user.full_name]);
+    setAvatarFieldKey((key) => key + 1);
+  }, [form, user.avatar_url, user.full_name]);
 
   useEffect(() => {
     if (open) {
@@ -105,6 +132,8 @@ export function EditProfileDialog({ open, onOpenChange, user }: Props) {
       const payload = {
         fullName: values.fullName.trim(),
         password: values.password?.trim() ? values.password.trim() : undefined,
+        avatarPath: values.avatarPath?.trim() ? values.avatarPath.trim() : undefined,
+        avatarRemoved: Boolean(values.avatarRemoved),
       };
 
       const result = await updateProfile(payload);
@@ -129,10 +158,44 @@ export function EditProfileDialog({ open, onOpenChange, user }: Props) {
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Edit profile</DialogTitle>
-          <DialogDescription>Update your display name or reset your password.</DialogDescription>
+          <DialogDescription>Update your avatar, display name, or password.</DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+            <FormField
+              control={form.control}
+              name="avatarPath"
+              render={({ field }) => {
+                const disabled = isPending;
+                const watchedName = form.watch("fullName");
+                const initials = deriveInitials(watchedName || user.full_name, user.email);
+
+                return (
+                  <FormItem>
+                    <FormLabel>Avatar</FormLabel>
+                    <FormControl>
+                      <AvatarUploadField
+                        key={avatarFieldKey}
+                        value={field.value ?? null}
+                        onChange={(next) => {
+                          form.setValue("avatarPath", next, { shouldDirty: true });
+                        }}
+                        onRemovalChange={(removed) => {
+                          form.setValue("avatarRemoved", removed, { shouldDirty: true });
+                        }}
+                        initials={initials}
+                        displayName={watchedName ?? user.full_name}
+                        disabled={disabled}
+                        targetUserId={user.id}
+                        existingUserId={user.id}
+                      />
+                    </FormControl>
+                    <FormDescription>This image represents you across the portal.</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
+            />
             <FormField
               control={form.control}
               name="fullName"
