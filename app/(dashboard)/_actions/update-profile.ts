@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { requireUser } from "@/lib/auth/session";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
+import { getSupabaseServiceClient } from "@/lib/supabase/service";
 
 type UpdateProfileInput = {
   fullName: string;
@@ -44,8 +45,9 @@ export async function updateProfile(input: UpdateProfileInput): Promise<UpdatePr
 
   const { fullName, password } = parsed.data;
   const supabase = getSupabaseServerClient();
+  const supabaseAdmin = getSupabaseServiceClient();
 
-  const { error: profileError } = await supabase
+  const { error: profileError } = await supabaseAdmin
     .from("users")
     .update({ full_name: fullName })
     .eq("id", user.id);

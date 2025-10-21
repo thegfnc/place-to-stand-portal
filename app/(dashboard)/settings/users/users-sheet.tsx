@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState, useTransition } from "react";
-import { useForm } from "react-hook-form";
+import { useCallback, useEffect, useState, useTransition } from "react";
+import { useForm, type Resolver } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Trash2 } from "lucide-react";
@@ -35,17 +35,30 @@ import { createUser, softDeleteUser, updateUser } from "./actions";
 const USER_ROLES = ["ADMIN", "CONTRACTOR", "CLIENT"] as const;
 type UserRow = Database["public"]["Tables"]["users"]["Row"];
 
-const formSchema = z.object({
+const baseSchema = z.object({
   fullName: z.string().trim().min(1, "Full name is required"),
   email: z.string().trim().email("Provide a valid email"),
   role: z.enum(USER_ROLES),
-  password: z.union([
-    z.string().trim().min(8, "Password must be at least 8 characters."),
-    z.literal(""),
-  ]),
 });
 
-type FormValues = z.infer<typeof formSchema>;
+const createSchema = baseSchema.extend({
+  password: z.string().trim().min(8, "Password must be at least 8 characters."),
+});
+
+const editSchema = baseSchema.extend({
+  password: z
+    .string()
+    .trim()
+    .refine(
+      (value) => value.length === 0 || value.length >= 8,
+      "Password must be at least 8 characters."
+    ),
+});
+
+type FormValues = z.infer<typeof editSchema>;
+
+const createResolver: Resolver<FormValues> = zodResolver(createSchema);
+const editResolver: Resolver<FormValues> = zodResolver(editSchema);
 
 type Props = {
   open: boolean;
@@ -71,8 +84,14 @@ export function UserSheet({
   const emailChangeRestriction = "Email cannot be changed after the account is created.";
   const roleChangeRestriction = "You cannot change your own role.";
 
+  const resolver = useCallback<Resolver<FormValues>>(
+    (values, context, options) =>
+      (isEditing ? editResolver : createResolver)(values, context, options),
+    [isEditing]
+  );
+
   const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
+    resolver,
     defaultValues: {
       fullName: user?.full_name ?? "",
       email: user?.email ?? "",
@@ -88,6 +107,7 @@ export function UserSheet({
       role: user?.role ?? "CONTRACTOR",
       password: "",
     });
+    form.clearErrors();
     setFeedback(null);
   }, [form, user]);
 
@@ -115,11 +135,6 @@ export function UserSheet({
           description: "Changes saved successfully.",
         });
       } else {
-        if (trimmedPassword.length < 8) {
-          setFeedback("Password must be at least 8 characters.");
-          return;
-        }
-
         const result = await createUser({
           email: values.email,
           fullName: values.fullName,
@@ -218,7 +233,8 @@ export function UserSheet({
                           value={field.value ?? ""}
                           placeholder="Ada Lovelace"
                           disabled={disabled}
-                          required
+                          aria-required
+                          aria-invalid={Boolean(form.formState.errors.fullName)}
                         />
                       </DisabledFieldTooltip>
                     </FormControl>
@@ -250,7 +266,8 @@ export function UserSheet({
                           placeholder="ada@example.com"
                           autoComplete="email"
                           disabled={disabled}
-                          required
+                          aria-required
+                          aria-invalid={Boolean(form.formState.errors.email)}
                         />
                       </DisabledFieldTooltip>
                     </FormControl>
@@ -319,8 +336,8 @@ export function UserSheet({
                           type="password"
                           autoComplete="new-password"
                           disabled={disabled}
-                          required={!isEditing}
-                          minLength={!isEditing ? 8 : undefined}
+                          aria-required={!isEditing}
+                          aria-invalid={Boolean(form.formState.errors.password)}
                         />
                       </DisabledFieldTooltip>
                     </FormControl>
