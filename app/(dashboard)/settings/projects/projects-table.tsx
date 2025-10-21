@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { Building2, FolderKanban, Pencil, Plus, Trash2 } from "lucide-react";
 
 import {
@@ -14,12 +14,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/components/ui/use-toast";
 import type { Database } from "@/supabase/types/database";
 
 import { cn } from "@/lib/utils";
-import { getProjectStatusLabel } from "@/lib/constants";
+import { getProjectStatusLabel, getProjectStatusToken } from "@/lib/constants";
 
 import { ProjectSheet } from "./project-sheet";
 import { softDeleteProject } from "./actions";
@@ -44,9 +45,9 @@ export function ProjectsSettingsTable({ projects, clients }: Props) {
 
   const sortedProjects = useMemo(
     () =>
-      [...projects].sort((a, b) =>
-        a.name.localeCompare(b.name, undefined, { sensitivity: "base" })
-      ),
+      projects
+        .filter((project) => !project.deleted_at)
+        .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" })),
     [projects]
   );
 
@@ -112,22 +113,32 @@ export function ProjectsSettingsTable({ projects, clients }: Props) {
     });
   };
 
-  const formatRange = (start?: string | null, end?: string | null) => {
-    if (!start && !end) return "—";
+  const formatDate = (value?: string | null) => {
+    if (!value) return null;
 
-    const formattedStart = start ? format(new Date(start), "MMM d, yyyy") : "TBD";
-    const formattedEnd = end ? format(new Date(end), "MMM d, yyyy") : "TBD";
-
-    if (formattedStart === formattedEnd) {
-      return formattedStart;
+    try {
+      const normalized = value.includes("T") ? value : `${value}T00:00:00`;
+      // Ensure the stored date renders as the exact day selected, regardless of timezone.
+      return format(parseISO(normalized), "MMM d, yyyy");
+    } catch (error) {
+      console.warn("Unable to format project date", { value, error });
+      return null;
     }
-
-    return `${formattedStart} – ${formattedEnd}`;
   };
 
-  const formatStatus = (project: ProjectWithClient) => {
-    if (project.deleted_at) return "Archived";
-    return getProjectStatusLabel(project.status);
+  const formatRange = (start?: string | null, end?: string | null) => {
+    if (!start && !end) {
+      return "—";
+    }
+
+    const startLabel = formatDate(start) ?? "TBD";
+    const endLabel = formatDate(end) ?? "TBD";
+
+    if (startLabel === endLabel) {
+      return startLabel;
+    }
+
+    return `${startLabel} – ${endLabel}`;
   };
 
   return (
@@ -136,7 +147,7 @@ export function ProjectsSettingsTable({ projects, clients }: Props) {
         <div>
           <h2 className="text-xl font-semibold">Projects</h2>
           <p className="text-sm text-muted-foreground">
-            Review every project, including archived work, with quick insight into timing and client.
+            Review active projects with quick insight into timing and client.
           </p>
         </div>
         {createDisabledReason ? (
@@ -161,7 +172,6 @@ export function ProjectsSettingsTable({ projects, clients }: Props) {
               <TableHead>Name</TableHead>
               <TableHead>Client</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead>Code</TableHead>
               <TableHead>Timeline</TableHead>
               <TableHead className="w-28 text-right">Actions</TableHead>
             </TableRow>
@@ -170,23 +180,15 @@ export function ProjectsSettingsTable({ projects, clients }: Props) {
             {sortedProjects.map((project) => {
               const client = project.client;
               const deleting = isPending && pendingDeleteId === project.id;
-              const deleteDisabled = deleting || Boolean(project.deleted_at);
+              const deleteDisabled = deleting;
 
               return (
-                <TableRow
-                  key={project.id}
-                  className={cn(project.deleted_at ? "opacity-60" : undefined)}
-                >
+                <TableRow key={project.id}>
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <FolderKanban className="h-4 w-4 text-muted-foreground" />
                       <span className="font-medium">{project.name}</span>
                     </div>
-                    {project.description ? (
-                      <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">
-                        {project.description}
-                      </p>
-                    ) : null}
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2 text-sm">
@@ -198,18 +200,9 @@ export function ProjectsSettingsTable({ projects, clients }: Props) {
                     ) : null}
                   </TableCell>
                   <TableCell>
-                    <span
-                      className={
-                        project.deleted_at
-                          ? "text-xs font-medium text-destructive"
-                          : "text-xs font-medium text-emerald-600"
-                      }
-                    >
-                      {formatStatus(project)}
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {project.code ?? "—"}
+                    <Badge className={cn("text-xs", getProjectStatusToken(project.status))}>
+                      {getProjectStatusLabel(project.status)}
+                    </Badge>
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
                     {formatRange(project.starts_on, project.ends_on)}
@@ -229,7 +222,7 @@ export function ProjectsSettingsTable({ projects, clients }: Props) {
                         variant="destructive"
                         size="icon"
                         onClick={() => handleDelete(project)}
-                        title={deleteDisabled ? "Project already deleted" : "Delete project"}
+                        title={deleteDisabled ? "Deleting project" : "Delete project"}
                         aria-label="Delete project"
                         disabled={deleteDisabled}
                       >
@@ -243,7 +236,7 @@ export function ProjectsSettingsTable({ projects, clients }: Props) {
             })}
             {sortedProjects.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="py-10 text-center text-sm text-muted-foreground">
+                <TableCell colSpan={5} className="py-10 text-center text-sm text-muted-foreground">
                   No projects yet. Create one from the Projects view to see it here.
                 </TableCell>
               </TableRow>

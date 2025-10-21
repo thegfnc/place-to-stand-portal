@@ -155,8 +155,6 @@ export type Database = {
           id: string;
           client_id: string;
           name: string;
-          code: string | null;
-          description: string | null;
           status: string;
           starts_on: string | null;
           ends_on: string | null;
@@ -169,8 +167,6 @@ export type Database = {
           id?: string;
           client_id: string;
           name: string;
-          code?: string | null;
-          description?: string | null;
           status?: string;
           starts_on?: string | null;
           ends_on?: string | null;
@@ -183,8 +179,6 @@ export type Database = {
           id?: string;
           client_id?: string;
           name?: string;
-          code?: string | null;
-          description?: string | null;
           status?: string;
           starts_on?: string | null;
           ends_on?: string | null;

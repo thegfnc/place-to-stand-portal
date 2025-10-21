@@ -25,9 +25,7 @@ export const fetchProjectsWithRelations = cache(
         `
         id,
         name,
-        code,
         status,
-        description,
         client_id,
         starts_on,
         ends_on,

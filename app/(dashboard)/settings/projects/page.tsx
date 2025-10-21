@@ -26,9 +26,7 @@ export default async function ProjectsSettingsPage() {
         `
         id,
         name,
-        code,
         status,
-        description,
         client_id,
   created_by,
         starts_on,
@@ -38,6 +36,7 @@ export default async function ProjectsSettingsPage() {
         deleted_at
       `
       )
+      .is("deleted_at", null)
       .order("name", { ascending: true }),
     supabase.from("clients").select("id, name, deleted_at").order("name"),
   ]);

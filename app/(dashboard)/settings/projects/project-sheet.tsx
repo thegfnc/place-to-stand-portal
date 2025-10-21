@@ -48,16 +48,6 @@ const formSchema = z
     name: z.string().min(1, "Project name is required"),
     clientId: z.string().uuid("Select a client"),
     status: z.enum(PROJECT_STATUS_ENUM_VALUES),
-    code: z
-      .string()
-      .max(32, "Code must be 32 characters or fewer")
-      .optional()
-      .or(z.literal("")),
-    description: z
-      .string()
-      .max(1000, "Description must be 1000 characters or fewer")
-      .optional()
-      .or(z.literal("")),
     startsOn: z.string().optional().or(z.literal("")),
     endsOn: z.string().optional().or(z.literal("")),
   })
@@ -82,8 +72,6 @@ const PROJECT_FORM_FIELDS: Array<keyof FormValues> = [
   "name",
   "clientId",
   "status",
-  "code",
-  "description",
   "startsOn",
   "endsOn",
 ];
@@ -115,8 +103,6 @@ export function ProjectSheet({ open, onOpenChange, onComplete, project, clients 
       name: project?.name ?? "",
       clientId: project?.client_id ?? sortedClients[0]?.id ?? "",
       status: initialStatus,
-      code: project?.code ?? "",
-      description: project?.description ?? "",
       startsOn: project?.starts_on ? project.starts_on.slice(0, 10) : "",
       endsOn: project?.ends_on ? project.ends_on.slice(0, 10) : "",
     },
@@ -139,8 +125,6 @@ export function ProjectSheet({ open, onOpenChange, onComplete, project, clients 
       status: project && PROJECT_STATUS_VALUES.includes(project.status as ProjectStatusValue)
         ? (project.status as ProjectStatusValue)
         : initialStatus,
-      code: project?.code ?? "",
-      description: project?.description ?? "",
       startsOn: project?.starts_on ? project.starts_on.slice(0, 10) : "",
       endsOn: project?.ends_on ? project.ends_on.slice(0, 10) : "",
     });
@@ -158,8 +142,6 @@ export function ProjectSheet({ open, onOpenChange, onComplete, project, clients 
         name: values.name.trim(),
         clientId: values.clientId,
         status: values.status,
-        code: values.code?.trim() ? values.code.trim() : null,
-        description: values.description?.trim() ? values.description.trim() : null,
         startsOn: values.startsOn ? values.startsOn : null,
         endsOn: values.endsOn ? values.endsOn : null,
       };
@@ -361,59 +343,6 @@ export function ProjectSheet({ open, onOpenChange, onComplete, project, clients 
                           ))}
                         </SelectContent>
                       </Select>
-                      <FormMessage />
-                    </FormItem>
-                  );
-                }}
-              />
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <FormField
-                control={form.control}
-                name="code"
-                render={({ field }) => {
-                  const disabled = isPending;
-                  const reason = disabled ? pendingReason : null;
-
-                  return (
-                    <FormItem>
-                      <FormLabel>Internal code (optional)</FormLabel>
-                      <FormControl>
-                        <DisabledFieldTooltip disabled={disabled} reason={reason}>
-                          <Input
-                            {...field}
-                            value={field.value ?? ""}
-                            placeholder="PTS-042"
-                            disabled={disabled}
-                            maxLength={32}
-                          />
-                        </DisabledFieldTooltip>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  );
-                }}
-              />
-              <FormField
-                control={form.control}
-                name="description"
-                render={({ field }) => {
-                  const disabled = isPending;
-                  const reason = disabled ? pendingReason : null;
-
-                  return (
-                    <FormItem>
-                      <FormLabel>Summary (optional)</FormLabel>
-                      <FormControl>
-                        <DisabledFieldTooltip disabled={disabled} reason={reason}>
-                          <Input
-                            {...field}
-                            value={field.value ?? ""}
-                            placeholder="What success looks like"
-                            disabled={disabled}
-                          />
-                        </DisabledFieldTooltip>
-                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   );

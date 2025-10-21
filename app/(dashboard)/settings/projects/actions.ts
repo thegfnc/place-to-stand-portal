@@ -13,16 +13,6 @@ const projectSchema = z
     name: z.string().min(1, "Project name is required"),
     clientId: z.string().uuid("Select a client"),
     status: z.enum(PROJECT_STATUS_ENUM_VALUES),
-    code: z
-      .string()
-      .max(32, "Code must be 32 characters or fewer")
-      .nullable()
-      .optional(),
-    description: z
-      .string()
-      .max(1000, "Description must be 1000 characters or fewer")
-      .nullable()
-      .optional(),
     startsOn: z.string().nullable().optional(),
     endsOn: z.string().nullable().optional(),
   })
@@ -64,15 +54,13 @@ export async function saveProject(input: ProjectInput): Promise<ActionResult> {
   }
 
   const supabase = getSupabaseServerClient();
-  const { id, name, clientId, status, code, description, startsOn, endsOn } = parsed.data;
+  const { id, name, clientId, status, startsOn, endsOn } = parsed.data;
 
   if (!id) {
     const { error } = await supabase.from("projects").insert({
       name,
       client_id: clientId,
       status,
-      code: code ?? null,
-      description: description ?? null,
       starts_on: startsOn ?? null,
       ends_on: endsOn ?? null,
       created_by: user.id,
@@ -89,8 +77,6 @@ export async function saveProject(input: ProjectInput): Promise<ActionResult> {
         name,
         client_id: clientId,
         status,
-        code: code ?? null,
-        description: description ?? null,
         starts_on: startsOn ?? null,
         ends_on: endsOn ?? null,
       })

@@ -6,6 +6,7 @@ import { format } from "date-fns";
 import { Pencil, RefreshCw, User, Trash2, UserPlus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { DisabledFieldTooltip } from "@/components/ui/disabled-field-tooltip";
 import {
   Table,
@@ -17,6 +18,9 @@ import {
 } from "@/components/ui/table";
 import { useToast } from "@/components/ui/use-toast";
 import type { Database } from "@/supabase/types/database";
+
+import { cn } from "@/lib/utils";
+import { getStatusBadgeToken } from "@/lib/constants";
 
 import { UserSheet } from "@/app/(dashboard)/settings/users/users-sheet";
 import { restoreUser, softDeleteUser } from "./actions";
@@ -183,6 +187,9 @@ export function UsersSettingsTable({ users, currentUserId }: Props) {
                     ? selfDeleteReason
                     : null
                 : null;
+              const status = user.deleted_at
+                ? { label: "Inactive", tone: "inactive" as const }
+                : { label: "Active", tone: "active" as const };
 
               return (
                 <TableRow key={user.id} className={user.deleted_at ? "opacity-60" : undefined}>
@@ -201,11 +208,9 @@ export function UsersSettingsTable({ users, currentUserId }: Props) {
                     {ROLE_LABELS[user.role]}
                   </TableCell>
                   <TableCell>
-                    <span
-                      className={user.deleted_at ? "text-xs font-medium text-destructive" : "text-xs font-medium text-emerald-600"}
-                    >
-                      {user.deleted_at ? "Inactive" : "Active"}
-                    </span>
+                    <Badge className={cn("text-xs", getStatusBadgeToken(status.tone))}>
+                      {status.label}
+                    </Badge>
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
                     {format(new Date(user.created_at), "MMM d, yyyy")}

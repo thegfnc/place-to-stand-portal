@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Building2, Pencil, Plus, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Table,
   TableBody,
@@ -15,6 +16,9 @@ import {
 } from "@/components/ui/table";
 import { useToast } from "@/components/ui/use-toast";
 import type { Database } from "@/supabase/types/database";
+
+import { cn } from "@/lib/utils";
+import { getStatusBadgeToken } from "@/lib/constants";
 
 import { ClientSheet } from "@/app/(dashboard)/settings/clients/clients-sheet";
 import { softDeleteClient } from "./actions";
@@ -123,6 +127,7 @@ export function ClientsSettingsTable({ clients }: Props) {
             {sortedClients.map((client) => {
               const activeProjects = client.projects?.filter((project) => !project.deleted_at).length ?? 0;
               const statusLabel = client.deleted_at ? "Archived" : "Active";
+              const statusTone = client.deleted_at ? "archived" : "active";
               const deleting = isPending && pendingDeleteId === client.id;
               const deleteDisabled = deleting || Boolean(client.deleted_at);
 
@@ -139,11 +144,7 @@ export function ClientsSettingsTable({ clients }: Props) {
                   </TableCell>
                   <TableCell className="text-sm">{activeProjects}</TableCell>
                   <TableCell>
-                    <span
-                      className={client.deleted_at ? "text-xs font-medium text-destructive" : "text-xs font-medium text-emerald-600"}
-                    >
-                      {statusLabel}
-                    </span>
+                    <Badge className={cn("text-xs", getStatusBadgeToken(statusTone))}>{statusLabel}</Badge>
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">

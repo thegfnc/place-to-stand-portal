@@ -14,12 +14,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/components/ui/use-toast";
 import type { Database } from "@/supabase/types/database";
 
 import { cn } from "@/lib/utils";
-import { getHourBlockTypeLabel } from "@/lib/constants";
+import { getHourBlockTypeLabel, getStatusBadgeToken } from "@/lib/constants";
 
 import { HourBlockSheet } from "./hour-block-sheet";
 import { softDeleteHourBlock } from "./actions";
@@ -127,10 +128,10 @@ export function HourBlocksSettingsTable({ hourBlocks, projects }: Props) {
     return `${startText} – ${endText}`;
   };
 
-  const formatStatus = (block: HourBlockWithProject) => {
-    if (block.deleted_at) return "Archived";
-    if (block.hours_consumed >= block.hours_purchased) return "Depleted";
-    return "Active";
+  const resolveStatus = (block: HourBlockWithProject) => {
+    if (block.deleted_at) return { label: "Archived", tone: "archived" } as const;
+    if (block.hours_consumed >= block.hours_purchased) return { label: "Depleted", tone: "depleted" } as const;
+    return { label: "Active", tone: "active" } as const;
   };
 
   const toHours = (value: number) => `${value.toLocaleString()}h`;
@@ -177,6 +178,7 @@ export function HourBlocksSettingsTable({ hourBlocks, projects }: Props) {
             {sortedBlocks.map((block) => {
               const project = block.project;
               const remaining = Math.max(block.hours_purchased - block.hours_consumed, 0);
+              const status = resolveStatus(block);
               const deleting = isPending && pendingDeleteId === block.id;
               const deleteDisabled = deleting || Boolean(block.deleted_at);
 
@@ -214,17 +216,9 @@ export function HourBlocksSettingsTable({ hourBlocks, projects }: Props) {
                     {formatRange(block.starts_on, block.ends_on)}
                   </TableCell>
                   <TableCell>
-                    <span
-                      className={
-                        block.deleted_at
-                          ? "text-xs font-medium text-destructive"
-                          : remaining === 0
-                            ? "text-xs font-medium text-amber-600"
-                            : "text-xs font-medium text-emerald-600"
-                      }
-                    >
-                      {formatStatus(block)}
-                    </span>
+                    <Badge className={cn("text-xs", getStatusBadgeToken(status.tone))}>
+                      {status.label}
+                    </Badge>
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
