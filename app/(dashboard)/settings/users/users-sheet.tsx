@@ -15,6 +15,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -35,10 +36,13 @@ const USER_ROLES = ["ADMIN", "CONTRACTOR", "CLIENT"] as const;
 type UserRow = Database["public"]["Tables"]["users"]["Row"];
 
 const formSchema = z.object({
-  fullName: z.string().min(1, "Full name is required"),
-  email: z.string().email("Provide a valid email"),
+  fullName: z.string().trim().min(1, "Full name is required"),
+  email: z.string().trim().email("Provide a valid email"),
   role: z.enum(USER_ROLES),
-  password: z.string().optional(),
+  password: z.union([
+    z.string().trim().min(8, "Password must be at least 8 characters."),
+    z.literal(""),
+  ]),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -59,11 +63,13 @@ export function UserSheet({
   currentUserId,
 }: Props) {
   const isEditing = Boolean(user);
+  const editingSelf = isEditing && user?.id === currentUserId;
   const [feedback, setFeedback] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
   const pendingReason = "Please wait for the current request to finish.";
   const emailChangeRestriction = "Email cannot be changed after the account is created.";
+  const roleChangeRestriction = "You cannot change your own role.";
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -89,19 +95,14 @@ export function UserSheet({
     startTransition(async () => {
       setFeedback(null);
 
-      if (isEditing && user) {
-        if (values.password && values.password.trim().length > 0 && values.password.trim().length < 8) {
-          setFeedback("New password must be at least 8 characters.");
-          return;
-        }
+      const trimmedPassword = values.password.trim();
 
+      if (isEditing && user) {
         const result = await updateUser({
           id: user.id,
-          fullName: values.fullName.trim(),
-          role: values.role,
-          password: values.password?.trim()
-            ? values.password.trim()
-            : undefined,
+          fullName: values.fullName,
+          role: editingSelf ? user.role : values.role,
+          password: trimmedPassword.length >= 8 ? trimmedPassword : undefined,
         });
 
         if (result.error) {
@@ -114,16 +115,16 @@ export function UserSheet({
           description: "Changes saved successfully.",
         });
       } else {
-        if (!values.password || values.password.trim().length < 8) {
+        if (trimmedPassword.length < 8) {
           setFeedback("Password must be at least 8 characters.");
           return;
         }
 
         const result = await createUser({
-          email: values.email.trim(),
-          fullName: values.fullName.trim(),
+          email: values.email,
+          fullName: values.fullName,
           role: values.role,
-          password: values.password.trim(),
+          password: trimmedPassword,
         });
 
         if (result.error) {
@@ -217,6 +218,7 @@ export function UserSheet({
                           value={field.value ?? ""}
                           placeholder="Ada Lovelace"
                           disabled={disabled}
+                          required
                         />
                       </DisabledFieldTooltip>
                     </FormControl>
@@ -248,6 +250,7 @@ export function UserSheet({
                           placeholder="ada@example.com"
                           autoComplete="email"
                           disabled={disabled}
+                          required
                         />
                       </DisabledFieldTooltip>
                     </FormControl>
@@ -260,16 +263,27 @@ export function UserSheet({
               control={form.control}
               name="role"
               render={({ field }) => {
-                const disabled = isPending;
-                const reason = disabled ? pendingReason : null;
+                const disabled = isPending || editingSelf;
+                const reason = disabled
+                  ? isPending
+                    ? pendingReason
+                    : editingSelf
+                      ? roleChangeRestriction
+                      : null
+                  : null;
 
                 return (
                   <FormItem>
                     <FormLabel>Role</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value} disabled={disabled}>
+                    <Select
+                      onValueChange={field.onChange}
+                      value={field.value}
+                      disabled={disabled}
+                      aria-required="true"
+                    >
                       <FormControl>
                         <DisabledFieldTooltip disabled={disabled} reason={reason}>
-                          <SelectTrigger>
+                          <SelectTrigger aria-required="true">
                             <SelectValue placeholder="Select role" />
                           </SelectTrigger>
                         </DisabledFieldTooltip>
@@ -296,7 +310,7 @@ export function UserSheet({
 
                 return (
                   <FormItem>
-                    <FormLabel>{isEditing ? "New password" : "Temporary password"}</FormLabel>
+                    <FormLabel>New password</FormLabel>
                     <FormControl>
                       <DisabledFieldTooltip disabled={disabled} reason={reason}>
                         <Input
@@ -305,9 +319,12 @@ export function UserSheet({
                           type="password"
                           autoComplete="new-password"
                           disabled={disabled}
+                          required={!isEditing}
+                          minLength={!isEditing ? 8 : undefined}
                         />
                       </DisabledFieldTooltip>
                     </FormControl>
+                    {isEditing ? <FormDescription>Leave blank to keep your current password.</FormDescription> : null}
                     <FormMessage />
                   </FormItem>
                 );

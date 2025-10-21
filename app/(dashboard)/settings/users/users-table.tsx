@@ -6,6 +6,7 @@ import { format } from "date-fns";
 import { Pencil, RefreshCw, Shield, Trash2, UserPlus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { DisabledFieldTooltip } from "@/components/ui/disabled-field-tooltip";
 import {
   Table,
   TableBody,
@@ -40,6 +41,8 @@ export function UsersSettingsTable({ users, currentUserId }: Props) {
   const [pendingRestoreId, setPendingRestoreId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
+  const pendingReason = "Please wait for the current request to finish.";
+  const selfDeleteReason = "You cannot delete your own account.";
 
   const sortedUsers = useMemo(
     () =>
@@ -170,6 +173,16 @@ export function UsersSettingsTable({ users, currentUserId }: Props) {
               const restoring = isPending && pendingRestoreId === user.id;
               const deleteDisabled = deleting || restoring || user.id === currentUserId || Boolean(user.deleted_at);
               const restoreDisabled = restoring || deleting;
+              const editDisabled = deleting || restoring;
+              const editDisabledReason = editDisabled ? pendingReason : null;
+              const restoreDisabledReason = restoreDisabled ? pendingReason : null;
+              const deleteDisabledReason = deleteDisabled
+                ? deleting || restoring
+                  ? pendingReason
+                  : user.id === currentUserId
+                    ? selfDeleteReason
+                    : null
+                : null;
 
               return (
                 <TableRow key={user.id} className={user.deleted_at ? "opacity-60" : undefined}>
@@ -199,39 +212,45 @@ export function UsersSettingsTable({ users, currentUserId }: Props) {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => handleEdit(user)}
-                        title="Edit user"
-                        disabled={deleting || restoring}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
+                      <DisabledFieldTooltip disabled={editDisabled} reason={editDisabledReason}>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => handleEdit(user)}
+                          title="Edit user"
+                          disabled={editDisabled}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                      </DisabledFieldTooltip>
                       {user.deleted_at ? (
-                        <Button
-                          variant="secondary"
-                          size="icon"
-                          onClick={() => handleRestore(user)}
-                          title="Restore user"
-                          aria-label="Restore user"
-                          disabled={restoreDisabled}
-                        >
-                          <RefreshCw className="h-4 w-4" />
-                          <span className="sr-only">Restore</span>
-                        </Button>
+                        <DisabledFieldTooltip disabled={restoreDisabled} reason={restoreDisabledReason}>
+                          <Button
+                            variant="secondary"
+                            size="icon"
+                            onClick={() => handleRestore(user)}
+                            title="Restore user"
+                            aria-label="Restore user"
+                            disabled={restoreDisabled}
+                          >
+                            <RefreshCw className="h-4 w-4" />
+                            <span className="sr-only">Restore</span>
+                          </Button>
+                        </DisabledFieldTooltip>
                       ) : (
-                        <Button
-                          variant="destructive"
-                          size="icon"
-                          onClick={() => handleDelete(user)}
-                          title={user.id === currentUserId ? "Cannot delete your own account" : "Delete user"}
-                          aria-label="Delete user"
-                          disabled={deleteDisabled}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                          <span className="sr-only">Delete</span>
-                        </Button>
+                        <DisabledFieldTooltip disabled={deleteDisabled} reason={deleteDisabledReason}>
+                          <Button
+                            variant="destructive"
+                            size="icon"
+                            onClick={() => handleDelete(user)}
+                            title={user.id === currentUserId ? "Cannot delete your own account" : "Delete user"}
+                            aria-label="Delete user"
+                            disabled={deleteDisabled}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                            <span className="sr-only">Delete</span>
+                          </Button>
+                        </DisabledFieldTooltip>
                       )}
                     </div>
                   </TableCell>
