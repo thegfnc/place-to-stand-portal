@@ -3,7 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
-import { Pencil, RefreshCw, Shield, Trash2, UserPlus } from "lucide-react";
+import { Pencil, RefreshCw, User, Trash2, UserPlus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { DisabledFieldTooltip } from "@/components/ui/disabled-field-tooltip";
@@ -188,7 +188,7 @@ export function UsersSettingsTable({ users, currentUserId }: Props) {
                 <TableRow key={user.id} className={user.deleted_at ? "opacity-60" : undefined}>
                   <TableCell>
                     <div className="flex items-center gap-2">
-                      <Shield className="h-4 w-4 text-muted-foreground" />
+                      <User className="h-4 w-4 text-muted-foreground" />
                       <span className="font-medium">
                         {user.full_name ?? user.email}
                       </span>
