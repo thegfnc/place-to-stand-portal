@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 import { requireUser } from "@/lib/auth/session";
@@ -9,10 +9,13 @@ const paramsSchema = z.object({
   userId: z.string().uuid(),
 });
 
-export async function GET(_request: Request, context: { params: { userId: string } }) {
+export async function GET(
+  _request: NextRequest,
+  context: { params: Promise<{ userId: string }> },
+) {
   await requireUser();
 
-  const parsedParams = paramsSchema.safeParse(context.params);
+  const parsedParams = paramsSchema.safeParse(await context.params);
 
   if (!parsedParams.success) {
     return NextResponse.json({ error: "Invalid request." }, { status: 400 });
