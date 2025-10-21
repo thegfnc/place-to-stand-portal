@@ -12,24 +12,19 @@ export function getSupabaseServerClient() {
     serverEnv.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     {
       cookies: {
-        async get(name) {
+        async getAll() {
           const store = await cookies();
-          return store.get(name)?.value;
+          return store.getAll().map(({ name, value }) => ({ name, value }));
         },
-        async set(name, value, options) {
+        async setAll(cookiesToSet) {
           try {
             const store = await cookies();
-            store.set({ name, value, ...options });
+            cookiesToSet.forEach(({ name, value, options }) => {
+              store.set({ name, value, ...options });
+            });
           } catch (error) {
-            console.warn("Unable to set cookie on server", { name, error });
-          }
-        },
-        async remove(name, options) {
-          try {
-            const store = await cookies();
-            store.delete({ name, ...options });
-          } catch (error) {
-            console.warn("Unable to delete cookie on server", { name, error });
+            const cookieNames = cookiesToSet.map(({ name }) => name);
+            console.warn("Unable to apply cookies on server", { cookieNames, error });
           }
         },
       },

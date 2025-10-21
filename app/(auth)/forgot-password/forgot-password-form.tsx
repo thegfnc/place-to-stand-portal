@@ -30,7 +30,7 @@ export function ForgotPasswordForm({ redirectTo }: Props) {
     <form action={formAction} className="space-y-6">
       <input type="hidden" name="redirect" value={redirectTo ?? ""} />
       <div className="space-y-2">
-        <Label htmlFor="email">Work email</Label>
+        <Label htmlFor="email">Email</Label>
         <DisabledFieldTooltip disabled={isPending} reason={isPending ? pendingReason : null}>
           <Input
             id="email"

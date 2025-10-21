@@ -14,27 +14,32 @@ export async function middleware(req: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        get(name) {
-          return req.cookies.get(name)?.value;
+        getAll() {
+          return req.cookies.getAll().map(({ name, value }) => ({ name, value }));
         },
-        set(name, value, options) {
-          res.cookies.set({ name, value, ...options });
-        },
-        remove(name, options) {
-          res.cookies.delete({ name, ...options });
+        setAll(cookies) {
+          cookies.forEach(({ name, value, options }) => {
+            res.cookies.set({ name, value, ...options });
+          });
         },
       },
     }
   );
 
   const {
-    data: { session },
-  } = await supabase.auth.getSession();
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError) {
+    console.error("Failed to resolve Supabase user in middleware", userError);
+  }
 
   const pathname = req.nextUrl.pathname;
   const isPublic = [...PUBLIC_PATHS].some((path) => pathname.startsWith(path));
+  const isAuthenticated = Boolean(user);
 
-  if (!session && !isPublic) {
+  if (!isAuthenticated && !isPublic) {
     const redirectUrl = req.nextUrl.clone();
     redirectUrl.pathname = "/sign-in";
     redirectUrl.searchParams.set("redirect", req.nextUrl.pathname + req.nextUrl.search);
@@ -43,10 +48,10 @@ export async function middleware(req: NextRequest) {
   }
 
   const mustResetPassword = Boolean(
-    session?.user.user_metadata?.must_reset_password
+    user?.user_metadata?.must_reset_password
   );
 
-  if (session && mustResetPassword && !pathname.startsWith(FORCE_RESET_PATH)) {
+  if (isAuthenticated && mustResetPassword && !pathname.startsWith(FORCE_RESET_PATH)) {
     const resetUrl = req.nextUrl.clone();
     resetUrl.pathname = FORCE_RESET_PATH;
     resetUrl.searchParams.set("redirect", req.nextUrl.pathname + req.nextUrl.search);
@@ -54,7 +59,7 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(resetUrl);
   }
 
-  if (session && pathname === "/sign-in") {
+  if (isAuthenticated && pathname === "/sign-in") {
     return NextResponse.redirect(new URL("/", req.url));
   }
 
