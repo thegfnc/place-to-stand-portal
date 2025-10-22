@@ -109,56 +109,18 @@ export function AvatarUploadField({
     [onChange, onRemovalChange, targetUserId, toast, value]
   );
 
-  const removeAvatar = useCallback(async () => {
-    if (!value) {
-      onChange(null);
-      onRemovalChange(true);
-      setPreviewUrl((current) => {
-        if (current) {
-          URL.revokeObjectURL(current);
-        }
-
-        return null;
-      });
-      setCacheBuster(String(Date.now()));
-      return;
-    }
-
-    setIsUploading(true);
-
-    try {
-      const response = await fetch(UPLOAD_ENDPOINT, {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ path: value, targetUserId }),
-      });
-
-      if (!response.ok) {
-        const payload = (await response.json().catch(() => null)) as { error?: string } | null;
-        throw new Error(payload?.error ?? "Removal failed");
+  const removeAvatar = useCallback(() => {
+    onChange(null);
+    onRemovalChange(true);
+    setPreviewUrl((current) => {
+      if (current) {
+        URL.revokeObjectURL(current);
       }
 
-      onChange(null);
-      onRemovalChange(true);
-      setPreviewUrl((current) => {
-        if (current) {
-          URL.revokeObjectURL(current);
-        }
-
-        return null;
-      });
-      setCacheBuster(String(Date.now()));
-    } catch (error) {
-      console.error("Failed to remove avatar", error);
-      toast({
-        title: "Unable to remove avatar",
-        description: error instanceof Error ? error.message : "Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsUploading(false);
-    }
-  }, [onChange, onRemovalChange, targetUserId, toast, value]);
+      return null;
+    });
+    setCacheBuster(String(Date.now()));
+  }, [onChange, onRemovalChange]);
 
   const remoteImage = useMemo(() => {
     if (previewUrl) {
