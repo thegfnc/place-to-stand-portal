@@ -7,8 +7,11 @@ import type { Database } from "@/supabase/types/database";
 
 type HourBlockRow = Database["public"]["Tables"]["hour_blocks"]["Row"];
 type ProjectRow = Pick<Database["public"]["Tables"]["projects"]["Row"], "id" | "name" | "deleted_at">;
+type ClientRow = Pick<Database["public"]["Tables"]["clients"]["Row"], "id" | "name" | "deleted_at">;
 
-type HourBlockWithProject = HourBlockRow & { project: ProjectRow | null };
+type ProjectWithClient = ProjectRow & { client: ClientRow | null };
+
+type HourBlockWithProject = HourBlockRow & { project: ProjectWithClient | null };
 
 export const metadata: Metadata = {
   title: "Hour Blocks | Settings",
@@ -26,13 +29,8 @@ export default async function HourBlocksSettingsPage() {
         `
         id,
         project_id,
-        title,
-        block_type,
         hours_purchased,
-        hours_consumed,
-        notes,
-        starts_on,
-        ends_on,
+        invoice_number,
         created_by,
         created_at,
         updated_at,
@@ -40,7 +38,12 @@ export default async function HourBlocksSettingsPage() {
         project:projects (
           id,
           name,
-          deleted_at
+          deleted_at,
+          client:clients (
+            id,
+            name,
+            deleted_at
+          )
         )
       `
       )

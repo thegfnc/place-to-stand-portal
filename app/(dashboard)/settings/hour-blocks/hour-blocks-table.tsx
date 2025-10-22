@@ -3,7 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
-import { AlarmClock, FolderKanban, Pencil, Plus, Trash2 } from "lucide-react";
+import { Building2, FolderKanban, Pencil, Plus, Trash2 } from "lucide-react";
 
 import {
   Table,
@@ -14,21 +14,20 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/components/ui/use-toast";
 import type { Database } from "@/supabase/types/database";
-
-import { cn } from "@/lib/utils";
-import { getHourBlockTypeLabel, getStatusBadgeToken } from "@/lib/constants";
 
 import { HourBlockSheet } from "./hour-block-sheet";
 import { softDeleteHourBlock } from "./actions";
 
 type HourBlockRow = Database["public"]["Tables"]["hour_blocks"]["Row"];
 type ProjectRow = Pick<Database["public"]["Tables"]["projects"]["Row"], "id" | "name" | "deleted_at">;
+type ClientRow = Pick<Database["public"]["Tables"]["clients"]["Row"], "id" | "name" | "deleted_at">;
 
-type HourBlockWithProject = HourBlockRow & { project: ProjectRow | null };
+type ProjectWithClient = ProjectRow & { client: ClientRow | null };
+
+type HourBlockWithProject = HourBlockRow & { project: ProjectWithClient | null };
 
 type Props = {
   hourBlocks: HourBlockWithProject[];
@@ -45,9 +44,21 @@ export function HourBlocksSettingsTable({ hourBlocks, projects }: Props) {
 
   const sortedBlocks = useMemo(
     () =>
-      [...hourBlocks].sort((a, b) =>
-        a.title.localeCompare(b.title, undefined, { sensitivity: "base" })
-      ),
+      hourBlocks
+        .filter((block) => !block.deleted_at)
+        .sort((a, b) => {
+          const projectNameA = a.project?.name ?? "";
+          const projectNameB = b.project?.name ?? "";
+          const comparison = projectNameA.localeCompare(projectNameB, undefined, { sensitivity: "base" });
+
+          if (comparison !== 0) {
+            return comparison;
+          }
+
+          const clientNameA = a.project?.client?.name ?? "";
+          const clientNameB = b.project?.client?.name ?? "";
+          return clientNameA.localeCompare(clientNameB, undefined, { sensitivity: "base" });
+        }),
     [hourBlocks]
   );
 
@@ -80,6 +91,8 @@ export function HourBlocksSettingsTable({ hourBlocks, projects }: Props) {
       return;
     }
 
+    const projectName = block.project?.name ?? null;
+
     const confirmed = window.confirm(
       "Deleting this block hides it from active reporting while keeping historical data intact."
     );
@@ -104,7 +117,9 @@ export function HourBlocksSettingsTable({ hourBlocks, projects }: Props) {
 
         toast({
           title: "Hour block deleted",
-          description: `${block.title} will be hidden from active tracking but remains available historically.`,
+          description: projectName
+            ? `${projectName} hour block is hidden from active tracking.`
+            : "The hour block is hidden from active tracking.",
         });
         router.refresh();
       } finally {
@@ -113,28 +128,15 @@ export function HourBlocksSettingsTable({ hourBlocks, projects }: Props) {
     });
   };
 
-  const formatDate = (value?: string | null) => {
-    if (!value) return "—";
-    return format(new Date(value), "MMM d, yyyy");
-  };
-
-  const formatRange = (start?: string | null, end?: string | null) => {
-    if (!start && !end) return "—";
-    const startText = start ? formatDate(start) : "TBD";
-    const endText = end ? formatDate(end) : "TBD";
-    if (startText === endText) {
-      return startText;
-    }
-    return `${startText} – ${endText}`;
-  };
-
-  const resolveStatus = (block: HourBlockWithProject) => {
-    if (block.deleted_at) return { label: "Archived", tone: "archived" } as const;
-    if (block.hours_consumed >= block.hours_purchased) return { label: "Depleted", tone: "depleted" } as const;
-    return { label: "Active", tone: "active" } as const;
-  };
-
   const toHours = (value: number) => `${value.toLocaleString()}h`;
+  const formatCreatedOn = (value: string) => {
+    try {
+      return format(new Date(value), "MMM d, yyyy");
+    } catch (error) {
+      console.warn("Unable to format hour block created_at", { value, error });
+      return "—";
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -142,7 +144,7 @@ export function HourBlocksSettingsTable({ hourBlocks, projects }: Props) {
         <div>
           <h2 className="text-xl font-semibold">Hour Blocks</h2>
           <p className="text-sm text-muted-foreground">
-            Track purchased time allocations per project and keep an eye on remaining hours.
+            Track purchased hour blocks by project and client for quick allocation visibility.
           </p>
         </div>
         {createDisabledReason ? (
@@ -164,40 +166,24 @@ export function HourBlocksSettingsTable({ hourBlocks, projects }: Props) {
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/40">
-              <TableHead>Title</TableHead>
               <TableHead>Project</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>Purchased</TableHead>
-              <TableHead>Remaining</TableHead>
-              <TableHead>Period</TableHead>
-              <TableHead>Status</TableHead>
+              <TableHead>Client</TableHead>
+              <TableHead>Invoice #</TableHead>
+              <TableHead>Hours Purchased</TableHead>
+              <TableHead>Created On</TableHead>
               <TableHead className="w-28 text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {sortedBlocks.map((block) => {
               const project = block.project;
-              const remaining = Math.max(block.hours_purchased - block.hours_consumed, 0);
-              const status = resolveStatus(block);
               const deleting = isPending && pendingDeleteId === block.id;
               const deleteDisabled = deleting || Boolean(block.deleted_at);
+              const client = project?.client;
+              const invoiceNumber = block.invoice_number && block.invoice_number.length > 0 ? block.invoice_number : "—";
 
               return (
-                <TableRow
-                  key={block.id}
-                  className={cn(block.deleted_at ? "opacity-60" : undefined)}
-                >
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <AlarmClock className="h-4 w-4 text-muted-foreground" />
-                      <span className="font-medium">{block.title}</span>
-                    </div>
-                    {block.notes ? (
-                      <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">
-                        {block.notes}
-                      </p>
-                    ) : null}
-                  </TableCell>
+                <TableRow key={block.id}>
                   <TableCell>
                     <div className="flex items-center gap-2 text-sm">
                       <FolderKanban className="h-4 w-4 text-muted-foreground" />
@@ -207,18 +193,19 @@ export function HourBlocksSettingsTable({ hourBlocks, projects }: Props) {
                       <p className="text-xs text-destructive">Project archived</p>
                     ) : null}
                   </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {getHourBlockTypeLabel(block.block_type)}
-                  </TableCell>
-                  <TableCell className="text-sm">{toHours(block.hours_purchased)}</TableCell>
-                  <TableCell className="text-sm">{toHours(remaining)}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {formatRange(block.starts_on, block.ends_on)}
-                  </TableCell>
                   <TableCell>
-                    <Badge className={cn("text-xs", getStatusBadgeToken(status.tone))}>
-                      {status.label}
-                    </Badge>
+                    <div className="flex items-center gap-2 text-sm">
+                      <Building2 className="h-4 w-4 text-muted-foreground" />
+                      <span>{client ? client.name : "Unassigned"}</span>
+                    </div>
+                    {client?.deleted_at ? (
+                      <p className="text-xs text-destructive">Client archived</p>
+                    ) : null}
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">{invoiceNumber}</TableCell>
+                  <TableCell className="text-sm">{toHours(block.hours_purchased)}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {formatCreatedOn(block.created_at)}
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
@@ -249,7 +236,7 @@ export function HourBlocksSettingsTable({ hourBlocks, projects }: Props) {
             })}
             {sortedBlocks.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="py-10 text-center text-sm text-muted-foreground">
+                <TableCell colSpan={6} className="py-10 text-center text-sm text-muted-foreground">
                   No hour blocks recorded yet. Log a retainer or project block to monitor it here.
                 </TableCell>
               </TableRow>

@@ -128,13 +128,8 @@ export const fetchProjectsWithRelations = cache(
             `
             id,
             project_id,
-            title,
-            block_type,
             hours_purchased,
-            hours_consumed,
-            notes,
-            starts_on,
-            ends_on,
+            invoice_number,
             created_at,
             updated_at,
             deleted_at

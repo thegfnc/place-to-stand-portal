@@ -53,13 +53,8 @@ export type Database = {
         Row: {
           id: string;
           project_id: string;
-          title: string;
-          block_type: Database["public"]["Enums"]["hour_block_type"];
           hours_purchased: number;
-          hours_consumed: number;
-          notes: string | null;
-          starts_on: string | null;
-          ends_on: string | null;
+          invoice_number: string | null;
           created_by: string | null;
           created_at: string;
           updated_at: string;
@@ -68,13 +63,8 @@ export type Database = {
         Insert: {
           id?: string;
           project_id: string;
-          title: string;
-          block_type?: Database["public"]["Enums"]["hour_block_type"];
           hours_purchased: number;
-          hours_consumed?: number;
-          notes?: string | null;
-          starts_on?: string | null;
-          ends_on?: string | null;
+          invoice_number?: string | null;
           created_by?: string | null;
           created_at?: string;
           updated_at?: string;
@@ -83,13 +73,8 @@ export type Database = {
         Update: {
           id?: string;
           project_id?: string;
-          title?: string;
-          block_type?: Database["public"]["Enums"]["hour_block_type"];
           hours_purchased?: number;
-          hours_consumed?: number;
-          notes?: string | null;
-          starts_on?: string | null;
-          ends_on?: string | null;
+          invoice_number?: string | null;
           created_by?: string | null;
           created_at?: string;
           updated_at?: string;

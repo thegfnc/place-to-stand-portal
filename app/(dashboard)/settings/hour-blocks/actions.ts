@@ -4,43 +4,27 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { requireUser } from "@/lib/auth/session";
-import { HOUR_BLOCK_TYPE_ENUM_VALUES } from "@/lib/constants";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 
-const hourBlockSchema = z
-  .object({
-    id: z.string().uuid().optional(),
-    projectId: z.string().uuid("Select a project"),
-    title: z.string().min(1, "Title is required"),
-    blockType: z.enum(HOUR_BLOCK_TYPE_ENUM_VALUES),
-    hoursPurchased: z.number().positive("Purchased hours must be greater than zero"),
-    hoursConsumed: z.number().min(0, "Consumed hours cannot be negative"),
-    notes: z.string().max(1000, "Notes must be 1000 characters or fewer").nullable().optional(),
-    startsOn: z.string().nullable().optional(),
-    endsOn: z.string().nullable().optional(),
-  })
-  .superRefine((data, ctx) => {
-    if (data.hoursConsumed > data.hoursPurchased) {
-      ctx.addIssue({
-        path: ["hoursConsumed"],
-        code: z.ZodIssueCode.custom,
-        message: "Consumed hours cannot exceed purchased hours.",
-      });
-    }
+const invoicePattern = /^[A-Za-z0-9-]+$/;
 
-    if (data.startsOn && data.endsOn) {
-      const start = new Date(data.startsOn);
-      const end = new Date(data.endsOn);
-
-      if (!Number.isNaN(start.valueOf()) && !Number.isNaN(end.valueOf()) && end < start) {
-        ctx.addIssue({
-          path: ["endsOn"],
-          code: z.ZodIssueCode.custom,
-          message: "End date must be on or after the start date.",
-        });
-      }
-    }
-  });
+const hourBlockSchema = z.object({
+  id: z.string().uuid().optional(),
+  projectId: z.string().uuid("Select a project"),
+  hoursPurchased: z
+    .number()
+    .int("Hours purchased must be a whole number.")
+    .positive("Hours purchased must be greater than zero"),
+  invoiceNumber: z
+    .string()
+    .trim()
+    .optional()
+    .nullable()
+    .refine(
+      (value) => !value || value === "" || invoicePattern.test(value),
+      "Invoice number may only contain letters, numbers, and dashes."
+    ),
+});
 
 const deleteSchema = z.object({ id: z.string().uuid() });
 
@@ -65,28 +49,14 @@ export async function saveHourBlock(input: HourBlockInput): Promise<ActionResult
   }
 
   const supabase = getSupabaseServerClient();
-  const {
-    id,
-    projectId,
-    title,
-    blockType,
-    hoursPurchased,
-    hoursConsumed,
-    notes,
-    startsOn,
-    endsOn,
-  } = parsed.data;
+  const { id, projectId, hoursPurchased, invoiceNumber } = parsed.data;
+  const normalizedInvoiceNumber = invoiceNumber && invoiceNumber.trim().length > 0 ? invoiceNumber.trim() : null;
 
   if (!id) {
     const { error } = await supabase.from("hour_blocks").insert({
       project_id: projectId,
-      title,
-      block_type: blockType,
       hours_purchased: hoursPurchased,
-      hours_consumed: hoursConsumed,
-      notes: notes ?? null,
-      starts_on: startsOn ?? null,
-      ends_on: endsOn ?? null,
+      invoice_number: normalizedInvoiceNumber,
       created_by: user.id,
     });
 
@@ -99,13 +69,8 @@ export async function saveHourBlock(input: HourBlockInput): Promise<ActionResult
       .from("hour_blocks")
       .update({
         project_id: projectId,
-        title,
-        block_type: blockType,
         hours_purchased: hoursPurchased,
-        hours_consumed: hoursConsumed,
-        notes: notes ?? null,
-        starts_on: startsOn ?? null,
-        ends_on: endsOn ?? null,
+        invoice_number: normalizedInvoiceNumber,
       })
       .eq("id", id);
 
