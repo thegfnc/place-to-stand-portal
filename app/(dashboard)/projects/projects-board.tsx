@@ -42,6 +42,20 @@ type Props = {
   currentUserRole: UserRole;
 };
 
+const areTaskCollectionsEqual = (
+  a: TaskWithRelations[] | undefined,
+  b: TaskWithRelations[]
+) => {
+  if (!a) return b.length === 0;
+  if (a.length !== b.length) return false;
+
+  const snapshot = new Map(
+    a.map((task) => [task.id, `${task.status}-${task.updated_at}`])
+  );
+
+  return b.every((task) => snapshot.get(task.id) === `${task.status}-${task.updated_at}`);
+};
+
 export function ProjectsBoard({ projects, clients, currentUserId, currentUserRole }: Props) {
   const [selectedClientId, setSelectedClientId] = useState<string>(() => {
     if (clients.length === 1) {
@@ -57,6 +71,13 @@ export function ProjectsBoard({ projects, clients, currentUserId, currentUserRol
   const [feedback, setFeedback] = useState<string | null>(null);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [sheetTask, setSheetTask] = useState<TaskWithRelations | undefined>();
+  const [tasksByProject, setTasksByProject] = useState(() => {
+    const map = new Map<string, TaskWithRelations[]>();
+    projects.forEach((project) => {
+      map.set(project.id, project.tasks);
+    });
+    return map;
+  });
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -85,7 +106,37 @@ export function ProjectsBoard({ projects, clients, currentUserId, currentUserRol
     }
   }, [filteredProjects, selectedProjectId]);
 
+  useEffect(() => {
+    setTasksByProject((prev) => {
+      let didChange = false;
+      const next = new Map(prev);
+      const incomingProjectIds = new Set<string>();
+
+      projects.forEach((project) => {
+        incomingProjectIds.add(project.id);
+        const existing = next.get(project.id);
+        if (!areTaskCollectionsEqual(existing, project.tasks)) {
+          next.set(project.id, project.tasks);
+          didChange = true;
+        }
+      });
+
+      for (const projectId of next.keys()) {
+        if (!incomingProjectIds.has(projectId)) {
+          next.delete(projectId);
+          didChange = true;
+        }
+      }
+
+      return didChange ? next : prev;
+    });
+  }, [projects]);
+
   const activeProject = filteredProjects.find((project) => project.id === selectedProjectId) ?? null;
+  const activeProjectTasks = useMemo(() => {
+    if (!activeProject) return [] as TaskWithRelations[];
+    return tasksByProject.get(activeProject.id) ?? activeProject.tasks;
+  }, [activeProject, tasksByProject]);
   const canManageTasks = useMemo(() => {
     if (!activeProject) return false;
     if (currentUserRole === "ADMIN") return true;
@@ -116,7 +167,7 @@ export function ProjectsBoard({ projects, clients, currentUserId, currentUserRol
       return map;
     }
 
-    [...activeProject.tasks]
+    [...activeProjectTasks]
       .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
       .forEach((task) => {
         if (!map.has(task.status as BoardColumnId)) {
@@ -127,9 +178,9 @@ export function ProjectsBoard({ projects, clients, currentUserId, currentUserRol
       });
 
     return map;
-  }, [activeProject]);
+  }, [activeProject, activeProjectTasks]);
 
-  const activeTask = activeProject?.tasks.find((task) => task.id === activeTaskId) ?? null;
+  const activeTask = activeProjectTasks.find((task) => task.id === activeTaskId) ?? null;
 
   const handleDragStart = (event: DragStartEvent) => {
     const taskId = String(event.active.id);
@@ -154,21 +205,62 @@ export function ProjectsBoard({ projects, clients, currentUserId, currentUserRol
     }
 
     const destinationStatus = over.id as BoardColumnId;
-    const task = activeProject.tasks.find((item) => item.id === active.id);
+    const activeData = active.data.current as
+      | { type: string; taskId: string; projectId: string }
+      | undefined;
+
+    if (!activeData || activeData.type !== "task") {
+      return;
+    }
+
+    const { taskId, projectId } = activeData;
+    const projectTasks = tasksByProject.get(projectId);
+    const task = projectTasks?.find((item) => item.id === taskId);
 
     if (!task || task.status === destinationStatus) {
       return;
     }
 
+    const previousStatus = task.status as BoardColumnId;
+
+    setFeedback(null);
+    setTasksByProject((prev) => {
+      const currentProjectTasks = prev.get(projectId);
+      if (!currentProjectTasks) {
+        return prev;
+      }
+
+      const updatedProjectTasks = currentProjectTasks.map((item) =>
+        item.id === taskId ? { ...item, status: destinationStatus } : item
+      );
+
+      const next = new Map(prev);
+      next.set(projectId, updatedProjectTasks);
+      return next;
+    });
+
     startTransition(async () => {
-      setFeedback(null);
       const result = await changeTaskStatus({
-        taskId: task.id,
+        taskId,
         status: destinationStatus,
       });
 
       if (result.error) {
         setFeedback(result.error);
+        setTasksByProject((prev) => {
+          const currentProjectTasks = prev.get(projectId);
+          if (!currentProjectTasks) {
+            return prev;
+          }
+
+          const revertedProjectTasks = currentProjectTasks.map((item) =>
+            item.id === taskId ? { ...item, status: previousStatus } : item
+          );
+
+          const next = new Map(prev);
+          next.set(projectId, revertedProjectTasks);
+          return next;
+        });
       }
     });
   };
@@ -280,7 +372,7 @@ export function ProjectsBoard({ projects, clients, currentUserId, currentUserRol
                 onDragOver={handleDragOver}
                 onDragEnd={handleDragEnd}
               >
-                <div className="flex min-h-full w-max gap-4 pr-6">
+                <div className="flex min-h-full w-max gap-4 p-1">
                   {BOARD_COLUMNS.map((column) => (
                     <KanbanColumn
                       key={column.id}
@@ -347,7 +439,7 @@ function KanbanColumn({
     <div
       ref={setNodeRef}
       className={cn(
-        "flex h-full w-80 flex-shrink-0 flex-col gap-4 rounded-xl border bg-background/80 p-4 shadow-sm transition",
+  "flex h-full w-80 shrink-0 flex-col gap-4 rounded-xl border bg-background/80 p-4 shadow-sm transition",
         isOver && "ring-2 ring-primary"
       )}
     >

@@ -1,5 +1,6 @@
 'use client';
 
+import type { CSSProperties } from "react";
 import { CSS } from "@dnd-kit/utilities";
 import { useDraggable } from "@dnd-kit/core";
 import { CalendarDays, Users2 } from "lucide-react";
@@ -78,11 +79,10 @@ export function TaskCard({ task, assignees, onEdit, draggable }: TaskCardProps) 
     },
   });
 
-  const style = transform
-    ? {
-        transform: CSS.Translate.toString(transform),
-      }
-    : undefined;
+  const style: CSSProperties = {
+    opacity: isDragging ? 0 : 1,
+    transform: !isDragging && transform ? CSS.Translate.toString(transform) : undefined,
+  };
 
   return (
     <div
