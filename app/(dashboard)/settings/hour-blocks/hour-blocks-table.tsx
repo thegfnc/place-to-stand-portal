@@ -1,9 +1,9 @@
-'use client';
+'use client'
 
-import { useMemo, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
-import { format } from "date-fns";
-import { Building2, FolderKanban, Pencil, Plus, Trash2 } from "lucide-react";
+import { useMemo, useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
+import { format } from 'date-fns'
+import { Building2, Pencil, Plus, Trash2 } from 'lucide-react'
 
 import {
   Table,
@@ -12,232 +12,245 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { useToast } from "@/components/ui/use-toast";
-import type { Database } from "@/supabase/types/database";
+} from '@/components/ui/table'
+import { Button } from '@/components/ui/button'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
+import { useToast } from '@/components/ui/use-toast'
+import type { Database } from '@/supabase/types/database'
 
-import { HourBlockSheet } from "./hour-block-sheet";
-import { softDeleteHourBlock } from "./actions";
+import { HourBlockSheet } from './hour-block-sheet'
+import { softDeleteHourBlock } from './actions'
 
-type HourBlockRow = Database["public"]["Tables"]["hour_blocks"]["Row"];
-type ProjectRow = Pick<Database["public"]["Tables"]["projects"]["Row"], "id" | "name" | "deleted_at">;
-type ClientRow = Pick<Database["public"]["Tables"]["clients"]["Row"], "id" | "name" | "deleted_at">;
+type HourBlockRow = Database['public']['Tables']['hour_blocks']['Row']
+type ClientRow = Pick<
+  Database['public']['Tables']['clients']['Row'],
+  'id' | 'name' | 'deleted_at'
+>
 
-type ProjectWithClient = ProjectRow & { client: ClientRow | null };
-
-type HourBlockWithProject = HourBlockRow & { project: ProjectWithClient | null };
+type HourBlockWithClient = HourBlockRow & { client: ClientRow | null }
 
 type Props = {
-  hourBlocks: HourBlockWithProject[];
-  projects: ProjectRow[];
-};
+  hourBlocks: HourBlockWithClient[]
+  clients: ClientRow[]
+}
 
-export function HourBlocksSettingsTable({ hourBlocks, projects }: Props) {
-  const router = useRouter();
-  const [sheetOpen, setSheetOpen] = useState(false);
-  const [selectedBlock, setSelectedBlock] = useState<HourBlockWithProject | null>(null);
-  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
-  const [isPending, startTransition] = useTransition();
-  const { toast } = useToast();
+export function HourBlocksSettingsTable({ hourBlocks, clients }: Props) {
+  const router = useRouter()
+  const [sheetOpen, setSheetOpen] = useState(false)
+  const [selectedBlock, setSelectedBlock] =
+    useState<HourBlockWithClient | null>(null)
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
+  const [isPending, startTransition] = useTransition()
+  const { toast } = useToast()
 
   const sortedBlocks = useMemo(
     () =>
       hourBlocks
-        .filter((block) => !block.deleted_at)
+        .filter(block => !block.deleted_at)
         .sort((a, b) => {
-          const projectNameA = a.project?.name ?? "";
-          const projectNameB = b.project?.name ?? "";
-          const comparison = projectNameA.localeCompare(projectNameB, undefined, { sensitivity: "base" });
-
-          if (comparison !== 0) {
-            return comparison;
-          }
-
-          const clientNameA = a.project?.client?.name ?? "";
-          const clientNameB = b.project?.client?.name ?? "";
-          return clientNameA.localeCompare(clientNameB, undefined, { sensitivity: "base" });
+          const clientNameA = a.client?.name ?? ''
+          const clientNameB = b.client?.name ?? ''
+          return clientNameA.localeCompare(clientNameB, undefined, {
+            sensitivity: 'base',
+          })
         }),
     [hourBlocks]
-  );
+  )
 
-  const sortedProjects = useMemo(
-    () => [...projects].sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" })),
-    [projects]
-  );
+  const sortedClients = useMemo(
+    () =>
+      [...clients].sort((a, b) =>
+        a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
+      ),
+    [clients]
+  )
 
-  const createDisabled = sortedProjects.length === 0;
+  const createDisabled = sortedClients.length === 0
   const createDisabledReason = createDisabled
-    ? "Create a project before logging hour blocks."
-    : null;
+    ? 'Create a client before logging hour blocks.'
+    : null
 
   const openCreate = () => {
-    setSelectedBlock(null);
-    setSheetOpen(true);
-  };
+    setSelectedBlock(null)
+    setSheetOpen(true)
+  }
 
-  const openEdit = (block: HourBlockWithProject) => {
-    setSelectedBlock(block);
-    setSheetOpen(true);
-  };
+  const openEdit = (block: HourBlockWithClient) => {
+    setSelectedBlock(block)
+    setSheetOpen(true)
+  }
 
   const handleClosed = () => {
-    setSheetOpen(false);
-  };
+    setSheetOpen(false)
+  }
 
-  const handleDelete = (block: HourBlockWithProject) => {
+  const handleDelete = (block: HourBlockWithClient) => {
     if (block.deleted_at) {
-      return;
+      return
     }
-
-    const projectName = block.project?.name ?? null;
 
     const confirmed = window.confirm(
-      "Deleting this block hides it from active reporting while keeping historical data intact."
-    );
+      'Deleting this block hides it from active reporting while keeping historical data intact.'
+    )
 
     if (!confirmed) {
-      return;
+      return
     }
 
-    setPendingDeleteId(block.id);
+    setPendingDeleteId(block.id)
     startTransition(async () => {
       try {
-        const result = await softDeleteHourBlock({ id: block.id });
+        const result = await softDeleteHourBlock({ id: block.id })
 
         if (result.error) {
           toast({
-            title: "Unable to delete hour block",
+            title: 'Unable to delete hour block',
             description: result.error,
-            variant: "destructive",
-          });
-          return;
+            variant: 'destructive',
+          })
+          return
         }
 
         toast({
-          title: "Hour block deleted",
-          description: projectName
-            ? `${projectName} hour block is hidden from active tracking.`
-            : "The hour block is hidden from active tracking.",
-        });
-        router.refresh();
+          title: 'Hour block deleted',
+          description: 'The hour block is hidden from active tracking.',
+        })
+        router.refresh()
       } finally {
-        setPendingDeleteId(null);
+        setPendingDeleteId(null)
       }
-    });
-  };
+    })
+  }
 
-  const toHours = (value: number) => `${value.toLocaleString()}h`;
+  const toHours = (value: number) => `${value.toLocaleString()}h`
   const formatCreatedOn = (value: string) => {
     try {
-      return format(new Date(value), "MMM d, yyyy");
+      return format(new Date(value), 'MMM d, yyyy')
     } catch (error) {
-      console.warn("Unable to format hour block created_at", { value, error });
-      return "—";
+      console.warn('Unable to format hour block created_at', { value, error })
+      return '—'
     }
-  };
+  }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center gap-3">
+    <div className='space-y-6'>
+      <div className='flex flex-wrap items-center gap-3'>
         <div>
-          <h2 className="text-xl font-semibold">Hour Blocks</h2>
-          <p className="text-sm text-muted-foreground">
-            Track purchased hour blocks by project and client for quick allocation visibility.
+          <h2 className='text-xl font-semibold'>Hour Blocks</h2>
+          <p className='text-muted-foreground text-sm'>
+            Track purchased hour blocks by client for quick allocation
+            visibility.
           </p>
         </div>
         {createDisabledReason ? (
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button className="ml-auto" onClick={openCreate} disabled={createDisabled}>
-                <Plus className="h-4 w-4" /> Add hour block
+              <Button
+                className='ml-auto'
+                onClick={openCreate}
+                disabled={createDisabled}
+              >
+                <Plus className='h-4 w-4' /> Add hour block
               </Button>
             </TooltipTrigger>
             <TooltipContent>{createDisabledReason}</TooltipContent>
           </Tooltip>
         ) : (
-          <Button className="ml-auto" onClick={openCreate} disabled={createDisabled}>
-            <Plus className="h-4 w-4" /> Add hour block
+          <Button
+            className='ml-auto'
+            onClick={openCreate}
+            disabled={createDisabled}
+          >
+            <Plus className='h-4 w-4' /> Add hour block
           </Button>
         )}
       </div>
-      <div className="overflow-hidden rounded-xl border">
+      <div className='overflow-hidden rounded-xl border'>
         <Table>
           <TableHeader>
-            <TableRow className="bg-muted/40">
-              <TableHead>Project</TableHead>
+            <TableRow className='bg-muted/40'>
               <TableHead>Client</TableHead>
               <TableHead>Invoice #</TableHead>
               <TableHead>Hours Purchased</TableHead>
               <TableHead>Created On</TableHead>
-              <TableHead className="w-28 text-right">Actions</TableHead>
+              <TableHead className='w-28 text-right'>Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {sortedBlocks.map((block) => {
-              const project = block.project;
-              const deleting = isPending && pendingDeleteId === block.id;
-              const deleteDisabled = deleting || Boolean(block.deleted_at);
-              const client = project?.client;
-              const invoiceNumber = block.invoice_number && block.invoice_number.length > 0 ? block.invoice_number : "—";
+            {sortedBlocks.map(block => {
+              const deleting = isPending && pendingDeleteId === block.id
+              const deleteDisabled = deleting || Boolean(block.deleted_at)
+              const client = block.client
+              const invoiceNumber =
+                block.invoice_number && block.invoice_number.length > 0
+                  ? block.invoice_number
+                  : '—'
 
               return (
                 <TableRow key={block.id}>
                   <TableCell>
-                    <div className="flex items-center gap-2 text-sm">
-                      <FolderKanban className="h-4 w-4 text-muted-foreground" />
-                      <span>{project ? project.name : "Unassigned"}</span>
-                    </div>
-                    {project?.deleted_at ? (
-                      <p className="text-xs text-destructive">Project archived</p>
-                    ) : null}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2 text-sm">
-                      <Building2 className="h-4 w-4 text-muted-foreground" />
-                      <span>{client ? client.name : "Unassigned"}</span>
+                    <div className='flex items-center gap-2 text-sm'>
+                      <Building2 className='text-muted-foreground h-4 w-4' />
+                      <span>{client ? client.name : 'Unassigned'}</span>
                     </div>
                     {client?.deleted_at ? (
-                      <p className="text-xs text-destructive">Client archived</p>
+                      <p className='text-destructive text-xs'>
+                        Client archived
+                      </p>
                     ) : null}
                   </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{invoiceNumber}</TableCell>
-                  <TableCell className="text-sm">{toHours(block.hours_purchased)}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
+                  <TableCell className='text-muted-foreground text-sm'>
+                    {invoiceNumber}
+                  </TableCell>
+                  <TableCell className='text-sm'>
+                    {toHours(block.hours_purchased)}
+                  </TableCell>
+                  <TableCell className='text-muted-foreground text-sm'>
                     {formatCreatedOn(block.created_at)}
                   </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
+                  <TableCell className='text-right'>
+                    <div className='flex justify-end gap-2'>
                       <Button
-                        variant="outline"
-                        size="icon"
+                        variant='outline'
+                        size='icon'
                         onClick={() => openEdit(block)}
-                        title="Edit hour block"
+                        title='Edit hour block'
                         disabled={deleting}
                       >
-                        <Pencil className="h-4 w-4" />
+                        <Pencil className='h-4 w-4' />
                       </Button>
                       <Button
-                        variant="destructive"
-                        size="icon"
+                        variant='destructive'
+                        size='icon'
                         onClick={() => handleDelete(block)}
-                        title={deleteDisabled ? "Hour block already deleted" : "Delete hour block"}
-                        aria-label="Delete hour block"
+                        title={
+                          deleteDisabled
+                            ? 'Hour block already deleted'
+                            : 'Delete hour block'
+                        }
+                        aria-label='Delete hour block'
                         disabled={deleteDisabled}
                       >
-                        <Trash2 className="h-4 w-4" />
-                        <span className="sr-only">Delete</span>
+                        <Trash2 className='h-4 w-4' />
+                        <span className='sr-only'>Delete</span>
                       </Button>
                     </div>
                   </TableCell>
                 </TableRow>
-              );
+              )
             })}
             {sortedBlocks.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="py-10 text-center text-sm text-muted-foreground">
-                  No hour blocks recorded yet. Log a retainer or project block to monitor it here.
+                <TableCell
+                  colSpan={5}
+                  className='text-muted-foreground py-10 text-center text-sm'
+                >
+                  No hour blocks recorded yet. Log a retainer or client block to
+                  monitor it here.
                 </TableCell>
               </TableRow>
             ) : null}
@@ -249,8 +262,8 @@ export function HourBlocksSettingsTable({ hourBlocks, projects }: Props) {
         onOpenChange={setSheetOpen}
         onComplete={handleClosed}
         hourBlock={selectedBlock}
-        projects={sortedProjects}
+        clients={sortedClients}
       />
     </div>
-  );
+  )
 }

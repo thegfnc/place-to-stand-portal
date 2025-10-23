@@ -4,346 +4,413 @@ export type Json =
   | boolean
   | null
   | { [key: string]: Json | undefined }
-  | Json[];
+  | Json[]
 
 export type Database = {
   public: {
     Tables: {
       clients: {
         Row: {
-          id: string;
-          name: string;
-          slug: string | null;
-          notes: string | null;
-          created_by: string | null;
-          created_at: string;
-          updated_at: string;
-          deleted_at: string | null;
-        };
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          id: string
+          name: string
+          notes: string | null
+          slug: string | null
+          updated_at: string
+        }
         Insert: {
-          id?: string;
-          name: string;
-          slug?: string | null;
-          notes?: string | null;
-          created_by?: string | null;
-          created_at?: string;
-          updated_at?: string;
-          deleted_at?: string | null;
-        };
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          slug?: string | null
+          updated_at?: string
+        }
         Update: {
-          id?: string;
-          name?: string;
-          slug?: string | null;
-          notes?: string | null;
-          created_by?: string | null;
-          created_at?: string;
-          updated_at?: string;
-          deleted_at?: string | null;
-        };
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          slug?: string | null
+          updated_at?: string
+        }
         Relationships: [
           {
-            foreignKeyName: "clients_created_by_fkey";
-            columns: ["created_by"];
-            referencedRelation: "users";
-            referencedColumns: ["id"];
-          }
-        ];
-      };
+            foreignKeyName: "clients_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "current_user_with_role"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clients_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       hour_blocks: {
         Row: {
-          id: string;
-          project_id: string;
-          hours_purchased: number;
-          invoice_number: string | null;
-          created_by: string | null;
-          created_at: string;
-          updated_at: string;
-          deleted_at: string | null;
-        };
+          client_id: string
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          hours_purchased: number
+          id: string
+          invoice_number: string | null
+          updated_at: string
+        }
         Insert: {
-          id?: string;
-          project_id: string;
-          hours_purchased: number;
-          invoice_number?: string | null;
-          created_by?: string | null;
-          created_at?: string;
-          updated_at?: string;
-          deleted_at?: string | null;
-        };
+          client_id: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          hours_purchased: number
+          id?: string
+          invoice_number?: string | null
+          updated_at?: string
+        }
         Update: {
-          id?: string;
-          project_id?: string;
-          hours_purchased?: number;
-          invoice_number?: string | null;
-          created_by?: string | null;
-          created_at?: string;
-          updated_at?: string;
-          deleted_at?: string | null;
-        };
+          client_id?: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          hours_purchased?: number
+          id?: string
+          invoice_number?: string | null
+          updated_at?: string
+        }
         Relationships: [
           {
-            foreignKeyName: "hour_blocks_project_id_fkey";
-            columns: ["project_id"];
-            referencedRelation: "projects";
-            referencedColumns: ["id"];
+            foreignKeyName: "hour_blocks_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "hour_blocks_created_by_fkey";
-            columns: ["created_by"];
-            referencedRelation: "users";
-            referencedColumns: ["id"];
-          }
-        ];
-      };
+            foreignKeyName: "hour_blocks_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "current_user_with_role"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hour_blocks_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_members: {
         Row: {
-          id: number;
-          project_id: string;
-          user_id: string;
-          role: Database["public"]["Enums"]["member_role"];
-          created_at: string;
-          deleted_at: string | null;
-        };
+          created_at: string
+          deleted_at: string | null
+          id: number
+          project_id: string
+          role: Database["public"]["Enums"]["member_role"]
+          user_id: string
+        }
         Insert: {
-          id?: number;
-          project_id: string;
-          user_id: string;
-          role?: Database["public"]["Enums"]["member_role"];
-          created_at?: string;
-          deleted_at?: string | null;
-        };
+          created_at?: string
+          deleted_at?: string | null
+          id?: number
+          project_id: string
+          role?: Database["public"]["Enums"]["member_role"]
+          user_id: string
+        }
         Update: {
-          id?: number;
-          project_id?: string;
-          user_id?: string;
-          role?: Database["public"]["Enums"]["member_role"];
-          created_at?: string;
-          deleted_at?: string | null;
-        };
+          created_at?: string
+          deleted_at?: string | null
+          id?: number
+          project_id?: string
+          role?: Database["public"]["Enums"]["member_role"]
+          user_id?: string
+        }
         Relationships: [
           {
-            foreignKeyName: "project_members_project_id_fkey";
-            columns: ["project_id"];
-            referencedRelation: "projects";
-            referencedColumns: ["id"];
+            foreignKeyName: "project_members_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "project_members_user_id_fkey";
-            columns: ["user_id"];
-            referencedRelation: "users";
-            referencedColumns: ["id"];
-          }
-        ];
-      };
+            foreignKeyName: "project_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "current_user_with_role"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       projects: {
         Row: {
-          id: string;
-          client_id: string;
-          name: string;
-          status: string;
-          starts_on: string | null;
-          ends_on: string | null;
-          created_by: string | null;
-          created_at: string;
-          updated_at: string;
-          deleted_at: string | null;
-        };
+          client_id: string
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          ends_on: string | null
+          id: string
+          name: string
+          starts_on: string | null
+          status: string
+          updated_at: string
+        }
         Insert: {
-          id?: string;
-          client_id: string;
-          name: string;
-          status?: string;
-          starts_on?: string | null;
-          ends_on?: string | null;
-          created_by?: string | null;
-          created_at?: string;
-          updated_at?: string;
-          deleted_at?: string | null;
-        };
+          client_id: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          ends_on?: string | null
+          id?: string
+          name: string
+          starts_on?: string | null
+          status?: string
+          updated_at?: string
+        }
         Update: {
-          id?: string;
-          client_id?: string;
-          name?: string;
-          status?: string;
-          starts_on?: string | null;
-          ends_on?: string | null;
-          created_by?: string | null;
-          created_at?: string;
-          updated_at?: string;
-          deleted_at?: string | null;
-        };
+          client_id?: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          ends_on?: string | null
+          id?: string
+          name?: string
+          starts_on?: string | null
+          status?: string
+          updated_at?: string
+        }
         Relationships: [
           {
-            foreignKeyName: "projects_client_id_fkey";
-            columns: ["client_id"];
-            referencedRelation: "clients";
-            referencedColumns: ["id"];
+            foreignKeyName: "projects_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "projects_created_by_fkey";
-            columns: ["created_by"];
-            referencedRelation: "users";
-            referencedColumns: ["id"];
-          }
-        ];
-      };
+            foreignKeyName: "projects_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "current_user_with_role"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "projects_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       task_assignees: {
         Row: {
-          id: number;
-          task_id: string;
-          user_id: string;
-          created_at: string;
-          deleted_at: string | null;
-        };
+          created_at: string
+          deleted_at: string | null
+          id: number
+          task_id: string
+          user_id: string
+        }
         Insert: {
-          id?: number;
-          task_id: string;
-          user_id: string;
-          created_at?: string;
-          deleted_at?: string | null;
-        };
+          created_at?: string
+          deleted_at?: string | null
+          id?: number
+          task_id: string
+          user_id: string
+        }
         Update: {
-          id?: number;
-          task_id?: string;
-          user_id?: string;
-          created_at?: string;
-          deleted_at?: string | null;
-        };
+          created_at?: string
+          deleted_at?: string | null
+          id?: number
+          task_id?: string
+          user_id?: string
+        }
         Relationships: [
           {
-            foreignKeyName: "task_assignees_task_id_fkey";
-            columns: ["task_id"];
-            referencedRelation: "tasks";
-            referencedColumns: ["id"];
+            foreignKeyName: "task_assignees_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "task_assignees_user_id_fkey";
-            columns: ["user_id"];
-            referencedRelation: "users";
-            referencedColumns: ["id"];
-          }
-        ];
-      };
+            foreignKeyName: "task_assignees_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "current_user_with_role"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_assignees_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tasks: {
         Row: {
-          id: string;
-          project_id: string;
-          title: string;
-          description: string | null;
-          status: Database["public"]["Enums"]["task_status"];
-          priority: Database["public"]["Enums"]["task_priority"];
-          due_on: string | null;
-          created_by: string | null;
-          updated_by: string | null;
-          created_at: string;
-          updated_at: string;
-          deleted_at: string | null;
-        };
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          description: string | null
+          due_on: string | null
+          id: string
+          priority: Database["public"]["Enums"]["task_priority"]
+          project_id: string
+          status: Database["public"]["Enums"]["task_status"]
+          title: string
+          updated_at: string
+          updated_by: string | null
+        }
         Insert: {
-          id?: string;
-          project_id: string;
-          title: string;
-          description?: string | null;
-          status?: Database["public"]["Enums"]["task_status"];
-          priority?: Database["public"]["Enums"]["task_priority"];
-          due_on?: string | null;
-          created_by?: string | null;
-          updated_by?: string | null;
-          created_at?: string;
-          updated_at?: string;
-          deleted_at?: string | null;
-        };
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          description?: string | null
+          due_on?: string | null
+          id?: string
+          priority?: Database["public"]["Enums"]["task_priority"]
+          project_id: string
+          status?: Database["public"]["Enums"]["task_status"]
+          title: string
+          updated_at?: string
+          updated_by?: string | null
+        }
         Update: {
-          id?: string;
-          project_id?: string;
-          title?: string;
-          description?: string | null;
-          status?: Database["public"]["Enums"]["task_status"];
-          priority?: Database["public"]["Enums"]["task_priority"];
-          due_on?: string | null;
-          created_by?: string | null;
-          updated_by?: string | null;
-          created_at?: string;
-          updated_at?: string;
-          deleted_at?: string | null;
-        };
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          description?: string | null
+          due_on?: string | null
+          id?: string
+          priority?: Database["public"]["Enums"]["task_priority"]
+          project_id?: string
+          status?: Database["public"]["Enums"]["task_status"]
+          title?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
         Relationships: [
           {
-            foreignKeyName: "tasks_project_id_fkey";
-            columns: ["project_id"];
-            referencedRelation: "projects";
-            referencedColumns: ["id"];
+            foreignKeyName: "tasks_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "current_user_with_role"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "tasks_created_by_fkey";
-            columns: ["created_by"];
-            referencedRelation: "users";
-            referencedColumns: ["id"];
+            foreignKeyName: "tasks_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "tasks_updated_by_fkey";
-            columns: ["updated_by"];
-            referencedRelation: "users";
-            referencedColumns: ["id"];
-          }
-        ];
-      };
+            foreignKeyName: "tasks_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "current_user_with_role"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       users: {
         Row: {
-          id: string;
-          email: string;
-          full_name: string | null;
-          role: Database["public"]["Enums"]["user_role"];
-          avatar_url: string | null;
-          created_at: string;
-          updated_at: string;
-          deleted_at: string | null;
-        };
+          avatar_url: string | null
+          created_at: string
+          deleted_at: string | null
+          email: string
+          full_name: string | null
+          id: string
+          role: Database["public"]["Enums"]["user_role"]
+          updated_at: string
+        }
         Insert: {
-          id: string;
-          email: string;
-          full_name?: string | null;
-          role?: Database["public"]["Enums"]["user_role"];
-          avatar_url?: string | null;
-          created_at?: string;
-          updated_at?: string;
-          deleted_at?: string | null;
-        };
+          avatar_url?: string | null
+          created_at?: string
+          deleted_at?: string | null
+          email: string
+          full_name?: string | null
+          id: string
+          role?: Database["public"]["Enums"]["user_role"]
+          updated_at?: string
+        }
         Update: {
-          id?: string;
-          email?: string;
-          full_name?: string | null;
-          role?: Database["public"]["Enums"]["user_role"];
-          avatar_url?: string | null;
-          created_at?: string;
-          updated_at?: string;
-          deleted_at?: string | null;
-        };
-        Relationships: [];
-      };
-    };
+          avatar_url?: string | null
+          created_at?: string
+          deleted_at?: string | null
+          email?: string
+          full_name?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["user_role"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+    }
     Views: {
       current_user_with_role: {
         Row: {
-          id: string | null;
-          role: Database["public"]["Enums"]["user_role"] | null;
-        };
-        Relationships: [];
-      };
-    };
+          id: string | null
+          role: Database["public"]["Enums"]["user_role"] | null
+        }
+        Insert: {
+          id?: string | null
+          role?: Database["public"]["Enums"]["user_role"] | null
+        }
+        Update: {
+          id?: string | null
+          role?: Database["public"]["Enums"]["user_role"] | null
+        }
+        Relationships: []
+      }
+    }
     Functions: {
-      is_admin: {
-        Args: Record<string, never>;
-        Returns: boolean;
-      };
-      set_updated_at: {
-        Args: Record<string, never>;
-        Returns: Record<string, unknown>;
-      };
-    };
+      is_admin: { Args: never; Returns: boolean }
+      is_project_member: {
+        Args: { target_project_id: string }
+        Returns: boolean
+      }
+    }
     Enums: {
-      hour_block_type: "RETAINER" | "PROJECT" | "MAINTENANCE";
-      member_role: "OWNER" | "CONTRIBUTOR" | "VIEWER";
+      hour_block_type: "RETAINER" | "PROJECT" | "MAINTENANCE"
+      member_role: "OWNER" | "CONTRIBUTOR" | "VIEWER"
+      task_priority: "LOW" | "MEDIUM" | "HIGH"
       task_status:
         | "BACKLOG"
         | "ON_DECK"
@@ -351,10 +418,149 @@ export type Database = {
         | "IN_REVIEW"
         | "BLOCKED"
         | "DONE"
-        | "ARCHIVED";
-      task_priority: "LOW" | "MEDIUM" | "HIGH";
-      user_role: "ADMIN" | "CONTRACTOR" | "CLIENT";
-    };
-    CompositeTypes: Record<string, never>;
-  };
-};
+        | "ARCHIVED"
+      user_role: "ADMIN" | "CONTRACTOR" | "CLIENT"
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
+}
+
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
+
+export type Tables<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
+
+export type TablesInsert<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
+
+export type TablesUpdate<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
+
+export const Constants = {
+  public: {
+    Enums: {
+      hour_block_type: ["RETAINER", "PROJECT", "MAINTENANCE"],
+      member_role: ["OWNER", "CONTRIBUTOR", "VIEWER"],
+      task_priority: ["LOW", "MEDIUM", "HIGH"],
+      task_status: [
+        "BACKLOG",
+        "ON_DECK",
+        "IN_PROGRESS",
+        "IN_REVIEW",
+        "BLOCKED",
+        "DONE",
+        "ARCHIVED",
+      ],
+      user_role: ["ADMIN", "CONTRACTOR", "CLIENT"],
+    },
+  },
+} as const
+

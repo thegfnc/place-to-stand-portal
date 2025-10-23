@@ -1,110 +1,117 @@
-'use server';
+'use server'
 
-import { revalidatePath } from "next/cache";
-import { z } from "zod";
+import { revalidatePath } from 'next/cache'
+import { z } from 'zod'
 
-import { requireUser } from "@/lib/auth/session";
-import { getSupabaseServerClient } from "@/lib/supabase/server";
+import { requireUser } from '@/lib/auth/session'
+import { getSupabaseServerClient } from '@/lib/supabase/server'
 
-const invoicePattern = /^[A-Za-z0-9-]+$/;
+const invoicePattern = /^[A-Za-z0-9-]+$/
 
 const hourBlockSchema = z.object({
   id: z.string().uuid().optional(),
-  projectId: z.string().uuid("Select a project"),
+  clientId: z.string().uuid('Select a client'),
   hoursPurchased: z
     .number()
-    .int("Hours purchased must be a whole number.")
-    .positive("Hours purchased must be greater than zero"),
+    .int('Hours purchased must be a whole number.')
+    .positive('Hours purchased must be greater than zero'),
   invoiceNumber: z
     .string()
     .trim()
     .optional()
     .nullable()
     .refine(
-      (value) => !value || value === "" || invoicePattern.test(value),
-      "Invoice number may only contain letters, numbers, and dashes."
+      value => !value || value === '' || invoicePattern.test(value),
+      'Invoice number may only contain letters, numbers, and dashes.'
     ),
-});
+})
 
-const deleteSchema = z.object({ id: z.string().uuid() });
+const deleteSchema = z.object({ id: z.string().uuid() })
 
 type ActionResult = {
-  error?: string;
-  fieldErrors?: Record<string, string[]>;
-};
+  error?: string
+  fieldErrors?: Record<string, string[]>
+}
 
-type HourBlockInput = z.infer<typeof hourBlockSchema>;
+type HourBlockInput = z.infer<typeof hourBlockSchema>
 
-type DeleteInput = z.infer<typeof deleteSchema>;
+type DeleteInput = z.infer<typeof deleteSchema>
 
-export async function saveHourBlock(input: HourBlockInput): Promise<ActionResult> {
-  const user = await requireUser();
-  const parsed = hourBlockSchema.safeParse(input);
+export async function saveHourBlock(
+  input: HourBlockInput
+): Promise<ActionResult> {
+  const user = await requireUser()
+  const parsed = hourBlockSchema.safeParse(input)
 
   if (!parsed.success) {
-    const { fieldErrors, formErrors } = parsed.error.flatten();
-    const message = formErrors[0] ?? "Please correct the highlighted fields.";
+    const { fieldErrors, formErrors } = parsed.error.flatten()
+    const message = formErrors[0] ?? 'Please correct the highlighted fields.'
 
-    return { error: message, fieldErrors };
+    return { error: message, fieldErrors }
   }
 
-  const supabase = getSupabaseServerClient();
-  const { id, projectId, hoursPurchased, invoiceNumber } = parsed.data;
-  const normalizedInvoiceNumber = invoiceNumber && invoiceNumber.trim().length > 0 ? invoiceNumber.trim() : null;
+  const supabase = getSupabaseServerClient()
+  const { id, clientId, hoursPurchased, invoiceNumber } = parsed.data
+  const normalizedInvoiceNumber =
+    invoiceNumber && invoiceNumber.trim().length > 0
+      ? invoiceNumber.trim()
+      : null
 
   if (!id) {
-    const { error } = await supabase.from("hour_blocks").insert({
-      project_id: projectId,
+    const { error } = await supabase.from('hour_blocks').insert({
+      client_id: clientId,
       hours_purchased: hoursPurchased,
       invoice_number: normalizedInvoiceNumber,
       created_by: user.id,
-    });
+    })
 
     if (error) {
-      console.error("Failed to create hour block", error);
-      return { error: error.message };
+      console.error('Failed to create hour block', error)
+      return { error: error.message }
     }
   } else {
     const { error } = await supabase
-      .from("hour_blocks")
+      .from('hour_blocks')
       .update({
-        project_id: projectId,
+        client_id: clientId,
         hours_purchased: hoursPurchased,
         invoice_number: normalizedInvoiceNumber,
       })
-      .eq("id", id);
+      .eq('id', id)
 
     if (error) {
-      console.error("Failed to update hour block", error);
-      return { error: error.message };
+      console.error('Failed to update hour block', error)
+      return { error: error.message }
     }
   }
 
-  revalidatePath("/settings/hour-blocks");
+  revalidatePath('/settings/hour-blocks')
 
-  return {};
+  return {}
 }
 
-export async function softDeleteHourBlock(input: DeleteInput): Promise<ActionResult> {
-  await requireUser();
-  const parsed = deleteSchema.safeParse(input);
+export async function softDeleteHourBlock(
+  input: DeleteInput
+): Promise<ActionResult> {
+  await requireUser()
+  const parsed = deleteSchema.safeParse(input)
 
   if (!parsed.success) {
-    return { error: "Invalid delete request." };
+    return { error: 'Invalid delete request.' }
   }
 
-  const supabase = getSupabaseServerClient();
+  const supabase = getSupabaseServerClient()
   const { error } = await supabase
-    .from("hour_blocks")
+    .from('hour_blocks')
     .update({ deleted_at: new Date().toISOString() })
-    .eq("id", parsed.data.id);
+    .eq('id', parsed.data.id)
 
   if (error) {
-    console.error("Failed to archive hour block", error);
-    return { error: error.message };
+    console.error('Failed to archive hour block', error)
+    return { error: error.message }
   }
 
-  revalidatePath("/settings/hour-blocks");
+  revalidatePath('/settings/hour-blocks')
 
-  return {};
+  return {}
 }
