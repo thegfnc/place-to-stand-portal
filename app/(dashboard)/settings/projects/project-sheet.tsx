@@ -129,8 +129,10 @@ export function ProjectSheet({ open, onOpenChange, onComplete, project, clients 
       endsOn: project?.ends_on ? project.ends_on.slice(0, 10) : "",
     });
     form.clearErrors();
-    setFeedback(null);
-  }, [form, project, sortedClients, initialStatus]);
+    startTransition(() => {
+      setFeedback(null);
+    });
+  }, [form, project, sortedClients, initialStatus, startTransition]);
 
   const onSubmit = (values: FormValues) => {
     startTransition(async () => {

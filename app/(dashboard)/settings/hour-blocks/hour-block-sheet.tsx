@@ -105,8 +105,10 @@ export function HourBlockSheet({ open, onOpenChange, onComplete, hourBlock, proj
       invoiceNumber: hourBlock?.invoice_number ?? "",
     });
     form.clearErrors();
-    setFeedback(null);
-  }, [form, hourBlock, sortedProjects]);
+    startTransition(() => {
+      setFeedback(null);
+    });
+  }, [form, hourBlock, sortedProjects, startTransition]);
 
   const onSubmit = (values: FormValues) => {
     startTransition(async () => {

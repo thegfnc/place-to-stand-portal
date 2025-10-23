@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState, useTransition } from "react";
-import { useForm, type Resolver } from "react-hook-form";
+import { useForm, useWatch, type Resolver } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Trash2 } from "lucide-react";
@@ -142,9 +142,11 @@ export function UserSheet({
       avatarRemoved: false,
     });
     form.clearErrors();
-    setFeedback(null);
-    setAvatarFieldKey((key) => key + 1);
-  }, [form, open, user]);
+    startTransition(() => {
+      setFeedback(null);
+      setAvatarFieldKey((key) => key + 1);
+    });
+  }, [form, open, startTransition, user]);
 
   const onSubmit = (values: FormValues) => {
     startTransition(async () => {
@@ -238,8 +240,8 @@ export function UserSheet({
 
   const submitDisabled = isPending;
   const submitDisabledReason = submitDisabled ? pendingReason : null;
-  const watchedFullName = form.watch("fullName");
-  const watchedEmail = form.watch("email");
+  const watchedFullName = useWatch({ control: form.control, name: "fullName" });
+  const watchedEmail = useWatch({ control: form.control, name: "email" });
   const avatarInitials = deriveInitials(watchedFullName || user?.full_name, watchedEmail || user?.email);
   const avatarDisplayName = watchedFullName || user?.full_name || null;
 

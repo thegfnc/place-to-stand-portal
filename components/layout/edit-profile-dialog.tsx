@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { z } from "zod";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 import { updateProfile } from "@/app/(dashboard)/_actions/update-profile";
@@ -90,6 +90,7 @@ export function EditProfileDialog({ open, onOpenChange, user }: Props) {
       avatarRemoved: false,
     },
   });
+  const watchedFullName = useWatch({ control: form.control, name: "fullName" });
 
   const resetForm = useCallback(() => {
     form.reset({
@@ -98,9 +99,11 @@ export function EditProfileDialog({ open, onOpenChange, user }: Props) {
       avatarPath: user.avatar_url ?? null,
       avatarRemoved: false,
     });
-    setFeedback(null);
-    setAvatarFieldKey((key) => key + 1);
-  }, [form, user.avatar_url, user.full_name]);
+    startTransition(() => {
+      setFeedback(null);
+      setAvatarFieldKey((key) => key + 1);
+    });
+  }, [form, startTransition, user.avatar_url, user.full_name]);
 
   useEffect(() => {
     if (open) {
@@ -167,8 +170,8 @@ export function EditProfileDialog({ open, onOpenChange, user }: Props) {
               name="avatarPath"
               render={({ field }) => {
                 const disabled = isPending;
-                const watchedName = form.watch("fullName");
-                const initials = deriveInitials(watchedName || user.full_name, user.email);
+                const currentFullName = watchedFullName ?? user.full_name;
+                const initials = deriveInitials(currentFullName, user.email);
 
                 return (
                   <FormItem>
@@ -184,7 +187,7 @@ export function EditProfileDialog({ open, onOpenChange, user }: Props) {
                           form.setValue("avatarRemoved", removed, { shouldDirty: true });
                         }}
                         initials={initials}
-                        displayName={watchedName ?? user.full_name}
+                        displayName={currentFullName ?? user.full_name}
                         disabled={disabled}
                         targetUserId={user.id}
                         existingUserId={user.id}

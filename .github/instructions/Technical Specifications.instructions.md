@@ -11,7 +11,7 @@ applyTo: '**'
 * **Design Before Code:** Propose the approach (data flow, component ownership, API shape) and wait for approval when impact is medium or higher.
 * **Reuse > Rebuild:** Prefer existing modules, utilities, and shadcn components. Flag gaps before introducing new abstractions.
 * **Guardrails:** Do not edit `package.json`, lockfiles, or Supabase migrations directly. Use the prescribed CLIs when dependencies or schema changes are required.
-* **Verification:** Run linting, type-checking, and targeted tests for any touched surface. Share command results or blockers with the user.
+* **Verification:** Always run build, linting, type-checking, and targeted tests for any touched surface. Share command results or blockers with the user.
 * **Documentation:** Update or create README snippets, inline comments, and changelog notes whenever behavior or interfaces shift.
 
 ## **1. Technical Stack**
@@ -48,7 +48,7 @@ applyTo: '**'
 * **Email Service:** Resend
 
 ### **1.3 Tooling & Testing**
-* **Linting:** ESLint with eslint-config-next, eslint-plugin-react, eslint-plugin-react-hooks, and Tailwind plugin
+* **Linting:** Always use the next.js recommended ESLint config with custom rules as defined in project config
 * **Formatting:** Prettier (project config)
 * **Unit & Integration Tests:** Vitest + Testing Library (React)
 * **End-to-End Tests:** Playwright

@@ -6,7 +6,7 @@ import type { Database } from "@/supabase/types/database";
 const PUBLIC_PATHS = new Set(["/sign-in", "/unauthorized", "/forgot-password", "/reset-password"]);
 const FORCE_RESET_PATH = "/force-reset-password";
 
-export async function middleware(req: NextRequest) {
+export async function proxy(req: NextRequest) {
   const res = NextResponse.next();
 
   const supabase = createServerClient<Database>(

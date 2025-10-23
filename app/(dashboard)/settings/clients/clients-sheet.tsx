@@ -74,8 +74,10 @@ export function ClientSheet({ open, onOpenChange, onComplete, client }: Props) {
       slug: client?.slug ?? "",
       notes: client?.notes ?? "",
     });
-    setFeedback(null);
-  }, [client, form]);
+    startTransition(() => {
+      setFeedback(null);
+    });
+  }, [client, form, startTransition]);
 
   const onSubmit = (values: FormValues) => {
     if (isEditing && !values.slug?.trim()) {

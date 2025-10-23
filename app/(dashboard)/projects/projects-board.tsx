@@ -97,40 +97,46 @@ export function ProjectsBoard({ projects, clients, currentUserId, currentUserRol
 
   useEffect(() => {
     if (filteredProjects.length === 0) {
-      setSelectedProjectId(null);
+      startTransition(() => {
+        setSelectedProjectId(null);
+      });
       return;
     }
 
     if (!selectedProjectId || !filteredProjects.some((project) => project.id === selectedProjectId)) {
-      setSelectedProjectId(filteredProjects[0]?.id ?? null);
+      startTransition(() => {
+        setSelectedProjectId(filteredProjects[0]?.id ?? null);
+      });
     }
-  }, [filteredProjects, selectedProjectId]);
+  }, [filteredProjects, selectedProjectId, startTransition]);
 
   useEffect(() => {
-    setTasksByProject((prev) => {
-      let didChange = false;
-      const next = new Map(prev);
-      const incomingProjectIds = new Set<string>();
+    startTransition(() => {
+      setTasksByProject((prev) => {
+        let didChange = false;
+        const next = new Map(prev);
+        const incomingProjectIds = new Set<string>();
 
-      projects.forEach((project) => {
-        incomingProjectIds.add(project.id);
-        const existing = next.get(project.id);
-        if (!areTaskCollectionsEqual(existing, project.tasks)) {
-          next.set(project.id, project.tasks);
-          didChange = true;
+        projects.forEach((project) => {
+          incomingProjectIds.add(project.id);
+          const existing = next.get(project.id);
+          if (!areTaskCollectionsEqual(existing, project.tasks)) {
+            next.set(project.id, project.tasks);
+            didChange = true;
+          }
+        });
+
+        for (const projectId of next.keys()) {
+          if (!incomingProjectIds.has(projectId)) {
+            next.delete(projectId);
+            didChange = true;
+          }
         }
+
+        return didChange ? next : prev;
       });
-
-      for (const projectId of next.keys()) {
-        if (!incomingProjectIds.has(projectId)) {
-          next.delete(projectId);
-          didChange = true;
-        }
-      }
-
-      return didChange ? next : prev;
     });
-  }, [projects]);
+  }, [projects, startTransition]);
 
   const activeProject = filteredProjects.find((project) => project.id === selectedProjectId) ?? null;
   const activeProjectTasks = useMemo(() => {

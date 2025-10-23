@@ -130,8 +130,10 @@ export function TaskSheet({ open, onOpenChange, project, task, canManage }: Prop
 
   useEffect(() => {
     form.reset(defaultValues);
-    setFeedback(null);
-  }, [defaultValues, form]);
+    startTransition(() => {
+      setFeedback(null);
+    });
+  }, [defaultValues, form, startTransition]);
 
   const handleSubmit = (values: FormValues) => {
     if (!canManage) return;
