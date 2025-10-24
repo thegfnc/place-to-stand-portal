@@ -322,7 +322,6 @@ export type Database = {
           description: string | null
           due_on: string | null
           id: string
-          priority: Database['public']['Enums']['task_priority']
           project_id: string
           status: Database['public']['Enums']['task_status']
           title: string
@@ -336,7 +335,6 @@ export type Database = {
           description?: string | null
           due_on?: string | null
           id?: string
-          priority?: Database['public']['Enums']['task_priority']
           project_id: string
           status?: Database['public']['Enums']['task_status']
           title: string
@@ -350,7 +348,6 @@ export type Database = {
           description?: string | null
           due_on?: string | null
           id?: string
-          priority?: Database['public']['Enums']['task_priority']
           project_id?: string
           status?: Database['public']['Enums']['task_status']
           title?: string
@@ -456,7 +453,6 @@ export type Database = {
     Enums: {
       hour_block_type: 'RETAINER' | 'PROJECT' | 'MAINTENANCE'
       member_role: 'OWNER' | 'CONTRIBUTOR' | 'VIEWER'
-      task_priority: 'LOW' | 'MEDIUM' | 'HIGH'
       task_status:
         | 'BACKLOG'
         | 'ON_DECK'
@@ -595,7 +591,6 @@ export const Constants = {
     Enums: {
       hour_block_type: ['RETAINER', 'PROJECT', 'MAINTENANCE'],
       member_role: ['OWNER', 'CONTRIBUTOR', 'VIEWER'],
-      task_priority: ['LOW', 'MEDIUM', 'HIGH'],
       task_status: [
         'BACKLOG',
         'ON_DECK',

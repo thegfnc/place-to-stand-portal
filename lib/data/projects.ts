@@ -104,7 +104,6 @@ export const fetchProjectsWithRelations = cache(
             title,
             description,
             status,
-            priority,
             due_on,
             created_by,
             updated_by,

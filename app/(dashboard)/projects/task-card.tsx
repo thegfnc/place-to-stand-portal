@@ -5,7 +5,6 @@ import { CSS } from '@dnd-kit/utilities'
 import { useDraggable } from '@dnd-kit/core'
 import { CalendarDays, Users2 } from 'lucide-react'
 
-import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import type { TaskWithRelations } from '@/lib/types'
 
@@ -19,12 +18,20 @@ type TaskCardProps = {
   assignees: AssigneeInfo[]
   onEdit: (task: TaskWithRelations) => void
   draggable: boolean
+  isActive?: boolean
 }
 
-const PRIORITY_COLOR: Record<string, string> = {
-  LOW: 'bg-muted text-muted-foreground',
-  MEDIUM: 'bg-primary/10 text-primary',
-  HIGH: 'bg-destructive/10 text-destructive',
+const toPlainText = (value: string | null) => {
+  if (!value) {
+    return ''
+  }
+
+  return value
+    .replace(/<br\s*\/?>(\s|&nbsp;|\u00a0)*/gi, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
 }
 
 function CardContent({
@@ -40,25 +47,20 @@ function CardContent({
         .map(assignee => assignee.name)
         .join(', ')
     : 'Unassigned'
+  const descriptionPreview = toPlainText(task.description)
 
   return (
     <>
-      <div className='flex items-start justify-between gap-3'>
+      <div className='space-y-2'>
         <h3 className='text-foreground line-clamp-2 text-sm leading-snug font-semibold'>
           {task.title}
         </h3>
-        <Badge
-          variant='secondary'
-          className={cn('capitalize', PRIORITY_COLOR[task.priority])}
-        >
-          {task.priority.toLowerCase()}
-        </Badge>
+        {descriptionPreview ? (
+          <p className='text-muted-foreground line-clamp-3 text-xs'>
+            {descriptionPreview}
+          </p>
+        ) : null}
       </div>
-      {task.description ? (
-        <p className='text-muted-foreground mt-2 line-clamp-3 text-xs'>
-          {task.description}
-        </p>
-      ) : null}
       <div className='text-muted-foreground mt-4 flex flex-wrap items-center gap-3 text-xs'>
         <span className='inline-flex items-center gap-1'>
           <Users2 className='h-3.5 w-3.5' /> {assignedSummary}
@@ -79,6 +81,7 @@ export function TaskCard({
   assignees,
   onEdit,
   draggable,
+  isActive = false,
 }: TaskCardProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
@@ -124,7 +127,11 @@ export function TaskCard({
       className={cn(
         'group bg-card rounded-lg border p-4 text-left shadow-sm transition',
         draggable ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer',
-        isDragging && 'ring-primary ring-2'
+        isDragging && 'ring-primary ring-2',
+        (isActive || isDragging) && 'border-primary/50 bg-primary/5 shadow-md',
+        !isActive &&
+          !isDragging &&
+          'hover:border-primary/40 hover:bg-primary/5 hover:shadow-md'
       )}
     >
       <CardContent task={task} assignees={assignees} />

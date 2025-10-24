@@ -1,33 +1,97 @@
-import type { ReactNode } from "react";
+'use client'
 
-import type { AppUser } from "@/lib/auth/session";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react'
 
-import { Sidebar } from "./sidebar";
-import { UserMenu } from "./user-menu";
+import type { AppUser } from '@/lib/auth/session'
+
+import { Sidebar } from './sidebar'
+import { UserMenu } from './user-menu'
 
 interface Props {
-  user: AppUser;
-  children: ReactNode;
+  user: AppUser
+  children: ReactNode
+}
+
+type HeaderContextValue = {
+  setHeader: (content: ReactNode) => void
+  clearHeader: () => void
+}
+
+const HeaderContext = createContext<HeaderContextValue | null>(null)
+
+export function useAppShellHeader() {
+  const context = useContext(HeaderContext)
+
+  if (!context) {
+    throw new Error('useAppShellHeader must be used within AppShell')
+  }
+
+  return context
+}
+
+export function AppShellHeader({ children }: { children: ReactNode }) {
+  const { setHeader, clearHeader } = useAppShellHeader()
+
+  useEffect(() => {
+    setHeader(children)
+    return () => {
+      clearHeader()
+    }
+  }, [children, clearHeader, setHeader])
+
+  return null
 }
 
 export function AppShell({ user, children }: Props) {
+  const [headerContent, setHeaderContent] = useState<ReactNode>(null)
+
+  const setHeader = useCallback((content: ReactNode) => {
+    setHeaderContent(content)
+  }, [])
+
+  const clearHeader = useCallback(() => {
+    setHeaderContent(null)
+  }, [])
+
+  const headerContextValue = useMemo(
+    () => ({
+      setHeader,
+      clearHeader,
+    }),
+    [clearHeader, setHeader]
+  )
+
   return (
-    <div className="flex min-h-screen bg-muted/20">
+    <div className='bg-muted/20 flex min-h-screen'>
       <Sidebar role={user.role} />
-      <div className="flex min-h-screen flex-1 flex-col">
-        <header className="flex items-center justify-between border-b bg-background px-6 py-4">
-          <div>
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Signed in as
-            </p>
-            <p className="text-lg font-semibold leading-tight">
-              {user.full_name ?? user.email}
-            </p>
-          </div>
-          <UserMenu user={user} />
-        </header>
-        <main className="flex-1 overflow-y-auto px-6 py-8">{children}</main>
-      </div>
+      <HeaderContext.Provider value={headerContextValue}>
+        <div className='flex min-h-screen flex-1 flex-col'>
+          <header className='bg-background flex flex-wrap items-center gap-4 border-b px-6 py-4'>
+            <div className='min-w-0 flex-1'>
+              {headerContent ?? (
+                <div className='flex flex-col'>
+                  <span className='text-foreground text-sm leading-tight font-semibold'>
+                    Place to Stand Portal
+                  </span>
+                  <span className='text-muted-foreground text-xs'>
+                    Choose a workspace action to get started.
+                  </span>
+                </div>
+              )}
+            </div>
+            <UserMenu user={user} />
+          </header>
+          <main className='flex-1 overflow-y-auto px-6 py-8'>{children}</main>
+        </div>
+      </HeaderContext.Provider>
     </div>
-  );
+  )
 }

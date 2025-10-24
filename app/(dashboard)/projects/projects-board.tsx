@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState, useTransition } from 'react'
+import { useCallback, useEffect, useMemo, useState, useTransition } from 'react'
 import {
   DndContext,
   DragEndEvent,
@@ -13,14 +13,11 @@ import {
 } from '@dnd-kit/core'
 import { Loader2, Plus } from 'lucide-react'
 
+import { AppShellHeader } from '@/components/layout/app-shell'
 import { Button } from '@/components/ui/button'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { DisabledFieldTooltip } from '@/components/ui/disabled-field-tooltip'
+import { Label } from '@/components/ui/label'
+import { SearchableCombobox } from '@/components/ui/searchable-combobox'
 import { cn } from '@/lib/utils'
 import type {
   DbUser,
@@ -113,6 +110,32 @@ export function ProjectsBoard({
 
     return projects.filter(project => project.client_id === selectedClientId)
   }, [projects, selectedClientId])
+
+  const clientItems = useMemo(
+    () => [
+      {
+        value: 'all',
+        label: 'All clients',
+        keywords: ['all'],
+      },
+      ...clients.map(client => ({
+        value: client.id,
+        label: client.name,
+        keywords: [client.name],
+      })),
+    ],
+    [clients]
+  )
+
+  const projectItems = useMemo(
+    () =>
+      filteredProjects.map(project => ({
+        value: project.id,
+        label: project.name,
+        keywords: [project.name],
+      })),
+    [filteredProjects]
+  )
 
   useEffect(() => {
     if (filteredProjects.length === 0) {
@@ -228,6 +251,13 @@ export function ProjectsBoard({
   const activeTask =
     activeProjectTasks.find(task => task.id === activeTaskId) ?? null
 
+  const addTaskDisabled = !activeProject || !canManageTasks
+  const addTaskDisabledReason = !activeProject
+    ? 'Select a project to add tasks.'
+    : !canManageTasks
+      ? 'You need manage permissions to add tasks.'
+      : null
+
   const handleDragStart = (event: DragStartEvent) => {
     const taskId = String(event.active.id)
     setActiveTaskId(taskId)
@@ -311,10 +341,10 @@ export function ProjectsBoard({
     })
   }
 
-  const openCreateSheet = () => {
+  const openCreateSheet = useCallback(() => {
     setSheetTask(undefined)
     setIsSheetOpen(true)
-  }
+  }, [])
 
   const handleEditTask = (task: TaskWithRelations) => {
     setSheetTask(task)
@@ -327,6 +357,70 @@ export function ProjectsBoard({
       setSheetTask(undefined)
     }
   }
+
+  const headerContent = useMemo(
+    () => (
+      <div className='flex w-full flex-wrap items-end gap-3'>
+        <div className='min-w-[200px] space-y-1'>
+          <Label htmlFor='projects-client-select'>Client</Label>
+          <SearchableCombobox
+            id='projects-client-select'
+            items={clientItems}
+            value={selectedClientId}
+            onChange={setSelectedClientId}
+            placeholder='Select client'
+            searchPlaceholder='Search clients...'
+            ariaLabel='Select client'
+          />
+        </div>
+        <div className='min-w-60 space-y-1'>
+          <Label htmlFor='projects-project-select'>Project</Label>
+          <SearchableCombobox
+            id='projects-project-select'
+            items={projectItems}
+            value={selectedProjectId}
+            onChange={value => setSelectedProjectId(value)}
+            placeholder='Select project'
+            searchPlaceholder='Search projects...'
+            disabled={projectItems.length === 0}
+            ariaLabel='Select project'
+          />
+        </div>
+      </div>
+    ),
+    [
+      clientItems,
+      projectItems,
+      selectedClientId,
+      selectedProjectId,
+      setSelectedClientId,
+      setSelectedProjectId,
+    ]
+  )
+
+  const introContent = (
+    <div className='flex flex-wrap items-start justify-between gap-4'>
+      <div className='space-y-1'>
+        <h1 className='text-2xl font-semibold tracking-tight'>Project board</h1>
+        <p className='text-muted-foreground text-sm'>
+          Drag tasks between columns to update status. Filters respect your
+          project assignments.
+        </p>
+      </div>
+      <DisabledFieldTooltip
+        disabled={addTaskDisabled}
+        reason={addTaskDisabledReason}
+      >
+        <Button
+          onClick={openCreateSheet}
+          disabled={addTaskDisabled}
+          className='flex items-center gap-2'
+        >
+          <Plus className='h-4 w-4' /> Add task
+        </Button>
+      </DisabledFieldTooltip>
+    </div>
+  )
 
   const renderAssignees = (task: TaskWithRelations) => {
     return task.assignees
@@ -342,136 +436,101 @@ export function ProjectsBoard({
 
   if (projects.length === 0) {
     return (
-      <div className='grid h-full w-full place-items-center rounded-xl border border-dashed p-12 text-center'>
-        <div className='space-y-2'>
-          <h2 className='text-lg font-semibold'>No projects assigned yet</h2>
-          <p className='text-muted-foreground text-sm'>
-            Once an administrator links you to a project, the workspace will
-            unlock here.
-          </p>
+      <>
+        <AppShellHeader>{headerContent}</AppShellHeader>
+        <div className='flex h-full flex-col gap-6'>
+          {introContent}
+          <div className='grid w-full flex-1 place-items-center rounded-xl border border-dashed p-12 text-center'>
+            <div className='space-y-2'>
+              <h2 className='text-lg font-semibold'>
+                No projects assigned yet
+              </h2>
+              <p className='text-muted-foreground text-sm'>
+                Once an administrator links you to a project, the workspace will
+                unlock here.
+              </p>
+            </div>
+          </div>
         </div>
-      </div>
+      </>
     )
   }
 
   return (
-    <div className='flex h-full flex-col gap-6'>
-      <div className='flex flex-wrap items-center gap-4'>
-        <div className='flex flex-col'>
-          <h1 className='text-2xl font-semibold tracking-tight'>
-            Project board
-          </h1>
-          <p className='text-muted-foreground text-sm'>
-            Drag tasks between columns to update status. Filters respect your
-            project assignments.
+    <>
+      <AppShellHeader>{headerContent}</AppShellHeader>
+      <div className='flex h-full flex-col gap-6'>
+        {introContent}
+        {feedback ? (
+          <p className='border-destructive/40 bg-destructive/10 text-destructive rounded-md border px-3 py-2 text-sm'>
+            {feedback}
           </p>
-        </div>
-        <div className='ml-auto flex flex-wrap items-center gap-3'>
-          <Select value={selectedClientId} onValueChange={setSelectedClientId}>
-            <SelectTrigger className='w-48'>
-              <SelectValue placeholder='Select client' />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value='all'>All clients</SelectItem>
-              {clients.map(client => (
-                <SelectItem key={client.id} value={client.id}>
-                  {client.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select
-            value={selectedProjectId ?? ''}
-            onValueChange={value => setSelectedProjectId(value || null)}
-            disabled={filteredProjects.length === 0}
-          >
-            <SelectTrigger className='w-48'>
-              <SelectValue placeholder='Select project' />
-            </SelectTrigger>
-            <SelectContent>
-              {filteredProjects.map(project => (
-                <SelectItem key={project.id} value={project.id}>
-                  {project.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Button
-            onClick={openCreateSheet}
-            disabled={!activeProject || !canManageTasks}
-          >
-            <Plus className='h-4 w-4' /> Add task
-          </Button>
-        </div>
+        ) : null}
+        {!activeProject ? (
+          <div className='grid h-full w-full place-items-center rounded-xl border border-dashed p-12 text-center'>
+            <div className='space-y-2'>
+              <h2 className='text-lg font-semibold'>No project selected</h2>
+              <p className='text-muted-foreground text-sm'>
+                Choose a client and project above to view the associated tasks.
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className='relative flex-1'>
+            <div className='absolute inset-0 overflow-hidden'>
+              <div className='h-full overflow-x-auto pb-6'>
+                <DndContext
+                  sensors={sensors}
+                  onDragStart={handleDragStart}
+                  onDragOver={handleDragOver}
+                  onDragEnd={handleDragEnd}
+                >
+                  <div className='flex min-h-full w-max gap-4 p-1'>
+                    {BOARD_COLUMNS.map(column => (
+                      <KanbanColumn
+                        key={column.id}
+                        columnId={column.id}
+                        label={column.label}
+                        tasks={
+                          tasksByColumn.get(column.id as BoardColumnId) ?? []
+                        }
+                        renderAssignees={renderAssignees}
+                        onEditTask={handleEditTask}
+                        canManage={canManageTasks}
+                        activeTaskId={sheetTask?.id ?? null}
+                      />
+                    ))}
+                  </div>
+                  <DragOverlay dropAnimation={null}>
+                    {activeTask ? (
+                      <TaskCardPreview
+                        task={activeTask}
+                        assignees={renderAssignees(activeTask)}
+                      />
+                    ) : null}
+                  </DragOverlay>
+                </DndContext>
+              </div>
+            </div>
+            {isPending ? (
+              <div className='bg-background/60 pointer-events-none absolute inset-0 flex items-center justify-center'>
+                <Loader2 className='text-muted-foreground h-6 w-6 animate-spin' />
+              </div>
+            ) : null}
+          </div>
+        )}
+        {activeProject ? (
+          <TaskSheet
+            open={isSheetOpen}
+            onOpenChange={handleSheetOpenChange}
+            project={activeProject}
+            task={sheetTask}
+            canManage={canManageTasks}
+            admins={admins}
+          />
+        ) : null}
       </div>
-      {feedback ? (
-        <p className='border-destructive/40 bg-destructive/10 text-destructive rounded-md border px-3 py-2 text-sm'>
-          {feedback}
-        </p>
-      ) : null}
-      {!activeProject ? (
-        <div className='grid h-full w-full place-items-center rounded-xl border border-dashed p-12 text-center'>
-          <div className='space-y-2'>
-            <h2 className='text-lg font-semibold'>No project selected</h2>
-            <p className='text-muted-foreground text-sm'>
-              Choose a client and project above to view the associated tasks.
-            </p>
-          </div>
-        </div>
-      ) : (
-        <div className='relative flex-1'>
-          <div className='absolute inset-0 overflow-hidden'>
-            <div className='h-full overflow-x-auto pb-6'>
-              <DndContext
-                sensors={sensors}
-                onDragStart={handleDragStart}
-                onDragOver={handleDragOver}
-                onDragEnd={handleDragEnd}
-              >
-                <div className='flex min-h-full w-max gap-4 p-1'>
-                  {BOARD_COLUMNS.map(column => (
-                    <KanbanColumn
-                      key={column.id}
-                      columnId={column.id}
-                      label={column.label}
-                      tasks={
-                        tasksByColumn.get(column.id as BoardColumnId) ?? []
-                      }
-                      renderAssignees={renderAssignees}
-                      onEditTask={handleEditTask}
-                      canManage={canManageTasks}
-                    />
-                  ))}
-                </div>
-                <DragOverlay dropAnimation={null}>
-                  {activeTask ? (
-                    <TaskCardPreview
-                      task={activeTask}
-                      assignees={renderAssignees(activeTask)}
-                    />
-                  ) : null}
-                </DragOverlay>
-              </DndContext>
-            </div>
-          </div>
-          {isPending ? (
-            <div className='bg-background/60 pointer-events-none absolute inset-0 flex items-center justify-center'>
-              <Loader2 className='text-muted-foreground h-6 w-6 animate-spin' />
-            </div>
-          ) : null}
-        </div>
-      )}
-      {activeProject ? (
-        <TaskSheet
-          open={isSheetOpen}
-          onOpenChange={handleSheetOpenChange}
-          project={activeProject}
-          task={sheetTask}
-          canManage={canManageTasks}
-          admins={admins}
-        />
-      ) : null}
-    </div>
+    </>
   )
 }
 
@@ -484,6 +543,7 @@ type KanbanColumnProps = {
     task: TaskWithRelations
   ) => Array<{ id: string; name: string }>
   onEditTask: (task: TaskWithRelations) => void
+  activeTaskId: string | null
 }
 
 function KanbanColumn({
@@ -493,6 +553,7 @@ function KanbanColumn({
   canManage,
   renderAssignees,
   onEditTask,
+  activeTaskId,
 }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id: columnId })
 
@@ -520,6 +581,7 @@ function KanbanColumn({
             assignees={renderAssignees(task)}
             onEdit={onEditTask}
             draggable={canManage}
+            isActive={task.id === activeTaskId}
           />
         ))}
       </div>

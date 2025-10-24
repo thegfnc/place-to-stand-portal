@@ -33,12 +33,16 @@ type SearchableComboboxProps = {
   onChange: (value: string) => void
   onBlur?: () => void
   name?: string
+  id?: string
   placeholder?: string
   searchPlaceholder?: string
   emptyMessage?: string
   disabled?: boolean
   className?: string
   triggerClassName?: string
+  ariaLabel?: string
+  ariaLabelledBy?: string
+  ariaDescribedBy?: string
 }
 
 const baseTriggerClasses =
@@ -57,12 +61,16 @@ export const SearchableCombobox = React.forwardRef<
       onChange,
       onBlur,
       name,
+      id,
       placeholder,
       searchPlaceholder = 'Search...',
       emptyMessage = 'No results found.',
       disabled,
       className,
       triggerClassName,
+      ariaLabel,
+      ariaLabelledBy,
+      ariaDescribedBy,
     },
     forwardedRef
   ) => {
@@ -145,8 +153,12 @@ export const SearchableCombobox = React.forwardRef<
               role='combobox'
               aria-expanded={open}
               aria-haspopup='listbox'
+              aria-label={ariaLabel}
+              aria-labelledby={ariaLabelledBy}
+              aria-describedby={ariaDescribedBy}
               disabled={disabled}
               data-placeholder={selectedItem ? undefined : true}
+              id={id}
               className={cn(baseTriggerClasses, triggerClassName)}
             >
               <span

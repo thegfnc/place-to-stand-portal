@@ -1,181 +1,175 @@
-'use server';
+'use server'
 
-import { revalidatePath } from "next/cache";
-import { z } from "zod";
+import { revalidatePath } from 'next/cache'
+import { z } from 'zod'
 
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from '@supabase/supabase-js'
 
-import { requireUser } from "@/lib/auth/session";
-import type { Database } from "@/supabase/types/database";
-import { getSupabaseServerClient } from "@/lib/supabase/server";
+import { requireUser } from '@/lib/auth/session'
+import type { Database } from '@/supabase/types/database'
+import { getSupabaseServerClient } from '@/lib/supabase/server'
 
 const TASK_STATUSES = [
-  "BACKLOG",
-  "ON_DECK",
-  "IN_PROGRESS",
-  "IN_REVIEW",
-  "BLOCKED",
-  "DONE",
-  "ARCHIVED",
-] as const;
+  'BACKLOG',
+  'ON_DECK',
+  'IN_PROGRESS',
+  'IN_REVIEW',
+  'BLOCKED',
+  'DONE',
+  'ARCHIVED',
+] as const
 
-const TASK_PRIORITIES = ["LOW", "MEDIUM", "HIGH"] as const;
-
-const statusSchema = z.enum(TASK_STATUSES);
-const prioritySchema = z.enum(TASK_PRIORITIES);
+const statusSchema = z.enum(TASK_STATUSES)
 
 const baseTaskSchema = z.object({
   id: z.string().uuid().optional(),
   projectId: z.string().uuid(),
   title: z.string().min(1),
   description: z.string().optional().nullable(),
-  status: statusSchema.default("BACKLOG"),
-  priority: prioritySchema.default("MEDIUM"),
+  status: statusSchema.default('BACKLOG'),
   dueOn: z.string().optional().nullable(),
   assigneeIds: z.array(z.string().uuid()).default([]),
-});
+})
 
-type BaseTaskInput = z.infer<typeof baseTaskSchema>;
+type BaseTaskInput = z.infer<typeof baseTaskSchema>
 
 type ActionResult = {
-  error?: string;
-};
+  error?: string
+}
 
 export async function saveTask(input: BaseTaskInput): Promise<ActionResult> {
-  const user = await requireUser();
-  const parsed = baseTaskSchema.safeParse(input);
+  const user = await requireUser()
+  const parsed = baseTaskSchema.safeParse(input)
 
   if (!parsed.success) {
-    return { error: "Invalid task payload submitted." };
+    return { error: 'Invalid task payload submitted.' }
   }
 
-  const { id, projectId, title, description, status, priority, dueOn, assigneeIds } =
-    parsed.data;
+  const { id, projectId, title, description, status, dueOn, assigneeIds } =
+    parsed.data
 
-  const supabase = getSupabaseServerClient();
+  const supabase = getSupabaseServerClient()
 
   if (!id) {
     const { data, error } = await supabase
-      .from("tasks")
+      .from('tasks')
       .insert({
         project_id: projectId,
         title,
         description,
         status,
-        priority,
         due_on: dueOn,
         created_by: user.id,
         updated_by: user.id,
       })
-      .select("id")
-      .maybeSingle();
+      .select('id')
+      .maybeSingle()
 
     if (error || !data) {
-      console.error("Failed to create task", error);
-      return { error: error?.message ?? "Unable to create task." };
+      console.error('Failed to create task', error)
+      return { error: error?.message ?? 'Unable to create task.' }
     }
 
     try {
-      await syncAssignees(supabase, data.id, assigneeIds);
+      await syncAssignees(supabase, data.id, assigneeIds)
     } catch (assigneeError) {
-      console.error("Failed to sync task assignees", assigneeError);
-      return { error: "Task saved but assignees could not be updated." };
+      console.error('Failed to sync task assignees', assigneeError)
+      return { error: 'Task saved but assignees could not be updated.' }
     }
   } else {
     const { error } = await supabase
-      .from("tasks")
+      .from('tasks')
       .update({
         title,
         description,
         status,
-        priority,
         due_on: dueOn,
         updated_by: user.id,
       })
-      .eq("id", id);
+      .eq('id', id)
 
     if (error) {
-      console.error("Failed to update task", error);
-      return { error: error.message };
+      console.error('Failed to update task', error)
+      return { error: error.message }
     }
 
     try {
-      await syncAssignees(supabase, id, assigneeIds);
+      await syncAssignees(supabase, id, assigneeIds)
     } catch (assigneeError) {
-      console.error("Failed to sync task assignees", assigneeError);
-      return { error: "Task saved but assignees could not be updated." };
+      console.error('Failed to sync task assignees', assigneeError)
+      return { error: 'Task saved but assignees could not be updated.' }
     }
   }
 
-  revalidatePath("/projects");
+  revalidatePath('/projects')
 
-  return {};
+  return {}
 }
 
 export async function changeTaskStatus(input: {
-  taskId: string;
-  status: (typeof TASK_STATUSES)[number];
+  taskId: string
+  status: (typeof TASK_STATUSES)[number]
 }): Promise<ActionResult> {
-  await requireUser();
+  await requireUser()
   const parsed = z
     .object({
       taskId: z.string().uuid(),
       status: statusSchema,
     })
-    .safeParse(input);
+    .safeParse(input)
 
   if (!parsed.success) {
-    return { error: "Invalid status update payload." };
+    return { error: 'Invalid status update payload.' }
   }
 
-  const supabase = getSupabaseServerClient();
-  const { taskId, status } = parsed.data;
+  const supabase = getSupabaseServerClient()
+  const { taskId, status } = parsed.data
 
   const { error } = await supabase
-    .from("tasks")
+    .from('tasks')
     .update({ status })
-    .eq("id", taskId);
+    .eq('id', taskId)
 
   if (error) {
-    console.error("Failed to update task status", error);
-    return { error: error.message };
+    console.error('Failed to update task status', error)
+    return { error: error.message }
   }
 
-  revalidatePath("/projects");
+  revalidatePath('/projects')
 
-  return {};
+  return {}
 }
 
 export async function removeTask(input: {
-  taskId: string;
+  taskId: string
 }): Promise<ActionResult> {
-  await requireUser();
+  await requireUser()
   const parsed = z
     .object({
       taskId: z.string().uuid(),
     })
-    .safeParse(input);
+    .safeParse(input)
 
   if (!parsed.success) {
-    return { error: "Invalid delete payload." };
+    return { error: 'Invalid delete payload.' }
   }
 
-  const supabase = getSupabaseServerClient();
-  const { taskId } = parsed.data;
+  const supabase = getSupabaseServerClient()
+  const { taskId } = parsed.data
 
   const { error } = await supabase
-    .from("tasks")
+    .from('tasks')
     .update({ deleted_at: new Date().toISOString() })
-    .eq("id", taskId);
+    .eq('id', taskId)
 
   if (error) {
-    console.error("Failed to soft delete task", error);
-    return { error: error.message };
+    console.error('Failed to soft delete task', error)
+    return { error: error.message }
   }
 
-  revalidatePath("/projects");
+  revalidatePath('/projects')
 
-  return {};
+  return {}
 }
 
 async function syncAssignees(
@@ -183,33 +177,33 @@ async function syncAssignees(
   taskId: string,
   assigneeIds: string[]
 ) {
-  const deletionTimestamp = new Date().toISOString();
+  const deletionTimestamp = new Date().toISOString()
 
   const { error: removeError } = await supabase
-    .from("task_assignees")
+    .from('task_assignees')
     .update({ deleted_at: deletionTimestamp })
-    .eq("task_id", taskId);
+    .eq('task_id', taskId)
 
   if (removeError) {
-    console.error("Failed to archive existing task assignees", removeError);
-    throw removeError;
+    console.error('Failed to archive existing task assignees', removeError)
+    throw removeError
   }
 
   if (!assigneeIds.length) {
-    return;
+    return
   }
 
-  const { error: upsertError } = await supabase.from("task_assignees").upsert(
-    assigneeIds.map((userId) => ({
+  const { error: upsertError } = await supabase.from('task_assignees').upsert(
+    assigneeIds.map(userId => ({
       task_id: taskId,
       user_id: userId,
       deleted_at: null,
     })),
-    { onConflict: "task_id,user_id" }
-  );
+    { onConflict: 'task_id,user_id' }
+  )
 
   if (upsertError) {
-    console.error("Failed to upsert task assignees", upsertError);
-    throw upsertError;
+    console.error('Failed to upsert task assignees', upsertError)
+    throw upsertError
   }
 }

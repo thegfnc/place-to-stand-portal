@@ -12,7 +12,6 @@ import { DisabledFieldTooltip } from '@/components/ui/disabled-field-tooltip'
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -26,7 +25,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Textarea } from '@/components/ui/textarea'
 import {
   Sheet,
   SheetContent,
@@ -40,6 +38,7 @@ import {
   type SearchableComboboxItem,
 } from '@/components/ui/searchable-combobox'
 import { useToast } from '@/components/ui/use-toast'
+import { RichTextEditor } from '@/components/ui/rich-text-editor'
 
 import type {
   DbUser,
@@ -59,15 +58,9 @@ const TASK_STATUSES = [
   { value: 'DONE', label: 'Done' },
 ]
 
-const TASK_PRIORITIES = [
-  { value: 'LOW', label: 'Low' },
-  { value: 'MEDIUM', label: 'Medium' },
-  { value: 'HIGH', label: 'High' },
-]
-
 const formSchema = z.object({
   title: z.string().min(1, 'Title is required'),
-  description: z.string().optional(),
+  description: z.string().optional().nullable(),
   status: z.enum([
     'BACKLOG',
     'ON_DECK',
@@ -77,7 +70,6 @@ const formSchema = z.object({
     'DONE',
     'ARCHIVED',
   ] as const),
-  priority: z.enum(['LOW', 'MEDIUM', 'HIGH'] as const),
   dueOn: z.string().optional(),
   assigneeId: z.string().uuid().optional().nullable(),
 })
@@ -104,6 +96,25 @@ function toDateInputValue(value: string | null) {
     console.warn('Invalid date for task form', { value, error })
     return ''
   }
+}
+
+function normalizeRichTextContent(value: string | null | undefined) {
+  if (!value) {
+    return null
+  }
+
+  const stripped = value
+    .replace(/<br\s*\/?>(\s|&nbsp;|\u00a0)*/gi, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+  if (stripped.length === 0) {
+    return null
+  }
+
+  return value
 }
 
 type Props = {
@@ -150,9 +161,8 @@ export function TaskSheet({
   const defaultValues: FormValues = useMemo(
     () => ({
       title: task?.title ?? '',
-      description: task?.description ?? '',
+      description: task?.description ?? null,
       status: task?.status ?? 'BACKLOG',
-      priority: task?.priority ?? 'MEDIUM',
       dueOn: toDateInputValue(task?.due_on ?? null),
       assigneeId: currentAssigneeId ?? null,
     }),
@@ -172,7 +182,7 @@ export function TaskSheet({
     return map
   }, [project.members])
 
-  const { assigneeItems, hasAssignableCollaborators } = useMemo(() => {
+  const { assigneeItems } = useMemo(() => {
     const seen = new Set<string>()
     const adminLookup = new Map<string, DbUser>()
     const eligibleItems: SearchableComboboxItem[] = []
@@ -283,7 +293,6 @@ export function TaskSheet({
 
     return {
       assigneeItems: items,
-      hasAssignableCollaborators: eligibleItems.length > 0,
     }
   }, [admins, currentAssigneeId, memberLookup, project.members])
 
@@ -300,6 +309,16 @@ export function TaskSheet({
       resetFormState()
     })
   }, [resetFormState, startTransition])
+
+  useEffect(() => {
+    if (!open) {
+      return
+    }
+
+    startTransition(() => {
+      resetFormState()
+    })
+  }, [open, resetFormState, startTransition])
 
   const handleSheetOpenChange = (next: boolean) => {
     if (!next) {
@@ -320,13 +339,15 @@ export function TaskSheet({
 
     startTransition(async () => {
       setFeedback(null)
+      const normalizedDescription = normalizeRichTextContent(
+        values.description ?? null
+      )
       const result = await saveTask({
         id: task?.id,
         projectId: project.id,
         title: values.title.trim(),
-        description: values.description?.trim() || null,
+        description: normalizedDescription,
         status: values.status,
-        priority: values.priority,
         dueOn: values.dueOn ? values.dueOn : null,
         assigneeIds: values.assigneeId ? [values.assigneeId] : [],
       })
@@ -420,38 +441,6 @@ export function TaskSheet({
                   )
                 }}
               />
-              <FormField
-                control={form.control}
-                name='description'
-                render={({ field }) => {
-                  const disabled = isPending || !canManage
-                  const reason = getDisabledReason(disabled)
-
-                  return (
-                    <FormItem>
-                      <FormLabel>Description</FormLabel>
-                      <FormControl>
-                        <DisabledFieldTooltip
-                          disabled={disabled}
-                          reason={reason}
-                        >
-                          <Textarea
-                            {...field}
-                            value={field.value ?? ''}
-                            disabled={disabled}
-                            rows={4}
-                            placeholder='Add helpful context for collaborators'
-                          />
-                        </DisabledFieldTooltip>
-                      </FormControl>
-                      <FormDescription>
-                        Supports basic Markdown.
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )
-                }}
-              />
               <div className='grid gap-4 sm:grid-cols-2'>
                 <FormField
                   control={form.control}
@@ -485,47 +474,6 @@ export function TaskSheet({
                                 value={status.value}
                               >
                                 {status.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )
-                  }}
-                />
-                <FormField
-                  control={form.control}
-                  name='priority'
-                  render={({ field }) => {
-                    const disabled = isPending || !canManage
-                    const reason = getDisabledReason(disabled)
-
-                    return (
-                      <FormItem>
-                        <FormLabel>Priority</FormLabel>
-                        <Select
-                          value={field.value}
-                          onValueChange={field.onChange}
-                          disabled={disabled}
-                        >
-                          <FormControl>
-                            <DisabledFieldTooltip
-                              disabled={disabled}
-                              reason={reason}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder='Select priority' />
-                              </SelectTrigger>
-                            </DisabledFieldTooltip>
-                          </FormControl>
-                          <SelectContent>
-                            {TASK_PRIORITIES.map(priority => (
-                              <SelectItem
-                                key={priority.value}
-                                value={priority.value}
-                              >
-                                {priority.label}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -599,11 +547,42 @@ export function TaskSheet({
                           />
                         </DisabledFieldTooltip>
                       </FormControl>
-                      <FormDescription>
-                        {hasAssignableCollaborators
-                          ? 'Admins and contractors on this project can be assigned.'
-                          : 'Add an admin or contractor to this project to assign the task.'}
-                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )
+                }}
+              />
+              <FormField
+                control={form.control}
+                name='description'
+                render={({ field }) => {
+                  const disabled = isPending || !canManage
+                  const reason = getDisabledReason(disabled)
+                  const editorValue = field.value ?? ''
+
+                  return (
+                    <FormItem>
+                      <FormLabel>Description</FormLabel>
+                      <FormControl>
+                        <DisabledFieldTooltip
+                          disabled={disabled}
+                          reason={reason}
+                        >
+                          <RichTextEditor
+                            key={task ? task.id : 'new-task'}
+                            id='task-description'
+                            value={editorValue}
+                            onChange={(content: string) =>
+                              field.onChange(
+                                normalizeRichTextContent(content) ?? null
+                              )
+                            }
+                            onBlur={field.onBlur}
+                            disabled={disabled}
+                            placeholder='Add helpful context for collaborators'
+                          />
+                        </DisabledFieldTooltip>
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )
