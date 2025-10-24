@@ -1,30 +1,34 @@
-import type { Metadata } from "next";
+import type { Metadata } from 'next'
 
-import { ProjectsBoard } from "./projects-board";
-import { fetchProjectsWithRelations } from "@/lib/data/projects";
-import { requireUser } from "@/lib/auth/session";
+import { ProjectsBoard } from './projects-board'
+import { fetchProjectsWithRelations } from '@/lib/data/projects'
+import { fetchAdminUsers } from '@/lib/data/users'
+import { requireUser } from '@/lib/auth/session'
 
 export const metadata: Metadata = {
-  title: "Projects | Place to Stand Portal",
-};
+  title: 'Projects | Place to Stand Portal',
+}
 
 export default async function ProjectsPage() {
-  const user = await requireUser();
-  const projects = await fetchProjectsWithRelations();
+  const user = await requireUser()
+  const [projects, admins] = await Promise.all([
+    fetchProjectsWithRelations(),
+    fetchAdminUsers(),
+  ])
 
   const clients = projects
-    .map((project) => project.client)
+    .map(project => project.client)
     .filter((client): client is NonNullable<typeof client> => Boolean(client))
     .reduce(
       (acc, client) => {
-        if (!acc.some((existing) => existing.id === client.id)) {
-          acc.push({ id: client.id, name: client.name });
+        if (!acc.some(existing => existing.id === client.id)) {
+          acc.push({ id: client.id, name: client.name })
         }
-        return acc;
+        return acc
       },
       [] as Array<{ id: string; name: string }>
     )
-    .sort((a, b) => a.name.localeCompare(b.name));
+    .sort((a, b) => a.name.localeCompare(b.name))
 
   return (
     <ProjectsBoard
@@ -32,6 +36,7 @@ export default async function ProjectsPage() {
       clients={clients}
       currentUserId={user.id}
       currentUserRole={user.role}
+      admins={admins}
     />
-  );
+  )
 }

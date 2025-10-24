@@ -55,6 +55,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover'
+import { SearchableCombobox } from '@/components/ui/searchable-combobox'
 import {
   PROJECT_STATUS_ENUM_VALUES,
   PROJECT_STATUS_OPTIONS,
@@ -190,6 +191,16 @@ export function ProjectSheet({
     [clients]
   )
 
+  const clientOptions = useMemo(
+    () =>
+      sortedClients.map(client => ({
+        value: client.id,
+        label: client.deleted_at ? `${client.name} (Deleted)` : client.name,
+        keywords: client.deleted_at ? [client.name, 'deleted'] : [client.name],
+      })),
+    [sortedClients]
+  )
+
   const initialStatus = useMemo<ProjectStatusValue>(() => {
     if (
       project &&
@@ -205,7 +216,7 @@ export function ProjectSheet({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: project?.name ?? '',
-      clientId: project?.client_id ?? sortedClients[0]?.id ?? '',
+      clientId: project?.client_id ?? '',
       status: initialStatus,
       startsOn: project?.starts_on ? project.starts_on.slice(0, 10) : '',
       endsOn: project?.ends_on ? project.ends_on.slice(0, 10) : '',
@@ -226,7 +237,7 @@ export function ProjectSheet({
 
     const defaults = {
       name: project?.name ?? '',
-      clientId: project?.client_id ?? sortedClients[0]?.id ?? '',
+      clientId: project?.client_id ?? '',
       status: statusDefault,
       startsOn: project?.starts_on ? project.starts_on.slice(0, 10) : '',
       endsOn: project?.ends_on ? project.ends_on.slice(0, 10) : '',
@@ -240,7 +251,7 @@ export function ProjectSheet({
     setSelectedContractors(contractorSnapshot)
     setContractorRemovalCandidate(null)
     setIsContractorPickerOpen(false)
-  }, [form, initialContractors, initialStatus, project, sortedClients])
+  }, [form, initialContractors, initialStatus, project])
 
   const applyServerFieldErrors = (fieldErrors?: Record<string, string[]>) => {
     if (!fieldErrors) return
@@ -502,30 +513,23 @@ export function ProjectSheet({
                     return (
                       <FormItem>
                         <FormLabel>Client</FormLabel>
-                        <Select
-                          value={field.value ?? ''}
-                          onValueChange={field.onChange}
-                          disabled={disabled}
-                        >
-                          <FormControl>
-                            <DisabledFieldTooltip
+                        <FormControl>
+                          <DisabledFieldTooltip
+                            disabled={disabled}
+                            reason={reason}
+                          >
+                            <SearchableCombobox
+                              name={field.name}
+                              value={field.value ?? ''}
+                              onChange={field.onChange}
+                              onBlur={field.onBlur}
+                              items={clientOptions}
+                              searchPlaceholder='Search clients...'
+                              emptyMessage='No clients found.'
                               disabled={disabled}
-                              reason={reason}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder='Select client' />
-                              </SelectTrigger>
-                            </DisabledFieldTooltip>
-                          </FormControl>
-                          <SelectContent>
-                            {sortedClients.map(client => (
-                              <SelectItem key={client.id} value={client.id}>
-                                {client.name}
-                                {client.deleted_at ? ' (Deleted)' : ''}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                            />
+                          </DisabledFieldTooltip>
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )

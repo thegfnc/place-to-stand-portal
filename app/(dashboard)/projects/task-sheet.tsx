@@ -27,7 +27,6 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
-import { Checkbox } from '@/components/ui/checkbox'
 import {
   Sheet,
   SheetContent,
@@ -36,9 +35,17 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet'
+import {
+  SearchableCombobox,
+  type SearchableComboboxItem,
+} from '@/components/ui/searchable-combobox'
 import { useToast } from '@/components/ui/use-toast'
 
-import type { ProjectWithRelations, TaskWithRelations } from '@/lib/types'
+import type {
+  DbUser,
+  ProjectWithRelations,
+  TaskWithRelations,
+} from '@/lib/types'
 import { useUnsavedChangesWarning } from '@/lib/hooks/use-unsaved-changes-warning'
 
 import { removeTask, saveTask } from './actions'
@@ -72,10 +79,22 @@ const formSchema = z.object({
   ] as const),
   priority: z.enum(['LOW', 'MEDIUM', 'HIGH'] as const),
   dueOn: z.string().optional(),
-  assigneeIds: z.array(z.string().uuid()),
+  assigneeId: z.string().uuid().optional().nullable(),
 })
 
 type FormValues = z.infer<typeof formSchema>
+
+const UNASSIGNED_ASSIGNEE_VALUE = '__UNASSIGNED__'
+
+const formatRoleLabel = (role: string | null) => {
+  if (!role) return 'Unknown role'
+  return role.charAt(0) + role.slice(1).toLowerCase()
+}
+
+const formatMemberRole = (role: string | null | undefined) => {
+  if (!role) return null
+  return role.charAt(0) + role.slice(1).toLowerCase()
+}
 
 function toDateInputValue(value: string | null) {
   if (!value) return ''
@@ -93,6 +112,7 @@ type Props = {
   project: ProjectWithRelations
   task?: TaskWithRelations
   canManage: boolean
+  admins: DbUser[]
 }
 
 export function TaskSheet({
@@ -101,6 +121,7 @@ export function TaskSheet({
   project,
   task,
   canManage,
+  admins,
 }: Props) {
   const [feedback, setFeedback] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
@@ -108,6 +129,7 @@ export function TaskSheet({
   const pendingReason = 'Please wait for the current request to finish.'
   const managePermissionReason =
     'You need manage permissions to edit this task.'
+  const currentAssigneeId = task?.assignees[0]?.user_id ?? null
 
   const getDisabledReason = (disabled: boolean) => {
     if (!disabled) {
@@ -132,15 +154,138 @@ export function TaskSheet({
       status: task?.status ?? 'BACKLOG',
       priority: task?.priority ?? 'MEDIUM',
       dueOn: toDateInputValue(task?.due_on ?? null),
-      assigneeIds: task?.assignees.map(assignee => assignee.user_id) ?? [],
+      assigneeId: currentAssigneeId ?? null,
     }),
-    [task]
+    [currentAssigneeId, task]
   )
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues,
   })
+
+  const memberLookup = useMemo(() => {
+    const map = new Map<string, ProjectWithRelations['members'][number]>()
+    project.members.forEach(member => {
+      map.set(member.user_id, member)
+    })
+    return map
+  }, [project.members])
+
+  const { assigneeItems, hasAssignableCollaborators } = useMemo(() => {
+    const seen = new Set<string>()
+    const adminLookup = new Map<string, DbUser>()
+    const eligibleItems: SearchableComboboxItem[] = []
+    const fallbackItems: SearchableComboboxItem[] = []
+
+    admins.forEach(admin => {
+      if (!admin || admin.deleted_at) {
+        return
+      }
+
+      adminLookup.set(admin.id, admin)
+
+      if (seen.has(admin.id)) {
+        return
+      }
+
+      const label = admin.full_name?.trim() || admin.email
+      eligibleItems.push({
+        value: admin.id,
+        label,
+        description: `${formatRoleLabel(admin.role)} • ${admin.email}`,
+        keywords: [admin.email, 'admin'],
+      })
+      seen.add(admin.id)
+    })
+
+    project.members.forEach(member => {
+      if (!member || seen.has(member.user_id)) {
+        return
+      }
+
+      const user = member.user
+      if (!user || user.deleted_at || user.role !== 'CONTRACTOR') {
+        return
+      }
+
+      const label = user.full_name?.trim() || user.email
+      const memberRoleLabel = formatMemberRole(member.role)
+      const descriptionParts = [formatRoleLabel(user.role)]
+      if (memberRoleLabel) {
+        descriptionParts.push(memberRoleLabel)
+      }
+      descriptionParts.push(user.email)
+
+      eligibleItems.push({
+        value: member.user_id,
+        label,
+        description: descriptionParts.join(' • '),
+        keywords: [
+          user.email,
+          'contractor',
+          memberRoleLabel ?? undefined,
+        ].filter((keyword): keyword is string => Boolean(keyword)),
+      })
+      seen.add(member.user_id)
+    })
+
+    if (currentAssigneeId && !seen.has(currentAssigneeId)) {
+      const currentMember = memberLookup.get(currentAssigneeId)
+      const currentAdmin = adminLookup.get(currentAssigneeId)
+
+      const label =
+        currentMember?.user.full_name?.trim() ??
+        currentAdmin?.full_name?.trim() ??
+        currentMember?.user.email ??
+        currentAdmin?.email ??
+        'Unknown collaborator'
+
+      const descriptionParts: string[] = []
+      const userRole = currentMember?.user.role ?? currentAdmin?.role ?? null
+      if (userRole) {
+        descriptionParts.push(formatRoleLabel(userRole))
+      }
+      if (currentMember) {
+        const memberRoleLabel = formatMemberRole(currentMember.role)
+        if (memberRoleLabel) {
+          descriptionParts.push(memberRoleLabel)
+        }
+        descriptionParts.push(currentMember.user.email)
+      } else if (currentAdmin) {
+        descriptionParts.push(currentAdmin.email)
+      }
+
+      fallbackItems.push({
+        value: currentAssigneeId,
+        label,
+        description: descriptionParts.join(' • '),
+        keywords: [
+          currentMember?.user.email ?? currentAdmin?.email ?? 'unavailable',
+        ],
+        disabled: true,
+      })
+    }
+
+    eligibleItems.sort((a, b) => a.label.localeCompare(b.label))
+    fallbackItems.sort((a, b) => a.label.localeCompare(b.label))
+
+    const items: SearchableComboboxItem[] = [
+      {
+        value: UNASSIGNED_ASSIGNEE_VALUE,
+        label: 'Unassigned',
+        description: 'No collaborator assigned yet.',
+        keywords: ['unassigned'],
+      },
+      ...eligibleItems,
+      ...fallbackItems,
+    ]
+
+    return {
+      assigneeItems: items,
+      hasAssignableCollaborators: eligibleItems.length > 0,
+    }
+  }, [admins, currentAssigneeId, memberLookup, project.members])
 
   const { requestConfirmation: confirmDiscard, dialog: unsavedChangesDialog } =
     useUnsavedChangesWarning({ isDirty: form.formState.isDirty })
@@ -183,7 +328,7 @@ export function TaskSheet({
         status: values.status,
         priority: values.priority,
         dueOn: values.dueOn ? values.dueOn : null,
-        assigneeIds: values.assigneeIds,
+        assigneeIds: values.assigneeId ? [values.assigneeId] : [],
       })
 
       if (result.error) {
@@ -238,7 +383,7 @@ export function TaskSheet({
           <SheetHeader className='px-6 pt-6'>
             <SheetTitle>{task ? 'Edit task' : 'Add task'}</SheetTitle>
             <SheetDescription>
-              Tasks belong to{' '}
+              Task belongs to{' '}
               <span className='font-medium'>{project.name}</span>.
             </SheetDescription>
           </SheetHeader>
@@ -421,71 +566,43 @@ export function TaskSheet({
               </div>
               <FormField
                 control={form.control}
-                name='assigneeIds'
+                name='assigneeId'
                 render={({ field }) => {
                   const disabled = isPending || !canManage
                   const reason = getDisabledReason(disabled)
+                  const selectedValue = field.value ?? UNASSIGNED_ASSIGNEE_VALUE
 
                   return (
                     <FormItem>
-                      <FormLabel>Assignees</FormLabel>
-                      <div className='space-y-2 rounded-md border p-3'>
-                        {project.members.length === 0 ? (
-                          <p className='text-muted-foreground text-sm'>
-                            No collaborators are assigned to this project yet.
-                          </p>
-                        ) : (
-                          project.members.map(member => (
-                            <div
-                              key={member.user_id}
-                              className='flex items-center gap-2'
-                            >
-                              <DisabledFieldTooltip
-                                disabled={disabled}
-                                reason={reason}
-                              >
-                                <Checkbox
-                                  checked={
-                                    field.value?.includes(member.user_id) ??
-                                    false
-                                  }
-                                  disabled={disabled}
-                                  onCheckedChange={next => {
-                                    const current = field.value ?? []
-
-                                    if (next === true) {
-                                      if (!current.includes(member.user_id)) {
-                                        field.onChange([
-                                          ...current,
-                                          member.user_id,
-                                        ])
-                                      }
-                                      return
-                                    }
-
-                                    field.onChange(
-                                      current.filter(
-                                        (id: string) => id !== member.user_id
-                                      )
-                                    )
-                                  }}
-                                />
-                              </DisabledFieldTooltip>
-                              <div className='flex flex-col text-sm leading-tight'>
-                                <span className='font-medium'>
-                                  {member.user.full_name ?? member.user.email}
-                                </span>
-                                <span className='text-muted-foreground text-xs'>
-                                  {member.role.toLowerCase()} •{' '}
-                                  {member.user.email}
-                                </span>
-                              </div>
-                            </div>
-                          ))
-                        )}
-                      </div>
+                      <FormLabel>Assignee</FormLabel>
+                      <FormControl>
+                        <DisabledFieldTooltip
+                          disabled={disabled}
+                          reason={reason}
+                        >
+                          <SearchableCombobox
+                            items={assigneeItems}
+                            value={selectedValue}
+                            onChange={nextValue => {
+                              if (nextValue === UNASSIGNED_ASSIGNEE_VALUE) {
+                                field.onChange(null)
+                                return
+                              }
+                              field.onChange(nextValue)
+                            }}
+                            onBlur={field.onBlur}
+                            name={field.name}
+                            placeholder='Select assignee'
+                            searchPlaceholder='Search collaborators...'
+                            emptyMessage='No eligible collaborators found.'
+                            disabled={disabled}
+                          />
+                        </DisabledFieldTooltip>
+                      </FormControl>
                       <FormDescription>
-                        Only members assigned to this project can be selected.
+                        {hasAssignableCollaborators
+                          ? 'Admins and contractors on this project can be assigned.'
+                          : 'Add an admin or contractor to this project to assign the task.'}
                       </FormDescription>
                       <FormMessage />
                     </FormItem>

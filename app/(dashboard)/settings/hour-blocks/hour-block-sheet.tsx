@@ -19,13 +19,6 @@ import {
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import {
   Sheet,
   SheetContent,
   SheetDescription,
@@ -38,6 +31,7 @@ import type { Database } from '@/supabase/types/database'
 
 import { saveHourBlock, softDeleteHourBlock } from './actions'
 import { useUnsavedChangesWarning } from '@/lib/hooks/use-unsaved-changes-warning'
+import { SearchableCombobox } from '@/components/ui/searchable-combobox'
 
 type HourBlockRow = Database['public']['Tables']['hour_blocks']['Row']
 type ClientRow = Pick<
@@ -104,10 +98,20 @@ export function HourBlockSheet({
     [clients]
   )
 
+  const clientOptions = useMemo(
+    () =>
+      sortedClients.map(client => ({
+        value: client.id,
+        label: client.deleted_at ? `${client.name} (Deleted)` : client.name,
+        keywords: client.deleted_at ? [client.name, 'deleted'] : [client.name],
+      })),
+    [sortedClients]
+  )
+
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema) as Resolver<FormValues>,
     defaultValues: {
-      clientId: hourBlock?.client_id ?? sortedClients[0]?.id ?? '',
+      clientId: hourBlock?.client_id ?? '',
       hoursPurchased: hourBlock?.hours_purchased ?? 5,
       invoiceNumber: hourBlock?.invoice_number ?? '',
     },
@@ -118,13 +122,13 @@ export function HourBlockSheet({
 
   const resetFormState = useCallback(() => {
     form.reset({
-      clientId: hourBlock?.client_id ?? sortedClients[0]?.id ?? '',
+      clientId: hourBlock?.client_id ?? '',
       hoursPurchased: hourBlock?.hours_purchased ?? 5,
       invoiceNumber: hourBlock?.invoice_number ?? '',
     })
     form.clearErrors()
     setFeedback(null)
-  }, [form, hourBlock, sortedClients])
+  }, [form, hourBlock])
 
   const applyServerFieldErrors = (fieldErrors?: Record<string, string[]>) => {
     if (!fieldErrors) return
@@ -307,30 +311,23 @@ export function HourBlockSheet({
                     return (
                       <FormItem>
                         <FormLabel>Client</FormLabel>
-                        <Select
-                          value={field.value ?? ''}
-                          onValueChange={field.onChange}
-                          disabled={disabled}
-                        >
-                          <FormControl>
-                            <DisabledFieldTooltip
+                        <FormControl>
+                          <DisabledFieldTooltip
+                            disabled={disabled}
+                            reason={reason}
+                          >
+                            <SearchableCombobox
+                              name={field.name}
+                              value={field.value ?? ''}
+                              onChange={field.onChange}
+                              onBlur={field.onBlur}
+                              items={clientOptions}
+                              searchPlaceholder='Search clients...'
+                              emptyMessage='No clients found.'
                               disabled={disabled}
-                              reason={reason}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder='Select client' />
-                              </SelectTrigger>
-                            </DisabledFieldTooltip>
-                          </FormControl>
-                          <SelectContent>
-                            {sortedClients.map(client => (
-                              <SelectItem key={client.id} value={client.id}>
-                                {client.name}
-                                {client.deleted_at ? ' (Deleted)' : ''}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                            />
+                          </DisabledFieldTooltip>
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )
