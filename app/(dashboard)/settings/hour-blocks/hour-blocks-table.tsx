@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/tooltip'
 import { useToast } from '@/components/ui/use-toast'
 import type { Database } from '@/supabase/types/database'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 
 import { HourBlockSheet } from './hour-block-sheet'
 import { softDeleteHourBlock } from './actions'
@@ -44,6 +45,9 @@ export function HourBlocksSettingsTable({ hourBlocks, clients }: Props) {
   const [selectedBlock, setSelectedBlock] =
     useState<HourBlockWithClient | null>(null)
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<HourBlockWithClient | null>(
+    null
+  )
   const [isPending, startTransition] = useTransition()
   const { toast } = useToast()
 
@@ -88,19 +92,30 @@ export function HourBlocksSettingsTable({ hourBlocks, clients }: Props) {
     setSheetOpen(false)
   }
 
-  const handleDelete = (block: HourBlockWithClient) => {
-    if (block.deleted_at) {
+  const handleRequestDelete = (block: HourBlockWithClient) => {
+    if (block.deleted_at || isPending) {
       return
     }
 
-    const confirmed = window.confirm(
-      'Deleting this block hides it from active reporting while keeping historical data intact.'
-    )
+    setDeleteTarget(block)
+  }
 
-    if (!confirmed) {
+  const handleCancelDelete = () => {
+    if (isPending) {
       return
     }
 
+    setDeleteTarget(null)
+  }
+
+  const handleConfirmDelete = () => {
+    if (!deleteTarget || deleteTarget.deleted_at) {
+      setDeleteTarget(null)
+      return
+    }
+
+    const block = deleteTarget
+    setDeleteTarget(null)
     setPendingDeleteId(block.id)
     startTransition(async () => {
       try {
@@ -138,6 +153,16 @@ export function HourBlocksSettingsTable({ hourBlocks, clients }: Props) {
 
   return (
     <div className='space-y-6'>
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        title='Delete hour block?'
+        description='Deleting this block hides it from active reporting while keeping historical data intact.'
+        confirmLabel='Delete'
+        confirmVariant='destructive'
+        confirmDisabled={isPending}
+        onCancel={handleCancelDelete}
+        onConfirm={handleConfirmDelete}
+      />
       <div className='flex flex-wrap items-center gap-3'>
         <div>
           <h2 className='text-xl font-semibold'>Hour Blocks</h2>
@@ -226,7 +251,7 @@ export function HourBlocksSettingsTable({ hourBlocks, clients }: Props) {
                       <Button
                         variant='destructive'
                         size='icon'
-                        onClick={() => handleDelete(block)}
+                        onClick={() => handleRequestDelete(block)}
                         title={
                           deleteDisabled
                             ? 'Hour block already deleted'

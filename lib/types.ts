@@ -1,6 +1,8 @@
 import type { Database } from '@/supabase/types/database'
 
 export type DbClient = Database['public']['Tables']['clients']['Row']
+export type DbClientMember =
+  Database['public']['Tables']['client_members']['Row']
 export type DbProject = Database['public']['Tables']['projects']['Row']
 export type DbTask = Database['public']['Tables']['tasks']['Row']
 export type DbUser = Database['public']['Tables']['users']['Row']

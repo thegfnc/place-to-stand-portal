@@ -1,9 +1,9 @@
-'use client';
+'use client'
 
-import { useMemo, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
-import { format, parseISO } from "date-fns";
-import { Building2, FolderKanban, Pencil, Plus, Trash2 } from "lucide-react";
+import { useMemo, useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
+import { format, parseISO } from 'date-fns'
+import { Building2, FolderKanban, Pencil, Plus, Trash2 } from 'lucide-react'
 
 import {
   Table,
@@ -12,232 +12,294 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { useToast } from "@/components/ui/use-toast";
-import type { Database } from "@/supabase/types/database";
+} from '@/components/ui/table'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
+import { useToast } from '@/components/ui/use-toast'
+import type { Database } from '@/supabase/types/database'
 
-import { cn } from "@/lib/utils";
-import { getProjectStatusLabel, getProjectStatusToken } from "@/lib/constants";
+import { cn } from '@/lib/utils'
+import { getProjectStatusLabel, getProjectStatusToken } from '@/lib/constants'
 
-import { ProjectSheet } from "./project-sheet";
-import { softDeleteProject } from "./actions";
+import { ProjectSheet } from './project-sheet'
+import { softDeleteProject } from './actions'
 
-type ProjectRow = Database["public"]["Tables"]["projects"]["Row"];
-type ClientRow = Pick<Database["public"]["Tables"]["clients"]["Row"], "id" | "name" | "deleted_at">;
+type ProjectRow = Database['public']['Tables']['projects']['Row']
+type ClientRow = Pick<
+  Database['public']['Tables']['clients']['Row'],
+  'id' | 'name' | 'deleted_at'
+>
 
-type ProjectWithClient = ProjectRow & { client: ClientRow | null };
+type ProjectWithClient = ProjectRow & { client: ClientRow | null }
+
+type ContractorUserSummary = {
+  id: string
+  email: string
+  fullName: string | null
+}
 
 type Props = {
-  projects: ProjectWithClient[];
-  clients: ClientRow[];
-};
+  projects: ProjectWithClient[]
+  clients: ClientRow[]
+  contractorUsers: ContractorUserSummary[]
+  membersByProject: Record<string, ContractorUserSummary[]>
+}
 
-export function ProjectsSettingsTable({ projects, clients }: Props) {
-  const router = useRouter();
-  const [sheetOpen, setSheetOpen] = useState(false);
-  const [selectedProject, setSelectedProject] = useState<ProjectWithClient | null>(null);
-  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
-  const [isPending, startTransition] = useTransition();
-  const { toast } = useToast();
+export function ProjectsSettingsTable({
+  projects,
+  clients,
+  contractorUsers,
+  membersByProject,
+}: Props) {
+  const router = useRouter()
+  const [sheetOpen, setSheetOpen] = useState(false)
+  const [selectedProject, setSelectedProject] =
+    useState<ProjectWithClient | null>(null)
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<ProjectWithClient | null>(
+    null
+  )
+  const [isPending, startTransition] = useTransition()
+  const { toast } = useToast()
 
   const sortedProjects = useMemo(
     () =>
       projects
-        .filter((project) => !project.deleted_at)
-        .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" })),
+        .filter(project => !project.deleted_at)
+        .sort((a, b) =>
+          a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
+        ),
     [projects]
-  );
+  )
 
   const sortedClients = useMemo(
-    () => [...clients].sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" })),
+    () =>
+      [...clients].sort((a, b) =>
+        a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
+      ),
     [clients]
-  );
+  )
 
-  const createDisabled = sortedClients.length === 0;
+  const createDisabled = sortedClients.length === 0
   const createDisabledReason = createDisabled
-    ? "Add a client before creating a project."
-    : null;
+    ? 'Add a client before creating a project.'
+    : null
 
   const openCreate = () => {
-    setSelectedProject(null);
-    setSheetOpen(true);
-  };
+    setSelectedProject(null)
+    setSheetOpen(true)
+  }
 
   const openEdit = (project: ProjectWithClient) => {
-    setSelectedProject(project);
-    setSheetOpen(true);
-  };
+    setSelectedProject(project)
+    setSheetOpen(true)
+  }
 
   const handleClosed = () => {
-    setSheetOpen(false);
-  };
+    setSheetOpen(false)
+  }
 
-  const handleDelete = (project: ProjectWithClient) => {
-    if (project.deleted_at) {
-      return;
+  const handleRequestDelete = (project: ProjectWithClient) => {
+    if (project.deleted_at || isPending) {
+      return
     }
 
-    const confirmed = window.confirm(
-      "Deleting this project hides it from active views but keeps the history intact."
-    );
+    setDeleteTarget(project)
+  }
 
-    if (!confirmed) {
-      return;
+  const handleCancelDelete = () => {
+    if (isPending) {
+      return
     }
 
-    setPendingDeleteId(project.id);
+    setDeleteTarget(null)
+  }
+
+  const handleConfirmDelete = () => {
+    if (!deleteTarget || deleteTarget.deleted_at) {
+      setDeleteTarget(null)
+      return
+    }
+
+    const project = deleteTarget
+    setDeleteTarget(null)
+    setPendingDeleteId(project.id)
     startTransition(async () => {
       try {
-        const result = await softDeleteProject({ id: project.id });
+        const result = await softDeleteProject({ id: project.id })
 
         if (result.error) {
           toast({
-            title: "Unable to delete project",
+            title: 'Unable to delete project',
             description: result.error,
-            variant: "destructive",
-          });
-          return;
+            variant: 'destructive',
+          })
+          return
         }
 
         toast({
-          title: "Project deleted",
+          title: 'Project deleted',
           description: `${project.name} is hidden from active views but remains in historical reporting.`,
-        });
-        router.refresh();
+        })
+        router.refresh()
       } finally {
-        setPendingDeleteId(null);
+        setPendingDeleteId(null)
       }
-    });
-  };
+    })
+  }
 
   const formatDate = (value?: string | null) => {
-    if (!value) return null;
+    if (!value) return null
 
     try {
-      const normalized = value.includes("T") ? value : `${value}T00:00:00`;
+      const normalized = value.includes('T') ? value : `${value}T00:00:00`
       // Ensure the stored date renders as the exact day selected, regardless of timezone.
-      return format(parseISO(normalized), "MMM d, yyyy");
+      return format(parseISO(normalized), 'MMM d, yyyy')
     } catch (error) {
-      console.warn("Unable to format project date", { value, error });
-      return null;
+      console.warn('Unable to format project date', { value, error })
+      return null
     }
-  };
+  }
 
   const formatRange = (start?: string | null, end?: string | null) => {
     if (!start && !end) {
-      return "—";
+      return '—'
     }
 
-    const startLabel = formatDate(start) ?? "TBD";
-    const endLabel = formatDate(end) ?? "TBD";
+    const startLabel = formatDate(start) ?? 'TBD'
+    const endLabel = formatDate(end) ?? 'TBD'
 
     if (startLabel === endLabel) {
-      return startLabel;
+      return startLabel
     }
 
-    return `${startLabel} – ${endLabel}`;
-  };
+    return `${startLabel} – ${endLabel}`
+  }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center gap-3">
+    <div className='space-y-6'>
+      <div className='flex flex-wrap items-center gap-3'>
         <div>
-          <h2 className="text-xl font-semibold">Projects</h2>
-          <p className="text-sm text-muted-foreground">
+          <h2 className='text-xl font-semibold'>Projects</h2>
+          <p className='text-muted-foreground text-sm'>
             Review active projects with quick insight into timing and client.
           </p>
         </div>
         {createDisabledReason ? (
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button className="ml-auto" onClick={openCreate} disabled={createDisabled}>
-                <Plus className="h-4 w-4" /> Add project
+              <Button
+                className='ml-auto'
+                onClick={openCreate}
+                disabled={createDisabled}
+              >
+                <Plus className='h-4 w-4' /> Add project
               </Button>
             </TooltipTrigger>
             <TooltipContent>{createDisabledReason}</TooltipContent>
           </Tooltip>
         ) : (
-          <Button className="ml-auto" onClick={openCreate} disabled={createDisabled}>
-            <Plus className="h-4 w-4" /> Add project
+          <Button
+            className='ml-auto'
+            onClick={openCreate}
+            disabled={createDisabled}
+          >
+            <Plus className='h-4 w-4' /> Add project
           </Button>
         )}
       </div>
-      <div className="overflow-hidden rounded-xl border">
+      <div className='overflow-hidden rounded-xl border'>
         <Table>
           <TableHeader>
-            <TableRow className="bg-muted/40">
+            <TableRow className='bg-muted/40'>
               <TableHead>Name</TableHead>
               <TableHead>Client</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Timeline</TableHead>
-              <TableHead className="w-28 text-right">Actions</TableHead>
+              <TableHead className='w-28 text-right'>Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {sortedProjects.map((project) => {
-              const client = project.client;
-              const deleting = isPending && pendingDeleteId === project.id;
-              const deleteDisabled = deleting;
+            {sortedProjects.map(project => {
+              const client = project.client
+              const deleting = isPending && pendingDeleteId === project.id
+              const deleteDisabled = deleting
 
               return (
                 <TableRow key={project.id}>
                   <TableCell>
-                    <div className="flex items-center gap-2">
-                      <FolderKanban className="h-4 w-4 text-muted-foreground" />
-                      <span className="font-medium">{project.name}</span>
+                    <div className='flex items-center gap-2'>
+                      <FolderKanban className='text-muted-foreground h-4 w-4' />
+                      <span className='font-medium'>{project.name}</span>
                     </div>
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-2 text-sm">
-                      <Building2 className="h-4 w-4 text-muted-foreground" />
-                      <span>{client ? client.name : "Unassigned"}</span>
+                    <div className='flex items-center gap-2 text-sm'>
+                      <Building2 className='text-muted-foreground h-4 w-4' />
+                      <span>{client ? client.name : 'Unassigned'}</span>
                     </div>
                     {client?.deleted_at ? (
-                      <p className="text-xs text-destructive">Client archived</p>
+                      <p className='text-destructive text-xs'>
+                        Client archived
+                      </p>
                     ) : null}
                   </TableCell>
                   <TableCell>
-                    <Badge className={cn("text-xs", getProjectStatusToken(project.status))}>
+                    <Badge
+                      className={cn(
+                        'text-xs',
+                        getProjectStatusToken(project.status)
+                      )}
+                    >
                       {getProjectStatusLabel(project.status)}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
+                  <TableCell className='text-muted-foreground text-sm'>
                     {formatRange(project.starts_on, project.ends_on)}
                   </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
+                  <TableCell className='text-right'>
+                    <div className='flex justify-end gap-2'>
                       <Button
-                        variant="outline"
-                        size="icon"
+                        variant='outline'
+                        size='icon'
                         onClick={() => openEdit(project)}
-                        title="Edit project"
+                        title='Edit project'
                         disabled={deleting}
                       >
-                        <Pencil className="h-4 w-4" />
+                        <Pencil className='h-4 w-4' />
                       </Button>
                       <Button
-                        variant="destructive"
-                        size="icon"
-                        onClick={() => handleDelete(project)}
-                        title={deleteDisabled ? "Deleting project" : "Delete project"}
-                        aria-label="Delete project"
+                        variant='destructive'
+                        size='icon'
+                        onClick={() => handleRequestDelete(project)}
+                        title={
+                          deleteDisabled ? 'Deleting project' : 'Delete project'
+                        }
+                        aria-label='Delete project'
                         disabled={deleteDisabled}
                       >
-                        <Trash2 className="h-4 w-4" />
-                        <span className="sr-only">Delete</span>
+                        <Trash2 className='h-4 w-4' />
+                        <span className='sr-only'>Delete</span>
                       </Button>
                     </div>
                   </TableCell>
                 </TableRow>
-              );
+              )
             })}
             {sortedProjects.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="py-10 text-center text-sm text-muted-foreground">
-                  No projects yet. Create one from the Projects view to see it here.
+                <TableCell
+                  colSpan={5}
+                  className='text-muted-foreground py-10 text-center text-sm'
+                >
+                  No projects yet. Create one from the Projects view to see it
+                  here.
                 </TableCell>
               </TableRow>
             ) : null}
@@ -250,7 +312,19 @@ export function ProjectsSettingsTable({ projects, clients }: Props) {
         onComplete={handleClosed}
         project={selectedProject}
         clients={sortedClients}
+        contractorDirectory={contractorUsers}
+        projectContractors={membersByProject}
+      />
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        title='Delete project?'
+        description='Deleting this project hides it from active views but keeps the history intact.'
+        confirmLabel='Delete'
+        confirmVariant='destructive'
+        confirmDisabled={isPending}
+        onCancel={handleCancelDelete}
+        onConfirm={handleConfirmDelete}
       />
     </div>
-  );
+  )
 }

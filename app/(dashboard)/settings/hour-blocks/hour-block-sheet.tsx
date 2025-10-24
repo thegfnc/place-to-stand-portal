@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState, useTransition } from 'react'
+import { useCallback, useEffect, useMemo, useState, useTransition } from 'react'
 import { useForm, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -8,6 +8,7 @@ import { Trash2 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { DisabledFieldTooltip } from '@/components/ui/disabled-field-tooltip'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import {
   Form,
   FormControl,
@@ -36,6 +37,7 @@ import { useToast } from '@/components/ui/use-toast'
 import type { Database } from '@/supabase/types/database'
 
 import { saveHourBlock, softDeleteHourBlock } from './actions'
+import { useUnsavedChangesWarning } from '@/lib/hooks/use-unsaved-changes-warning'
 
 type HourBlockRow = Database['public']['Tables']['hour_blocks']['Row']
 type ClientRow = Pick<
@@ -89,6 +91,7 @@ export function HourBlockSheet({
   const isEditing = Boolean(hourBlock)
   const [feedback, setFeedback] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const { toast } = useToast()
   const pendingReason = 'Please wait for the current request to finish.'
   const missingClientReason = 'Create a client before logging hour blocks.'
@@ -110,6 +113,19 @@ export function HourBlockSheet({
     },
   })
 
+  const { requestConfirmation: confirmDiscard, dialog: unsavedChangesDialog } =
+    useUnsavedChangesWarning({ isDirty: form.formState.isDirty })
+
+  const resetFormState = useCallback(() => {
+    form.reset({
+      clientId: hourBlock?.client_id ?? sortedClients[0]?.id ?? '',
+      hoursPurchased: hourBlock?.hours_purchased ?? 5,
+      invoiceNumber: hourBlock?.invoice_number ?? '',
+    })
+    form.clearErrors()
+    setFeedback(null)
+  }, [form, hourBlock, sortedClients])
+
   const applyServerFieldErrors = (fieldErrors?: Record<string, string[]>) => {
     if (!fieldErrors) return
 
@@ -121,16 +137,24 @@ export function HourBlockSheet({
   }
 
   useEffect(() => {
-    form.reset({
-      clientId: hourBlock?.client_id ?? sortedClients[0]?.id ?? '',
-      hoursPurchased: hourBlock?.hours_purchased ?? 5,
-      invoiceNumber: hourBlock?.invoice_number ?? '',
-    })
-    form.clearErrors()
     startTransition(() => {
-      setFeedback(null)
+      resetFormState()
     })
-  }, [form, hourBlock, sortedClients, startTransition])
+  }, [resetFormState, startTransition])
+
+  const handleSheetOpenChange = (next: boolean) => {
+    if (!next) {
+      confirmDiscard(() => {
+        startTransition(() => {
+          resetFormState()
+        })
+        onOpenChange(false)
+      })
+      return
+    }
+
+    onOpenChange(next)
+  }
 
   const onSubmit = (values: FormValues) => {
     startTransition(async () => {
@@ -168,22 +192,34 @@ export function HourBlockSheet({
           : 'The hour block is ready for tracking.',
       })
 
+      resetFormState()
       onOpenChange(false)
       onComplete()
     })
   }
 
-  const handleDelete = () => {
-    if (!hourBlock || hourBlock.deleted_at) {
+  const handleRequestDelete = () => {
+    if (!hourBlock || hourBlock.deleted_at || isPending) {
       return
     }
 
-    const confirmed = window.confirm(
-      'Deleting this block hides it from active reporting while keeping historical data intact.'
-    )
+    setIsDeleteDialogOpen(true)
+  }
 
-    if (!confirmed) return
+  const handleCancelDelete = () => {
+    if (isPending) {
+      return
+    }
 
+    setIsDeleteDialogOpen(false)
+  }
+
+  const handleConfirmDelete = () => {
+    if (!hourBlock || hourBlock.deleted_at || isPending) {
+      return
+    }
+
+    setIsDeleteDialogOpen(false)
     startTransition(async () => {
       setFeedback(null)
       form.clearErrors()
@@ -236,79 +272,117 @@ export function HourBlockSheet({
       : 'Create hour block'
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className='flex w-full flex-col gap-6 overflow-y-auto sm:max-w-2xl'>
-        <SheetHeader className='px-6 pt-6'>
-          <SheetTitle>
-            {isEditing ? 'Edit hour block' : 'Add hour block'}
-          </SheetTitle>
-          <SheetDescription>
-            {isEditing
-              ? 'Adjust purchased hours or delete the block if it is no longer needed.'
-              : 'Assign purchased hours to a client so the team can track usage.'}
-          </SheetDescription>
-        </SheetHeader>
-        <Form {...form}>
-          <form
-            onSubmit={form.handleSubmit(onSubmit)}
-            className='flex flex-1 flex-col gap-5 px-6 pb-6'
-          >
-            <div className='grid gap-4 sm:grid-cols-2'>
-              <FormField
-                control={form.control}
-                name='clientId'
-                render={({ field }) => {
-                  const disabled = isPending || sortedClients.length === 0
-                  const reason = disabled
-                    ? isPending
-                      ? pendingReason
-                      : sortedClients.length === 0
-                        ? missingClientReason
-                        : null
-                    : null
+    <>
+      <Sheet open={open} onOpenChange={handleSheetOpenChange}>
+        <SheetContent className='flex w-full flex-col gap-6 overflow-y-auto sm:max-w-2xl'>
+          <SheetHeader className='px-6 pt-6'>
+            <SheetTitle>
+              {isEditing ? 'Edit hour block' : 'Add hour block'}
+            </SheetTitle>
+            <SheetDescription>
+              {isEditing
+                ? 'Adjust purchased hours or delete the block if it is no longer needed.'
+                : 'Assign purchased hours to a client so the team can track usage.'}
+            </SheetDescription>
+          </SheetHeader>
+          <Form {...form}>
+            <form
+              onSubmit={form.handleSubmit(onSubmit)}
+              className='flex flex-1 flex-col gap-5 px-6 pb-6'
+            >
+              <div className='grid gap-4 sm:grid-cols-2'>
+                <FormField
+                  control={form.control}
+                  name='clientId'
+                  render={({ field }) => {
+                    const disabled = isPending || sortedClients.length === 0
+                    const reason = disabled
+                      ? isPending
+                        ? pendingReason
+                        : sortedClients.length === 0
+                          ? missingClientReason
+                          : null
+                      : null
 
-                  return (
-                    <FormItem>
-                      <FormLabel>Client</FormLabel>
-                      <Select
-                        value={field.value ?? ''}
-                        onValueChange={field.onChange}
-                        disabled={disabled}
-                      >
+                    return (
+                      <FormItem>
+                        <FormLabel>Client</FormLabel>
+                        <Select
+                          value={field.value ?? ''}
+                          onValueChange={field.onChange}
+                          disabled={disabled}
+                        >
+                          <FormControl>
+                            <DisabledFieldTooltip
+                              disabled={disabled}
+                              reason={reason}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder='Select client' />
+                              </SelectTrigger>
+                            </DisabledFieldTooltip>
+                          </FormControl>
+                          <SelectContent>
+                            {sortedClients.map(client => (
+                              <SelectItem key={client.id} value={client.id}>
+                                {client.name}
+                                {client.deleted_at ? ' (Deleted)' : ''}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )
+                  }}
+                />
+                <FormField
+                  control={form.control}
+                  name='hoursPurchased'
+                  render={({ field }) => {
+                    const disabled = isPending
+                    const reason = disabled ? pendingReason : null
+
+                    return (
+                      <FormItem>
+                        <FormLabel>Hours purchased</FormLabel>
                         <FormControl>
                           <DisabledFieldTooltip
                             disabled={disabled}
                             reason={reason}
                           >
-                            <SelectTrigger>
-                              <SelectValue placeholder='Select client' />
-                            </SelectTrigger>
+                            <Input
+                              {...field}
+                              value={field.value ?? ''}
+                              type='number'
+                              step='1'
+                              min='1'
+                              inputMode='numeric'
+                              disabled={disabled}
+                            />
                           </DisabledFieldTooltip>
                         </FormControl>
-                        <SelectContent>
-                          {sortedClients.map(client => (
-                            <SelectItem key={client.id} value={client.id}>
-                              {client.name}
-                              {client.deleted_at ? ' (Deleted)' : ''}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )
-                }}
-              />
+                        <FormMessage />
+                      </FormItem>
+                    )
+                  }}
+                />
+              </div>
               <FormField
                 control={form.control}
-                name='hoursPurchased'
+                name='invoiceNumber'
                 render={({ field }) => {
                   const disabled = isPending
                   const reason = disabled ? pendingReason : null
 
                   return (
                     <FormItem>
-                      <FormLabel>Hours purchased</FormLabel>
+                      <FormLabel>
+                        Invoice #{' '}
+                        <span className='text-muted-foreground text-xs'>
+                          (optional)
+                        </span>
+                      </FormLabel>
                       <FormControl>
                         <DisabledFieldTooltip
                           disabled={disabled}
@@ -317,10 +391,9 @@ export function HourBlockSheet({
                           <Input
                             {...field}
                             value={field.value ?? ''}
-                            type='number'
-                            step='1'
-                            min='1'
-                            inputMode='numeric'
+                            placeholder='INV-2025-01'
+                            inputMode='text'
+                            maxLength={64}
                             disabled={disabled}
                           />
                         </DisabledFieldTooltip>
@@ -330,72 +403,51 @@ export function HourBlockSheet({
                   )
                 }}
               />
-            </div>
-            <FormField
-              control={form.control}
-              name='invoiceNumber'
-              render={({ field }) => {
-                const disabled = isPending
-                const reason = disabled ? pendingReason : null
-
-                return (
-                  <FormItem>
-                    <FormLabel>
-                      Invoice #{' '}
-                      <span className='text-muted-foreground text-xs'>
-                        (optional)
-                      </span>
-                    </FormLabel>
-                    <FormControl>
-                      <DisabledFieldTooltip disabled={disabled} reason={reason}>
-                        <Input
-                          {...field}
-                          value={field.value ?? ''}
-                          placeholder='INV-2025-01'
-                          inputMode='text'
-                          maxLength={64}
-                          disabled={disabled}
-                        />
-                      </DisabledFieldTooltip>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )
-              }}
-            />
-            {feedback ? (
-              <p className='border-destructive/40 bg-destructive/10 text-destructive rounded-md border px-3 py-2 text-sm'>
-                {feedback}
-              </p>
-            ) : null}
-            <SheetFooter className='flex items-center justify-end gap-3 px-0 pt-6 pb-0'>
-              {isEditing ? (
-                <DisabledFieldTooltip
-                  disabled={deleteDisabled}
-                  reason={deleteDisabledReason}
-                >
-                  <Button
-                    type='button'
-                    variant='destructive'
-                    onClick={handleDelete}
+              {feedback ? (
+                <p className='border-destructive/40 bg-destructive/10 text-destructive rounded-md border px-3 py-2 text-sm'>
+                  {feedback}
+                </p>
+              ) : null}
+              <SheetFooter className='flex items-center justify-end gap-3 px-0 pt-6 pb-0'>
+                {isEditing ? (
+                  <DisabledFieldTooltip
                     disabled={deleteDisabled}
+                    reason={deleteDisabledReason}
                   >
-                    <Trash2 className='h-4 w-4' /> Delete
+                    <Button
+                      type='button'
+                      variant='destructive'
+                      onClick={handleRequestDelete}
+                      disabled={deleteDisabled}
+                    >
+                      <Trash2 className='h-4 w-4' /> Delete
+                    </Button>
+                  </DisabledFieldTooltip>
+                ) : null}
+                <DisabledFieldTooltip
+                  disabled={submitDisabled}
+                  reason={submitDisabledReason}
+                >
+                  <Button type='submit' disabled={submitDisabled}>
+                    {submitLabel}
                   </Button>
                 </DisabledFieldTooltip>
-              ) : null}
-              <DisabledFieldTooltip
-                disabled={submitDisabled}
-                reason={submitDisabledReason}
-              >
-                <Button type='submit' disabled={submitDisabled}>
-                  {submitLabel}
-                </Button>
-              </DisabledFieldTooltip>
-            </SheetFooter>
-          </form>
-        </Form>
-      </SheetContent>
-    </Sheet>
+              </SheetFooter>
+            </form>
+          </Form>
+        </SheetContent>
+      </Sheet>
+      <ConfirmDialog
+        open={isDeleteDialogOpen}
+        title='Delete hour block?'
+        description='Deleting this block hides it from active reporting while keeping historical data intact.'
+        confirmLabel='Delete'
+        confirmVariant='destructive'
+        confirmDisabled={isPending}
+        onCancel={handleCancelDelete}
+        onConfirm={handleConfirmDelete}
+      />
+      {unsavedChangesDialog}
+    </>
   )
 }
