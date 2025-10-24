@@ -176,14 +176,27 @@ export function ProjectsBoard({
   }, [activeProject, currentUserId, currentUserRole])
 
   const memberDirectory = useMemo(() => {
-    if (!activeProject) return new Map<string, { name: string }>()
-    return new Map(
-      activeProject.members.map(member => [
-        member.user_id,
-        { name: member.user.full_name ?? member.user.email },
-      ])
-    )
-  }, [activeProject])
+    const directory = new Map<string, { name: string }>()
+
+    if (activeProject) {
+      activeProject.members.forEach(member => {
+        directory.set(member.user_id, {
+          name: member.user.full_name ?? member.user.email,
+        })
+      })
+    }
+
+    // Include administrators who may not be listed as project members.
+    admins.forEach(admin => {
+      if (!directory.has(admin.id)) {
+        directory.set(admin.id, {
+          name: admin.full_name ?? admin.email,
+        })
+      }
+    })
+
+    return directory
+  }, [activeProject, admins])
 
   const tasksByColumn = useMemo(() => {
     const map = new Map<BoardColumnId, TaskWithRelations[]>()
