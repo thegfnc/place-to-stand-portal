@@ -1,0 +1,126 @@
+'use client'
+
+import { Trash2 } from 'lucide-react'
+
+import { Button } from '@/components/ui/button'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { DisabledFieldTooltip } from '@/components/ui/disabled-field-tooltip'
+import { Form } from '@/components/ui/form'
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet'
+
+import type { UserSheetProps } from './types'
+import { UserSheetFormFields } from './user-sheet-form-fields'
+import { useUserSheetState } from './use-user-sheet-state'
+
+export function UserSheet(props: UserSheetProps) {
+  const {
+    form,
+    isEditing,
+    isPending,
+    feedback,
+    avatarFieldKey,
+    avatarInitials,
+    avatarDisplayName,
+    emailDisabled,
+    emailDisabledReason,
+    roleDisabled,
+    roleDisabledReason,
+    submitDisabled,
+    submitDisabledReason,
+    deleteDisabled,
+    deleteDisabledReason,
+    isDeleteDialogOpen,
+    pendingReason,
+    unsavedChangesDialog,
+    handleSheetOpenChange,
+    handleFormSubmit,
+    handleRequestDelete,
+    handleCancelDelete,
+    handleConfirmDelete,
+  } = useUserSheetState(props)
+
+  return (
+    <>
+      <Sheet open={props.open} onOpenChange={handleSheetOpenChange}>
+        <SheetContent className='flex w-full flex-col gap-6 overflow-y-auto sm:max-w-lg'>
+          <SheetHeader className='px-6 pt-6'>
+            <SheetTitle>{isEditing ? 'Edit user' : 'Add user'}</SheetTitle>
+            <SheetDescription>
+              {isEditing
+                ? "Update the member's access level or reset their credentials."
+                : 'Provision a new teammate with immediate access to the portal.'}
+            </SheetDescription>
+          </SheetHeader>
+          <Form {...form}>
+            <form
+              onSubmit={form.handleSubmit(handleFormSubmit)}
+              className='flex flex-1 flex-col gap-5 px-6 pb-6'
+            >
+              <UserSheetFormFields
+                form={form}
+                isPending={isPending}
+                pendingReason={pendingReason}
+                emailDisabled={emailDisabled}
+                emailDisabledReason={emailDisabledReason}
+                roleDisabled={roleDisabled}
+                roleDisabledReason={roleDisabledReason}
+                avatarFieldKey={avatarFieldKey}
+                avatarInitials={avatarInitials}
+                avatarDisplayName={avatarDisplayName}
+                targetUserId={props.user?.id ?? null}
+                isEditing={isEditing}
+              />
+              {feedback ? (
+                <p className='text-destructive text-sm'>{feedback}</p>
+              ) : null}
+              <SheetFooter className='flex items-center justify-between gap-3 px-0 pt-6 pb-0'>
+                <DisabledFieldTooltip
+                  disabled={submitDisabled}
+                  reason={submitDisabledReason}
+                >
+                  <Button type='submit' disabled={submitDisabled}>
+                    {isEditing ? 'Save changes' : 'Send invite'}
+                  </Button>
+                </DisabledFieldTooltip>
+                {isEditing ? (
+                  <DisabledFieldTooltip
+                    disabled={deleteDisabled}
+                    reason={deleteDisabledReason}
+                  >
+                    <Button
+                      type='button'
+                      variant='destructive'
+                      onClick={handleRequestDelete}
+                      disabled={deleteDisabled}
+                      aria-label='Delete user'
+                    >
+                      <Trash2 className='h-4 w-4' />
+                    </Button>
+                  </DisabledFieldTooltip>
+                ) : null}
+              </SheetFooter>
+            </form>
+          </Form>
+        </SheetContent>
+      </Sheet>
+      <ConfirmDialog
+        open={isDeleteDialogOpen}
+        title='Delete user?'
+        description='Deleting this user removes their access but keeps historical records intact.'
+        confirmLabel='Delete'
+        confirmVariant='destructive'
+        confirmDisabled={isPending}
+        onCancel={handleCancelDelete}
+        onConfirm={handleConfirmDelete}
+      />
+      {unsavedChangesDialog}
+    </>
+  )
+}

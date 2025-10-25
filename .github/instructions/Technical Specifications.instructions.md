@@ -58,7 +58,7 @@ applyTo: '**'
 
 ## **2. Development Practices**
 
-- **Modular Architecture:** Group features by domain inside `src/app` and `src/components`. Shared utilities live under `src/lib` or `src/hooks`.
+- **Modular Architecture:** Group features by domain inside `/app` and `/components`. Shared utilities live under `/lib`.
 - **Single Responsibility Principle:** As files approach 300 lines, consider splitting by responsibility. Each component, function, or module should have one clear purpose.
 - **Separation of Concerns:** Distinguish between UI, state management, data fetching, and business logic layers.
 - **DRY Principle:** Reuse code via shared utilities, hooks, and components. Abstract common patterns when they appear in 3+ places.
