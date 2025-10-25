@@ -166,6 +166,18 @@ export function ClientSheetForm({
         </div>
         {feedback ? <p className={FEEDBACK_CLASSES}>{feedback}</p> : null}
         <SheetFooter className='flex items-center justify-between gap-3 px-0 pt-6 pb-0'>
+          <DisabledFieldTooltip
+            disabled={submitDisabled}
+            reason={submitDisabledReason}
+          >
+            <Button type='submit' disabled={submitDisabled}>
+              {isPending
+                ? 'Saving...'
+                : isEditing
+                  ? 'Save changes'
+                  : 'Create client'}
+            </Button>
+          </DisabledFieldTooltip>
           {isEditing ? (
             <DisabledFieldTooltip
               disabled={deleteDisabled}
@@ -181,18 +193,6 @@ export function ClientSheetForm({
               </Button>
             </DisabledFieldTooltip>
           ) : null}
-          <DisabledFieldTooltip
-            disabled={submitDisabled}
-            reason={submitDisabledReason}
-          >
-            <Button type='submit' disabled={submitDisabled}>
-              {isPending
-                ? 'Saving...'
-                : isEditing
-                  ? 'Save changes'
-                  : 'Create client'}
-            </Button>
-          </DisabledFieldTooltip>
         </SheetFooter>
       </form>
     </Form>

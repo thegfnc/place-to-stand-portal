@@ -259,6 +259,14 @@ export function ProjectSheetForm(props: ProjectSheetFormProps) {
           </p>
         ) : null}
         <SheetFooter className='flex items-center justify-between gap-3 px-0 pt-6 pb-0'>
+          <DisabledFieldTooltip
+            disabled={submitButton.disabled}
+            reason={submitButton.reason}
+          >
+            <Button type='submit' disabled={submitButton.disabled}>
+              {submitButton.label}
+            </Button>
+          </DisabledFieldTooltip>
           {isEditing ? (
             <DisabledFieldTooltip
               disabled={deleteButton.disabled}
@@ -274,14 +282,6 @@ export function ProjectSheetForm(props: ProjectSheetFormProps) {
               </Button>
             </DisabledFieldTooltip>
           ) : null}
-          <DisabledFieldTooltip
-            disabled={submitButton.disabled}
-            reason={submitButton.reason}
-          >
-            <Button type='submit' disabled={submitButton.disabled}>
-              {submitButton.label}
-            </Button>
-          </DisabledFieldTooltip>
         </SheetFooter>
       </form>
     </Form>

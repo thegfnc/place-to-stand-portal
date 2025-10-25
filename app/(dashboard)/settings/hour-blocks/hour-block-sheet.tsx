@@ -81,7 +81,7 @@ export function HourBlockSheet({
   return (
     <>
       <Sheet open={open} onOpenChange={handleSheetOpenChange}>
-        <SheetContent className='flex w-full flex-col gap-6 overflow-y-auto sm:max-w-2xl'>
+        <SheetContent className='flex w-full flex-col gap-6 overflow-y-auto sm:max-w-lg'>
           <SheetHeader className='px-6 pt-6'>
             <SheetTitle>
               {isEditing ? 'Edit hour block' : 'Add hour block'}
@@ -190,6 +190,14 @@ export function HourBlockSheet({
                 </p>
               ) : null}
               <SheetFooter className='flex items-center justify-between gap-3 px-0 pt-6 pb-0'>
+                <DisabledFieldTooltip
+                  disabled={submitButton.disabled}
+                  reason={submitButton.reason}
+                >
+                  <Button type='submit' disabled={submitButton.disabled}>
+                    {submitButton.label}
+                  </Button>
+                </DisabledFieldTooltip>
                 {isEditing ? (
                   <DisabledFieldTooltip
                     disabled={deleteButton.disabled}
@@ -205,14 +213,6 @@ export function HourBlockSheet({
                     </Button>
                   </DisabledFieldTooltip>
                 ) : null}
-                <DisabledFieldTooltip
-                  disabled={submitButton.disabled}
-                  reason={submitButton.reason}
-                >
-                  <Button type='submit' disabled={submitButton.disabled}>
-                    {submitButton.label}
-                  </Button>
-                </DisabledFieldTooltip>
               </SheetFooter>
             </form>
           </Form>
