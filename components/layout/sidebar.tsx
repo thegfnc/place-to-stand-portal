@@ -37,7 +37,7 @@ const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
-    title: 'Admin Settings',
+    title: 'Settings',
     roles: ['ADMIN'],
     items: [
       {

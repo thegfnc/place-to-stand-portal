@@ -75,18 +75,7 @@ export function AppShell({ user, children }: Props) {
       <HeaderContext.Provider value={headerContextValue}>
         <div className='flex min-h-screen flex-1 flex-col'>
           <header className='bg-background flex flex-wrap items-center gap-4 border-b px-6 py-4'>
-            <div className='min-w-0 flex-1'>
-              {headerContent ?? (
-                <div className='flex flex-col'>
-                  <span className='text-foreground text-sm leading-tight font-semibold'>
-                    Place to Stand Portal
-                  </span>
-                  <span className='text-muted-foreground text-xs'>
-                    Choose a workspace action to get started.
-                  </span>
-                </div>
-              )}
-            </div>
+            <div className='min-w-0 flex-1'>{headerContent}</div>
             <UserMenu user={user} />
           </header>
           <main className='flex-1 overflow-y-auto px-6 py-8'>{children}</main>

@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState, useTransition } from 'react'
+import { usePathname, useRouter } from 'next/navigation'
 import {
   DndContext,
   DragEndEvent,
@@ -42,13 +43,22 @@ const BOARD_COLUMNS = [
 
 type BoardColumnId = (typeof BOARD_COLUMNS)[number]['id']
 
+const BOARD_BASE_PATH = '/projects'
+
 type Props = {
   projects: ProjectWithRelations[]
-  clients: Array<{ id: string; name: string }>
+  clients: Array<{ id: string; name: string; slug: string | null }>
   currentUserId: string
   currentUserRole: UserRole
   admins: DbUser[]
+  activeClientId: string | null
+  activeProjectId: string | null
+  activeTaskId: string | null
 }
+
+const MISSING_SLUG_MESSAGE =
+  'This project is missing a slug. Update it in Settings -> Projects.'
+const NO_CLIENT_PROJECTS_MESSAGE = 'This client does not have any projects yet.'
 
 const areTaskCollectionsEqual = (
   a: TaskWithRelations[] | undefined,
@@ -72,21 +82,151 @@ export function ProjectsBoard({
   currentUserId,
   currentUserRole,
   admins,
+  activeClientId,
+  activeProjectId,
+  activeTaskId,
 }: Props) {
-  const [selectedClientId, setSelectedClientId] = useState<string>(() => {
-    if (clients.length === 1) {
-      return clients[0].id
+  const router = useRouter()
+  const pathname = usePathname()
+  const [selectedClientId, setSelectedClientId] = useState<string | null>(
+    () => {
+      if (activeClientId) {
+        return activeClientId
+      }
+
+      if (activeProjectId) {
+        const project = projects.find(item => item.id === activeProjectId)
+        if (project?.client_id) {
+          return project.client_id
+        }
+      }
+
+      const firstProjectClientId = projects.find(
+        item => item.client_id
+      )?.client_id
+      if (firstProjectClientId) {
+        return firstProjectClientId
+      }
+
+      return clients[0]?.id ?? null
     }
-    return 'all'
-  })
+  )
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(
-    () => projects[0]?.id ?? null
+    () => activeProjectId ?? projects[0]?.id ?? null
   )
   const [isPending, startTransition] = useTransition()
-  const [activeTaskId, setActiveTaskId] = useState<string | null>(null)
+  const [dragTaskId, setDragTaskId] = useState<string | null>(null)
   const [feedback, setFeedback] = useState<string | null>(null)
-  const [isSheetOpen, setIsSheetOpen] = useState(false)
-  const [sheetTask, setSheetTask] = useState<TaskWithRelations | undefined>()
+  const [isSheetOpen, setIsSheetOpen] = useState(() => Boolean(activeTaskId))
+  const [sheetTask, setSheetTask] = useState<TaskWithRelations | undefined>(
+    () => {
+      if (!activeTaskId) {
+        return undefined
+      }
+
+      for (const project of projects) {
+        const match = project.tasks.find(task => task.id === activeTaskId)
+        if (match) {
+          return match
+        }
+      }
+
+      return undefined
+    }
+  )
+  const [routeTaskId, setRouteTaskId] = useState<string | null>(activeTaskId)
+  const [pendingTaskId, setPendingTaskId] = useState<string | null>(null)
+  const [scrimLocked, setScrimLocked] = useState(false)
+  const projectLookup = useMemo(() => {
+    const map = new Map<string, ProjectWithRelations>()
+    projects.forEach(project => {
+      map.set(project.id, project)
+    })
+    return map
+  }, [projects])
+  const projectsByClientId = useMemo(() => {
+    const map = new Map<string, ProjectWithRelations[]>()
+    projects.forEach(project => {
+      if (!project.client_id) {
+        return
+      }
+      const list = map.get(project.client_id) ?? []
+      list.push(project)
+      map.set(project.client_id, list)
+    })
+    return map
+  }, [projects])
+  const clientSlugLookup = useMemo(() => {
+    const map = new Map<string, string | null>()
+    clients.forEach(client => {
+      map.set(client.id, client.slug ?? null)
+    })
+    return map
+  }, [clients])
+  const buildBoardPath = useCallback(
+    (projectId: string, taskId?: string | null) => {
+      const project = projectLookup.get(projectId)
+
+      if (!project) {
+        return null
+      }
+
+      const projectSlug = project.slug ?? null
+      const clientId = project.client_id ?? null
+      const clientSlug =
+        project.client?.slug ??
+        (clientId ? (clientSlugLookup.get(clientId) ?? null) : null)
+
+      if (!projectSlug || !clientSlug) {
+        return null
+      }
+
+      const basePath = `${BOARD_BASE_PATH}/${clientSlug}/${projectSlug}/board`
+      return taskId ? `${basePath}/${taskId}` : basePath
+    },
+    [clientSlugLookup, projectLookup]
+  )
+  const navigateToProject = useCallback(
+    (
+      projectId: string | null,
+      options: { taskId?: string | null; replace?: boolean } = {}
+    ) => {
+      const { taskId = null, replace = false } = options
+
+      if (!projectId) {
+        if (pathname !== BOARD_BASE_PATH) {
+          if (replace) {
+            router.replace(BOARD_BASE_PATH, { scroll: false })
+          } else {
+            router.push(BOARD_BASE_PATH, { scroll: false })
+          }
+        }
+        return
+      }
+
+      const path = buildBoardPath(projectId, taskId)
+
+      if (!path) {
+        setFeedback(prev =>
+          prev === MISSING_SLUG_MESSAGE ? prev : MISSING_SLUG_MESSAGE
+        )
+        return
+      }
+
+      setFeedback(prev => (prev === MISSING_SLUG_MESSAGE ? null : prev))
+
+      if (pathname === path) {
+        return
+      }
+
+      if (replace) {
+        router.replace(path, { scroll: false })
+      } else {
+        router.push(path, { scroll: false })
+      }
+    },
+    [buildBoardPath, pathname, router]
+  )
   const [tasksByProject, setTasksByProject] = useState(() => {
     const map = new Map<string, TaskWithRelations[]>()
     projects.forEach(project => {
@@ -104,26 +244,20 @@ export function ProjectsBoard({
   )
 
   const filteredProjects = useMemo(() => {
-    if (selectedClientId === 'all') {
-      return projects
+    if (!selectedClientId) {
+      return [] as ProjectWithRelations[]
     }
 
     return projects.filter(project => project.client_id === selectedClientId)
   }, [projects, selectedClientId])
 
   const clientItems = useMemo(
-    () => [
-      {
-        value: 'all',
-        label: 'All clients',
-        keywords: ['all'],
-      },
-      ...clients.map(client => ({
+    () =>
+      clients.map(client => ({
         value: client.id,
         label: client.name,
         keywords: [client.name],
       })),
-    ],
     [clients]
   )
 
@@ -135,6 +269,93 @@ export function ProjectsBoard({
         keywords: [project.name],
       })),
     [filteredProjects]
+  )
+  useEffect(() => {
+    if (activeClientId && selectedClientId !== activeClientId) {
+      startTransition(() => {
+        setSelectedClientId(activeClientId)
+      })
+      return
+    }
+  }, [activeClientId, selectedClientId, startTransition])
+  useEffect(() => {
+    if (activeProjectId && selectedProjectId !== activeProjectId) {
+      startTransition(() => {
+        setSelectedProjectId(activeProjectId)
+      })
+    }
+  }, [activeProjectId, selectedProjectId, startTransition])
+  useEffect(() => {
+    if (selectedClientId && projectItems.length === 0) {
+      startTransition(() => {
+        setFeedback(prev =>
+          prev === NO_CLIENT_PROJECTS_MESSAGE
+            ? prev
+            : NO_CLIENT_PROJECTS_MESSAGE
+        )
+      })
+      return
+    }
+
+    startTransition(() => {
+      setFeedback(prev => (prev === NO_CLIENT_PROJECTS_MESSAGE ? null : prev))
+    })
+  }, [projectItems.length, selectedClientId, startTransition])
+  const handleClientSelect = useCallback(
+    (clientId: string) => {
+      startTransition(() => {
+        setSelectedClientId(clientId)
+      })
+
+      const clientProjects = projectsByClientId.get(clientId) ?? []
+
+      if (clientProjects.length === 0) {
+        setFeedback(prev =>
+          prev === NO_CLIENT_PROJECTS_MESSAGE
+            ? prev
+            : NO_CLIENT_PROJECTS_MESSAGE
+        )
+        startTransition(() => {
+          setSelectedProjectId(null)
+        })
+        return
+      }
+
+      setFeedback(prev => (prev === NO_CLIENT_PROJECTS_MESSAGE ? null : prev))
+
+      const currentSelectionStillValid = clientProjects.some(
+        project => project.id === selectedProjectId
+      )
+
+      const nextProjectId = currentSelectionStillValid
+        ? selectedProjectId
+        : (clientProjects[0]?.id ?? null)
+
+      startTransition(() => {
+        setSelectedProjectId(nextProjectId)
+      })
+
+      if (nextProjectId) {
+        navigateToProject(nextProjectId, { replace: true })
+      }
+    },
+    [navigateToProject, projectsByClientId, selectedProjectId, startTransition]
+  )
+  const handleProjectSelect = useCallback(
+    (projectId: string | null) => {
+      startTransition(() => {
+        setSelectedProjectId(projectId)
+      })
+
+      if (!projectId) {
+        navigateToProject(null)
+        return
+      }
+
+      setFeedback(prev => (prev === NO_CLIENT_PROJECTS_MESSAGE ? null : prev))
+      navigateToProject(projectId)
+    },
+    [navigateToProject, startTransition]
   )
 
   useEffect(() => {
@@ -149,11 +370,15 @@ export function ProjectsBoard({
       !selectedProjectId ||
       !filteredProjects.some(project => project.id === selectedProjectId)
     ) {
+      const nextProjectId = filteredProjects[0]?.id ?? null
       startTransition(() => {
-        setSelectedProjectId(filteredProjects[0]?.id ?? null)
+        setSelectedProjectId(nextProjectId)
+        if (nextProjectId) {
+          navigateToProject(nextProjectId, { replace: true })
+        }
       })
     }
-  }, [filteredProjects, selectedProjectId, startTransition])
+  }, [filteredProjects, navigateToProject, selectedProjectId, startTransition])
 
   useEffect(() => {
     startTransition(() => {
@@ -247,9 +472,47 @@ export function ProjectsBoard({
 
     return map
   }, [activeProject, activeProjectTasks])
+  useEffect(() => {
+    if (activeTaskId) {
+      const nextTask =
+        activeProjectTasks.find(task => task.id === activeTaskId) ?? null
 
-  const activeTask =
-    activeProjectTasks.find(task => task.id === activeTaskId) ?? null
+      startTransition(() => {
+        setRouteTaskId(activeTaskId)
+        setPendingTaskId(null)
+        if (nextTask) {
+          setSheetTask(nextTask)
+          setIsSheetOpen(true)
+        }
+      })
+      return
+    }
+
+    if (pendingTaskId) {
+      return
+    }
+
+    if (routeTaskId) {
+      startTransition(() => {
+        setRouteTaskId(null)
+        setSheetTask(prev =>
+          prev && prev.id === routeTaskId ? undefined : prev
+        )
+        setIsSheetOpen(false)
+      })
+    }
+  }, [
+    activeProjectTasks,
+    activeTaskId,
+    pendingTaskId,
+    routeTaskId,
+    startTransition,
+  ])
+
+  const draggingTask = useMemo(() => {
+    if (!dragTaskId) return null
+    return activeProjectTasks.find(task => task.id === dragTaskId) ?? null
+  }, [activeProjectTasks, dragTaskId])
 
   const addTaskDisabled = !activeProject || !canManageTasks
   const addTaskDisabledReason = !activeProject
@@ -260,7 +523,7 @@ export function ProjectsBoard({
 
   const handleDragStart = (event: DragStartEvent) => {
     const taskId = String(event.active.id)
-    setActiveTaskId(taskId)
+    setDragTaskId(taskId)
   }
 
   const handleDragOver = () => {
@@ -268,7 +531,7 @@ export function ProjectsBoard({
   }
 
   const handleDragEnd = (event: DragEndEvent) => {
-    setActiveTaskId(null)
+    setDragTaskId(null)
 
     if (!canManageTasks || !activeProject) {
       return
@@ -342,18 +605,44 @@ export function ProjectsBoard({
   }
 
   const openCreateSheet = useCallback(() => {
+    const targetProjectId = selectedProjectId ?? activeProject?.id ?? null
+
+    if (targetProjectId) {
+      navigateToProject(targetProjectId, { taskId: null, replace: true })
+    } else {
+      navigateToProject(null, { replace: true })
+    }
+
+    setRouteTaskId(null)
+    setPendingTaskId(null)
     setSheetTask(undefined)
     setIsSheetOpen(true)
-  }, [])
+  }, [activeProject?.id, navigateToProject, selectedProjectId])
 
   const handleEditTask = (task: TaskWithRelations) => {
-    setSheetTask(task)
-    setIsSheetOpen(true)
+    setScrimLocked(true)
+    setRouteTaskId(task.id)
+    setPendingTaskId(task.id)
+    navigateToProject(task.project_id, { taskId: task.id })
   }
 
   const handleSheetOpenChange = (open: boolean) => {
     setIsSheetOpen(open)
     if (!open) {
+      const projectIdForSheet = sheetTask?.project_id ?? selectedProjectId
+
+      if (routeTaskId && projectIdForSheet) {
+        setScrimLocked(true)
+        startTransition(() => {
+          setRouteTaskId(null)
+          setPendingTaskId(null)
+          navigateToProject(projectIdForSheet, {
+            taskId: null,
+            replace: true,
+          })
+        })
+      }
+
       setSheetTask(undefined)
     }
   }
@@ -366,10 +655,11 @@ export function ProjectsBoard({
           <SearchableCombobox
             id='projects-client-select'
             items={clientItems}
-            value={selectedClientId}
-            onChange={setSelectedClientId}
+            value={selectedClientId ?? ''}
+            onChange={handleClientSelect}
             placeholder='Select client'
             searchPlaceholder='Search clients...'
+            disabled={clientItems.length === 0}
             ariaLabel='Select client'
           />
         </div>
@@ -378,8 +668,8 @@ export function ProjectsBoard({
           <SearchableCombobox
             id='projects-project-select'
             items={projectItems}
-            value={selectedProjectId}
-            onChange={value => setSelectedProjectId(value)}
+            value={selectedProjectId ?? ''}
+            onChange={handleProjectSelect}
             placeholder='Select project'
             searchPlaceholder='Search projects...'
             disabled={projectItems.length === 0}
@@ -390,16 +680,16 @@ export function ProjectsBoard({
     ),
     [
       clientItems,
+      handleClientSelect,
+      handleProjectSelect,
       projectItems,
       selectedClientId,
       selectedProjectId,
-      setSelectedClientId,
-      setSelectedProjectId,
     ]
   )
 
   const introContent = (
-    <div className='flex flex-wrap items-start justify-between gap-4'>
+    <div className='flex flex-wrap items-center justify-between gap-4'>
       <div className='space-y-1'>
         <h1 className='text-2xl font-semibold tracking-tight'>Project board</h1>
         <p className='text-muted-foreground text-sm'>
@@ -502,17 +792,17 @@ export function ProjectsBoard({
                     ))}
                   </div>
                   <DragOverlay dropAnimation={null}>
-                    {activeTask ? (
+                    {draggingTask ? (
                       <TaskCardPreview
-                        task={activeTask}
-                        assignees={renderAssignees(activeTask)}
+                        task={draggingTask}
+                        assignees={renderAssignees(draggingTask)}
                       />
                     ) : null}
                   </DragOverlay>
                 </DndContext>
               </div>
             </div>
-            {isPending ? (
+            {isPending && !scrimLocked ? (
               <div className='bg-background/60 pointer-events-none absolute inset-0 flex items-center justify-center'>
                 <Loader2 className='text-muted-foreground h-6 w-6 animate-spin' />
               </div>

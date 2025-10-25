@@ -35,6 +35,7 @@ export default async function ProjectsSettingsPage() {
         id,
         name,
         status,
+        slug,
         client_id,
         created_by,
         starts_on,

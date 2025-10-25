@@ -98,6 +98,11 @@ const formSchema = z
     status: z.enum(PROJECT_STATUS_ENUM_VALUES),
     startsOn: z.string().optional().or(z.literal('')),
     endsOn: z.string().optional().or(z.literal('')),
+    slug: z
+      .string()
+      .regex(/^[a-z0-9-]+$/, 'Lowercase letters, numbers, and dashes only')
+      .or(z.literal(''))
+      .optional(),
   })
   .superRefine((data, ctx) => {
     if (data.startsOn && data.endsOn) {
@@ -126,6 +131,7 @@ const PROJECT_FORM_FIELDS: Array<keyof FormValues> = [
   'status',
   'startsOn',
   'endsOn',
+  'slug',
 ]
 
 export function ProjectSheet({
@@ -220,6 +226,7 @@ export function ProjectSheet({
       status: initialStatus,
       startsOn: project?.starts_on ? project.starts_on.slice(0, 10) : '',
       endsOn: project?.ends_on ? project.ends_on.slice(0, 10) : '',
+      slug: project?.slug ?? '',
     },
   })
 
@@ -241,6 +248,7 @@ export function ProjectSheet({
       status: statusDefault,
       startsOn: project?.starts_on ? project.starts_on.slice(0, 10) : '',
       endsOn: project?.ends_on ? project.ends_on.slice(0, 10) : '',
+      slug: project?.slug ?? '',
     }
     const contractorSnapshot = initialContractors.map(member => ({ ...member }))
 
@@ -326,6 +334,11 @@ export function ProjectSheet({
       setFeedback(null)
       form.clearErrors()
 
+      if (isEditing && !values.slug?.trim()) {
+        form.setError('slug', { type: 'manual', message: 'Slug is required' })
+        return
+      }
+
       const payload = {
         id: project?.id,
         name: values.name.trim(),
@@ -333,7 +346,17 @@ export function ProjectSheet({
         status: values.status,
         startsOn: values.startsOn ? values.startsOn : null,
         endsOn: values.endsOn ? values.endsOn : null,
+        slug: isEditing
+          ? values.slug?.trim()
+            ? values.slug.trim()
+            : null
+          : null,
         contractorIds: selectedContractors.map(contractor => contractor.id),
+      }
+
+      if (payload.slug && payload.slug.length < 3) {
+        setFeedback('Slug must be at least 3 characters when provided.')
+        return
       }
 
       const result = await saveProject(payload)
@@ -366,6 +389,7 @@ export function ProjectSheet({
         status: payload.status,
         startsOn: payload.startsOn ?? '',
         endsOn: payload.endsOn ?? '',
+        slug: payload.slug ?? '',
       })
 
       onOpenChange(false)
@@ -496,6 +520,36 @@ export function ProjectSheet({
                   )
                 }}
               />
+              {isEditing ? (
+                <FormField
+                  control={form.control}
+                  name='slug'
+                  render={({ field }) => {
+                    const disabled = isPending
+                    const reason = disabled ? pendingReason : null
+
+                    return (
+                      <FormItem>
+                        <FormLabel>Slug</FormLabel>
+                        <FormControl>
+                          <DisabledFieldTooltip
+                            disabled={disabled}
+                            reason={reason}
+                          >
+                            <Input
+                              {...field}
+                              value={field.value ?? ''}
+                              placeholder='website-redesign'
+                              disabled={disabled}
+                            />
+                          </DisabledFieldTooltip>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )
+                  }}
+                />
+              ) : null}
               <div className='grid gap-4 sm:grid-cols-2'>
                 <FormField
                   control={form.control}

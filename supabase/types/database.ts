@@ -216,6 +216,7 @@ export type Database = {
           ends_on: string | null
           id: string
           name: string
+          slug: string | null
           starts_on: string | null
           status: string
           updated_at: string
@@ -228,6 +229,7 @@ export type Database = {
           ends_on?: string | null
           id?: string
           name: string
+          slug?: string | null
           starts_on?: string | null
           status?: string
           updated_at?: string
@@ -240,6 +242,7 @@ export type Database = {
           ends_on?: string | null
           id?: string
           name?: string
+          slug?: string | null
           starts_on?: string | null
           status?: string
           updated_at?: string

@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 
-import type { SupabaseClient } from '@supabase/supabase-js'
+import type { PostgrestError, SupabaseClient } from '@supabase/supabase-js'
 
 import { requireUser } from '@/lib/auth/session'
 import { PROJECT_STATUS_ENUM_VALUES } from '@/lib/constants'
@@ -18,6 +18,15 @@ const projectSchema = z
     status: z.enum(PROJECT_STATUS_ENUM_VALUES),
     startsOn: z.string().nullable().optional(),
     endsOn: z.string().nullable().optional(),
+    slug: z
+      .string()
+      .regex(
+        /^[a-z0-9-]+$/,
+        'Slugs can only contain lowercase letters, numbers, and dashes'
+      )
+      .or(z.literal(''))
+      .nullish()
+      .transform(value => (value ? value : null)),
     contractorIds: z.array(z.string().uuid()).optional(),
   })
   .superRefine((data, ctx) => {
@@ -50,6 +59,63 @@ type ProjectInput = z.infer<typeof projectSchema>
 
 type DeleteInput = z.infer<typeof deleteSchema>
 
+const UNIQUE_RETRY_LIMIT = 3
+
+function toSlug(input: string): string {
+  const base = input
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+
+  return base || 'project'
+}
+
+async function slugExists(
+  supabase: SupabaseClient<Database>,
+  slug: string,
+  options: { excludeId?: string } = {}
+): Promise<boolean | PostgrestError> {
+  let query = supabase.from('projects').select('id').eq('slug', slug).limit(1)
+
+  if (options.excludeId) {
+    query = query.neq('id', options.excludeId)
+  }
+
+  const { data, error } = await query.maybeSingle()
+
+  if (error) {
+    console.error('Failed to check project slug availability', error)
+    return error
+  }
+
+  return Boolean(data)
+}
+
+async function generateUniqueSlug(
+  supabase: SupabaseClient<Database>,
+  base: string
+): Promise<string | PostgrestError> {
+  const normalizedBase = base || 'project'
+  let candidate = normalizedBase
+  let suffix = 2
+
+  while (true) {
+    const exists = await slugExists(supabase, candidate)
+
+    if (typeof exists !== 'boolean') {
+      return exists
+    }
+
+    if (!exists) {
+      return candidate
+    }
+
+    candidate = `${normalizedBase}-${suffix}`
+    suffix += 1
+  }
+}
+
 export async function saveProject(input: ProjectInput): Promise<ActionResult> {
   const user = await requireUser()
   const parsed = projectSchema.safeParse(input)
@@ -62,32 +128,78 @@ export async function saveProject(input: ProjectInput): Promise<ActionResult> {
   }
 
   const supabase = getSupabaseServerClient()
-  const { id, name, clientId, status, startsOn, endsOn, contractorIds } =
+  const { id, name, clientId, status, startsOn, endsOn, slug, contractorIds } =
     parsed.data
+
+  const trimmedName = name.trim()
   const normalizedContractorIds = Array.from(new Set(contractorIds ?? []))
+  const providedSlug = slug?.trim() ?? null
+  const normalizedProvidedSlug = providedSlug ? toSlug(providedSlug) : null
+
+  if (normalizedProvidedSlug && normalizedProvidedSlug.length < 3) {
+    return { error: 'Slug must be at least 3 characters.' }
+  }
+
+  if (!trimmedName) {
+    return { error: 'Project name is required.' }
+  }
 
   if (!id) {
-    const { data: inserted, error } = await supabase
-      .from('projects')
-      .insert({
-        name,
-        client_id: clientId,
-        status,
-        starts_on: startsOn ?? null,
-        ends_on: endsOn ?? null,
-        created_by: user.id,
-      })
-      .select('id')
-      .maybeSingle()
+    const baseSlug = normalizedProvidedSlug ?? toSlug(trimmedName)
+    const initialSlug = await generateUniqueSlug(supabase, baseSlug)
 
-    if (error || !inserted?.id) {
-      console.error('Failed to create project', error)
-      return { error: error?.message ?? 'Unable to create project.' }
+    if (typeof initialSlug !== 'string') {
+      return { error: 'Unable to generate project slug.' }
+    }
+
+    let slugCandidate = initialSlug
+    let insertedId: string | null = null
+    let attempt = 0
+
+    while (attempt < UNIQUE_RETRY_LIMIT) {
+      const { data: inserted, error } = await supabase
+        .from('projects')
+        .insert({
+          name: trimmedName,
+          client_id: clientId,
+          status,
+          starts_on: startsOn ?? null,
+          ends_on: endsOn ?? null,
+          created_by: user.id,
+          slug: slugCandidate,
+        })
+        .select('id')
+        .maybeSingle()
+
+      if (!error && inserted?.id) {
+        insertedId = inserted.id
+        break
+      }
+
+      if (error?.code !== '23505') {
+        console.error('Failed to create project', error)
+        return { error: error?.message ?? 'Unable to create project.' }
+      }
+
+      const nextSlug = await generateUniqueSlug(supabase, baseSlug)
+
+      if (typeof nextSlug !== 'string') {
+        return { error: 'Unable to generate project slug.' }
+      }
+
+      slugCandidate = nextSlug
+      attempt += 1
+    }
+
+    if (!insertedId) {
+      return {
+        error: 'Could not generate a unique slug. Please try again.',
+      }
     }
 
     const syncResult = await syncProjectContractors(
       supabase,
-      inserted.id,
+      insertedId,
       normalizedContractorIds
     )
 
@@ -95,14 +207,29 @@ export async function saveProject(input: ProjectInput): Promise<ActionResult> {
       return syncResult
     }
   } else {
+    const slugToUpdate = normalizedProvidedSlug
+
+    if (slugToUpdate) {
+      const exists = await slugExists(supabase, slugToUpdate, { excludeId: id })
+
+      if (typeof exists !== 'boolean') {
+        return { error: 'Unable to validate slug availability.' }
+      }
+
+      if (exists) {
+        return { error: 'Another project already uses this slug.' }
+      }
+    }
+
     const { error } = await supabase
       .from('projects')
       .update({
-        name,
+        name: trimmedName,
         client_id: clientId,
         status,
         starts_on: startsOn ?? null,
         ends_on: endsOn ?? null,
+        slug: slugToUpdate,
       })
       .eq('id', id)
 
@@ -123,6 +250,8 @@ export async function saveProject(input: ProjectInput): Promise<ActionResult> {
   }
 
   revalidatePath('/settings/projects')
+  revalidatePath('/projects')
+  revalidatePath('/projects/[clientSlug]/[projectSlug]/board')
 
   return {}
 }

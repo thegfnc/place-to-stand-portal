@@ -102,6 +102,7 @@ export async function saveTask(input: BaseTaskInput): Promise<ActionResult> {
   }
 
   revalidatePath('/projects')
+  revalidatePath('/projects/[clientSlug]/[projectSlug]/board')
 
   return {}
 }
@@ -136,6 +137,7 @@ export async function changeTaskStatus(input: {
   }
 
   revalidatePath('/projects')
+  revalidatePath('/projects/[clientSlug]/[projectSlug]/board')
 
   return {}
 }
@@ -168,6 +170,7 @@ export async function removeTask(input: {
   }
 
   revalidatePath('/projects')
+  revalidatePath('/projects/[clientSlug]/[projectSlug]/board')
 
   return {}
 }
