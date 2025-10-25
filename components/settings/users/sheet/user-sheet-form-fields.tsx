@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 
-import { USER_ROLES } from '@/src/lib/settings/users/user-validation'
+import { USER_ROLES } from '@/lib/settings/users/user-validation'
 import type { UserFormValues } from './form-schema'
 
 type UserSheetFormFieldsProps = {

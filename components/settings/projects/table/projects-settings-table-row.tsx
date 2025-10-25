@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { TableCell, TableRow } from '@/components/ui/table'
 
 import { getProjectStatusLabel, getProjectStatusToken } from '@/lib/constants'
-import { formatProjectDateRange } from '@/src/lib/settings/projects/project-formatters'
+import { formatProjectDateRange } from '@/lib/settings/projects/project-formatters'
 import { cn } from '@/lib/utils'
 
 import type { ProjectWithClient } from './types'

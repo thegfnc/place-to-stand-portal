@@ -1,3 +1,3 @@
 'use client'
 
-export { UserSheet } from '@/src/components/settings/users/sheet/user-sheet'
+export { UserSheet } from '@/components/settings/users/sheet/user-sheet'

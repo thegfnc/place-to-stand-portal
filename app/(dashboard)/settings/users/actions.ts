@@ -9,7 +9,7 @@ import {
   restorePortalUser,
   softDeletePortalUser,
   updatePortalUser,
-} from '@/src/lib/settings/users/services'
+} from '@/lib/settings/users/services'
 import {
   createUserSchema,
   deleteUserSchema,
@@ -19,7 +19,7 @@ import {
   type DeleteUserInput,
   type RestoreUserInput,
   type UpdateUserInput,
-} from '@/src/lib/settings/users/user-validation'
+} from '@/lib/settings/users/user-validation'
 
 type ActionResult = {
   error?: string

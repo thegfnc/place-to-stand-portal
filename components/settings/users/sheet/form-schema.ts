@@ -2,7 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import type { Resolver } from 'react-hook-form'
 import { z } from 'zod'
 
-import { USER_ROLES } from '@/src/lib/settings/users/user-validation'
+import { USER_ROLES } from '@/lib/settings/users/user-validation'
 
 const baseSchema = z.object({
   fullName: z.string().trim().min(1, 'Full name is required'),
