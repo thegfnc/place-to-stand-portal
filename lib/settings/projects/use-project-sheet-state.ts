@@ -21,14 +21,7 @@ import {
   type ProjectSheetFormValues,
   type ProjectWithClient,
 } from './project-sheet-form'
-import {
-  buildAvailableContractors,
-  deriveContractorButtonState,
-  getContractorDisplayName,
-  getInitialContractors,
-  isContractorSelectionDirty,
-  type ContractorButtonState,
-} from './project-sheet-contractors'
+import type { ContractorButtonState } from './project-sheet-contractors'
 import {
   buildClientOptions,
   deriveDeleteButtonState,
@@ -37,6 +30,7 @@ import {
   type DeleteButtonState,
   type SubmitButtonState,
 } from './project-sheet-ui-state'
+import { useProjectContractorSelection } from './use-project-contractor-selection'
 
 export type {
   ContractorUserSummary,
@@ -97,20 +91,33 @@ export function useProjectSheetState({
   const isEditing = Boolean(project)
   const [feedback, setFeedback] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
-  const [isContractorPickerOpen, setIsContractorPickerOpen] = useState(false)
-  const [contractorRemovalCandidate, setContractorRemovalCandidate] =
-    useState<ContractorUserSummary | null>(null)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
-  const initialContractors = useMemo(
-    () => getInitialContractors(project, projectContractors),
-    [project, projectContractors]
-  )
-  const [savedContractorIds, setSavedContractorIds] = useState<string[]>(() =>
-    initialContractors.map(member => member.id).sort()
-  )
-  const [selectedContractors, setSelectedContractors] =
-    useState<ContractorUserSummary[]>(initialContractors)
   const { toast } = useToast()
+
+  const contractorSelection = useProjectContractorSelection({
+    project,
+    projectContractors,
+    contractorDirectory,
+    isPending,
+  })
+
+  const {
+    selectedContractors,
+    availableContractors,
+    contractorButton,
+    isContractorPickerOpen,
+    contractorRemovalCandidate,
+    contractorRemovalName,
+    contractorProjectName,
+    contractorSelectionDirty,
+    handleAddContractor: addContractor,
+    handleContractorPickerOpenChange: changeContractorPickerOpen,
+    handleRequestContractorRemoval: requestContractorRemoval,
+    handleCancelContractorRemoval: cancelContractorRemoval,
+    handleConfirmContractorRemoval: confirmContractorRemoval,
+    resetSelection,
+    markSelectionSaved,
+  } = contractorSelection
 
   const sortedClients = useMemo(() => sortClientsByName(clients), [clients])
 
@@ -128,41 +135,19 @@ export function useProjectSheetState({
     defaultValues: buildProjectFormDefaults(project),
   })
 
-  const contractorSelectionDirty = useMemo(
-    () => isContractorSelectionDirty(savedContractorIds, selectedContractors),
-    [savedContractorIds, selectedContractors]
-  )
-
   const hasUnsavedChanges = form.formState.isDirty || contractorSelectionDirty
 
   const { requestConfirmation: confirmDiscard, dialog: unsavedChangesDialog } =
     useUnsavedChangesWarning({ isDirty: hasUnsavedChanges })
 
-  const availableContractors = useMemo(
-    () => buildAvailableContractors(contractorDirectory, selectedContractors),
-    [contractorDirectory, selectedContractors]
-  )
-
-  const contractorButton = useMemo(
-    () => deriveContractorButtonState(isPending, availableContractors),
-    [availableContractors, isPending]
-  )
-
   const resetFormState = useCallback(() => {
     const defaults = buildProjectFormDefaults(project)
-    const contractorSnapshot = getInitialContractors(
-      project,
-      projectContractors
-    )
 
     form.reset(defaults, { keepDefaultValues: false })
     form.clearErrors()
-    setSavedContractorIds(contractorSnapshot.map(member => member.id).sort())
     setFeedback(null)
-    setSelectedContractors(contractorSnapshot)
-    setContractorRemovalCandidate(null)
-    setIsContractorPickerOpen(false)
-  }, [form, project, projectContractors])
+    resetSelection()
+  }, [form, project, resetSelection])
 
   const applyServerFieldErrors = useCallback(
     (fieldErrors?: Record<string, string[]>) => {
@@ -202,52 +187,6 @@ export function useProjectSheetState({
       onOpenChange(next)
     },
     [confirmDiscard, onOpenChange, resetFormState, startTransition]
-  )
-
-  const handleAddContractor = useCallback((user: ContractorUserSummary) => {
-    setSelectedContractors(prev => {
-      if (prev.some(contractor => contractor.id === user.id)) {
-        return prev
-      }
-
-      return [...prev, user]
-    })
-    setIsContractorPickerOpen(false)
-  }, [])
-
-  const handleRequestContractorRemoval = useCallback(
-    (user: ContractorUserSummary) => {
-      setContractorRemovalCandidate(user)
-    },
-    []
-  )
-
-  const handleConfirmContractorRemoval = useCallback(() => {
-    if (!contractorRemovalCandidate) {
-      return
-    }
-
-    const removalId = contractorRemovalCandidate.id
-    setSelectedContractors(prev =>
-      prev.filter(contractor => contractor.id !== removalId)
-    )
-    setContractorRemovalCandidate(null)
-  }, [contractorRemovalCandidate])
-
-  const handleCancelContractorRemoval = useCallback(() => {
-    setContractorRemovalCandidate(null)
-  }, [])
-
-  const handleContractorPickerOpenChange = useCallback(
-    (next: boolean) => {
-      if (contractorButton.disabled) {
-        setIsContractorPickerOpen(false)
-        return
-      }
-
-      setIsContractorPickerOpen(next)
-    },
-    [contractorButton.disabled]
   )
 
   const handleSubmit = useCallback(
@@ -294,9 +233,7 @@ export function useProjectSheetState({
             : 'The project is ready to track activity.',
         })
 
-        setSavedContractorIds(
-          selectedContractors.map(contractor => contractor.id).sort()
-        )
+        markSelectionSaved()
         form.reset({
           name: payload.name,
           clientId: payload.clientId,
@@ -320,6 +257,7 @@ export function useProjectSheetState({
       selectedContractors,
       startTransition,
       toast,
+      markSelectionSaved,
     ]
   )
 
@@ -388,16 +326,6 @@ export function useProjectSheetState({
     [isEditing, isPending, project]
   )
 
-  const contractorRemovalName = useMemo(() => {
-    if (!contractorRemovalCandidate) {
-      return null
-    }
-
-    return getContractorDisplayName(contractorRemovalCandidate)
-  }, [contractorRemovalCandidate])
-
-  const contractorProjectName = project?.name ?? 'this project'
-
   return {
     form,
     feedback,
@@ -417,11 +345,11 @@ export function useProjectSheetState({
     unsavedChangesDialog,
     handleSheetOpenChange,
     handleSubmit,
-    handleAddContractor,
-    handleContractorPickerOpenChange,
-    handleRequestContractorRemoval,
-    handleCancelContractorRemoval,
-    handleConfirmContractorRemoval,
+    handleAddContractor: addContractor,
+    handleContractorPickerOpenChange: changeContractorPickerOpen,
+    handleRequestContractorRemoval: requestContractorRemoval,
+    handleCancelContractorRemoval: cancelContractorRemoval,
+    handleConfirmContractorRemoval: confirmContractorRemoval,
     handleRequestDelete,
     handleCancelDelete,
     handleConfirmDelete,
