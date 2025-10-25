@@ -108,9 +108,8 @@ export function useProjectSheetState({
   const [savedContractorIds, setSavedContractorIds] = useState<string[]>(() =>
     initialContractors.map(member => member.id).sort()
   )
-  const [selectedContractors, setSelectedContractors] = useState<
-    ContractorUserSummary[]
-  >(initialContractors)
+  const [selectedContractors, setSelectedContractors] =
+    useState<ContractorUserSummary[]>(initialContractors)
   const { toast } = useToast()
 
   const sortedClients = useMemo(() => sortClientsByName(clients), [clients])

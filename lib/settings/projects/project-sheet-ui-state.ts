@@ -1,7 +1,4 @@
-import type {
-  ClientRow,
-  ProjectWithClient,
-} from './project-sheet-form'
+import type { ClientRow, ProjectWithClient } from './project-sheet-form'
 import { PROJECT_SHEET_PENDING_REASON } from './project-sheet-contractors'
 
 export type SubmitButtonState = {

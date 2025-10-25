@@ -8,8 +8,8 @@ export const DEFAULT_HOURS_PURCHASED = 5
 
 export const hourBlockFormSchema = z.object({
   clientId: z.string().uuid('Select a client'),
-  hoursPurchased: z
-    .coerce.number()
+  hoursPurchased: z.coerce
+    .number()
     .int('Hours purchased must be a whole number.')
     .positive('Hours purchased must be greater than zero'),
   invoiceNumber: z

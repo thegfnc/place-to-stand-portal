@@ -119,11 +119,7 @@ export const createProjectSavePayload = ({
   status: values.status,
   startsOn: values.startsOn ? values.startsOn : null,
   endsOn: values.endsOn ? values.endsOn : null,
-  slug: isEditing
-    ? values.slug?.trim()
-      ? values.slug.trim()
-      : null
-    : null,
+  slug: isEditing ? (values.slug?.trim() ? values.slug.trim() : null) : null,
   contractorIds: selectedContractors.map(contractor => contractor.id),
 })
 

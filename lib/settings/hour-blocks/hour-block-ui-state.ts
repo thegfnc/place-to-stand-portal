@@ -18,7 +18,8 @@ export type DeleteButtonState = {
 }
 
 export const PENDING_REASON = 'Please wait for the current request to finish.'
-export const MISSING_CLIENT_REASON = 'Create a client before logging hour blocks.'
+export const MISSING_CLIENT_REASON =
+  'Create a client before logging hour blocks.'
 
 const SUBMIT_LABELS = {
   creating: 'Create hour block',

@@ -21,10 +21,7 @@ import {
   type HourBlockWithClient,
 } from './hour-block-form'
 export type { HourBlockFormValues } from './hour-block-form'
-import {
-  buildClientOptions,
-  type ClientOption,
-} from './hour-block-options'
+import { buildClientOptions, type ClientOption } from './hour-block-options'
 import {
   deriveClientFieldState,
   deriveDeleteButtonState,
@@ -84,7 +81,9 @@ export function useHourBlockSheetState({
     [sortedClients]
   )
 
-  const resolver = zodResolver(hourBlockFormSchema) as Resolver<HourBlockFormValues>
+  const resolver = zodResolver(
+    hourBlockFormSchema
+  ) as Resolver<HourBlockFormValues>
 
   const form = useForm<HourBlockFormValues>({
     resolver,
