@@ -1,99 +1,23 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { z } from 'zod'
-import type { PostgrestError, SupabaseClient } from '@supabase/supabase-js'
-
 import { requireUser } from '@/lib/auth/session'
+import {
+  clientSchema,
+  deleteClientSchema,
+  generateUniqueClientSlug,
+  clientSlugExists,
+  syncClientMembers,
+  toClientSlug,
+  type ClientActionResult,
+  type ClientInput,
+} from '@/lib/settings/clients/client-service'
 import { getSupabaseServerClient } from '@/lib/supabase/server'
-import type { Database } from '@/supabase/types/database'
+const INSERT_RETRY_LIMIT = 3
 
-const clientSchema = z.object({
-  id: z.string().uuid().optional(),
-  name: z.string().min(1, 'Name is required'),
-  slug: z
-    .string()
-    .regex(
-      /^[a-z0-9-]+$/,
-      'Slugs can only contain lowercase letters, numbers, and dashes'
-    )
-    .or(z.literal(''))
-    .nullish()
-    .transform(value => (value ? value : null)),
-  notes: z
-    .string()
-    .nullish()
-    .transform(value => (value ? value : null)),
-  memberIds: z.array(z.string().uuid()).optional(),
-})
-
-const deleteSchema = z.object({ id: z.string().uuid() })
-
-type ActionResult = {
-  error?: string
-}
-
-type ClientInput = z.infer<typeof clientSchema>
-
-const UNIQUE_RETRY_LIMIT = 3
-
-function toSlug(input: string): string {
-  const base = input
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-
-  return base || 'client'
-}
-
-async function slugExists(
-  supabase: SupabaseClient<Database>,
-  slug: string,
-  options: { excludeId?: string } = {}
-): Promise<boolean | PostgrestError> {
-  let query = supabase.from('clients').select('id').eq('slug', slug).limit(1)
-
-  if (options.excludeId) {
-    query = query.neq('id', options.excludeId)
-  }
-
-  const { data, error } = await query.maybeSingle()
-
-  if (error) {
-    console.error('Failed to check slug availability', error)
-    return error
-  }
-
-  return Boolean(data)
-}
-
-async function generateUniqueSlug(
-  supabase: SupabaseClient<Database>,
-  base: string
-): Promise<string | PostgrestError> {
-  const normalizedBase = base || 'client'
-  let candidate = normalizedBase
-  let suffix = 2
-
-  // Retry until we find an available slug. In practice this usually exits early.
-  while (true) {
-    const exists = await slugExists(supabase, candidate)
-
-    if (typeof exists !== 'boolean') {
-      return exists
-    }
-
-    if (!exists) {
-      return candidate
-    }
-
-    candidate = `${normalizedBase}-${suffix}`
-    suffix += 1
-  }
-}
-
-export async function saveClient(input: ClientInput): Promise<ActionResult> {
+export async function saveClient(
+  input: ClientInput
+): Promise<ClientActionResult> {
   const user = await requireUser()
   const parsed = clientSchema.safeParse(input)
 
@@ -119,8 +43,10 @@ export async function saveClient(input: ClientInput): Promise<ActionResult> {
   const providedSlug = slug?.trim() || null
 
   if (!id) {
-    const baseSlug = providedSlug ? toSlug(providedSlug) : toSlug(trimmedName)
-    const initialSlug = await generateUniqueSlug(supabase, baseSlug)
+    const baseSlug = providedSlug
+      ? toClientSlug(providedSlug)
+      : toClientSlug(trimmedName)
+    const initialSlug = await generateUniqueClientSlug(supabase, baseSlug)
 
     if (typeof initialSlug !== 'string') {
       return { error: 'Unable to generate client slug.' }
@@ -129,7 +55,7 @@ export async function saveClient(input: ClientInput): Promise<ActionResult> {
     let slugCandidate = initialSlug
     let attempt = 0
 
-    while (attempt < UNIQUE_RETRY_LIMIT) {
+    while (attempt < INSERT_RETRY_LIMIT) {
       const { data: inserted, error } = await supabase
         .from('clients')
         .insert({
@@ -166,7 +92,7 @@ export async function saveClient(input: ClientInput): Promise<ActionResult> {
         return { error: error?.message ?? 'Unable to create client.' }
       }
 
-      const nextSlug = await generateUniqueSlug(supabase, baseSlug)
+      const nextSlug = await generateUniqueClientSlug(supabase, baseSlug)
 
       if (typeof nextSlug !== 'string') {
         return { error: 'Unable to generate client slug.' }
@@ -181,14 +107,18 @@ export async function saveClient(input: ClientInput): Promise<ActionResult> {
     }
   }
 
-  const slugToUpdate: string | null = providedSlug ? toSlug(providedSlug) : null
+  const slugToUpdate: string | null = providedSlug
+    ? toClientSlug(providedSlug)
+    : null
 
   if (slugToUpdate && slugToUpdate.length < 3) {
     return { error: 'Slug must be at least 3 characters.' }
   }
 
   if (slugToUpdate) {
-    const exists = await slugExists(supabase, slugToUpdate, { excludeId: id })
+    const exists = await clientSlugExists(supabase, slugToUpdate, {
+      excludeId: id,
+    })
 
     if (typeof exists !== 'boolean') {
       return { error: 'Unable to validate slug availability.' }
@@ -222,9 +152,9 @@ export async function saveClient(input: ClientInput): Promise<ActionResult> {
 
 export async function softDeleteClient(input: {
   id: string
-}): Promise<ActionResult> {
+}): Promise<ClientActionResult> {
   await requireUser()
-  const parsed = deleteSchema.safeParse(input)
+  const parsed = deleteClientSchema.safeParse(input)
 
   if (!parsed.success) {
     return { error: 'Invalid delete request.' }
@@ -242,67 +172,6 @@ export async function softDeleteClient(input: {
   }
 
   revalidatePath('/settings/clients')
-
-  return {}
-}
-
-async function syncClientMembers(
-  supabase: SupabaseClient<Database>,
-  clientId: string,
-  memberIds: string[]
-): Promise<ActionResult> {
-  const uniqueMemberIds = Array.from(new Set(memberIds))
-
-  if (uniqueMemberIds.length) {
-    const { data: users, error: usersError } = await supabase
-      .from('users')
-      .select('id, role, deleted_at')
-      .in('id', uniqueMemberIds)
-
-    if (usersError) {
-      console.error('Failed to validate client members', usersError)
-      return { error: 'Unable to validate selected client users.' }
-    }
-
-    const invalidUsers = (users ?? []).filter(
-      user => user.deleted_at !== null || user.role !== 'CLIENT'
-    )
-
-    if (invalidUsers.length > 0) {
-      return { error: 'Only active client users can be assigned.' }
-    }
-  }
-
-  const archiveTimestamp = new Date().toISOString()
-
-  const { error: archiveError } = await supabase
-    .from('client_members')
-    .update({ deleted_at: archiveTimestamp })
-    .eq('client_id', clientId)
-    .is('deleted_at', null)
-
-  if (archiveError) {
-    console.error('Failed to archive prior client members', archiveError)
-    return { error: 'Unable to update client members.' }
-  }
-
-  if (uniqueMemberIds.length === 0) {
-    return {}
-  }
-
-  const { error: upsertError } = await supabase.from('client_members').upsert(
-    uniqueMemberIds.map(userId => ({
-      client_id: clientId,
-      user_id: userId,
-      deleted_at: null,
-    })),
-    { onConflict: 'client_id,user_id' }
-  )
-
-  if (upsertError) {
-    console.error('Failed to upsert client members', upsertError)
-    return { error: 'Unable to update client members.' }
-  }
 
   return {}
 }
