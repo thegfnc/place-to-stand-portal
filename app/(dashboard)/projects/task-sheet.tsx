@@ -9,6 +9,7 @@ import { Trash2 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { DisabledFieldTooltip } from '@/components/ui/disabled-field-tooltip'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import {
   Form,
   FormControl,
@@ -136,6 +137,7 @@ export function TaskSheet({
 }: Props) {
   const [feedback, setFeedback] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const { toast } = useToast()
   const pendingReason = 'Please wait for the current request to finish.'
   const managePermissionReason =
@@ -302,6 +304,7 @@ export function TaskSheet({
   const resetFormState = useCallback(() => {
     form.reset(defaultValues)
     setFeedback(null)
+    setIsDeleteDialogOpen(false)
   }, [defaultValues, form])
 
   useEffect(() => {
@@ -369,9 +372,28 @@ export function TaskSheet({
     })
   }
 
-  const handleDelete = () => {
-    if (!task?.id || !canManage) return
+  const handleRequestDelete = () => {
+    if (!task?.id || !canManage || isPending) {
+      return
+    }
 
+    setIsDeleteDialogOpen(true)
+  }
+
+  const handleCancelDelete = () => {
+    if (isPending) {
+      return
+    }
+
+    setIsDeleteDialogOpen(false)
+  }
+
+  const handleConfirmDelete = () => {
+    if (!task?.id || !canManage || isPending) {
+      return
+    }
+
+    setIsDeleteDialogOpen(false)
     startTransition(async () => {
       setFeedback(null)
       const result = await removeTask({ taskId: task.id })
@@ -384,7 +406,6 @@ export function TaskSheet({
       toast({
         title: 'Task deleted',
         description: 'The task has been removed from the board.',
-        variant: 'destructive',
       })
 
       resetFormState()
@@ -602,7 +623,7 @@ export function TaskSheet({
                     <Button
                       type='button'
                       variant='destructive'
-                      onClick={handleDelete}
+                      onClick={handleRequestDelete}
                       disabled={deleteDisabled}
                     >
                       <Trash2 className='h-4 w-4' />
@@ -626,6 +647,16 @@ export function TaskSheet({
           </Form>
         </SheetContent>
       </Sheet>
+      <ConfirmDialog
+        open={isDeleteDialogOpen}
+        title='Delete task?'
+        description='Deleting this task removes it from the project board. Proceed?'
+        confirmLabel='Delete'
+        confirmVariant='destructive'
+        confirmDisabled={isPending}
+        onCancel={handleCancelDelete}
+        onConfirm={handleConfirmDelete}
+      />
       {unsavedChangesDialog}
     </>
   )
