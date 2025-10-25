@@ -614,7 +614,7 @@ export function ProjectSheet({
                               </SelectTrigger>
                             </DisabledFieldTooltip>
                           </FormControl>
-                          <SelectContent>
+                          <SelectContent align='start'>
                             {PROJECT_STATUS_OPTIONS.map(status => (
                               <SelectItem
                                 key={status.value}
@@ -817,7 +817,7 @@ export function ProjectSheet({
                   {feedback}
                 </p>
               ) : null}
-              <SheetFooter className='flex items-center justify-end gap-3 px-0 pt-6 pb-0'>
+              <SheetFooter className='flex items-center justify-between gap-3 px-0 pt-6 pb-0'>
                 {isEditing ? (
                   <DisabledFieldTooltip
                     disabled={deleteDisabled}
@@ -829,7 +829,7 @@ export function ProjectSheet({
                       onClick={handleRequestDelete}
                       disabled={deleteDisabled}
                     >
-                      <Trash2 className='h-4 w-4' /> Delete
+                      <Trash2 className='h-4 w-4' />
                     </Button>
                   </DisabledFieldTooltip>
                 ) : null}

@@ -467,7 +467,7 @@ export function TaskSheet({
                               </SelectTrigger>
                             </DisabledFieldTooltip>
                           </FormControl>
-                          <SelectContent>
+                          <SelectContent align='start'>
                             {TASK_STATUSES.map(status => (
                               <SelectItem
                                 key={status.value}
@@ -593,7 +593,7 @@ export function TaskSheet({
                   {feedback}
                 </p>
               ) : null}
-              <SheetFooter className='flex items-center justify-end gap-3 px-0 pt-6 pb-0'>
+              <SheetFooter className='flex items-center justify-between gap-3 px-0 pt-6 pb-0'>
                 {task ? (
                   <DisabledFieldTooltip
                     disabled={deleteDisabled}
@@ -605,7 +605,7 @@ export function TaskSheet({
                       onClick={handleDelete}
                       disabled={deleteDisabled}
                     >
-                      <Trash2 className='h-4 w-4' /> Delete
+                      <Trash2 className='h-4 w-4' />
                     </Button>
                   </DisabledFieldTooltip>
                 ) : null}
