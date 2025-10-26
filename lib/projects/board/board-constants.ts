@@ -5,7 +5,6 @@ export const BOARD_COLUMNS = [
   { id: 'IN_REVIEW', label: 'In Review' },
   { id: 'BLOCKED', label: 'Blocked' },
   { id: 'DONE', label: 'Done' },
-  { id: 'ARCHIVED', label: 'Archived' },
 ] as const
 
 export type BoardColumnId = (typeof BOARD_COLUMNS)[number]['id']

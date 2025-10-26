@@ -93,9 +93,11 @@ export const groupTasksByColumn = (
   columns: ReadonlyArray<{ id: BoardColumnId }>
 ) => {
   const map = new Map<BoardColumnId, TaskWithRelations[]>()
+  const columnIds = new Set<BoardColumnId>()
 
   columns.forEach(column => {
     map.set(column.id, [])
+    columnIds.add(column.id)
   })
 
   tasks
@@ -105,11 +107,12 @@ export const groupTasksByColumn = (
         new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
     )
     .forEach(task => {
-      if (!map.has(task.status as BoardColumnId)) {
-        map.set(task.status as BoardColumnId, [])
+      const status = task.status
+      if (!columnIds.has(status as BoardColumnId)) {
+        return
       }
 
-      map.get(task.status as BoardColumnId)!.push(task)
+      map.get(status as BoardColumnId)!.push(task)
     })
 
   return map
