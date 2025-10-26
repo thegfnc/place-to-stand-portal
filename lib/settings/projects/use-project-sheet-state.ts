@@ -77,6 +77,7 @@ export type UseProjectSheetStateReturn = {
   handleRequestDelete: () => void
   handleCancelDelete: () => void
   handleConfirmDelete: () => void
+  replaceContractors: (contractors: ContractorUserSummary[]) => void
 }
 
 export function useProjectSheetState({
@@ -117,6 +118,7 @@ export function useProjectSheetState({
     handleConfirmContractorRemoval: confirmContractorRemoval,
     resetSelection,
     markSelectionSaved,
+    replaceContractors,
   } = contractorSelection
 
   const sortedClients = useMemo(() => sortClientsByName(clients), [clients])
@@ -353,5 +355,6 @@ export function useProjectSheetState({
     handleRequestDelete,
     handleCancelDelete,
     handleConfirmDelete,
+    replaceContractors,
   }
 }

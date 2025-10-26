@@ -1,6 +1,7 @@
 'use client'
 
-import { Trash2 } from 'lucide-react'
+import { useCallback } from 'react'
+import { Redo2, Trash2, Undo2 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
@@ -18,6 +19,7 @@ import {
 import type { UserSheetProps } from './types'
 import { UserSheetFormFields } from './user-sheet-form-fields'
 import { useUserSheetState } from './use-user-sheet-state'
+import { useSheetFormControls } from '@/lib/hooks/use-sheet-form-controls'
 
 export function UserSheet(props: UserSheetProps) {
   const {
@@ -45,6 +47,19 @@ export function UserSheet(props: UserSheetProps) {
     handleCancelDelete,
     handleConfirmDelete,
   } = useUserSheetState(props)
+
+  const handleSave = useCallback(
+    () => form.handleSubmit(handleFormSubmit)(),
+    [form, handleFormSubmit]
+  )
+
+  const { undo, redo, canUndo, canRedo } = useSheetFormControls({
+    form,
+    isActive: props.open,
+    canSave: !submitDisabled,
+    onSave: handleSave,
+    historyKey: props.user?.id ?? 'user:new',
+  })
 
   return (
     <>
@@ -81,14 +96,43 @@ export function UserSheet(props: UserSheetProps) {
                 <p className='text-destructive text-sm'>{feedback}</p>
               ) : null}
               <SheetFooter className='flex items-center justify-between gap-3 px-0 pt-6 pb-0'>
-                <DisabledFieldTooltip
-                  disabled={submitDisabled}
-                  reason={submitDisabledReason}
-                >
-                  <Button type='submit' disabled={submitDisabled}>
-                    {isEditing ? 'Save changes' : 'Send invite'}
+                <div className='flex items-center gap-2'>
+                  <DisabledFieldTooltip
+                    disabled={submitDisabled}
+                    reason={submitDisabledReason}
+                  >
+                    <Button
+                      type='submit'
+                      disabled={submitDisabled}
+                      aria-label={`${isEditing ? 'Save changes' : 'Send invite'} (⌘S / Ctrl+S)`}
+                      title={`${isEditing ? 'Save changes' : 'Send invite'} (⌘S / Ctrl+S)`}
+                    >
+                      {isEditing ? 'Save changes' : 'Send invite'}
+                    </Button>
+                  </DisabledFieldTooltip>
+                  <Button
+                    type='button'
+                    variant='outline'
+                    size='icon'
+                    onClick={undo}
+                    disabled={!canUndo}
+                    aria-label='Undo (⌘Z / Ctrl+Z)'
+                    title='Undo (⌘Z / Ctrl+Z)'
+                  >
+                    <Undo2 className='h-4 w-4' />
                   </Button>
-                </DisabledFieldTooltip>
+                  <Button
+                    type='button'
+                    variant='outline'
+                    size='icon'
+                    onClick={redo}
+                    disabled={!canRedo}
+                    aria-label='Redo (⇧⌘Z / Ctrl+Shift+Z)'
+                    title='Redo (⇧⌘Z / Ctrl+Shift+Z)'
+                  >
+                    <Redo2 className='h-4 w-4' />
+                  </Button>
+                </div>
                 {isEditing ? (
                   <DisabledFieldTooltip
                     disabled={deleteDisabled}

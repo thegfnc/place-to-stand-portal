@@ -5,6 +5,7 @@ import LinkExtension from '@tiptap/extension-link'
 import Placeholder from '@tiptap/extension-placeholder'
 import Underline from '@tiptap/extension-underline'
 import StarterKit from '@tiptap/starter-kit'
+import type { StarterKitOptions } from '@tiptap/starter-kit'
 
 import { ensureUrlProtocol, isContentEmpty } from './utils'
 
@@ -22,8 +23,8 @@ type UseRichTextEditorReturn = {
   toggleLink: () => void
 }
 
-const buildExtensions = (placeholder?: string) => [
-  StarterKit.configure({
+const buildExtensions = (placeholder?: string) => {
+  const starterKitConfig: Partial<StarterKitOptions> & { history?: boolean } = {
     bulletList: {
       keepMarks: true,
     },
@@ -35,22 +36,27 @@ const buildExtensions = (placeholder?: string) => [
         class: 'line-through',
       },
     },
-  }),
-  Underline,
-  LinkExtension.configure({
-    openOnClick: false,
-    autolink: true,
-    linkOnPaste: true,
-    HTMLAttributes: {
-      rel: 'noreferrer noopener',
-      target: '_blank',
-      class: 'underline underline-offset-4 text-primary',
-    },
-  }),
-  Placeholder.configure({
-    placeholder: placeholder ?? 'Write a description...',
-  }),
-]
+    history: false,
+  }
+
+  return [
+    StarterKit.configure(starterKitConfig),
+    Underline,
+    LinkExtension.configure({
+      openOnClick: false,
+      autolink: true,
+      linkOnPaste: true,
+      HTMLAttributes: {
+        rel: 'noreferrer noopener',
+        target: '_blank',
+        class: 'underline underline-offset-4 text-primary',
+      },
+    }),
+    Placeholder.configure({
+      placeholder: placeholder ?? 'Write a description...',
+    }),
+  ]
+}
 
 export function useRichTextEditor({
   value,

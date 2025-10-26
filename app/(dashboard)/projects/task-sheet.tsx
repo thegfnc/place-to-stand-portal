@@ -77,6 +77,8 @@ export function TaskSheet(props: TaskSheetProps) {
             deleteDisabledReason={deleteDisabledReason}
             submitDisabled={submitDisabled}
             submitDisabledReason={submitDisabledReason}
+            isSheetOpen={props.open}
+            historyKey={props.task?.id ?? 'task:new'}
           />
         </SheetContent>
       </Sheet>

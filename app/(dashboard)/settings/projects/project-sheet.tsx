@@ -106,6 +106,8 @@ export function ProjectSheet(props: Props) {
             onAddContractor={handleAddContractor}
             onContractorPickerOpenChange={handleContractorPickerOpenChange}
             onRequestContractorRemoval={handleRequestContractorRemoval}
+            isSheetOpen={props.open}
+            historyKey={props.project?.id ?? 'project:new'}
           />
         </SheetContent>
       </Sheet>

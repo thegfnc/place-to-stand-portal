@@ -26,7 +26,7 @@ type NavGroup = {
 
 const NAV_GROUPS: NavGroup[] = [
   {
-    title: 'Workspace',
+    title: 'Work',
     roles: ['ADMIN', 'CONTRACTOR', 'CLIENT'],
     items: [
       {

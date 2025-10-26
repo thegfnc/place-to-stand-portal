@@ -1,5 +1,8 @@
-import { Trash2 } from 'lucide-react'
-import { UseFormReturn } from 'react-hook-form'
+'use client'
+
+import { useCallback } from 'react'
+import { Redo2, Trash2, Undo2 } from 'lucide-react'
+import type { UseFormReturn } from 'react-hook-form'
 
 import { Button } from '@/components/ui/button'
 import { DisabledFieldTooltip } from '@/components/ui/disabled-field-tooltip'
@@ -32,6 +35,7 @@ import type {
   DeleteButtonState,
   SubmitButtonState,
 } from '@/lib/settings/projects/project-sheet-ui-state'
+import { useSheetFormControls } from '@/lib/hooks/use-sheet-form-controls'
 import { ProjectContractorsSection } from './project-contractors-section'
 import type { ProjectSheetFieldState } from './project-sheet-field-state'
 
@@ -53,6 +57,8 @@ export type ProjectSheetFormProps = {
   onAddContractor: (user: ContractorUserSummary) => void
   onContractorPickerOpenChange: (open: boolean) => void
   onRequestContractorRemoval: (user: ContractorUserSummary) => void
+  isSheetOpen: boolean
+  historyKey: string
 }
 
 export function ProjectSheetForm(props: ProjectSheetFormProps) {
@@ -74,7 +80,22 @@ export function ProjectSheetForm(props: ProjectSheetFormProps) {
     onAddContractor,
     onContractorPickerOpenChange,
     onRequestContractorRemoval,
+    isSheetOpen,
+    historyKey,
   } = props
+
+  const handleSave = useCallback(
+    () => form.handleSubmit(onSubmit)(),
+    [form, onSubmit]
+  )
+
+  const { undo, redo, canUndo, canRedo } = useSheetFormControls({
+    form,
+    isActive: isSheetOpen,
+    canSave: !submitButton.disabled,
+    onSave: handleSave,
+    historyKey,
+  })
 
   return (
     <Form {...form}>
@@ -259,14 +280,43 @@ export function ProjectSheetForm(props: ProjectSheetFormProps) {
           </p>
         ) : null}
         <SheetFooter className='flex items-center justify-between gap-3 px-0 pt-6 pb-0'>
-          <DisabledFieldTooltip
-            disabled={submitButton.disabled}
-            reason={submitButton.reason}
-          >
-            <Button type='submit' disabled={submitButton.disabled}>
-              {submitButton.label}
+          <div className='flex items-center gap-2'>
+            <DisabledFieldTooltip
+              disabled={submitButton.disabled}
+              reason={submitButton.reason}
+            >
+              <Button
+                type='submit'
+                disabled={submitButton.disabled}
+                aria-label={`${submitButton.label} (⌘S / Ctrl+S)`}
+                title={`${submitButton.label} (⌘S / Ctrl+S)`}
+              >
+                {submitButton.label}
+              </Button>
+            </DisabledFieldTooltip>
+            <Button
+              type='button'
+              variant='outline'
+              size='icon'
+              onClick={undo}
+              disabled={!canUndo}
+              aria-label='Undo (⌘Z / Ctrl+Z)'
+              title='Undo (⌘Z / Ctrl+Z)'
+            >
+              <Undo2 className='h-4 w-4' />
             </Button>
-          </DisabledFieldTooltip>
+            <Button
+              type='button'
+              variant='outline'
+              size='icon'
+              onClick={redo}
+              disabled={!canRedo}
+              aria-label='Redo (⇧⌘Z / Ctrl+Shift+Z)'
+              title='Redo (⇧⌘Z / Ctrl+Shift+Z)'
+            >
+              <Redo2 className='h-4 w-4' />
+            </Button>
+          </div>
           {isEditing ? (
             <DisabledFieldTooltip
               disabled={deleteButton.disabled}

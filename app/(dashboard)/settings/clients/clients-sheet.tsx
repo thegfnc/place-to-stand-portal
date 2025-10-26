@@ -75,6 +75,8 @@ export function ClientSheet(props: ClientSheetProps) {
             onRequestRemoval={handleRequestRemoval}
             onSubmit={handleFormSubmit}
             onRequestDelete={handleRequestDelete}
+            isSheetOpen={props.open}
+            historyKey={props.client?.id ?? 'client:new'}
           />
         </SheetContent>
       </Sheet>

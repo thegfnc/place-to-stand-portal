@@ -74,6 +74,7 @@ export type UseClientSheetStateReturn = {
   handleRequestDelete: () => void
   handleCancelDelete: () => void
   handleConfirmDelete: () => void
+  replaceMembers: (members: ClientMemberOption[]) => void
 }
 
 export const useClientSheetState = ({
@@ -231,6 +232,12 @@ export const useClientSheetState = ({
     setRemovalCandidate(null)
   }, [removalCandidate])
 
+  const replaceMembers = useCallback((members: ClientMember[]) => {
+    setSelectedMembers(cloneMembers(members))
+    setRemovalCandidate(null)
+    setIsPickerOpen(false)
+  }, [])
+
   const handleFormSubmit = useCallback(
     (values: ClientSheetFormValues) => {
       if (isEditing && !values.slug?.trim()) {
@@ -377,5 +384,6 @@ export const useClientSheetState = ({
     handleRequestDelete,
     handleCancelDelete,
     handleConfirmDelete,
+    replaceMembers,
   }
 }

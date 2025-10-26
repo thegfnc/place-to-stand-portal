@@ -36,6 +36,7 @@ export type UseProjectContractorSelectionReturn = {
   handleConfirmContractorRemoval: () => void
   resetSelection: () => void
   markSelectionSaved: () => void
+  replaceContractors: (contractors: ContractorUserSummary[]) => void
 }
 
 export function useProjectContractorSelection(
@@ -140,6 +141,15 @@ export function useProjectContractorSelection(
     )
   }, [selectedContractors])
 
+  const replaceContractors = useCallback(
+    (contractors: ContractorUserSummary[]) => {
+      setSelectedContractors(contractors.map(contractor => ({ ...contractor })))
+      setContractorRemovalCandidate(null)
+      setIsContractorPickerOpen(false)
+    },
+    []
+  )
+
   return {
     selectedContractors,
     availableContractors,
@@ -156,5 +166,6 @@ export function useProjectContractorSelection(
     handleConfirmContractorRemoval,
     resetSelection,
     markSelectionSaved,
+    replaceContractors,
   }
 }
