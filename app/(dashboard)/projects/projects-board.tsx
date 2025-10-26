@@ -1,6 +1,12 @@
 'use client'
 
-import { useCallback } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  type UIEventHandler,
+} from 'react'
 import { DndContext, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
 import { Loader2 } from 'lucide-react'
 
@@ -59,6 +65,62 @@ export function ProjectsBoard(props: Props) {
     handleEditTask,
     handleSheetOpenChange,
   } = useProjectsBoardState(props)
+
+  const boardViewportRef = useRef<HTMLDivElement | null>(null)
+
+  const boardScrollKey = useMemo(() => {
+    if (!activeProject?.id) return null
+    return `projects-board-scroll:${activeProject.id}`
+  }, [activeProject?.id])
+
+  const persistBoardScroll = useCallback(() => {
+    if (!boardScrollKey) {
+      return
+    }
+
+    const node = boardViewportRef.current
+    if (!node || typeof window === 'undefined') {
+      return
+    }
+
+    try {
+      window.sessionStorage.setItem(boardScrollKey, String(node.scrollLeft))
+    } catch {
+      // Ignore storage failures (private browsing, quota, etc.)
+    }
+  }, [boardScrollKey])
+
+  const handleBoardScroll = useCallback<UIEventHandler<HTMLDivElement>>(() => {
+    persistBoardScroll()
+  }, [persistBoardScroll])
+
+  useEffect(() => {
+    if (!boardScrollKey) {
+      return
+    }
+
+    const node = boardViewportRef.current
+    if (!node || typeof window === 'undefined') {
+      return
+    }
+
+    const frame = window.requestAnimationFrame(() => {
+      try {
+        const stored = window.sessionStorage.getItem(boardScrollKey)
+        const parsed = stored ? Number(stored) : NaN
+        if (!Number.isNaN(parsed)) {
+          node.scrollLeft = parsed
+        }
+      } catch {
+        // Ignore storage failures (private browsing, quota, etc.)
+      }
+    })
+
+    return () => {
+      window.cancelAnimationFrame(frame)
+      persistBoardScroll()
+    }
+  }, [boardScrollKey, persistBoardScroll])
 
   const renderAssignees = useCallback(
     (task: TaskWithRelations) => {
@@ -121,7 +183,7 @@ export function ProjectsBoard(props: Props) {
           onProjectChange={handleProjectSelect}
         />
       </AppShellHeader>
-      <div className='flex h-full flex-col gap-6'>
+      <div className='flex h-full min-h-0 flex-col gap-6'>
         <ProjectsBoardIntro
           addTaskDisabled={addTaskDisabled}
           addTaskDisabledReason={addTaskDisabledReason}
@@ -138,9 +200,13 @@ export function ProjectsBoard(props: Props) {
             description={NO_SELECTION_DESCRIPTION}
           />
         ) : (
-          <div className='relative flex-1'>
+          <div className='relative min-h-0 flex-1'>
             <div className='absolute inset-0 overflow-hidden'>
-              <div className='h-full overflow-x-auto pb-6'>
+              <div
+                ref={boardViewportRef}
+                className='h-full min-h-0 overflow-x-auto pb-6'
+                onScroll={handleBoardScroll}
+              >
                 <DndContext
                   sensors={sensors}
                   onDragStart={handleDragStart}

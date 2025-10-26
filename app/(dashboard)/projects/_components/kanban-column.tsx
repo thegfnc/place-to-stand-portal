@@ -32,7 +32,7 @@ export function KanbanColumn({
     <div
       ref={setNodeRef}
       className={cn(
-        'bg-background/80 flex h-full w-80 shrink-0 flex-col gap-4 rounded-xl border p-4 shadow-sm transition',
+        'bg-background/80 flex h-full min-h-0 w-80 shrink-0 flex-col gap-4 overflow-hidden rounded-xl border p-4 shadow-sm transition',
         isOver && 'ring-primary ring-2'
       )}
     >
@@ -44,7 +44,7 @@ export function KanbanColumn({
         </div>
         <span className='text-muted-foreground text-xs'>{tasks.length}</span>
       </div>
-      <div className='flex flex-1 flex-col gap-3'>
+      <div className='flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-1'>
         {tasks.map(task => (
           <TaskCard
             key={task.id}
