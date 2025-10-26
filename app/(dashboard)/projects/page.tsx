@@ -13,7 +13,10 @@ export const metadata: Metadata = {
 export default async function ProjectsPage() {
   const user = await requireUser()
   const [projects, admins] = await Promise.all([
-    fetchProjectsWithRelations(),
+    fetchProjectsWithRelations({
+      forUserId: user.id,
+      forRole: user.role,
+    }),
     fetchAdminUsers(),
   ])
 

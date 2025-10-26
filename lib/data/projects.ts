@@ -3,6 +3,7 @@ import 'server-only'
 import { cache } from 'react'
 
 import { getSupabaseServiceClient } from '@/lib/supabase/service'
+import type { UserRole } from '@/lib/auth/session'
 import type {
   DbClient,
   DbProject,
@@ -14,8 +15,15 @@ import type {
   TaskWithRelations,
 } from '@/lib/types'
 
+type FetchProjectsWithRelationsOptions = {
+  forUserId?: string
+  forRole?: UserRole
+}
+
 export const fetchProjectsWithRelations = cache(
-  async (): Promise<ProjectWithRelations[]> => {
+  async (
+    options: FetchProjectsWithRelationsOptions = {}
+  ): Promise<ProjectWithRelations[]> => {
     const supabase = getSupabaseServiceClient()
 
     const { data: projectRows, error: projectsError } = await supabase
@@ -146,22 +154,31 @@ export const fetchProjectsWithRelations = cache(
       clientLookup.set(client.id, client)
     })
 
+    const shouldScopeToAssignments =
+      options.forRole === 'CONTRACTOR' && Boolean(options.forUserId)
+
+    const assignedProjectIds = new Set<string>()
     const membersByProject = new Map<string, ProjectMemberWithUser[]>()
-    ;(membersData as Array<DbProjectMember & { user: DbUser | null }>).forEach(
-      member => {
-        if (
-          !member ||
-          member.deleted_at ||
-          !member.user ||
-          member.user.deleted_at
-        ) {
-          return
-        }
-        const list = membersByProject.get(member.project_id) ?? []
-        list.push({ ...member, user: member.user })
-        membersByProject.set(member.project_id, list)
+    ;(
+      (membersData ?? []) as Array<DbProjectMember & { user: DbUser | null }>
+    ).forEach(member => {
+      if (
+        !member ||
+        member.deleted_at ||
+        !member.user ||
+        member.user.deleted_at
+      ) {
+        return
       }
-    )
+
+      if (shouldScopeToAssignments && member.user_id === options.forUserId) {
+        assignedProjectIds.add(member.project_id)
+      }
+
+      const list = membersByProject.get(member.project_id) ?? []
+      list.push({ ...member, user: member.user })
+      membersByProject.set(member.project_id, list)
+    })
 
     const tasksByProject = new Map<string, TaskWithRelations[]>()
     ;(
@@ -187,7 +204,11 @@ export const fetchProjectsWithRelations = cache(
       tasksByProject.set(task.project_id, list)
     })
 
-    return projects.map(project => ({
+    const scopedProjects = shouldScopeToAssignments
+      ? projects.filter(project => assignedProjectIds.has(project.id))
+      : projects
+
+    return scopedProjects.map(project => ({
       ...project,
       client: project.client_id
         ? (clientLookup.get(project.client_id) ?? null)
