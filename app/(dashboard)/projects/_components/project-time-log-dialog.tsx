@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { format } from 'date-fns'
@@ -23,8 +23,14 @@ import {
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/components/ui/use-toast'
 import type { UserRole } from '@/lib/auth/session'
-import type { TaskWithRelations } from '@/lib/types'
+import type {
+  DbUser,
+  ProjectMemberWithUser,
+  TaskWithRelations,
+} from '@/lib/types'
 import { getSupabaseBrowserClient } from '@/lib/supabase/client'
+import { buildAssigneeItems } from '@/lib/projects/task-sheet/task-sheet-utils'
+import { UNASSIGNED_ASSIGNEE_VALUE } from '@/lib/projects/task-sheet/task-sheet-constants'
 
 export const TIME_LOGS_QUERY_KEY = 'project-time-logs' as const
 const TASK_NONE_VALUE = '__time_log_none__'
@@ -38,6 +44,8 @@ type ProjectTimeLogDialogProps = {
   tasks: TaskWithRelations[]
   currentUserId: string
   currentUserRole: UserRole
+  projectMembers: ProjectMemberWithUser[]
+  admins: DbUser[]
 }
 
 export function ProjectTimeLogDialog({
@@ -49,8 +57,11 @@ export function ProjectTimeLogDialog({
   tasks,
   currentUserId,
   currentUserRole,
+  projectMembers,
+  admins,
 }: ProjectTimeLogDialogProps) {
   const canLogTime = currentUserRole !== 'CLIENT'
+  const canSelectUser = currentUserRole === 'ADMIN'
   const router = useRouter()
   const supabase = getSupabaseBrowserClient()
   const queryClient = useQueryClient()
@@ -63,6 +74,11 @@ export function ProjectTimeLogDialog({
   const [loggedOnInput, setLoggedOnInput] = useState(() => getToday())
   const [selectedTaskValue, setSelectedTaskValue] =
     useState<string>(TASK_NONE_VALUE)
+  const [selectedUserId, setSelectedUserId] = useState(currentUserId)
+
+  useEffect(() => {
+    setSelectedUserId(currentUserId)
+  }, [currentUserId])
 
   const baseQueryKey = useMemo(
     () => [TIME_LOGS_QUERY_KEY, projectId] as const,
@@ -93,6 +109,18 @@ export function ProjectTimeLogDialog({
     ]
   }, [tasks])
 
+  const userComboboxItems = useMemo<SearchableComboboxItem[]>(() => {
+    if (!canSelectUser) {
+      return []
+    }
+
+    return buildAssigneeItems({
+      admins,
+      members: projectMembers,
+      currentAssigneeId: selectedUserId,
+    }).filter(item => item.value !== UNASSIGNED_ASSIGNEE_VALUE)
+  }, [admins, canSelectUser, projectMembers, selectedUserId])
+
   const createLog = useMutation({
     mutationFn: async () => {
       const parsedHours = Number.parseFloat(hoursInput)
@@ -101,11 +129,17 @@ export function ProjectTimeLogDialog({
         throw new Error('Enter a valid number of hours greater than zero.')
       }
 
+      const logUserId = canSelectUser ? selectedUserId : currentUserId
+
+      if (!logUserId) {
+        throw new Error('Select a teammate before logging time.')
+      }
+
       const payload = {
         project_id: projectId,
         task_id:
           selectedTaskValue === TASK_NONE_VALUE ? null : selectedTaskValue,
-        user_id: currentUserId,
+        user_id: logUserId,
         hours: parsedHours,
         logged_on: loggedOnInput,
         note: noteInput.trim() ? noteInput.trim() : null,
@@ -123,6 +157,7 @@ export function ProjectTimeLogDialog({
       setNoteInput('')
       setLoggedOnInput(getToday())
       setSelectedTaskValue(TASK_NONE_VALUE)
+      setSelectedUserId(currentUserId)
       onOpenChange(false)
       toast({
         title: 'Time logged',
@@ -143,7 +178,11 @@ export function ProjectTimeLogDialog({
   const isMutating = createLog.isPending
 
   const disableCreate =
-    !canLogTime || isMutating || !hoursInput.trim() || !loggedOnInput.trim()
+    !canLogTime ||
+    isMutating ||
+    !hoursInput.trim() ||
+    !loggedOnInput.trim() ||
+    (canSelectUser && !selectedUserId)
 
   const handleSubmit = useCallback(
     (event: React.FormEvent<HTMLFormElement>) => {
@@ -160,16 +199,18 @@ export function ProjectTimeLogDialog({
     (nextOpen: boolean) => {
       if (nextOpen) {
         setLoggedOnInput(getToday())
+        setSelectedUserId(currentUserId)
       } else {
         setHoursInput('')
         setNoteInput('')
         setLoggedOnInput(getToday())
         setSelectedTaskValue(TASK_NONE_VALUE)
+        setSelectedUserId(currentUserId)
       }
 
       onOpenChange(nextOpen)
     },
-    [getToday, onOpenChange]
+    [currentUserId, getToday, onOpenChange]
   )
 
   const projectLabel = clientName
@@ -221,7 +262,7 @@ export function ProjectTimeLogDialog({
             </div>
             <div className='space-y-2 sm:col-span-2'>
               <label htmlFor='time-log-task' className='text-sm font-medium'>
-                Link to task (optional)
+                Link to task
               </label>
               <SearchableCombobox
                 id='time-log-task'
@@ -233,9 +274,26 @@ export function ProjectTimeLogDialog({
                 disabled={isMutating}
               />
             </div>
+            {canSelectUser ? (
+              <div className='space-y-2 sm:col-span-2'>
+                <label htmlFor='time-log-user' className='text-sm font-medium'>
+                  Log hours for
+                </label>
+                <SearchableCombobox
+                  id='time-log-user'
+                  value={selectedUserId}
+                  onChange={next => setSelectedUserId(next)}
+                  items={userComboboxItems}
+                  placeholder='Select teammate'
+                  searchPlaceholder='Search collaborators...'
+                  emptyMessage='No eligible collaborators found.'
+                  disabled={isMutating}
+                />
+              </div>
+            ) : null}
             <div className='space-y-2 sm:col-span-2'>
               <label htmlFor='time-log-note' className='text-sm font-medium'>
-                Notes (optional)
+                Notes
               </label>
               <Textarea
                 id='time-log-note'

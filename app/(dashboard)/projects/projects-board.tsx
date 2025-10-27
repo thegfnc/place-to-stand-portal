@@ -350,6 +350,8 @@ export function ProjectsBoard(props: Props) {
             tasks={activeProjectTasks}
             currentUserId={props.currentUserId}
             currentUserRole={props.currentUserRole}
+            projectMembers={activeProject.members}
+            admins={props.admins}
           />
         ) : null}
         {activeProject ? (

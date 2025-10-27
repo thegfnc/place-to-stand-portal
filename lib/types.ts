@@ -17,6 +17,7 @@ export type ProjectMemberWithUser = DbProjectMember & {
 
 export type TaskWithRelations = DbTask & {
   assignees: { user_id: string }[]
+  commentCount: number
 }
 
 export type TaskCommentWithAuthor = DbTaskComment & {

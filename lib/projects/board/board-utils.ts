@@ -20,11 +20,16 @@ export const areTaskCollectionsEqual = (
   if (a.length !== b.length) return false
 
   const snapshot = new Map(
-    a.map(task => [task.id, `${task.status}-${task.updated_at}`])
+    a.map(task => [
+      task.id,
+      `${task.status}-${task.updated_at}-${task.commentCount}`,
+    ])
   )
 
   return b.every(
-    task => snapshot.get(task.id) === `${task.status}-${task.updated_at}`
+    task =>
+      snapshot.get(task.id) ===
+      `${task.status}-${task.updated_at}-${task.commentCount}`
   )
 }
 

@@ -17,6 +17,7 @@ export type RichTextEditorProps = {
   placeholder?: string
   disabled?: boolean
   className?: string
+  contentMinHeightClassName?: string
 }
 
 export function RichTextEditor({
@@ -27,6 +28,7 @@ export function RichTextEditor({
   placeholder,
   disabled = false,
   className,
+  contentMinHeightClassName = '[&_.ProseMirror]:min-h-[160px]',
 }: RichTextEditorProps) {
   useEffect(() => {
     ensureEditorStyles()
@@ -56,7 +58,7 @@ export function RichTextEditor({
     () =>
       cn(
         'w-full flex-1 text-sm',
-        '[&_.ProseMirror]:min-h-[160px]',
+        contentMinHeightClassName,
         '[&_.ProseMirror]:px-3 [&_.ProseMirror]:py-2',
         '[&_.ProseMirror]:leading-relaxed [&_.ProseMirror]:text-foreground [&_.ProseMirror]:bg-transparent',
         '[&_.ProseMirror]:outline-none [&_.ProseMirror]:focus:outline-none',
@@ -66,7 +68,7 @@ export function RichTextEditor({
         '[&_.ProseMirror li]:my-1',
         disabled && '[&_.ProseMirror]:cursor-not-allowed'
       ),
-    [disabled]
+    [contentMinHeightClassName, disabled]
   )
 
   return (

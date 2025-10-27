@@ -131,6 +131,10 @@ export const fetchProjectsWithRelations = cache(
             assignees:task_assignees (
               user_id,
               deleted_at
+            ),
+            comments:task_comments (
+              id,
+              deleted_at
             )
           `
           )
@@ -335,6 +339,10 @@ export const fetchProjectsWithRelations = cache(
             user_id: string
             deleted_at: string | null
           }> | null
+          comments: Array<{
+            id: string
+            deleted_at: string | null
+          }> | null
         }
       >
     ).forEach(task => {
@@ -342,11 +350,17 @@ export const fetchProjectsWithRelations = cache(
         return
       }
       const list = tasksByProject.get(task.project_id) ?? []
+      const { assignees: rawAssignees, comments, ...taskFields } = task
+      const commentCount = (comments ?? []).filter(
+        comment => comment && !comment.deleted_at
+      ).length
+
       list.push({
-        ...task,
-        assignees: (task.assignees ?? [])
+        ...taskFields,
+        assignees: (rawAssignees ?? [])
           .filter(assignee => !assignee.deleted_at)
           .map(assignee => ({ user_id: assignee.user_id })),
+        commentCount,
       })
       tasksByProject.set(task.project_id, list)
     })

@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { CSS } from '@dnd-kit/utilities'
 import { useDraggable } from '@dnd-kit/core'
-import { CalendarDays, Users2 } from 'lucide-react'
+import { CalendarDays, MessageCircle, Users2 } from 'lucide-react'
+import { format, parseISO } from 'date-fns'
 
 import { cn } from '@/lib/utils'
 import type { TaskWithRelations } from '@/lib/types'
@@ -48,6 +49,18 @@ function CardContent({
         .join(', ')
     : 'Unassigned'
   const descriptionPreview = toPlainText(task.description)
+  let dueDateLabel: string | null = null
+
+  if (task.due_on) {
+    try {
+      const parsed = parseISO(task.due_on)
+      dueDateLabel = Number.isNaN(parsed.getTime())
+        ? task.due_on
+        : format(parsed, 'MMM d, yyyy')
+    } catch {
+      dueDateLabel = task.due_on
+    }
+  }
 
   return (
     <>
@@ -65,10 +78,16 @@ function CardContent({
         <span className='inline-flex items-center gap-1'>
           <Users2 className='h-3.5 w-3.5' /> {assignedSummary}
         </span>
-        {task.due_on ? (
+        {task.commentCount > 0 ? (
+          <span className='inline-flex items-center gap-1'>
+            <MessageCircle className='h-3.5 w-3.5' />
+            {task.commentCount}
+          </span>
+        ) : null}
+        {dueDateLabel ? (
           <span className='inline-flex items-center gap-1'>
             <CalendarDays className='h-3.5 w-3.5' />
-            {task.due_on}
+            {dueDateLabel}
           </span>
         ) : null}
       </div>

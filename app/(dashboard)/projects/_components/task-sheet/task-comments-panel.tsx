@@ -1,16 +1,23 @@
 'use client'
 
 import { useCallback, useMemo, useState, type ReactNode } from 'react'
+import { useRouter } from 'next/navigation'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { formatDistanceToNow } from 'date-fns'
 import { Loader2, Pencil, Send, Trash2, X } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { DisabledFieldTooltip } from '@/components/ui/disabled-field-tooltip'
 import { Separator } from '@/components/ui/separator'
-import { Textarea } from '@/components/ui/textarea'
+import { RichTextEditor } from '@/components/ui/rich-text-editor'
 import { useToast } from '@/components/ui/use-toast'
+import {
+  isContentEmpty,
+  sanitizeEditorHtml,
+} from '@/components/ui/rich-text-editor/utils'
 import { getSupabaseBrowserClient } from '@/lib/supabase/client'
+import { normalizeRichTextContent } from '@/lib/projects/task-sheet/task-sheet-utils'
 import type { TaskCommentWithAuthor } from '@/lib/types'
 
 const COMMENTS_QUERY_KEY = 'task-comments'
@@ -22,18 +29,31 @@ type TaskCommentsPanelProps = {
   canComment: boolean
 }
 
+const prepareCommentBody = (content: string) => {
+  const sanitized = sanitizeEditorHtml(content)
+  const normalized = normalizeRichTextContent(sanitized)
+
+  if (!normalized) {
+    return null
+  }
+
+  return sanitized
+}
+
 export function TaskCommentsPanel({
   taskId,
   projectId,
   currentUserId,
   canComment,
 }: TaskCommentsPanelProps) {
+  const router = useRouter()
   const supabase = getSupabaseBrowserClient()
   const queryClient = useQueryClient()
   const { toast } = useToast()
   const [draft, setDraft] = useState('')
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null)
   const [editingDraft, setEditingDraft] = useState('')
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null)
 
   const commentsQueryKey = useMemo(
     () => [COMMENTS_QUERY_KEY, projectId, taskId],
@@ -103,6 +123,9 @@ export function TaskCommentsPanel({
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: commentsQueryKey })
       setDraft('')
+      if (taskId) {
+        router.refresh()
+      }
       toast({
         title: 'Comment added',
         description: 'Your message is now visible to project collaborators.',
@@ -163,6 +186,10 @@ export function TaskCommentsPanel({
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: commentsQueryKey })
+      setDeleteTargetId(null)
+      if (taskId) {
+        router.refresh()
+      }
       toast({
         title: 'Comment removed',
         description: 'The comment is now hidden from collaborators.',
@@ -180,18 +207,18 @@ export function TaskCommentsPanel({
   })
 
   const handleSubmit = useCallback(() => {
-    const trimmed = draft.trim()
+    const prepared = prepareCommentBody(draft)
 
-    if (!trimmed) {
+    if (!prepared) {
       return
     }
 
-    createComment.mutate(trimmed)
+    createComment.mutate(prepared)
   }, [createComment, draft])
 
   const handleStartEdit = useCallback((comment: TaskCommentWithAuthor) => {
     setEditingCommentId(comment.id)
-    setEditingDraft(comment.body)
+    setEditingDraft(sanitizeEditorHtml(comment.body ?? ''))
   }, [])
 
   const handleCancelEdit = useCallback(() => {
@@ -204,13 +231,29 @@ export function TaskCommentsPanel({
       return
     }
 
-    const trimmed = editingDraft.trim()
-    if (!trimmed) {
+    const prepared = prepareCommentBody(editingDraft)
+    if (!prepared) {
       return
     }
 
-    updateComment.mutate({ id: editingCommentId, body: trimmed })
+    updateComment.mutate({ id: editingCommentId, body: prepared })
   }, [editingCommentId, editingDraft, updateComment])
+
+  const handleRequestDelete = useCallback((commentId: string) => {
+    setDeleteTargetId(commentId)
+  }, [])
+
+  const handleCancelDeleteDialog = useCallback(() => {
+    setDeleteTargetId(null)
+  }, [])
+
+  const handleConfirmDelete = useCallback(() => {
+    if (!deleteTargetId) {
+      return
+    }
+
+    deleteComment.mutate(deleteTargetId)
+  }, [deleteComment, deleteTargetId])
 
   const isPending =
     createComment.isPending ||
@@ -229,10 +272,9 @@ export function TaskCommentsPanel({
   }
 
   return (
-    <PanelShell
-      title='Comments'
-      description='Collaborate with clients and teammates directly on this task.'
-    >
+    <>
+      <Separator />
+      <h3 className='mb-4 text-base font-semibold'>Comments</h3>
       {isLoading ? (
         <div className='text-muted-foreground flex items-center gap-2 text-sm'>
           <Loader2 className='h-4 w-4 animate-spin' /> Loading comments…
@@ -249,7 +291,6 @@ export function TaskCommentsPanel({
             pending={createComment.isPending}
             canComment={canComment}
           />
-          <Separator />
           <div className='space-y-4'>
             {comments && comments.length > 0 ? (
               comments.map(comment => {
@@ -267,7 +308,7 @@ export function TaskCommentsPanel({
                     onStartEdit={handleStartEdit}
                     onCancelEdit={handleCancelEdit}
                     onConfirmEdit={handleConfirmEdit}
-                    onDelete={id => deleteComment.mutate(id)}
+                    onRequestDelete={handleRequestDelete}
                     disableActions={isPending}
                   />
                 )
@@ -278,7 +319,17 @@ export function TaskCommentsPanel({
           </div>
         </div>
       )}
-    </PanelShell>
+      <ConfirmDialog
+        open={Boolean(deleteTargetId)}
+        title='Delete comment?'
+        description='This comment will be removed from the task.'
+        confirmLabel='Delete'
+        confirmVariant='destructive'
+        confirmDisabled={deleteComment.isPending}
+        onCancel={handleCancelDeleteDialog}
+        onConfirm={handleConfirmDelete}
+      />
+    </>
   )
 }
 
@@ -336,20 +387,21 @@ function CommentComposer({
     [disabled, onSubmit]
   )
 
+  const isEmpty = isContentEmpty(value)
+
   return (
     <form onSubmit={handleSubmit} className='space-y-3'>
-      <Textarea
+      <RichTextEditor
+        id='task-comment-composer'
         value={value}
-        onChange={event => onChange(event.target.value)}
+        onChange={onChange}
         placeholder={
           canComment
             ? 'Share context, ask a question, or leave an update for the team.'
             : 'You do not have permission to post comments on this task.'
         }
         disabled={disabled}
-        minLength={1}
-        maxLength={2000}
-        rows={4}
+        contentMinHeightClassName='[&_.ProseMirror]:min-h-20'
       />
       <div className='flex justify-end'>
         <DisabledFieldTooltip
@@ -364,7 +416,7 @@ function CommentComposer({
         >
           <Button
             type='submit'
-            disabled={disabled || !value.trim()}
+            disabled={disabled || isEmpty}
             className='flex items-center gap-2'
           >
             {pending ? (
@@ -389,7 +441,7 @@ type CommentItemProps = {
   onStartEdit: (comment: TaskCommentWithAuthor) => void
   onCancelEdit: () => void
   onConfirmEdit: () => void
-  onDelete: (id: string) => void
+  onRequestDelete: (id: string) => void
   disableActions: boolean
 }
 
@@ -402,7 +454,7 @@ function CommentItem({
   onStartEdit,
   onCancelEdit,
   onConfirmEdit,
-  onDelete,
+  onRequestDelete,
   disableActions,
 }: CommentItemProps) {
   const authorName =
@@ -411,6 +463,11 @@ function CommentItem({
     addSuffix: true,
   })
   const edited = comment.updated_at && comment.updated_at !== comment.created_at
+  const sanitizedBody = useMemo(
+    () => sanitizeEditorHtml(comment.body ?? ''),
+    [comment.body]
+  )
+  const isEditingEmpty = isContentEmpty(editingDraft)
 
   if (isEditing) {
     return (
@@ -421,10 +478,13 @@ function CommentItem({
           </span>
           <span>{createdAgo}</span>
         </div>
-        <Textarea
+        <RichTextEditor
+          key={`comment-edit-${comment.id}`}
           value={editingDraft}
-          onChange={event => onChangeEditingDraft(event.target.value)}
-          rows={4}
+          onChange={onChangeEditingDraft}
+          disabled={disableActions}
+          placeholder='Update your comment...'
+          contentMinHeightClassName='[&_.ProseMirror]:min-h-20'
         />
         <div className='mt-3 flex items-center justify-end gap-2'>
           <Button
@@ -439,7 +499,7 @@ function CommentItem({
             type='button'
             size='sm'
             onClick={onConfirmEdit}
-            disabled={!editingDraft.trim() || disableActions}
+            disabled={isEditingEmpty || disableActions}
           >
             <Send className='mr-1 h-3.5 w-3.5' /> Save
           </Button>
@@ -450,36 +510,37 @@ function CommentItem({
 
   return (
     <article className='rounded-lg border px-4 py-3 shadow-sm'>
-      <header className='text-muted-foreground mb-2 flex flex-wrap items-center justify-between gap-2 text-xs'>
-        <span className='text-foreground font-medium'>{authorName}</span>
-        <span>{createdAgo}</span>
-      </header>
-      <p className='text-foreground text-sm leading-relaxed whitespace-pre-wrap'>
-        {comment.body}
-      </p>
-      <footer className='text-muted-foreground mt-3 flex items-center justify-between gap-2 text-xs'>
-        {edited ? <span>Edited</span> : <span aria-hidden='true' />}
+      <div
+        className='text-foreground [&_a]:text-primary [&_code]:bg-muted [&_pre]:bg-muted space-y-2 text-sm leading-relaxed [&_a]:underline [&_a]:underline-offset-4 [&_code]:rounded [&_code]:px-1 [&_code]:py-0.5 [&_li]:my-1 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:my-2 [&_pre]:overflow-x-auto [&_pre]:rounded [&_pre]:p-3 [&_ul]:list-disc [&_ul]:pl-5'
+        dangerouslySetInnerHTML={{ __html: sanitizedBody }}
+      />
+      <footer className='text-muted-foreground mt-3 flex flex-wrap items-center justify-between gap-2 text-xs'>
+        <div className='flex flex-wrap items-center gap-2'>
+          <span className='text-foreground font-medium'>{authorName}</span>
+          <span>{createdAgo}</span>
+          {edited ? <span>Edited</span> : null}
+        </div>
         {isAuthor ? (
           <div className='flex items-center gap-2'>
             <Button
               type='button'
               variant='ghost'
               size='sm'
-              className='text-muted-foreground hover:text-foreground h-7 px-2'
+              className='text-muted-foreground hover:text-foreground'
               onClick={() => onStartEdit(comment)}
               disabled={disableActions}
             >
-              <Pencil className='mr-1 h-3.5 w-3.5' /> Edit
+              <Pencil className='h-3.5! w-3.5!' />
             </Button>
             <Button
               type='button'
               variant='ghost'
               size='sm'
-              className='text-muted-foreground hover:text-destructive h-7 px-2'
-              onClick={() => onDelete(comment.id)}
+              className='text-muted-foreground hover:text-destructive'
+              onClick={() => onRequestDelete(comment.id)}
               disabled={disableActions}
             >
-              <Trash2 className='mr-1 h-3.5 w-3.5' /> Delete
+              <Trash2 className='h-3.5! w-3.5!' />
             </Button>
           </div>
         ) : null}
