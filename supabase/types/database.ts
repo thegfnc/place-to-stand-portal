@@ -447,6 +447,48 @@ export type Database = {
           },
         ]
       }
+      time_log_tasks: {
+        Row: {
+          created_at: string
+          deleted_at: string | null
+          id: string
+          task_id: string
+          time_log_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          task_id: string
+          time_log_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          task_id?: string
+          time_log_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'time_log_tasks_task_id_fkey'
+            columns: ['task_id']
+            isOneToOne: false
+            referencedRelation: 'tasks'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'time_log_tasks_time_log_id_fkey'
+            columns: ['time_log_id']
+            isOneToOne: false
+            referencedRelation: 'time_logs'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       time_logs: {
         Row: {
           created_at: string
@@ -456,7 +498,6 @@ export type Database = {
           logged_on: string
           note: string | null
           project_id: string
-          task_id: string | null
           updated_at: string
           user_id: string
         }
@@ -468,7 +509,6 @@ export type Database = {
           logged_on?: string
           note?: string | null
           project_id: string
-          task_id?: string | null
           updated_at?: string
           user_id: string
         }
@@ -480,7 +520,6 @@ export type Database = {
           logged_on?: string
           note?: string | null
           project_id?: string
-          task_id?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -490,13 +529,6 @@ export type Database = {
             columns: ['project_id']
             isOneToOne: false
             referencedRelation: 'projects'
-            referencedColumns: ['id']
-          },
-          {
-            foreignKeyName: 'time_logs_task_id_fkey'
-            columns: ['task_id']
-            isOneToOne: false
-            referencedRelation: 'tasks'
             referencedColumns: ['id']
           },
           {

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { format } from 'date-fns'
-import { Loader2, PlusCircle } from 'lucide-react'
+import { ChevronsUpDown, ListPlus, Loader2, PlusCircle, X } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import {
@@ -22,6 +22,20 @@ import {
 } from '@/components/ui/searchable-combobox'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/components/ui/use-toast'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover'
 import type { UserRole } from '@/lib/auth/session'
 import type {
   DbUser,
@@ -33,7 +47,6 @@ import { buildAssigneeItems } from '@/lib/projects/task-sheet/task-sheet-utils'
 import { UNASSIGNED_ASSIGNEE_VALUE } from '@/lib/projects/task-sheet/task-sheet-constants'
 
 export const TIME_LOGS_QUERY_KEY = 'project-time-logs' as const
-const TASK_NONE_VALUE = '__time_log_none__'
 
 type ProjectTimeLogDialogProps = {
   open: boolean
@@ -41,11 +54,24 @@ type ProjectTimeLogDialogProps = {
   projectId: string
   projectName: string
   clientName: string | null
+  clientRemainingHours: number | null
   tasks: TaskWithRelations[]
   currentUserId: string
   currentUserRole: UserRole
   projectMembers: ProjectMemberWithUser[]
   admins: DbUser[]
+}
+
+const formatTaskStatusLabel = (status: string | null) => {
+  if (!status) {
+    return null
+  }
+
+  return status
+    .toLowerCase()
+    .split('_')
+    .map(part => (part ? part[0].toUpperCase() + part.slice(1) : part))
+    .join(' ')
 }
 
 export function ProjectTimeLogDialog({
@@ -54,6 +80,7 @@ export function ProjectTimeLogDialog({
   projectId,
   projectName,
   clientName,
+  clientRemainingHours,
   tasks,
   currentUserId,
   currentUserRole,
@@ -72,9 +99,15 @@ export function ProjectTimeLogDialog({
   const [hoursInput, setHoursInput] = useState('')
   const [noteInput, setNoteInput] = useState('')
   const [loggedOnInput, setLoggedOnInput] = useState(() => getToday())
-  const [selectedTaskValue, setSelectedTaskValue] =
-    useState<string>(TASK_NONE_VALUE)
   const [selectedUserId, setSelectedUserId] = useState(currentUserId)
+  const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([])
+  const [isTaskPickerOpen, setIsTaskPickerOpen] = useState(false)
+  const [taskRemovalCandidate, setTaskRemovalCandidate] =
+    useState<TaskWithRelations | null>(null)
+  const [overageConfirmOpen, setOverageConfirmOpen] = useState(false)
+  const [pendingOverageHours, setPendingOverageHours] = useState<number | null>(
+    null
+  )
 
   useEffect(() => {
     setSelectedUserId(currentUserId)
@@ -85,29 +118,50 @@ export function ProjectTimeLogDialog({
     [projectId]
   )
 
-  const comboboxItems = useMemo<SearchableComboboxItem[]>(() => {
-    const eligibleTasks = tasks
-      .filter(
-        task =>
-          task.deleted_at === null &&
-          task.status !== 'DONE' &&
-          task.status !== 'ARCHIVED'
-      )
-      .map<SearchableComboboxItem>(task => ({
-        value: task.id,
-        label: task.title,
-        keywords: [task.title],
-      }))
-
-    return [
-      {
-        value: TASK_NONE_VALUE,
-        label: 'Log without a task',
-        description: 'Applies hours to the project only.',
-      },
-      ...eligibleTasks,
-    ]
+  const eligibleTasks = useMemo(() => {
+    return tasks.filter(task => {
+      if (task.deleted_at !== null) {
+        return false
+      }
+      if (task.status === 'DONE' || task.status === 'ARCHIVED') {
+        return false
+      }
+      return true
+    })
   }, [tasks])
+
+  const availableTasks = useMemo(() => {
+    if (selectedTaskIds.length === 0) {
+      return eligibleTasks
+    }
+
+    const selectedSet = new Set(selectedTaskIds)
+    return eligibleTasks.filter(task => !selectedSet.has(task.id))
+  }, [eligibleTasks, selectedTaskIds])
+
+  useEffect(() => {
+    if (!isTaskPickerOpen) {
+      return
+    }
+    if (availableTasks.length === 0) {
+      setIsTaskPickerOpen(false)
+    }
+  }, [availableTasks, isTaskPickerOpen])
+
+  const selectedTasks = useMemo(() => {
+    if (selectedTaskIds.length === 0) {
+      return [] as TaskWithRelations[]
+    }
+
+    const taskLookup = new Map<string, TaskWithRelations>()
+    eligibleTasks.forEach(task => {
+      taskLookup.set(task.id, task)
+    })
+
+    return selectedTaskIds
+      .map(taskId => taskLookup.get(taskId))
+      .filter((task): task is TaskWithRelations => Boolean(task))
+  }, [eligibleTasks, selectedTaskIds])
 
   const userComboboxItems = useMemo<SearchableComboboxItem[]>(() => {
     if (!canSelectUser) {
@@ -137,18 +191,45 @@ export function ProjectTimeLogDialog({
 
       const payload = {
         project_id: projectId,
-        task_id:
-          selectedTaskValue === TASK_NONE_VALUE ? null : selectedTaskValue,
         user_id: logUserId,
         hours: parsedHours,
         logged_on: loggedOnInput,
         note: noteInput.trim() ? noteInput.trim() : null,
       }
 
-      const { error } = await supabase.from('time_logs').insert(payload)
+      const { data, error } = await supabase
+        .from('time_logs')
+        .insert(payload)
+        .select('id')
+        .single()
 
       if (error) {
         throw error
+      }
+
+      const timeLogId = data?.id ?? null
+
+      if (!timeLogId) {
+        throw new Error('Time log was created without an identifier.')
+      }
+
+      if (selectedTaskIds.length === 0) {
+        return
+      }
+
+      const { error: linkError } = await supabase.from('time_log_tasks').insert(
+        selectedTaskIds.map(taskId => ({
+          time_log_id: timeLogId,
+          task_id: taskId,
+        }))
+      )
+
+      if (linkError) {
+        await supabase
+          .from('time_logs')
+          .update({ deleted_at: new Date().toISOString() })
+          .eq('id', timeLogId)
+        throw linkError
       }
     },
     onSuccess: async () => {
@@ -156,8 +237,9 @@ export function ProjectTimeLogDialog({
       setHoursInput('')
       setNoteInput('')
       setLoggedOnInput(getToday())
-      setSelectedTaskValue(TASK_NONE_VALUE)
+      setSelectedTaskIds([])
       setSelectedUserId(currentUserId)
+      setTaskRemovalCandidate(null)
       onOpenChange(false)
       toast({
         title: 'Time logged',
@@ -190,9 +272,22 @@ export function ProjectTimeLogDialog({
       if (!canLogTime || isMutating) {
         return
       }
+      const parsedHours = Number.parseFloat(hoursInput)
+      const shouldConfirmOverage =
+        Number.isFinite(parsedHours) &&
+        parsedHours > 0 &&
+        clientRemainingHours !== null &&
+        parsedHours > clientRemainingHours
+
+      if (shouldConfirmOverage) {
+        setPendingOverageHours(parsedHours)
+        setOverageConfirmOpen(true)
+        return
+      }
+
       createLog.mutate()
     },
-    [canLogTime, createLog, isMutating]
+    [canLogTime, clientRemainingHours, createLog, hoursInput, isMutating]
   )
 
   const handleDialogOpenChange = useCallback(
@@ -200,12 +295,18 @@ export function ProjectTimeLogDialog({
       if (nextOpen) {
         setLoggedOnInput(getToday())
         setSelectedUserId(currentUserId)
+        setSelectedTaskIds([])
+        setPendingOverageHours(null)
+        setOverageConfirmOpen(false)
       } else {
         setHoursInput('')
         setNoteInput('')
         setLoggedOnInput(getToday())
-        setSelectedTaskValue(TASK_NONE_VALUE)
+        setSelectedTaskIds([])
         setSelectedUserId(currentUserId)
+        setTaskRemovalCandidate(null)
+        setPendingOverageHours(null)
+        setOverageConfirmOpen(false)
       }
 
       onOpenChange(nextOpen)
@@ -216,6 +317,23 @@ export function ProjectTimeLogDialog({
   const projectLabel = clientName
     ? `${projectName} · ${clientName}`
     : projectName
+
+  const taskPickerButtonDisabled = isMutating || availableTasks.length === 0
+
+  const taskPickerReason = isMutating
+    ? 'Logging time...'
+    : availableTasks.length === 0
+      ? 'All eligible tasks are already linked.'
+      : null
+
+  const handleAddTaskLink = useCallback((taskId: string) => {
+    setSelectedTaskIds(prev => {
+      if (prev.includes(taskId)) {
+        return prev
+      }
+      return [...prev, taskId]
+    })
+  }, [])
 
   return (
     <>
@@ -260,20 +378,6 @@ export function ProjectTimeLogDialog({
                 required
               />
             </div>
-            <div className='space-y-2 sm:col-span-2'>
-              <label htmlFor='time-log-task' className='text-sm font-medium'>
-                Link to task
-              </label>
-              <SearchableCombobox
-                id='time-log-task'
-                value={selectedTaskValue}
-                onChange={next => setSelectedTaskValue(next)}
-                items={comboboxItems}
-                placeholder='Search tasks...'
-                emptyMessage='No matching tasks found.'
-                disabled={isMutating}
-              />
-            </div>
             {canSelectUser ? (
               <div className='space-y-2 sm:col-span-2'>
                 <label htmlFor='time-log-user' className='text-sm font-medium'>
@@ -291,6 +395,123 @@ export function ProjectTimeLogDialog({
                 />
               </div>
             ) : null}
+            <div className='space-y-2 sm:col-span-2'>
+              <label htmlFor='time-log-task' className='text-sm font-medium'>
+                Link to tasks (optional)
+              </label>
+              <Popover
+                open={isTaskPickerOpen}
+                onOpenChange={setIsTaskPickerOpen}
+              >
+                <DisabledFieldTooltip
+                  disabled={taskPickerButtonDisabled}
+                  reason={taskPickerReason}
+                >
+                  <div className='w-full'>
+                    <PopoverTrigger asChild>
+                      <Button
+                        type='button'
+                        variant='outline'
+                        className='w-full justify-between'
+                        disabled={taskPickerButtonDisabled}
+                      >
+                        <span className='flex items-center gap-2'>
+                          <ListPlus className='h-4 w-4' />
+                          {availableTasks.length > 0
+                            ? 'Add task link'
+                            : 'All tasks linked'}
+                        </span>
+                        <ChevronsUpDown className='h-4 w-4 opacity-50' />
+                      </Button>
+                    </PopoverTrigger>
+                  </div>
+                </DisabledFieldTooltip>
+                <PopoverContent className='w-[320px] p-0' align='start'>
+                  <Command>
+                    <CommandInput placeholder='Search tasks...' />
+                    <CommandEmpty>No matching tasks.</CommandEmpty>
+                    <CommandList>
+                      <CommandGroup heading='Tasks'>
+                        {availableTasks.map(task => {
+                          const formattedStatus = formatTaskStatusLabel(
+                            task.status
+                          )
+
+                          return (
+                            <CommandItem
+                              key={task.id}
+                              value={`${task.title} ${task.id}`}
+                              onSelect={() => {
+                                handleAddTaskLink(task.id)
+                                setIsTaskPickerOpen(false)
+                              }}
+                            >
+                              <div className='flex flex-col'>
+                                <span className='font-medium'>
+                                  {task.title}
+                                </span>
+                                {formattedStatus ? (
+                                  <span className='text-muted-foreground text-xs'>
+                                    {formattedStatus}
+                                  </span>
+                                ) : null}
+                              </div>
+                            </CommandItem>
+                          )
+                        })}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+              <p className='text-muted-foreground text-xs'>
+                Leave empty to apply hours to the project only.
+              </p>
+              <div className='space-y-2'>
+                {selectedTasks.length === 0
+                  ? null
+                  : selectedTasks.map(task => {
+                      const formattedStatus = formatTaskStatusLabel(task.status)
+
+                      return (
+                        <div
+                          key={task.id}
+                          className='bg-muted/40 flex items-center justify-between rounded-md border px-3 py-2'
+                        >
+                          <div className='flex flex-col text-sm leading-tight'>
+                            <span className='font-medium'>{task.title}</span>
+                            {formattedStatus ? (
+                              <span className='text-muted-foreground text-xs'>
+                                {formattedStatus}
+                              </span>
+                            ) : null}
+                          </div>
+                          <DisabledFieldTooltip
+                            disabled={isMutating}
+                            reason={isMutating ? 'Logging time...' : null}
+                          >
+                            <Button
+                              type='button'
+                              variant='ghost'
+                              size='icon'
+                              className='text-muted-foreground hover:text-destructive'
+                              onClick={() => {
+                                if (isMutating) {
+                                  return
+                                }
+                                setTaskRemovalCandidate(task)
+                              }}
+                              disabled={isMutating}
+                              aria-label={`Remove ${task.title}`}
+                            >
+                              <X className='h-4 w-4' />
+                            </Button>
+                          </DisabledFieldTooltip>
+                        </div>
+                      )
+                    })}
+              </div>
+            </div>
             <div className='space-y-2 sm:col-span-2'>
               <label htmlFor='time-log-note' className='text-sm font-medium'>
                 Notes
@@ -332,6 +553,56 @@ export function ProjectTimeLogDialog({
           </form>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={Boolean(taskRemovalCandidate)}
+        title='Remove linked task?'
+        description='The task will no longer be associated with this log entry.'
+        confirmLabel='Remove'
+        confirmVariant='destructive'
+        confirmDisabled={isMutating}
+        onCancel={() => setTaskRemovalCandidate(null)}
+        onConfirm={() => {
+          if (!taskRemovalCandidate) {
+            return
+          }
+
+          setSelectedTaskIds(prev =>
+            prev.filter(taskId => taskId !== taskRemovalCandidate.id)
+          )
+          setTaskRemovalCandidate(null)
+        }}
+      />
+      <ConfirmDialog
+        open={overageConfirmOpen}
+        title='Hours exceed client balance'
+        description={(() => {
+          if (pendingOverageHours === null || clientRemainingHours === null) {
+            return "This log will exceed the client's remaining hours. Continue anyway?"
+          }
+
+          const remainingAfter = clientRemainingHours - pendingOverageHours
+          return `Logging ${pendingOverageHours.toFixed(2)} hrs will push the client balance to ${remainingAfter.toFixed(2)} hrs. Continue?`
+        })()}
+        confirmLabel='Log anyway'
+        confirmVariant='destructive'
+        confirmDisabled={isMutating}
+        onCancel={() => {
+          if (isMutating) {
+            return
+          }
+          setOverageConfirmOpen(false)
+          setPendingOverageHours(null)
+        }}
+        onConfirm={() => {
+          if (isMutating) {
+            return
+          }
+          setOverageConfirmOpen(false)
+          setPendingOverageHours(null)
+          createLog.mutate()
+        }}
+      />
     </>
   )
 }

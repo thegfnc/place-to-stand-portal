@@ -347,6 +347,9 @@ export function ProjectsBoard(props: Props) {
             projectId={activeProject.id}
             projectName={activeProject.name}
             clientName={activeProject.client?.name ?? null}
+            clientRemainingHours={
+              activeProject.burndown.totalClientRemainingHours
+            }
             tasks={activeProjectTasks}
             currentUserId={props.currentUserId}
             currentUserRole={props.currentUserRole}

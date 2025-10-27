@@ -34,7 +34,8 @@ export function ProjectBurndownWidget({
   onAddTimeLog,
 }: ProjectBurndownWidgetProps) {
   const projectLogged = Math.max(totalProjectLoggedHours, 0)
-  const clientRemaining = Math.max(totalClientRemainingHours, 0)
+  const clientRemaining = totalClientRemainingHours
+  const remainingTone = clientRemaining < 0 ? 'destructive' : 'default'
 
   return (
     <section
@@ -48,6 +49,7 @@ export function ProjectBurndownWidget({
         <MetricRow
           label='Client hours remaining'
           value={`${formatHours(clientRemaining)} hrs`}
+          tone={remainingTone}
         />
         <MetricRow
           label='Project hours logged'

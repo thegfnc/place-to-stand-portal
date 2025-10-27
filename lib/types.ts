@@ -10,6 +10,8 @@ export type DbProjectMember =
   Database['public']['Tables']['project_members']['Row']
 export type DbTaskComment = Database['public']['Tables']['task_comments']['Row']
 export type DbTimeLog = Database['public']['Tables']['time_logs']['Row']
+export type DbTimeLogTask =
+  Database['public']['Tables']['time_log_tasks']['Row']
 
 export type ProjectMemberWithUser = DbProjectMember & {
   user: DbUser

@@ -6,6 +6,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { format } from 'date-fns'
 import { Loader2, RotateCcw, Trash2 } from 'lucide-react'
 
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import {
@@ -50,12 +51,16 @@ type ProjectTimeLogHistoryDialogProps = {
 }
 
 type TimeLogEntry = TimeLogWithUser & {
-  task: {
+  linked_tasks: Array<{
     id: string
-    title: string | null
-    status: string | null
     deleted_at: string | null
-  } | null
+    task: {
+      id: string
+      title: string | null
+      status: string | null
+      deleted_at: string | null
+    } | null
+  }> | null
 }
 
 export function ProjectTimeLogHistoryDialog({
@@ -100,7 +105,6 @@ export function ProjectTimeLogHistoryDialog({
           `
           id,
           project_id,
-          task_id,
           user_id,
           hours,
           logged_on,
@@ -113,11 +117,15 @@ export function ProjectTimeLogHistoryDialog({
             full_name,
             email
           ),
-          task:tasks (
+          linked_tasks:time_log_tasks (
             id,
-            title,
-            status,
-            deleted_at
+            deleted_at,
+            task:tasks (
+              id,
+              title,
+              status,
+              deleted_at
+            )
           )
         `,
           { count: 'exact' }
@@ -272,7 +280,7 @@ export function ProjectTimeLogHistoryDialog({
                     <TableRow className='bg-muted/40'>
                       <TableHead className='min-w-28'>Logged on</TableHead>
                       <TableHead className='min-w-20'>Hours</TableHead>
-                      <TableHead className='min-w-36'>Task</TableHead>
+                      <TableHead className='min-w-48'>Tasks</TableHead>
                       <TableHead className='min-w-36'>Member</TableHead>
                       <TableHead className='min-w-48'>Notes</TableHead>
                       <TableHead className='w-20 text-right'>Actions</TableHead>
@@ -293,6 +301,24 @@ export function ProjectTimeLogHistoryDialog({
                       const deleteReason = deleteDisabled
                         ? 'Removing entry...'
                         : null
+                      const visibleTaskLinks = (log.linked_tasks ?? []).filter(
+                        (
+                          link
+                        ): link is NonNullable<
+                          NonNullable<TimeLogEntry['linked_tasks']>[number]
+                        > => {
+                          if (!link) {
+                            return false
+                          }
+                          if (link.deleted_at) {
+                            return false
+                          }
+                          if (!link.task || link.task.deleted_at) {
+                            return false
+                          }
+                          return true
+                        }
+                      )
 
                       return (
                         <TableRow key={log.id}>
@@ -305,9 +331,22 @@ export function ProjectTimeLogHistoryDialog({
                             {HOURS_FORMATTER.format(Number(log.hours ?? 0))} hrs
                           </TableCell>
                           <TableCell>
-                            <span className='line-clamp-2 text-sm'>
-                              {log.task?.title ?? 'Logged to project'}
-                            </span>
+                            {visibleTaskLinks.length === 0 ? (
+                              <span className='text-muted-foreground text-sm'>
+                                Logged to project
+                              </span>
+                            ) : (
+                              <div className='flex flex-wrap gap-2'>
+                                {visibleTaskLinks.map(link => (
+                                  <Badge
+                                    key={link.task?.id ?? link.id}
+                                    variant='secondary'
+                                  >
+                                    {link.task?.title ?? 'Untitled task'}
+                                  </Badge>
+                                ))}
+                              </div>
+                            )}
                           </TableCell>
                           <TableCell>
                             <span className='line-clamp-2 text-sm'>
