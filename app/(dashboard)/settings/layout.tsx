@@ -17,7 +17,7 @@ export default async function SettingsLayout({
           <h1 className='text-2xl font-semibold tracking-tight'>Settings</h1>
           <p className='text-muted-foreground text-sm'>
             Manage people, clients, projects, and purchased hour blocks across
-            the cooperative.
+            the agency.
           </p>
         </div>
       </AppShellHeader>
