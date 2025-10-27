@@ -15,7 +15,6 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
-import { SheetFooter } from '@/components/ui/sheet'
 import { Textarea } from '@/components/ui/textarea'
 
 import { useSheetFormControls } from '@/lib/hooks/use-sheet-form-controls'
@@ -102,7 +101,7 @@ export function ClientSheetForm({
     <Form {...form}>
       <form
         onSubmit={form.handleSubmit(onSubmit)}
-        className='flex flex-1 flex-col gap-5 px-6 pb-6'
+        className='flex flex-1 flex-col gap-5 px-6 pb-32'
       >
         <FormField
           control={form.control}
@@ -192,60 +191,62 @@ export function ClientSheetForm({
           />
         </div>
         {feedback ? <p className={FEEDBACK_CLASSES}>{feedback}</p> : null}
-        <SheetFooter className='flex items-center justify-between gap-3 px-0 pt-6 pb-0'>
-          <div className='flex items-center gap-2'>
-            <DisabledFieldTooltip
-              disabled={submitDisabled}
-              reason={submitDisabledReason}
-            >
-              <Button
-                type='submit'
+        <div className='border-border/40 bg-muted/95 supports-backdrop-filter:bg-muted/90 fixed right-0 bottom-0 z-50 w-full border-t shadow-lg backdrop-blur sm:max-w-lg'>
+          <div className='flex w-full items-center justify-between gap-3 px-6 py-4'>
+            <div className='flex items-center gap-2'>
+              <DisabledFieldTooltip
                 disabled={submitDisabled}
-                aria-label={`${saveLabel} (⌘S / Ctrl+S)`}
-                title={`${saveLabel} (⌘S / Ctrl+S)`}
+                reason={submitDisabledReason}
               >
-                {saveLabel}
-              </Button>
-            </DisabledFieldTooltip>
-            <Button
-              type='button'
-              variant='outline'
-              size='icon'
-              onClick={undo}
-              disabled={!canUndo}
-              aria-label='Undo (⌘Z / Ctrl+Z)'
-              title='Undo (⌘Z / Ctrl+Z)'
-            >
-              <Undo2 className='h-4 w-4' />
-            </Button>
-            <Button
-              type='button'
-              variant='outline'
-              size='icon'
-              onClick={redo}
-              disabled={!canRedo}
-              aria-label='Redo (⇧⌘Z / Ctrl+Shift+Z)'
-              title='Redo (⇧⌘Z / Ctrl+Shift+Z)'
-            >
-              <Redo2 className='h-4 w-4' />
-            </Button>
-          </div>
-          {isEditing ? (
-            <DisabledFieldTooltip
-              disabled={deleteDisabled}
-              reason={deleteDisabledReason}
-            >
+                <Button
+                  type='submit'
+                  disabled={submitDisabled}
+                  aria-label={`${saveLabel} (⌘S / Ctrl+S)`}
+                  title={`${saveLabel} (⌘S / Ctrl+S)`}
+                >
+                  {saveLabel}
+                </Button>
+              </DisabledFieldTooltip>
               <Button
                 type='button'
-                variant='destructive'
-                onClick={onRequestDelete}
-                disabled={deleteDisabled}
+                variant='outline'
+                size='icon'
+                onClick={undo}
+                disabled={!canUndo}
+                aria-label='Undo (⌘Z / Ctrl+Z)'
+                title='Undo (⌘Z / Ctrl+Z)'
               >
-                <Trash2 className='h-4 w-4' />
+                <Undo2 className='h-4 w-4' />
               </Button>
-            </DisabledFieldTooltip>
-          ) : null}
-        </SheetFooter>
+              <Button
+                type='button'
+                variant='outline'
+                size='icon'
+                onClick={redo}
+                disabled={!canRedo}
+                aria-label='Redo (⇧⌘Z / Ctrl+Shift+Z)'
+                title='Redo (⇧⌘Z / Ctrl+Shift+Z)'
+              >
+                <Redo2 className='h-4 w-4' />
+              </Button>
+            </div>
+            {isEditing ? (
+              <DisabledFieldTooltip
+                disabled={deleteDisabled}
+                reason={deleteDisabledReason}
+              >
+                <Button
+                  type='button'
+                  variant='destructive'
+                  onClick={onRequestDelete}
+                  disabled={deleteDisabled}
+                >
+                  <Trash2 className='h-4 w-4' />
+                </Button>
+              </DisabledFieldTooltip>
+            ) : null}
+          </div>
+        </div>
       </form>
     </Form>
   )

@@ -19,7 +19,6 @@ import {
   Sheet,
   SheetContent,
   SheetDescription,
-  SheetFooter,
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet'
@@ -99,7 +98,7 @@ export function HourBlockSheet({
   return (
     <>
       <Sheet open={open} onOpenChange={handleSheetOpenChange}>
-        <SheetContent className='flex w-full flex-col gap-6 overflow-y-auto sm:max-w-lg'>
+        <SheetContent className='flex w-full flex-col gap-6 overflow-y-auto pb-32 sm:max-w-lg'>
           <SheetHeader className='px-6 pt-6'>
             <SheetTitle>
               {isEditing ? 'Edit hour block' : 'Add hour block'}
@@ -115,7 +114,7 @@ export function HourBlockSheet({
               onSubmit={form.handleSubmit((values: HourBlockFormValues) =>
                 handleSubmit(values)
               )}
-              className='flex flex-1 flex-col gap-5 px-6 pb-6'
+              className='flex flex-1 flex-col gap-5 px-6 pb-32'
             >
               <div className='grid gap-4 sm:grid-cols-2'>
                 <FormField
@@ -207,60 +206,62 @@ export function HourBlockSheet({
                   {feedback}
                 </p>
               ) : null}
-              <SheetFooter className='flex items-center justify-between gap-3 px-0 pt-6 pb-0'>
-                <div className='flex items-center gap-2'>
-                  <DisabledFieldTooltip
-                    disabled={submitButton.disabled}
-                    reason={submitButton.reason}
-                  >
-                    <Button
-                      type='submit'
+              <div className='border-border/40 bg-muted/95 supports-backdrop-filter:bg-muted/90 fixed right-0 bottom-0 z-50 w-full border-t shadow-lg backdrop-blur sm:max-w-lg'>
+                <div className='flex w-full items-center justify-between gap-3 px-6 py-4'>
+                  <div className='flex items-center gap-2'>
+                    <DisabledFieldTooltip
                       disabled={submitButton.disabled}
-                      aria-label={`${submitButton.label} (⌘S / Ctrl+S)`}
-                      title={`${submitButton.label} (⌘S / Ctrl+S)`}
+                      reason={submitButton.reason}
                     >
-                      {submitButton.label}
-                    </Button>
-                  </DisabledFieldTooltip>
-                  <Button
-                    type='button'
-                    variant='outline'
-                    size='icon'
-                    onClick={undo}
-                    disabled={!canUndo}
-                    aria-label='Undo (⌘Z / Ctrl+Z)'
-                    title='Undo (⌘Z / Ctrl+Z)'
-                  >
-                    <Undo2 className='h-4 w-4' />
-                  </Button>
-                  <Button
-                    type='button'
-                    variant='outline'
-                    size='icon'
-                    onClick={redo}
-                    disabled={!canRedo}
-                    aria-label='Redo (⇧⌘Z / Ctrl+Shift+Z)'
-                    title='Redo (⇧⌘Z / Ctrl+Shift+Z)'
-                  >
-                    <Redo2 className='h-4 w-4' />
-                  </Button>
-                </div>
-                {isEditing ? (
-                  <DisabledFieldTooltip
-                    disabled={deleteButton.disabled}
-                    reason={deleteButton.reason}
-                  >
+                      <Button
+                        type='submit'
+                        disabled={submitButton.disabled}
+                        aria-label={`${submitButton.label} (⌘S / Ctrl+S)`}
+                        title={`${submitButton.label} (⌘S / Ctrl+S)`}
+                      >
+                        {submitButton.label}
+                      </Button>
+                    </DisabledFieldTooltip>
                     <Button
                       type='button'
-                      variant='destructive'
-                      onClick={handleRequestDelete}
-                      disabled={deleteButton.disabled}
+                      variant='outline'
+                      size='icon'
+                      onClick={undo}
+                      disabled={!canUndo}
+                      aria-label='Undo (⌘Z / Ctrl+Z)'
+                      title='Undo (⌘Z / Ctrl+Z)'
                     >
-                      <Trash2 className='h-4 w-4' />
+                      <Undo2 className='h-4 w-4' />
                     </Button>
-                  </DisabledFieldTooltip>
-                ) : null}
-              </SheetFooter>
+                    <Button
+                      type='button'
+                      variant='outline'
+                      size='icon'
+                      onClick={redo}
+                      disabled={!canRedo}
+                      aria-label='Redo (⇧⌘Z / Ctrl+Shift+Z)'
+                      title='Redo (⇧⌘Z / Ctrl+Shift+Z)'
+                    >
+                      <Redo2 className='h-4 w-4' />
+                    </Button>
+                  </div>
+                  {isEditing ? (
+                    <DisabledFieldTooltip
+                      disabled={deleteButton.disabled}
+                      reason={deleteButton.reason}
+                    >
+                      <Button
+                        type='button'
+                        variant='destructive'
+                        onClick={handleRequestDelete}
+                        disabled={deleteButton.disabled}
+                      >
+                        <Trash2 className='h-4 w-4' />
+                      </Button>
+                    </DisabledFieldTooltip>
+                  ) : null}
+                </div>
+              </div>
             </form>
           </Form>
         </SheetContent>

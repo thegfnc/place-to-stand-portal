@@ -18,9 +18,10 @@ import { useProjectsBoardState } from '@/lib/projects/board/use-projects-board-s
 import { KanbanColumn } from './_components/kanban-column'
 import { ProjectsBoardEmpty } from './_components/projects-board-empty'
 import { ProjectsBoardHeader } from './_components/projects-board-header'
-import { ProjectsBoardIntro } from './_components/projects-board-intro'
 import { TaskDragOverlay } from './_components/task-drag-overlay'
 import { TaskSheet } from './task-sheet'
+import { ProjectBurndownWidget } from './_components/project-burndown-widget'
+import { ProjectsBoardIntro } from './_components/projects-board-intro'
 
 type Props = Parameters<typeof useProjectsBoardState>[0]
 
@@ -65,6 +66,8 @@ export function ProjectsBoard(props: Props) {
     handleEditTask,
     handleSheetOpenChange,
   } = useProjectsBoardState(props)
+
+  const isClientView = props.currentUserRole === 'CLIENT'
 
   const boardViewportRef = useRef<HTMLDivElement | null>(null)
 
@@ -161,6 +164,7 @@ export function ProjectsBoard(props: Props) {
             addTaskDisabled
             addTaskDisabledReason='Select a project to add tasks.'
             onAddTask={openCreateSheet}
+            isClientView={isClientView}
           />
           <ProjectsBoardEmpty
             title={NO_PROJECTS_TITLE}
@@ -183,12 +187,35 @@ export function ProjectsBoard(props: Props) {
           onProjectChange={handleProjectSelect}
         />
       </AppShellHeader>
-      <div className='flex h-full min-h-0 flex-col gap-6'>
-        <ProjectsBoardIntro
-          addTaskDisabled={addTaskDisabled}
-          addTaskDisabledReason={addTaskDisabledReason}
-          onAddTask={openCreateSheet}
-        />
+      <div className='flex h-full min-h-0 flex-col gap-4 sm:gap-6'>
+        <div className='flex flex-wrap items-start justify-between gap-4'>
+          {activeProject ? (
+            <ProjectBurndownWidget
+              projectName={activeProject.name}
+              clientName={activeProject.client?.name ?? null}
+              totalClientPurchasedHours={
+                activeProject.burndown.totalClientPurchasedHours
+              }
+              totalClientLoggedHours={
+                activeProject.burndown.totalClientLoggedHours
+              }
+              totalClientRemainingHours={
+                activeProject.burndown.totalClientRemainingHours
+              }
+              totalProjectLoggedHours={
+                activeProject.burndown.totalProjectLoggedHours
+              }
+              lastLogAt={activeProject.burndown.lastLogAt}
+              className='shrink-0'
+            />
+          ) : null}
+          <ProjectsBoardIntro
+            addTaskDisabled={addTaskDisabled}
+            addTaskDisabledReason={addTaskDisabledReason}
+            onAddTask={openCreateSheet}
+            isClientView={isClientView}
+          />
+        </div>
         {feedback ? (
           <p className='border-destructive/40 bg-destructive/10 text-destructive rounded-md border px-3 py-2 text-sm'>
             {feedback}
@@ -248,6 +275,8 @@ export function ProjectsBoard(props: Props) {
             task={sheetTask}
             canManage={canManageTasks}
             admins={props.admins}
+            currentUserId={props.currentUserId}
+            currentUserRole={props.currentUserRole}
           />
         ) : null}
       </div>

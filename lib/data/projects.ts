@@ -9,6 +9,7 @@ import type {
   DbProject,
   DbProjectMember,
   DbTask,
+  DbTimeLog,
   DbUser,
   ProjectMemberWithUser,
   ProjectWithRelations,
@@ -59,6 +60,14 @@ export const fetchProjectsWithRelations = cache(
           .filter((clientId): clientId is string => Boolean(clientId))
       )
     )
+
+    const projectClientLookup = new Map<string, string | null>()
+    projects.forEach(project => {
+      projectClientLookup.set(project.id, project.client_id ?? null)
+    })
+
+    const shouldScopeToUser =
+      options.forRole !== 'ADMIN' && Boolean(options.forUserId)
 
     const clientsPromise = clientIds.length
       ? supabase
@@ -128,11 +137,58 @@ export const fetchProjectsWithRelations = cache(
           .in('project_id', projectIds)
       : Promise.resolve({ data: [], error: null })
 
+    const hourBlocksPromise = clientIds.length
+      ? supabase
+          .from('hour_blocks')
+          .select(
+            `
+            id,
+            client_id,
+            hours_purchased,
+            deleted_at
+          `
+          )
+          .in('client_id', clientIds)
+      : Promise.resolve({ data: [], error: null })
+
+    const timeLogsPromise = projectIds.length
+      ? supabase
+          .from('time_logs')
+          .select(
+            `
+            id,
+            project_id,
+            hours,
+            logged_on,
+            deleted_at
+          `
+          )
+          .in('project_id', projectIds)
+      : Promise.resolve({ data: [], error: null })
+
+    const clientMembershipsPromise =
+      shouldScopeToUser && options.forUserId
+        ? supabase
+            .from('client_members')
+            .select('client_id, deleted_at')
+            .eq('user_id', options.forUserId)
+        : Promise.resolve({ data: [], error: null })
+
     const [
       { data: clientsData, error: clientsError },
       { data: membersData, error: membersError },
       { data: tasksData, error: tasksError },
-    ] = await Promise.all([clientsPromise, membersPromise, tasksPromise])
+      { data: hourBlocksData, error: hourBlocksError },
+      { data: timeLogsData, error: timeLogsError },
+      { data: clientMembershipsData, error: clientMembershipsError },
+    ] = await Promise.all([
+      clientsPromise,
+      membersPromise,
+      tasksPromise,
+      hourBlocksPromise,
+      timeLogsPromise,
+      clientMembershipsPromise,
+    ])
 
     if (clientsError) {
       console.error('Failed to load project clients', clientsError)
@@ -149,15 +205,30 @@ export const fetchProjectsWithRelations = cache(
       throw tasksError
     }
 
+    if (hourBlocksError) {
+      console.error('Failed to load hour blocks for burndown', hourBlocksError)
+      throw hourBlocksError
+    }
+
+    if (timeLogsError) {
+      console.error('Failed to load time logs for burndown', timeLogsError)
+      throw timeLogsError
+    }
+
+    if (clientMembershipsError) {
+      console.error(
+        'Failed to load client memberships for scoping',
+        clientMembershipsError
+      )
+      throw clientMembershipsError
+    }
+
     const clientLookup = new Map<string, DbClient>()
     ;(clientsData as DbClient[]).forEach(client => {
       clientLookup.set(client.id, client)
     })
 
-    const shouldScopeToAssignments =
-      options.forRole === 'CONTRACTOR' && Boolean(options.forUserId)
-
-    const assignedProjectIds = new Set<string>()
+    const accessibleProjectIds = new Set<string>()
     const membersByProject = new Map<string, ProjectMemberWithUser[]>()
     ;(
       (membersData ?? []) as Array<DbProjectMember & { user: DbUser | null }>
@@ -171,14 +242,90 @@ export const fetchProjectsWithRelations = cache(
         return
       }
 
-      if (shouldScopeToAssignments && member.user_id === options.forUserId) {
-        assignedProjectIds.add(member.project_id)
+      if (options.forUserId && member.user_id === options.forUserId) {
+        accessibleProjectIds.add(member.project_id)
       }
 
       const list = membersByProject.get(member.project_id) ?? []
       list.push({ ...member, user: member.user })
       membersByProject.set(member.project_id, list)
     })
+
+    const accessibleClientIds = new Set<string>()
+    ;(clientMembershipsData ?? []).forEach(entry => {
+      if (!entry || entry.deleted_at || !entry.client_id) {
+        return
+      }
+      accessibleClientIds.add(entry.client_id)
+    })
+
+    const purchasedHoursByClient = new Map<string, number>()
+    ;(hourBlocksData ?? []).forEach(block => {
+      if (!block || block.deleted_at || !block.client_id) {
+        return
+      }
+      const total = purchasedHoursByClient.get(block.client_id) ?? 0
+      purchasedHoursByClient.set(
+        block.client_id,
+        total + Number(block.hours_purchased)
+      )
+    })
+
+    const timeLogTotalsByProject = new Map<
+      string,
+      { totalHours: number; lastLogAt: string | null }
+    >()
+    const timeLogTotalsByClient = new Map<string, number>()
+    ;(timeLogsData ?? []).forEach(raw => {
+      const log = raw as DbTimeLog
+      if (!log || log.deleted_at || !log.project_id) {
+        return
+      }
+
+      const current = timeLogTotalsByProject.get(log.project_id) ?? {
+        totalHours: 0,
+        lastLogAt: null as string | null,
+      }
+
+      const nextTotal = current.totalHours + Number(log.hours ?? 0)
+      const nextLastLogAt = current.lastLogAt
+        ? current.lastLogAt >= (log.logged_on ?? '')
+          ? current.lastLogAt
+          : (log.logged_on ?? null)
+        : (log.logged_on ?? null)
+
+      timeLogTotalsByProject.set(log.project_id, {
+        totalHours: nextTotal,
+        lastLogAt: nextLastLogAt,
+      })
+
+      const clientId = projectClientLookup.get(log.project_id) ?? null
+      if (clientId) {
+        const clientTotal = timeLogTotalsByClient.get(clientId) ?? 0
+        timeLogTotalsByClient.set(
+          clientId,
+          clientTotal + Number(log.hours ?? 0)
+        )
+      }
+    })
+
+    const scopedProjects =
+      shouldScopeToUser && options.forUserId
+        ? projects.filter(project => {
+            if (accessibleProjectIds.has(project.id)) {
+              return true
+            }
+
+            if (
+              project.client_id &&
+              accessibleClientIds.has(project.client_id)
+            ) {
+              return true
+            }
+
+            return false
+          })
+        : projects
 
     const tasksByProject = new Map<string, TaskWithRelations[]>()
     ;(
@@ -204,10 +351,6 @@ export const fetchProjectsWithRelations = cache(
       tasksByProject.set(task.project_id, list)
     })
 
-    const scopedProjects = shouldScopeToAssignments
-      ? projects.filter(project => assignedProjectIds.has(project.id))
-      : projects
-
     return scopedProjects.map(project => ({
       ...project,
       client: project.client_id
@@ -215,6 +358,28 @@ export const fetchProjectsWithRelations = cache(
         : null,
       members: membersByProject.get(project.id) ?? [],
       tasks: tasksByProject.get(project.id) ?? [],
+      burndown: (() => {
+        const projectLogSummary = timeLogTotalsByProject.get(project.id) ?? null
+        const clientId = project.client_id ?? null
+        const totalClientPurchasedHours = clientId
+          ? (purchasedHoursByClient.get(clientId) ?? 0)
+          : 0
+        const totalProjectLoggedHours = projectLogSummary?.totalHours ?? 0
+        const totalClientLoggedHours = clientId
+          ? (timeLogTotalsByClient.get(clientId) ?? 0)
+          : 0
+        const totalClientRemainingHours =
+          totalClientPurchasedHours - totalClientLoggedHours
+        const lastLogAt = projectLogSummary?.lastLogAt ?? null
+
+        return {
+          totalClientPurchasedHours,
+          totalClientLoggedHours,
+          totalClientRemainingHours,
+          totalProjectLoggedHours,
+          lastLogAt,
+        }
+      })(),
     }))
   }
 )

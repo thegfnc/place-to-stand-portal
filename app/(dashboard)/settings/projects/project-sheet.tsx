@@ -77,7 +77,7 @@ export function ProjectSheet(props: Props) {
   return (
     <>
       <Sheet open={props.open} onOpenChange={handleSheetOpenChange}>
-        <SheetContent className='flex w-full flex-col gap-6 overflow-y-auto sm:max-w-2xl'>
+        <SheetContent className='flex w-full flex-col gap-6 overflow-y-auto pb-32 sm:max-w-2xl'>
           <SheetHeader className='px-6 pt-6'>
             <SheetTitle>
               {isEditing ? 'Edit project' : 'Add project'}

@@ -50,7 +50,7 @@ export function ClientSheet(props: ClientSheetProps) {
   return (
     <>
       <Sheet open={props.open} onOpenChange={handleSheetOpenChange}>
-        <SheetContent className='flex w-full flex-col gap-6 overflow-y-auto sm:max-w-lg'>
+        <SheetContent className='flex w-full flex-col gap-6 overflow-y-auto pb-32 sm:max-w-lg'>
           <ClientSheetHeader
             title={sheetTitle}
             description={sheetDescription}

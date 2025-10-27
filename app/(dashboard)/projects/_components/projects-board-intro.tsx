@@ -7,22 +7,21 @@ type ProjectsBoardIntroProps = {
   addTaskDisabled: boolean
   addTaskDisabledReason: string | null
   onAddTask: () => void
+  isClientView: boolean
 }
 
 export function ProjectsBoardIntro({
   addTaskDisabled,
   addTaskDisabledReason,
   onAddTask,
+  isClientView,
 }: ProjectsBoardIntroProps) {
+  if (isClientView) {
+    return null
+  }
+
   return (
-    <div className='flex flex-wrap items-center justify-between gap-4'>
-      <div className='space-y-1'>
-        <h1 className='text-2xl font-semibold tracking-tight'>Project board</h1>
-        <p className='text-muted-foreground text-sm'>
-          Drag tasks between columns to update status. Filters respect your
-          project assignments.
-        </p>
-      </div>
+    <div className='ml-auto flex items-center gap-2'>
       <DisabledFieldTooltip
         disabled={addTaskDisabled}
         reason={addTaskDisabledReason}
