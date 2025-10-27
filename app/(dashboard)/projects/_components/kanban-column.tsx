@@ -32,7 +32,7 @@ export function KanbanColumn({
     <div
       ref={setNodeRef}
       className={cn(
-        'bg-background/80 flex h-full min-h-0 w-80 shrink-0 flex-col gap-4 overflow-hidden rounded-xl border p-4 shadow-sm transition',
+        'bg-background/80 flex min-h-0 w-80 shrink-0 flex-col gap-4 overflow-hidden rounded-xl border p-4 shadow-sm transition',
         isOver && 'ring-primary ring-2'
       )}
     >

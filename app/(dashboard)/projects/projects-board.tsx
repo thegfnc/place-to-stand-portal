@@ -204,7 +204,7 @@ export function ProjectsBoard(props: Props) {
             <div className='absolute inset-0 overflow-hidden'>
               <div
                 ref={boardViewportRef}
-                className='h-full min-h-0 overflow-x-auto pb-6'
+                className='h-full min-h-0 overflow-x-auto'
                 onScroll={handleBoardScroll}
               >
                 <DndContext
@@ -212,7 +212,7 @@ export function ProjectsBoard(props: Props) {
                   onDragStart={handleDragStart}
                   onDragEnd={handleDragEnd}
                 >
-                  <div className='flex min-h-full w-max gap-4 p-1'>
+                  <div className='flex max-h-full w-max gap-4 p-1'>
                     {BOARD_COLUMNS.map(column => (
                       <KanbanColumn
                         key={column.id}
