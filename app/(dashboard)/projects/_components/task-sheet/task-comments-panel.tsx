@@ -3,7 +3,7 @@
 import { useCallback, useMemo, useState, type ReactNode } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { formatDistanceToNow } from 'date-fns'
-import { Loader2, MessageSquare, Pencil, Send, Trash2, X } from 'lucide-react'
+import { Loader2, Pencil, Send, Trash2, X } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { DisabledFieldTooltip } from '@/components/ui/disabled-field-tooltip'
@@ -232,24 +232,6 @@ export function TaskCommentsPanel({
     <PanelShell
       title='Comments'
       description='Collaborate with clients and teammates directly on this task.'
-      action={
-        <Button
-          type='button'
-          variant='ghost'
-          size='icon'
-          onClick={() => {
-            void refetch()
-          }}
-          disabled={isLoading}
-          aria-label='Refresh comments'
-        >
-          {isLoading ? (
-            <Loader2 className='h-4 w-4 animate-spin' />
-          ) : (
-            <MessageSquare className='h-4 w-4' />
-          )}
-        </Button>
-      }
     >
       {isLoading ? (
         <div className='text-muted-foreground flex items-center gap-2 text-sm'>

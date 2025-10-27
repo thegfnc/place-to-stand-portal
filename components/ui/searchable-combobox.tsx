@@ -141,6 +141,17 @@ export const SearchableCombobox = React.forwardRef<
 
     const resolvedPlaceholder = placeholder ?? searchPlaceholder
 
+    const contentStyle = React.useMemo<React.CSSProperties>(() => {
+      const maxHeight =
+        'min(320px, var(--radix-popover-content-available-height))'
+      return {
+        maxHeight,
+        overflowY: 'auto',
+        overscrollBehavior: 'contain',
+        ...(contentWidth ? { width: contentWidth } : {}),
+      }
+    }, [contentWidth])
+
     return (
       <div className={cn('w-full', className)}>
         <input type='hidden' name={name} value={value ?? ''} />
@@ -174,17 +185,17 @@ export const SearchableCombobox = React.forwardRef<
           </PopoverTrigger>
           <PopoverContent
             align='start'
-            className='w-full max-w-full p-0'
+            className='w-full max-w-full overflow-hidden p-0'
             sideOffset={8}
-            style={contentWidth ? { width: contentWidth } : undefined}
+            style={contentStyle}
           >
-            <Command>
+            <Command className='max-h-80'>
               <CommandInput
                 placeholder={searchPlaceholder ?? resolvedPlaceholder}
                 className='h-9'
               />
               <CommandEmpty>{emptyMessage}</CommandEmpty>
-              <CommandList className='max-h-60 overflow-y-auto'>
+              <CommandList className='max-h-[min(60vh,260px)] overflow-y-auto overscroll-contain pr-1'>
                 <CommandGroup>
                   {items.map(item => {
                     const searchValue = [item.label, ...(item.keywords ?? [])]

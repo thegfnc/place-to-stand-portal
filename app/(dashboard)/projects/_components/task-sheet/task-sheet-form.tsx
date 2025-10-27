@@ -105,7 +105,7 @@ export function TaskSheetForm({
     <Form {...form}>
       <form
         onSubmit={form.handleSubmit(onSubmit)}
-        className='flex flex-1 flex-col gap-6 px-6 pb-32'
+        className='flex flex-1 flex-col gap-6 px-6 pb-8'
       >
         <FormField
           control={form.control}

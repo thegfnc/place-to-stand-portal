@@ -14,7 +14,6 @@ import { TaskSheetForm } from './_components/task-sheet/task-sheet-form'
 import { TaskSheetHeader } from './_components/task-sheet/task-sheet-header'
 import type { UserRole } from '@/lib/auth/session'
 import { TaskCommentsPanel } from './_components/task-sheet/task-comments-panel'
-import { TaskTimeLogsPanel } from './_components/task-sheet/task-time-logs-panel'
 
 type TaskSheetProps = {
   open: boolean
@@ -85,20 +84,16 @@ export function TaskSheet(props: TaskSheetProps) {
             isSheetOpen={props.open}
             historyKey={props.task?.id ?? 'task:new'}
           />
-          <div className='space-y-6 px-6 pb-32'>
-            <TaskCommentsPanel
-              taskId={props.task?.id ?? null}
-              projectId={props.project.id}
-              currentUserId={props.currentUserId}
-              canComment
-            />
-            <TaskTimeLogsPanel
-              taskId={props.task?.id ?? null}
-              projectId={props.project.id}
-              currentUserId={props.currentUserId}
-              currentUserRole={props.currentUserRole}
-            />
-          </div>
+          {props.task ? (
+            <div className='space-y-6 px-6'>
+              <TaskCommentsPanel
+                taskId={props.task.id}
+                projectId={props.project.id}
+                currentUserId={props.currentUserId}
+                canComment
+              />
+            </div>
+          ) : null}
         </SheetContent>
       </Sheet>
       <ConfirmDialog

@@ -5,6 +5,7 @@ import {
   useEffect,
   useMemo,
   useRef,
+  useState,
   type UIEventHandler,
 } from 'react'
 import { DndContext, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
@@ -22,6 +23,8 @@ import { TaskDragOverlay } from './_components/task-drag-overlay'
 import { TaskSheet } from './task-sheet'
 import { ProjectBurndownWidget } from './_components/project-burndown-widget'
 import { ProjectsBoardIntro } from './_components/projects-board-intro'
+import { ProjectTimeLogDialog } from './_components/project-time-log-dialog'
+import { ProjectTimeLogHistoryDialog } from './_components/project-time-log-history-dialog'
 
 type Props = Parameters<typeof useProjectsBoardState>[0]
 
@@ -49,6 +52,7 @@ export function ProjectsBoard(props: Props) {
     clientItems,
     projectItems,
     activeProject,
+    activeProjectTasks,
     canManageTasks,
     memberDirectory,
     tasksByColumn,
@@ -68,6 +72,63 @@ export function ProjectsBoard(props: Props) {
   } = useProjectsBoardState(props)
 
   const isClientView = props.currentUserRole === 'CLIENT'
+  const canLogTime = props.currentUserRole !== 'CLIENT'
+  const addTimeLogDisabledReason = canLogTime
+    ? null
+    : 'Clients can review logged hours but cannot add new entries.'
+
+  const [isTimeLogDialogOpen, setIsTimeLogDialogOpen] = useState(false)
+  const [timeLogProjectId, setTimeLogProjectId] = useState<string | null>(null)
+  const [isViewTimeLogsOpen, setIsViewTimeLogsOpen] = useState(false)
+  const [viewTimeLogsProjectId, setViewTimeLogsProjectId] = useState<
+    string | null
+  >(null)
+
+  const handleTimeLogDialogOpenChange = useCallback(
+    (open: boolean) => {
+      if (!open) {
+        setIsTimeLogDialogOpen(false)
+        setTimeLogProjectId(null)
+        return
+      }
+
+      if (!canLogTime) {
+        setIsTimeLogDialogOpen(false)
+        setTimeLogProjectId(null)
+        return
+      }
+
+      if (!activeProject) {
+        setIsTimeLogDialogOpen(false)
+        setTimeLogProjectId(null)
+        return
+      }
+
+      setTimeLogProjectId(activeProject.id)
+      setIsTimeLogDialogOpen(true)
+    },
+    [activeProject, canLogTime]
+  )
+
+  const handleViewTimeLogsDialogOpenChange = useCallback(
+    (open: boolean) => {
+      if (!open) {
+        setIsViewTimeLogsOpen(false)
+        setViewTimeLogsProjectId(null)
+        return
+      }
+
+      if (!activeProject) {
+        setIsViewTimeLogsOpen(false)
+        setViewTimeLogsProjectId(null)
+        return
+      }
+
+      setViewTimeLogsProjectId(activeProject.id)
+      setIsViewTimeLogsOpen(true)
+    },
+    [activeProject]
+  )
 
   const boardViewportRef = useRef<HTMLDivElement | null>(null)
 
@@ -188,25 +249,20 @@ export function ProjectsBoard(props: Props) {
         />
       </AppShellHeader>
       <div className='flex h-full min-h-0 flex-col gap-4 sm:gap-6'>
-        <div className='flex flex-wrap items-start justify-between gap-4'>
+        <div className='flex flex-wrap items-end justify-between gap-4'>
           {activeProject ? (
             <ProjectBurndownWidget
-              projectName={activeProject.name}
-              clientName={activeProject.client?.name ?? null}
-              totalClientPurchasedHours={
-                activeProject.burndown.totalClientPurchasedHours
-              }
-              totalClientLoggedHours={
-                activeProject.burndown.totalClientLoggedHours
-              }
               totalClientRemainingHours={
                 activeProject.burndown.totalClientRemainingHours
               }
               totalProjectLoggedHours={
                 activeProject.burndown.totalProjectLoggedHours
               }
-              lastLogAt={activeProject.burndown.lastLogAt}
               className='shrink-0'
+              canLogTime={canLogTime}
+              addTimeLogDisabledReason={addTimeLogDisabledReason}
+              onViewTimeLogs={() => handleViewTimeLogsDialogOpenChange(true)}
+              onAddTimeLog={() => handleTimeLogDialogOpenChange(true)}
             />
           ) : null}
           <ProjectsBoardIntro
@@ -275,6 +331,38 @@ export function ProjectsBoard(props: Props) {
             task={sheetTask}
             canManage={canManageTasks}
             admins={props.admins}
+            currentUserId={props.currentUserId}
+            currentUserRole={props.currentUserRole}
+          />
+        ) : null}
+        {activeProject ? (
+          <ProjectTimeLogDialog
+            open={
+              Boolean(activeProject) &&
+              isTimeLogDialogOpen &&
+              canLogTime &&
+              timeLogProjectId === activeProject.id
+            }
+            onOpenChange={handleTimeLogDialogOpenChange}
+            projectId={activeProject.id}
+            projectName={activeProject.name}
+            clientName={activeProject.client?.name ?? null}
+            tasks={activeProjectTasks}
+            currentUserId={props.currentUserId}
+            currentUserRole={props.currentUserRole}
+          />
+        ) : null}
+        {activeProject ? (
+          <ProjectTimeLogHistoryDialog
+            open={
+              Boolean(activeProject) &&
+              isViewTimeLogsOpen &&
+              viewTimeLogsProjectId === activeProject.id
+            }
+            onOpenChange={handleViewTimeLogsDialogOpenChange}
+            projectId={activeProject.id}
+            projectName={activeProject.name}
+            clientName={activeProject.client?.name ?? null}
             currentUserId={props.currentUserId}
             currentUserRole={props.currentUserRole}
           />
