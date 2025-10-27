@@ -43,6 +43,7 @@ type SearchableComboboxProps = {
   ariaLabel?: string
   ariaLabelledBy?: string
   ariaDescribedBy?: string
+  ariaInvalid?: boolean
 }
 
 const baseTriggerClasses =
@@ -71,6 +72,7 @@ export const SearchableCombobox = React.forwardRef<
       ariaLabel,
       ariaLabelledBy,
       ariaDescribedBy,
+      ariaInvalid,
     },
     forwardedRef
   ) => {
@@ -167,6 +169,7 @@ export const SearchableCombobox = React.forwardRef<
               aria-label={ariaLabel}
               aria-labelledby={ariaLabelledBy}
               aria-describedby={ariaDescribedBy}
+              aria-invalid={ariaInvalid ? true : undefined}
               disabled={disabled}
               data-placeholder={selectedItem ? undefined : true}
               id={id}

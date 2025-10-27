@@ -48,6 +48,19 @@ import { UNASSIGNED_ASSIGNEE_VALUE } from '@/lib/projects/task-sheet/task-sheet-
 
 export const TIME_LOGS_QUERY_KEY = 'project-time-logs' as const
 
+type TimeLogFormField = 'hours' | 'loggedOn' | 'user' | 'general'
+type TimeLogFormErrors = Partial<Record<TimeLogFormField, string>>
+type FieldError = Error & { field?: TimeLogFormField }
+
+const makeFieldError = (
+  field: TimeLogFormField,
+  message: string
+): FieldError => {
+  const error = new Error(message) as FieldError
+  error.field = field
+  return error
+}
+
 type ProjectTimeLogDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -108,6 +121,7 @@ export function ProjectTimeLogDialog({
   const [pendingOverageHours, setPendingOverageHours] = useState<number | null>(
     null
   )
+  const [formErrors, setFormErrors] = useState<TimeLogFormErrors>({})
 
   useEffect(() => {
     setSelectedUserId(currentUserId)
@@ -180,13 +194,16 @@ export function ProjectTimeLogDialog({
       const parsedHours = Number.parseFloat(hoursInput)
 
       if (!Number.isFinite(parsedHours) || parsedHours <= 0) {
-        throw new Error('Enter a valid number of hours greater than zero.')
+        throw makeFieldError(
+          'hours',
+          'Enter a valid number of hours greater than zero.'
+        )
       }
 
       const logUserId = canSelectUser ? selectedUserId : currentUserId
 
       if (!logUserId) {
-        throw new Error('Select a teammate before logging time.')
+        throw makeFieldError('user', 'Select a teammate before logging time.')
       }
 
       const payload = {
@@ -240,6 +257,7 @@ export function ProjectTimeLogDialog({
       setSelectedTaskIds([])
       setSelectedUserId(currentUserId)
       setTaskRemovalCandidate(null)
+      setFormErrors({})
       onOpenChange(false)
       toast({
         title: 'Time logged',
@@ -249,11 +267,26 @@ export function ProjectTimeLogDialog({
     },
     onError: error => {
       console.error('Failed to log time', error)
-      toast({
-        title: 'Could not log time',
-        description: error.message ?? 'Please try again shortly.',
-        variant: 'destructive',
-      })
+      const field = (error as FieldError | null)?.field
+      const message =
+        error instanceof Error
+          ? error.message
+          : typeof error === 'object' &&
+              error !== null &&
+              'message' in error &&
+              typeof (error as { message?: unknown }).message === 'string'
+            ? ((error as { message?: string }).message ?? '')
+            : ''
+      const fallbackMessage = 'Please try again shortly.'
+      const resolvedMessage =
+        message && message.trim().length > 0 ? message : fallbackMessage
+
+      if (field && field !== 'general') {
+        setFormErrors({ [field]: resolvedMessage })
+        return
+      }
+
+      setFormErrors({ general: resolvedMessage })
     },
   })
 
@@ -272,7 +305,34 @@ export function ProjectTimeLogDialog({
       if (!canLogTime || isMutating) {
         return
       }
-      const parsedHours = Number.parseFloat(hoursInput)
+      const nextErrors: TimeLogFormErrors = {}
+      const trimmedHours = hoursInput.trim()
+      let parsedHours = Number.NaN
+
+      if (!trimmedHours) {
+        nextErrors.hours = 'Enter the number of hours worked.'
+      } else {
+        parsedHours = Number.parseFloat(trimmedHours)
+        if (!Number.isFinite(parsedHours) || parsedHours <= 0) {
+          nextErrors.hours = 'Enter a valid number of hours greater than zero.'
+        }
+      }
+
+      if (!loggedOnInput.trim()) {
+        nextErrors.loggedOn = 'Select the date these hours were worked.'
+      }
+
+      if (canSelectUser && !selectedUserId) {
+        nextErrors.user = 'Pick a teammate before logging time.'
+      }
+
+      if (Object.keys(nextErrors).length > 0) {
+        setFormErrors(nextErrors)
+        return
+      }
+
+      setFormErrors({})
+
       const shouldConfirmOverage =
         Number.isFinite(parsedHours) &&
         parsedHours > 0 &&
@@ -287,7 +347,16 @@ export function ProjectTimeLogDialog({
 
       createLog.mutate()
     },
-    [canLogTime, clientRemainingHours, createLog, hoursInput, isMutating]
+    [
+      canLogTime,
+      canSelectUser,
+      clientRemainingHours,
+      createLog,
+      hoursInput,
+      isMutating,
+      loggedOnInput,
+      selectedUserId,
+    ]
   )
 
   const handleDialogOpenChange = useCallback(
@@ -309,6 +378,7 @@ export function ProjectTimeLogDialog({
         setOverageConfirmOpen(false)
       }
 
+      setFormErrors({})
       onOpenChange(nextOpen)
     },
     [currentUserId, getToday, onOpenChange]
@@ -317,6 +387,13 @@ export function ProjectTimeLogDialog({
   const projectLabel = clientName
     ? `${projectName} · ${clientName}`
     : projectName
+
+  const hoursErrorId = formErrors.hours ? 'time-log-hours-error' : undefined
+  const dateErrorId = formErrors.loggedOn ? 'time-log-date-error' : undefined
+  const userErrorId = formErrors.user ? 'time-log-user-error' : undefined
+  const generalErrorId = formErrors.general
+    ? 'time-log-general-error'
+    : undefined
 
   const taskPickerButtonDisabled = isMutating || availableTasks.length === 0
 
@@ -358,11 +435,32 @@ export function ProjectTimeLogDialog({
                 min='0'
                 inputMode='decimal'
                 value={hoursInput}
-                onChange={event => setHoursInput(event.target.value)}
+                onChange={event => {
+                  setHoursInput(event.currentTarget.value)
+                  if (formErrors.hours || formErrors.general) {
+                    setFormErrors(prev => {
+                      if (!prev.hours && !prev.general) {
+                        return prev
+                      }
+                      return { ...prev, hours: undefined, general: undefined }
+                    })
+                  }
+                }}
                 placeholder='e.g. 1.5'
                 disabled={isMutating}
+                aria-invalid={Boolean(formErrors.hours)}
+                aria-describedby={hoursErrorId}
                 required
               />
+              {formErrors.hours ? (
+                <p
+                  id='time-log-hours-error'
+                  className='text-destructive text-xs'
+                  role='alert'
+                >
+                  {formErrors.hours}
+                </p>
+              ) : null}
             </div>
             <div className='space-y-2'>
               <label htmlFor='time-log-date' className='text-sm font-medium'>
@@ -373,10 +471,35 @@ export function ProjectTimeLogDialog({
                 type='date'
                 value={loggedOnInput}
                 max={getToday()}
-                onChange={event => setLoggedOnInput(event.target.value)}
+                onChange={event => {
+                  setLoggedOnInput(event.currentTarget.value)
+                  if (formErrors.loggedOn || formErrors.general) {
+                    setFormErrors(prev => {
+                      if (!prev.loggedOn && !prev.general) {
+                        return prev
+                      }
+                      return {
+                        ...prev,
+                        loggedOn: undefined,
+                        general: undefined,
+                      }
+                    })
+                  }
+                }}
                 disabled={isMutating}
+                aria-invalid={Boolean(formErrors.loggedOn)}
+                aria-describedby={dateErrorId}
                 required
               />
+              {formErrors.loggedOn ? (
+                <p
+                  id='time-log-date-error'
+                  className='text-destructive text-xs'
+                  role='alert'
+                >
+                  {formErrors.loggedOn}
+                </p>
+              ) : null}
             </div>
             {canSelectUser ? (
               <div className='space-y-2 sm:col-span-2'>
@@ -386,13 +509,34 @@ export function ProjectTimeLogDialog({
                 <SearchableCombobox
                   id='time-log-user'
                   value={selectedUserId}
-                  onChange={next => setSelectedUserId(next)}
+                  onChange={next => {
+                    setSelectedUserId(next)
+                    if (formErrors.user || formErrors.general) {
+                      setFormErrors(prev => {
+                        if (!prev.user && !prev.general) {
+                          return prev
+                        }
+                        return { ...prev, user: undefined, general: undefined }
+                      })
+                    }
+                  }}
                   items={userComboboxItems}
                   placeholder='Select teammate'
                   searchPlaceholder='Search collaborators...'
                   emptyMessage='No eligible collaborators found.'
                   disabled={isMutating}
+                  ariaDescribedBy={userErrorId}
+                  ariaInvalid={Boolean(formErrors.user)}
                 />
+                {formErrors.user ? (
+                  <p
+                    id='time-log-user-error'
+                    className='text-destructive text-xs'
+                    role='alert'
+                  >
+                    {formErrors.user}
+                  </p>
+                ) : null}
               </div>
             ) : null}
             <div className='space-y-2 sm:col-span-2'>
@@ -525,6 +669,16 @@ export function ProjectTimeLogDialog({
                 disabled={isMutating}
               />
             </div>
+            {formErrors.general ? (
+              <div
+                id={generalErrorId}
+                className='border-destructive/40 bg-destructive/10 text-destructive rounded-md border px-3 py-2 text-sm sm:col-span-2'
+                role='alert'
+                aria-live='assertive'
+              >
+                {formErrors.general}
+              </div>
+            ) : null}
             <div className='flex items-center justify-end gap-3 sm:col-span-2'>
               <DisabledFieldTooltip
                 disabled={disableCreate}
