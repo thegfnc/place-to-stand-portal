@@ -56,7 +56,7 @@ This document breaks down the Unified Client & Project Management System into a 
 
 **Objective:** Build the client-facing portion of the portal and introduce features that facilitate communication and transparency.
 
-### **2.1. Client "My Work" View**
+### **2.1. Client "Projects" View**
 
 - Adapt the "Projects" menu item and view for the Client roles.
 - Reuse the Kanban board from Phase 1 for clients,
@@ -67,7 +67,7 @@ This document breaks down the Unified Client & Project Management System into a 
 
 - Implement the commenting system on the task details view/sheet.
 - Ensure users from all roles (Client, Contractor, Admin) can add and view comments on tasks they have access to.
-- Ensure that users can edit only their own comments.
+- Ensure that users can edit and delete only their own comments.
 
 ### **2.3. Project Burndown Widget**
 
