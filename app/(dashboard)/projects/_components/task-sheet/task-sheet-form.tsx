@@ -31,6 +31,9 @@ import type { UseFormReturn } from 'react-hook-form'
 import { useSheetFormControls } from '@/lib/hooks/use-sheet-form-controls'
 import type { TaskSheetFormValues } from '@/lib/projects/task-sheet/task-sheet-schema'
 import { normalizeRichTextContent } from '@/lib/projects/task-sheet/task-sheet-utils'
+import type { AttachmentItem } from '@/lib/projects/task-sheet/use-task-sheet-state'
+
+import { TaskAttachmentsField } from './task-attachments-field'
 
 const FEEDBACK_CLASSES =
   'border-destructive/40 bg-destructive/10 text-destructive rounded-md border px-3 py-2 text-sm'
@@ -54,6 +57,14 @@ type TaskSheetFormProps = {
   submitDisabledReason: string | null
   isSheetOpen: boolean
   historyKey: string
+  attachments: AttachmentItem[]
+  onAttachmentUpload: (files: FileList | File[]) => void
+  onAttachmentRemove: (key: string) => void
+  isUploadingAttachments: boolean
+  acceptedAttachmentTypes: readonly string[]
+  maxAttachmentSize: number
+  attachmentsDisabledReason: string | null
+  isDragActive: boolean
 }
 
 export function TaskSheetForm({
@@ -75,6 +86,14 @@ export function TaskSheetForm({
   submitDisabledReason,
   isSheetOpen,
   historyKey,
+  attachments,
+  onAttachmentUpload,
+  onAttachmentRemove,
+  isUploadingAttachments,
+  acceptedAttachmentTypes,
+  maxAttachmentSize,
+  attachmentsDisabledReason,
+  isDragActive,
 }: TaskSheetFormProps) {
   const handleSave = useCallback(
     () => form.handleSubmit(onSubmit)(),
@@ -101,11 +120,23 @@ export function TaskSheetForm({
     return 'Create task'
   }, [isEditing, isPending])
 
+  const attachmentsDisabled = isPending || !canManage
+
+  const handleFileDialogSelect = useCallback(
+    (fileList: FileList | null) => {
+      if (!fileList || fileList.length === 0) {
+        return
+      }
+      onAttachmentUpload(fileList)
+    },
+    [onAttachmentUpload]
+  )
+
   return (
     <Form {...form}>
       <form
         onSubmit={form.handleSubmit(onSubmit)}
-        className='flex flex-1 flex-col gap-6 px-6 pb-8'
+        className='flex flex-1 flex-col gap-6 px-6 pb-4'
       >
         <FormField
           control={form.control}
@@ -263,6 +294,17 @@ export function TaskSheetForm({
               </FormItem>
             )
           }}
+        />
+        <TaskAttachmentsField
+          attachments={attachments}
+          onSelectFiles={handleFileDialogSelect}
+          onRemove={onAttachmentRemove}
+          disabled={attachmentsDisabled}
+          disabledReason={attachmentsDisabledReason}
+          isUploading={isUploadingAttachments}
+          isDragActive={!attachmentsDisabled && isDragActive}
+          acceptedMimeTypes={acceptedAttachmentTypes}
+          maxFileSize={maxAttachmentSize}
         />
         {feedback ? <p className={FEEDBACK_CLASSES}>{feedback}</p> : null}
         <div className='border-border/40 bg-muted/95 supports-backdrop-filter:bg-muted/90 fixed right-0 bottom-0 z-50 w-full border-t shadow-lg backdrop-blur sm:max-w-2xl'>

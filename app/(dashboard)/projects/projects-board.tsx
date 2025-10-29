@@ -295,7 +295,7 @@ export function ProjectsBoard(props: Props) {
                   onDragStart={handleDragStart}
                   onDragEnd={handleDragEnd}
                 >
-                  <div className='flex max-h-full w-max gap-4 p-1'>
+                  <div className='flex h-full w-max gap-4 p-1'>
                     {BOARD_COLUMNS.map(column => (
                       <KanbanColumn
                         key={column.id}

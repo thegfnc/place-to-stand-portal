@@ -135,6 +135,18 @@ export const fetchProjectsWithRelations = cache(
             comments:task_comments (
               id,
               deleted_at
+            ),
+            attachments:task_attachments (
+              id,
+              task_id,
+              storage_path,
+              original_name,
+              mime_type,
+              file_size,
+              uploaded_by,
+              created_at,
+              updated_at,
+              deleted_at
             )
           `
           )
@@ -343,6 +355,18 @@ export const fetchProjectsWithRelations = cache(
             id: string
             deleted_at: string | null
           }> | null
+          attachments: Array<{
+            id: string
+            task_id: string
+            storage_path: string
+            original_name: string
+            mime_type: string
+            file_size: number
+            uploaded_by: string
+            created_at: string
+            updated_at: string
+            deleted_at: string | null
+          }> | null
         }
       >
     ).forEach(task => {
@@ -361,6 +385,9 @@ export const fetchProjectsWithRelations = cache(
           .filter(assignee => !assignee.deleted_at)
           .map(assignee => ({ user_id: assignee.user_id })),
         commentCount,
+        attachments: (task.attachments ?? []).filter(
+          attachment => attachment && !attachment.deleted_at
+        ),
       })
       tasksByProject.set(task.project_id, list)
     })

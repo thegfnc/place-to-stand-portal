@@ -12,6 +12,8 @@ export type DbTaskComment = Database['public']['Tables']['task_comments']['Row']
 export type DbTimeLog = Database['public']['Tables']['time_logs']['Row']
 export type DbTimeLogTask =
   Database['public']['Tables']['time_log_tasks']['Row']
+export type DbTaskAttachment =
+  Database['public']['Tables']['task_attachments']['Row']
 
 export type ProjectMemberWithUser = DbProjectMember & {
   user: DbUser
@@ -20,6 +22,7 @@ export type ProjectMemberWithUser = DbProjectMember & {
 export type TaskWithRelations = DbTask & {
   assignees: { user_id: string }[]
   commentCount: number
+  attachments: DbTaskAttachment[]
 }
 
 export type TaskCommentWithAuthor = DbTaskComment & {

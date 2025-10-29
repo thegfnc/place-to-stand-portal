@@ -1,5 +1,7 @@
 'use client'
 
+import { useCallback, useRef, useState, type DragEvent } from 'react'
+
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { Sheet, SheetContent } from '@/components/ui/sheet'
 
@@ -49,51 +51,170 @@ export function TaskSheet(props: TaskSheetProps) {
     editorKey,
     taskStatuses,
     unassignedValue,
+    attachments,
+    handleAttachmentUpload,
+    handleAttachmentRemove,
+    isUploadingAttachments,
+    acceptedAttachmentTypes,
+    maxAttachmentSize,
+    attachmentsDisabledReason,
   } = useTaskSheetState(props)
+
+  const [isDragActive, setIsDragActive] = useState(false)
+  const dragCounterRef = useRef(0)
+  const attachmentsDisabled = isPending || !props.canManage
+  const dropDisabled = attachmentsDisabled || isUploadingAttachments
+
+  const hasDraggedFiles = useCallback(
+    (event: DragEvent<HTMLDivElement>) =>
+      Array.from(event.dataTransfer?.types ?? []).includes('Files'),
+    []
+  )
+
+  const handleDragEnter = useCallback(
+    (event: DragEvent<HTMLDivElement>) => {
+      if (!hasDraggedFiles(event)) {
+        return
+      }
+
+      event.preventDefault()
+      event.stopPropagation()
+
+      if (dropDisabled) {
+        return
+      }
+
+      dragCounterRef.current += 1
+      setIsDragActive(true)
+    },
+    [dropDisabled, hasDraggedFiles]
+  )
+
+  const handleDragOver = useCallback(
+    (event: DragEvent<HTMLDivElement>) => {
+      if (!hasDraggedFiles(event)) {
+        return
+      }
+
+      event.preventDefault()
+      event.stopPropagation()
+
+      if (dropDisabled) {
+        if (event.dataTransfer) {
+          event.dataTransfer.dropEffect = 'none'
+        }
+        return
+      }
+
+      event.dataTransfer.dropEffect = 'copy'
+    },
+    [dropDisabled, hasDraggedFiles]
+  )
+
+  const handleDragLeave = useCallback(
+    (event: DragEvent<HTMLDivElement>) => {
+      if (!hasDraggedFiles(event)) {
+        return
+      }
+
+      event.preventDefault()
+      event.stopPropagation()
+
+      if (dropDisabled) {
+        dragCounterRef.current = 0
+        setIsDragActive(false)
+        return
+      }
+
+      dragCounterRef.current = Math.max(dragCounterRef.current - 1, 0)
+      if (dragCounterRef.current === 0) {
+        setIsDragActive(false)
+      }
+    },
+    [dropDisabled, hasDraggedFiles]
+  )
+
+  const handleDrop = useCallback(
+    (event: DragEvent<HTMLDivElement>) => {
+      if (!hasDraggedFiles(event)) {
+        return
+      }
+
+      event.preventDefault()
+      event.stopPropagation()
+
+      const files = event.dataTransfer?.files
+      dragCounterRef.current = 0
+      setIsDragActive(false)
+
+      if (dropDisabled || !files || files.length === 0) {
+        return
+      }
+
+      handleAttachmentUpload(files)
+    },
+    [dropDisabled, handleAttachmentUpload, hasDraggedFiles]
+  )
 
   return (
     <>
       <Sheet open={props.open} onOpenChange={handleSheetOpenChange}>
         <SheetContent className='flex w-full flex-col gap-6 overflow-y-auto pb-24 sm:max-w-2xl'>
-          <TaskSheetHeader
-            title={sheetTitle}
-            description={
-              <>
-                Task belongs to{' '}
-                <span className='font-medium'>{projectName}</span>.
-              </>
-            }
-          />
-          <TaskSheetForm
-            form={form}
-            onSubmit={handleFormSubmit}
-            feedback={feedback}
-            isPending={isPending}
-            canManage={props.canManage}
-            assigneeItems={assigneeItems}
-            resolveDisabledReason={resolveDisabledReason}
-            taskStatuses={taskStatuses}
-            unassignedValue={unassignedValue}
-            editorKey={editorKey}
-            isEditing={Boolean(props.task)}
-            onRequestDelete={handleRequestDelete}
-            deleteDisabled={deleteDisabled}
-            deleteDisabledReason={deleteDisabledReason}
-            submitDisabled={submitDisabled}
-            submitDisabledReason={submitDisabledReason}
-            isSheetOpen={props.open}
-            historyKey={props.task?.id ?? 'task:new'}
-          />
-          {props.task ? (
-            <div className='space-y-6 px-6'>
-              <TaskCommentsPanel
-                taskId={props.task.id}
-                projectId={props.project.id}
-                currentUserId={props.currentUserId}
-                canComment
-              />
-            </div>
-          ) : null}
+          <div
+            className='flex flex-col gap-6'
+            onDragEnter={handleDragEnter}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+          >
+            <TaskSheetHeader
+              title={sheetTitle}
+              description={
+                <>
+                  Task belongs to{' '}
+                  <span className='font-medium'>{projectName}</span>.
+                </>
+              }
+            />
+            <TaskSheetForm
+              form={form}
+              onSubmit={handleFormSubmit}
+              feedback={feedback}
+              isPending={isPending}
+              canManage={props.canManage}
+              assigneeItems={assigneeItems}
+              resolveDisabledReason={resolveDisabledReason}
+              taskStatuses={taskStatuses}
+              unassignedValue={unassignedValue}
+              editorKey={editorKey}
+              isEditing={Boolean(props.task)}
+              onRequestDelete={handleRequestDelete}
+              deleteDisabled={deleteDisabled}
+              deleteDisabledReason={deleteDisabledReason}
+              submitDisabled={submitDisabled}
+              submitDisabledReason={submitDisabledReason}
+              isSheetOpen={props.open}
+              historyKey={props.task?.id ?? 'task:new'}
+              attachments={attachments}
+              onAttachmentUpload={handleAttachmentUpload}
+              onAttachmentRemove={handleAttachmentRemove}
+              isUploadingAttachments={isUploadingAttachments}
+              acceptedAttachmentTypes={acceptedAttachmentTypes}
+              maxAttachmentSize={maxAttachmentSize}
+              attachmentsDisabledReason={attachmentsDisabledReason}
+              isDragActive={!dropDisabled && isDragActive}
+            />
+            {props.task ? (
+              <div className='space-y-6 px-6'>
+                <TaskCommentsPanel
+                  taskId={props.task.id}
+                  projectId={props.project.id}
+                  currentUserId={props.currentUserId}
+                  canComment
+                />
+              </div>
+            ) : null}
+          </div>
         </SheetContent>
       </Sheet>
       <ConfirmDialog

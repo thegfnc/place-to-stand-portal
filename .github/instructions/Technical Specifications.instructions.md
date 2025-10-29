@@ -25,6 +25,7 @@ applyTo: '**'
 - **Framework:** Next.js (App Router)
 - **UI Components:** shadcn
 - **Styling:** Tailwind CSS
+- **Animations:** Motion
 - **Form Management:** React Hook Form
 - **Schema Validation:** Zod
 - **State Management & Data Fetching:** React Query

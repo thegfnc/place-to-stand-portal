@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { CSS } from '@dnd-kit/utilities'
 import { useDraggable } from '@dnd-kit/core'
-import { CalendarDays, MessageCircle, Users2 } from 'lucide-react'
+import { CalendarDays, MessageCircle, Paperclip, Users2 } from 'lucide-react'
 import { format, parseISO } from 'date-fns'
 
 import { cn } from '@/lib/utils'
@@ -49,6 +49,7 @@ function CardContent({
         .join(', ')
     : 'Unassigned'
   const descriptionPreview = toPlainText(task.description)
+  const attachmentCount = task.attachments.length
   let dueDateLabel: string | null = null
 
   if (task.due_on) {
@@ -74,22 +75,32 @@ function CardContent({
           </p>
         ) : null}
       </div>
-      <div className='text-muted-foreground mt-4 flex flex-wrap items-center gap-3 text-xs'>
-        <span className='inline-flex items-center gap-1'>
-          <Users2 className='h-3.5 w-3.5' /> {assignedSummary}
-        </span>
-        {task.commentCount > 0 ? (
+      <div className='mt-4 space-y-2'>
+        <div className='text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-2 text-xs'>
+          {task.commentCount > 0 ? (
+            <span className='inline-flex items-center gap-1'>
+              <MessageCircle className='h-3.5 w-3.5' />
+              {task.commentCount}
+            </span>
+          ) : null}
+          {attachmentCount > 0 ? (
+            <span className='inline-flex items-center gap-1'>
+              <Paperclip className='h-3.5 w-3.5' />
+              {attachmentCount}
+            </span>
+          ) : null}
+        </div>
+        <div className='text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-2 text-xs'>
           <span className='inline-flex items-center gap-1'>
-            <MessageCircle className='h-3.5 w-3.5' />
-            {task.commentCount}
+            <Users2 className='h-3.5 w-3.5' /> {assignedSummary}
           </span>
-        ) : null}
-        {dueDateLabel ? (
-          <span className='inline-flex items-center gap-1'>
-            <CalendarDays className='h-3.5 w-3.5' />
-            {dueDateLabel}
-          </span>
-        ) : null}
+          {dueDateLabel ? (
+            <span className='inline-flex items-center gap-1'>
+              <CalendarDays className='h-3.5 w-3.5' />
+              {dueDateLabel}
+            </span>
+          ) : null}
+        </div>
       </div>
     </>
   )
