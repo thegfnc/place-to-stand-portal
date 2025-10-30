@@ -342,7 +342,7 @@ export function HourBlocksSettingsTable({ hourBlocks, clients }: Props) {
           />
         </TabsContent>
         <TabsContent value='activity' className='space-y-3'>
-          <div className='space-y-3 rounded-xl border p-4'>
+          <div className='space-y-3 p-1'>
             <div>
               <h3 className='text-lg font-semibold'>Recent activity</h3>
               <p className='text-muted-foreground text-sm'>

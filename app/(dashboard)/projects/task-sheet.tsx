@@ -18,6 +18,7 @@ import type { UserRole } from '@/lib/auth/session'
 import { TaskCommentsPanel } from './_components/task-sheet/task-comments-panel'
 import { TaskActivityPanel } from './_components/task-sheet/task-activity-panel'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import type { BoardColumnId } from '@/lib/projects/board/board-constants'
 
 type TaskSheetProps = {
   open: boolean
@@ -28,6 +29,7 @@ type TaskSheetProps = {
   admins: DbUser[]
   currentUserId: string
   currentUserRole: UserRole
+  defaultStatus: BoardColumnId
 }
 
 export function TaskSheet(props: TaskSheetProps) {

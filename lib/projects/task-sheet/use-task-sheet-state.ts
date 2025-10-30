@@ -16,6 +16,7 @@ import type {
   ProjectWithRelations,
   TaskWithRelations,
 } from '@/lib/types'
+import type { BoardColumnId } from '@/lib/projects/board/board-constants'
 import { useUnsavedChangesWarning } from '@/lib/hooks/use-unsaved-changes-warning'
 import { useToast } from '@/components/ui/use-toast'
 
@@ -70,6 +71,7 @@ export type UseTaskSheetStateArgs = {
   task?: TaskWithRelations
   canManage: boolean
   admins: DbUser[]
+  defaultStatus: BoardColumnId
 }
 
 type UseTaskSheetStateReturn = {
@@ -110,6 +112,7 @@ export const useTaskSheetState = ({
   task,
   canManage,
   admins,
+  defaultStatus,
 }: UseTaskSheetStateArgs): UseTaskSheetStateReturn => {
   const [feedback, setFeedback] = useState<string | null>(null)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
@@ -224,8 +227,13 @@ export const useTaskSheetState = ({
   }, [attachments, attachmentsToRemove, defaultAttachments])
 
   const defaultValues = useMemo(
-    () => createDefaultValues({ task, currentAssigneeId }),
-    [task, currentAssigneeId]
+    () =>
+      createDefaultValues({
+        task,
+        currentAssigneeId,
+        defaultStatus,
+      }),
+    [task, currentAssigneeId, defaultStatus]
   )
 
   const form = useForm<TaskSheetFormValues>({

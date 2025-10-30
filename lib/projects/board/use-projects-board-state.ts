@@ -8,7 +8,7 @@ import type {
 } from '@/lib/types'
 import type { UserRole } from '@/lib/auth/session'
 
-import { BOARD_COLUMNS } from './board-constants'
+import { BOARD_COLUMNS, type BoardColumnId } from './board-constants'
 import {
   createClientSlugLookup,
   createProjectLookup,
@@ -62,6 +62,7 @@ type ProjectsBoardState = {
   handleSheetOpenChange: ReturnType<
     typeof useBoardSheetState
   >['handleSheetOpenChange']
+  defaultTaskStatus: BoardColumnId
 }
 
 export const useProjectsBoardState = ({
@@ -178,6 +179,7 @@ export const useProjectsBoardState = ({
     openCreateSheet,
     handleEditTask,
     handleSheetOpenChange,
+    defaultTaskStatus,
   } = useBoardSheetState({
     projects,
     tasksByProject,
@@ -231,5 +233,6 @@ export const useProjectsBoardState = ({
     openCreateSheet,
     handleEditTask,
     handleSheetOpenChange,
+    defaultTaskStatus,
   }
 }

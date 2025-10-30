@@ -71,14 +71,16 @@ export function AppShell({ user, children }: Props) {
 
   return (
     <div className='bg-muted flex min-h-screen'>
-      <Sidebar role={user.role} />
+      <Sidebar user={user} />
       <HeaderContext.Provider value={headerContextValue}>
         <div className='flex min-h-screen flex-1 flex-col'>
           <header className='bg-background flex flex-wrap items-center gap-4 border-b px-6 py-4'>
             <div className='min-w-0 flex-1'>{headerContent}</div>
-            <UserMenu user={user} />
+            <div className='md:hidden'>
+              <UserMenu user={user} />
+            </div>
           </header>
-          <main className='flex-1 overflow-y-auto px-6 py-8'>{children}</main>
+          <main className='flex-1 overflow-y-auto p-6'>{children}</main>
         </div>
       </HeaderContext.Provider>
     </div>

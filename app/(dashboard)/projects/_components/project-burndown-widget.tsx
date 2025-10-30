@@ -39,10 +39,7 @@ export function ProjectBurndownWidget({
 
   return (
     <section
-      className={cn(
-        'border-border bg-card flex gap-2 rounded-lg border p-4 text-[11px] shadow-sm',
-        className
-      )}
+      className={cn('flex gap-2 text-[11px]', className)}
       aria-label='Burndown overview'
     >
       <dl className='flex flex-col gap-2 text-[10px] font-medium md:flex-row md:items-stretch md:gap-2'>

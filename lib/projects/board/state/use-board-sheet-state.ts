@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { TransitionStartFunction } from 'react'
 
+import type { BoardColumnId } from '@/lib/projects/board/board-constants'
 import type { ProjectWithRelations, TaskWithRelations } from '@/lib/types'
 
 import type { NavigateOptions, TaskLookup } from './types'
@@ -50,6 +51,8 @@ export const useBoardSheetState = ({
   const [routeTaskId, setRouteTaskId] = useState<string | null>(activeTaskId)
   const [pendingTaskId, setPendingTaskId] = useState<string | null>(null)
   const [scrimLocked, setScrimLocked] = useState(false)
+  const [defaultTaskStatus, setDefaultTaskStatus] =
+    useState<BoardColumnId>('BACKLOG')
 
   useEffect(() => {
     if (activeTaskId) {
@@ -103,20 +106,24 @@ export const useBoardSheetState = ({
     tasksByProject,
   ])
 
-  const openCreateSheet = useCallback(() => {
-    const targetProjectId = selectedProjectId ?? activeProject?.id ?? null
+  const openCreateSheet = useCallback(
+    (status?: BoardColumnId) => {
+      const targetProjectId = selectedProjectId ?? activeProject?.id ?? null
+      setDefaultTaskStatus(status ?? 'BACKLOG')
 
-    if (targetProjectId) {
-      navigateToProject(targetProjectId, { taskId: null, replace: true })
-    } else {
-      navigateToProject(null, { replace: true })
-    }
+      if (targetProjectId) {
+        navigateToProject(targetProjectId, { taskId: null, replace: true })
+      } else {
+        navigateToProject(null, { replace: true })
+      }
 
-    setRouteTaskId(null)
-    setPendingTaskId(null)
-    setSheetTask(undefined)
-    setIsSheetOpen(true)
-  }, [activeProject?.id, navigateToProject, selectedProjectId])
+      setRouteTaskId(null)
+      setPendingTaskId(null)
+      setSheetTask(undefined)
+      setIsSheetOpen(true)
+    },
+    [activeProject?.id, navigateToProject, selectedProjectId]
+  )
 
   const handleEditTask = useCallback(
     (task: TaskWithRelations) => {
@@ -133,6 +140,7 @@ export const useBoardSheetState = ({
       setIsSheetOpen(open)
       if (!open) {
         const projectIdForSheet = sheetTask?.project_id ?? selectedProjectId
+        setDefaultTaskStatus('BACKLOG')
 
         if (routeTaskId && projectIdForSheet) {
           setScrimLocked(true)
@@ -165,5 +173,6 @@ export const useBoardSheetState = ({
     openCreateSheet,
     handleEditTask,
     handleSheetOpenChange,
+    defaultTaskStatus,
   }
 }

@@ -11,6 +11,8 @@ import {
 import { DndContext, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
 import { Loader2 } from 'lucide-react'
 
+import { ActivityFeed } from '@/components/activity/activity-feed'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { AppShellHeader } from '@/components/layout/app-shell'
 import type { TaskWithRelations } from '@/lib/types'
 import { BOARD_COLUMNS } from '@/lib/projects/board/board-constants'
@@ -22,7 +24,6 @@ import { ProjectsBoardHeader } from './_components/projects-board-header'
 import { TaskDragOverlay } from './_components/task-drag-overlay'
 import { TaskSheet } from './task-sheet'
 import { ProjectBurndownWidget } from './_components/project-burndown-widget'
-import { ProjectsBoardIntro } from './_components/projects-board-intro'
 import { ProjectTimeLogDialog } from './_components/project-time-log-dialog'
 import { ProjectTimeLogHistoryDialog } from './_components/project-time-log-history-dialog'
 
@@ -57,8 +58,6 @@ export function ProjectsBoard(props: Props) {
     memberDirectory,
     tasksByColumn,
     draggingTask,
-    addTaskDisabled,
-    addTaskDisabledReason,
     isSheetOpen,
     sheetTask,
     scrimLocked,
@@ -69,9 +68,9 @@ export function ProjectsBoard(props: Props) {
     openCreateSheet,
     handleEditTask,
     handleSheetOpenChange,
+    defaultTaskStatus,
   } = useProjectsBoardState(props)
 
-  const isClientView = props.currentUserRole === 'CLIENT'
   const canLogTime = props.currentUserRole !== 'CLIENT'
   const addTimeLogDisabledReason = canLogTime
     ? null
@@ -83,6 +82,10 @@ export function ProjectsBoard(props: Props) {
   const [viewTimeLogsProjectId, setViewTimeLogsProjectId] = useState<
     string | null
   >(null)
+  const [activeTab, setActiveTab] = useState<'board' | 'activity'>('board')
+  const handleTabChange = useCallback((value: string) => {
+    setActiveTab(value === 'activity' ? 'activity' : 'board')
+  }, [])
 
   const handleTimeLogDialogOpenChange = useCallback(
     (open: boolean) => {
@@ -221,12 +224,6 @@ export function ProjectsBoard(props: Props) {
           />
         </AppShellHeader>
         <div className='flex h-full flex-col gap-6'>
-          <ProjectsBoardIntro
-            addTaskDisabled
-            addTaskDisabledReason='Select a project to add tasks.'
-            onAddTask={openCreateSheet}
-            isClientView={isClientView}
-          />
           <ProjectsBoardEmpty
             title={NO_PROJECTS_TITLE}
             description={NO_PROJECTS_DESCRIPTION}
@@ -239,90 +236,137 @@ export function ProjectsBoard(props: Props) {
   return (
     <>
       <AppShellHeader>
-        <ProjectsBoardHeader
-          clientItems={clientItems}
-          projectItems={projectItems}
-          selectedClientId={selectedClientId}
-          selectedProjectId={selectedProjectId}
-          onClientChange={handleClientSelect}
-          onProjectChange={handleProjectSelect}
-        />
-      </AppShellHeader>
-      <div className='flex h-full min-h-0 flex-col gap-4 sm:gap-6'>
-        <div className='flex flex-wrap items-end justify-between gap-4'>
-          {activeProject ? (
-            <ProjectBurndownWidget
-              totalClientRemainingHours={
-                activeProject.burndown.totalClientRemainingHours
-              }
-              totalProjectLoggedHours={
-                activeProject.burndown.totalProjectLoggedHours
-              }
-              className='shrink-0'
-              canLogTime={canLogTime}
-              addTimeLogDisabledReason={addTimeLogDisabledReason}
-              onViewTimeLogs={() => handleViewTimeLogsDialogOpenChange(true)}
-              onAddTimeLog={() => handleTimeLogDialogOpenChange(true)}
-            />
-          ) : null}
-          <ProjectsBoardIntro
-            addTaskDisabled={addTaskDisabled}
-            addTaskDisabledReason={addTaskDisabledReason}
-            onAddTask={openCreateSheet}
-            isClientView={isClientView}
+        <div className='flex justify-between'>
+          <ProjectsBoardHeader
+            clientItems={clientItems}
+            projectItems={projectItems}
+            selectedClientId={selectedClientId}
+            selectedProjectId={selectedProjectId}
+            onClientChange={handleClientSelect}
+            onProjectChange={handleProjectSelect}
           />
-        </div>
-        {feedback ? (
-          <p className='border-destructive/40 bg-destructive/10 text-destructive rounded-md border px-3 py-2 text-sm'>
-            {feedback}
-          </p>
-        ) : null}
-        {!activeProject ? (
-          <ProjectsBoardEmpty
-            title={NO_SELECTION_TITLE}
-            description={NO_SELECTION_DESCRIPTION}
-          />
-        ) : (
-          <div className='relative min-h-0 flex-1'>
-            <div className='absolute inset-0 overflow-hidden'>
-              <div
-                ref={boardViewportRef}
-                className='h-full min-h-0 overflow-x-auto'
-                onScroll={handleBoardScroll}
-              >
-                <DndContext
-                  sensors={sensors}
-                  onDragStart={handleDragStart}
-                  onDragEnd={handleDragEnd}
-                >
-                  <div className='flex h-full w-max gap-4 p-1'>
-                    {BOARD_COLUMNS.map(column => (
-                      <KanbanColumn
-                        key={column.id}
-                        columnId={column.id}
-                        label={column.label}
-                        tasks={tasksByColumn.get(column.id) ?? []}
-                        renderAssignees={renderAssignees}
-                        onEditTask={handleEditTask}
-                        canManage={canManageTasks}
-                        activeTaskId={sheetTask?.id ?? null}
-                      />
-                    ))}
-                  </div>
-                  <TaskDragOverlay
-                    draggingTask={draggingTask}
-                    renderAssignees={renderAssignees}
-                  />
-                </DndContext>
-              </div>
-            </div>
-            {isPending && !scrimLocked ? (
-              <div className='bg-background/60 pointer-events-none absolute inset-0 flex items-center justify-center'>
-                <Loader2 className='text-muted-foreground h-6 w-6 animate-spin' />
-              </div>
+          <div className='flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-6'>
+            {activeProject ? (
+              <ProjectBurndownWidget
+                totalClientRemainingHours={
+                  activeProject.burndown.totalClientRemainingHours
+                }
+                totalProjectLoggedHours={
+                  activeProject.burndown.totalProjectLoggedHours
+                }
+                className='ml-auto w-full sm:w-auto'
+                canLogTime={canLogTime}
+                addTimeLogDisabledReason={addTimeLogDisabledReason}
+                onViewTimeLogs={() => handleViewTimeLogsDialogOpenChange(true)}
+                onAddTimeLog={() => handleTimeLogDialogOpenChange(true)}
+              />
             ) : null}
           </div>
-        )}
+        </div>
+      </AppShellHeader>
+      <div className='flex h-full min-h-0 flex-col gap-4 sm:gap-6'>
+        <Tabs
+          value={activeTab}
+          onValueChange={handleTabChange}
+          className='flex min-h-0 flex-1 flex-col gap-2'
+        >
+          <div className='flex items-end justify-between gap-3'>
+            <TabsList className='bg-muted/40 h-10 w-full justify-start gap-2 rounded-lg p-1 sm:w-auto'>
+              <TabsTrigger value='board' className='px-3 py-1.5 text-sm'>
+                Board
+              </TabsTrigger>
+              <TabsTrigger value='activity' className='px-3 py-1.5 text-sm'>
+                Activity Log
+              </TabsTrigger>
+            </TabsList>
+          </div>
+          <TabsContent
+            value='board'
+            className='flex min-h-0 flex-1 flex-col gap-4 sm:gap-6'
+          >
+            {feedback ? (
+              <p className='border-destructive/40 bg-destructive/10 text-destructive rounded-md border px-3 py-2 text-sm'>
+                {feedback}
+              </p>
+            ) : null}
+            {!activeProject ? (
+              <ProjectsBoardEmpty
+                title={NO_SELECTION_TITLE}
+                description={NO_SELECTION_DESCRIPTION}
+              />
+            ) : (
+              <div className='relative min-h-0 flex-1'>
+                <div className='absolute inset-0 overflow-hidden'>
+                  <div
+                    ref={boardViewportRef}
+                    className='h-full min-h-0 overflow-x-auto'
+                    onScroll={handleBoardScroll}
+                  >
+                    <DndContext
+                      sensors={sensors}
+                      onDragStart={handleDragStart}
+                      onDragEnd={handleDragEnd}
+                    >
+                      <div className='flex h-full w-max gap-4 p-1'>
+                        {BOARD_COLUMNS.map(column => (
+                          <KanbanColumn
+                            key={column.id}
+                            columnId={column.id}
+                            label={column.label}
+                            tasks={tasksByColumn.get(column.id) ?? []}
+                            renderAssignees={renderAssignees}
+                            onEditTask={handleEditTask}
+                            canManage={canManageTasks}
+                            activeTaskId={sheetTask?.id ?? null}
+                            onCreateTask={status => openCreateSheet(status)}
+                          />
+                        ))}
+                      </div>
+                      <TaskDragOverlay
+                        draggingTask={draggingTask}
+                        renderAssignees={renderAssignees}
+                      />
+                    </DndContext>
+                  </div>
+                </div>
+                {isPending && !scrimLocked ? (
+                  <div className='bg-background/60 pointer-events-none absolute inset-0 flex items-center justify-center'>
+                    <Loader2 className='text-muted-foreground h-6 w-6 animate-spin' />
+                  </div>
+                ) : null}
+              </div>
+            )}
+          </TabsContent>
+          <TabsContent
+            value='activity'
+            className='flex min-h-0 flex-1 flex-col gap-4 sm:gap-6'
+          >
+            {!activeProject ? (
+              <ProjectsBoardEmpty
+                title={NO_SELECTION_TITLE}
+                description={NO_SELECTION_DESCRIPTION}
+              />
+            ) : (
+              <section className='bg-background rounded-xl border p-6 shadow-sm'>
+                <div className='space-y-1'>
+                  <h3 className='text-lg font-semibold'>Project activity</h3>
+                  <p className='text-muted-foreground text-sm'>
+                    Review task updates, comments, and assignments for this
+                    project.
+                  </p>
+                </div>
+                <div className='mt-3'>
+                  <ActivityFeed
+                    targetType='PROJECT'
+                    projectId={activeProject.id}
+                    clientId={activeProject.client?.id ?? null}
+                    emptyState='No project activity yet.'
+                  />
+                </div>
+              </section>
+            )}
+          </TabsContent>
+        </Tabs>
         {activeProject ? (
           <TaskSheet
             open={isSheetOpen}
@@ -333,6 +377,7 @@ export function ProjectsBoard(props: Props) {
             admins={props.admins}
             currentUserId={props.currentUserId}
             currentUserRole={props.currentUserRole}
+            defaultStatus={defaultTaskStatus}
           />
         ) : null}
         {activeProject ? (

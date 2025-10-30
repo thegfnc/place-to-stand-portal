@@ -6,6 +6,7 @@ import type {
   ProjectWithRelations,
   TaskWithRelations,
 } from '@/lib/types'
+import type { BoardColumnId } from '@/lib/projects/board/board-constants'
 
 import {
   MANAGE_PERMISSION_REASON,
@@ -25,6 +26,7 @@ type BuildAssigneeItemsArgs = {
 type CreateDefaultValuesArgs = {
   task: TaskWithRelations | undefined
   currentAssigneeId: string | null
+  defaultStatus: BoardColumnId
 }
 
 const tidyRole = (role: string | null | undefined) => {
@@ -201,10 +203,11 @@ export const buildAssigneeItems = ({
 export const createDefaultValues = ({
   task,
   currentAssigneeId,
+  defaultStatus,
 }: CreateDefaultValuesArgs): TaskSheetFormValues => ({
   title: task?.title ?? '',
   description: task?.description ?? null,
-  status: task?.status ?? 'BACKLOG',
+  status: task?.status ?? defaultStatus,
   dueOn: toDateInputValue(task?.due_on),
   assigneeId: currentAssigneeId ?? null,
 })

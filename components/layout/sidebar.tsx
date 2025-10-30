@@ -12,7 +12,9 @@ import {
 } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
-import type { UserRole } from '@/lib/auth/session'
+import type { AppUser, UserRole } from '@/lib/auth/session'
+
+import { UserMenu } from './user-menu'
 
 type NavGroup = {
   title: string
@@ -65,54 +67,62 @@ const NAV_GROUPS: NavGroup[] = [
 ]
 
 type Props = {
-  role: UserRole
+  user: AppUser
 }
 
-export function Sidebar({ role }: Props) {
+export function Sidebar({ user }: Props) {
   const pathname = usePathname()
+  const role = user.role
 
   return (
-    <aside className='bg-background/90 hidden w-72 shrink-0 border-r px-6 py-8 md:block'>
-      <div className='space-y-10'>
-        <div>
-          <span className='text-muted-foreground text-xs font-semibold tracking-wide uppercase'>
-            Place to Stand
-          </span>
-          <p className='mt-2 text-base font-semibold'>Portal</p>
-        </div>
-        <nav className='space-y-10'>
-          {NAV_GROUPS.filter(group => group.roles.includes(role)).map(group => (
-            <div key={group.title} className='space-y-3'>
-              <p className='text-muted-foreground text-xs font-semibold tracking-wide uppercase'>
-                {group.title}
-              </p>
-              <div className='space-y-1'>
-                {group.items.map(item => {
-                  const Icon = item.icon
-                  const isActive =
-                    pathname === item.href ||
-                    pathname.startsWith(item.href + '/')
+    <aside className='bg-background/90 hidden w-72 shrink-0 border-r md:flex md:flex-col'>
+      <div className='flex flex-1 flex-col'>
+        <div className='space-y-10 px-6 py-8'>
+          <div>
+            <span className='text-muted-foreground text-xs font-semibold tracking-wide uppercase'>
+              Place to Stand
+            </span>
+            <p className='mt-2 text-base font-semibold'>Portal</p>
+          </div>
+          <nav className='space-y-10'>
+            {NAV_GROUPS.filter(group => group.roles.includes(role)).map(
+              group => (
+                <div key={group.title} className='space-y-3'>
+                  <p className='text-muted-foreground text-xs font-semibold tracking-wide uppercase'>
+                    {group.title}
+                  </p>
+                  <div className='space-y-1'>
+                    {group.items.map(item => {
+                      const Icon = item.icon
+                      const isActive =
+                        pathname === item.href ||
+                        pathname.startsWith(item.href + '/')
 
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      className={cn(
-                        'flex items-center gap-3 rounded-md px-3 py-2 text-sm transition',
-                        isActive
-                          ? 'bg-primary text-primary-foreground shadow-sm'
-                          : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                      )}
-                    >
-                      <Icon className='h-4 w-4' />
-                      <span>{item.label}</span>
-                    </Link>
-                  )
-                })}
-              </div>
-            </div>
-          ))}
-        </nav>
+                      return (
+                        <Link
+                          key={item.href}
+                          href={item.href}
+                          className={cn(
+                            'flex items-center gap-3 rounded-md px-3 py-2 text-sm transition',
+                            isActive
+                              ? 'bg-primary text-primary-foreground shadow-sm'
+                              : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                          )}
+                        >
+                          <Icon className='h-4 w-4' />
+                          <span>{item.label}</span>
+                        </Link>
+                      )
+                    })}
+                  </div>
+                </div>
+              )
+            )}
+          </nav>
+        </div>
+        <div className='mt-auto px-6 py-6'>
+          <UserMenu user={user} align='start' />
+        </div>
       </div>
     </aside>
   )
