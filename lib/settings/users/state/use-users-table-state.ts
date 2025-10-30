@@ -86,13 +86,13 @@ const buildDialogDescription = (
   assignments: UserAssignments
 ) => {
   if (!target) {
-    return 'Deleting this user removes their access but keeps historical records.'
+    return 'Archiving this user removes their access but keeps historical records.'
   }
 
   const summary = assignments[target.id] ?? DEFAULT_ASSIGNMENTS
   const targetName = target.full_name ?? target.email ?? 'this user'
 
-  return `Deleting ${targetName} removes their access. They are currently assigned to ${formatCount(summary.clients, 'client')}, ${formatCount(summary.projects, 'project')}, and ${formatCount(summary.tasks, 'task')}. Deleting this user will also remove those assignments.`
+  return `Archiving ${targetName} removes their access. They are currently assigned to ${formatCount(summary.clients, 'client')}, ${formatCount(summary.projects, 'project')}, and ${formatCount(summary.tasks, 'task')}. Archiving this user will keep those assignments until permanently deleted.`
 }
 
 const buildDestroyDialogDescription = (target: UserRow | null) => {

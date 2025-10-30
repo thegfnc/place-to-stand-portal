@@ -4,7 +4,14 @@ import { useMemo, useState, useTransition } from 'react'
 import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
 import { format } from 'date-fns'
-import { Building2, Pencil, Plus, RefreshCw, Trash, Trash2 } from 'lucide-react'
+import {
+  Archive,
+  Building2,
+  Pencil,
+  Plus,
+  RefreshCw,
+  Trash2,
+} from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
@@ -543,7 +550,7 @@ function HourBlocksTableSection({
                           aria-label='Archive hour block'
                           disabled={archiveDisabled}
                         >
-                          <Trash2 className='h-4 w-4' />
+                          <Archive className='h-4 w-4' />
                           <span className='sr-only'>Archive</span>
                         </Button>
                       </DisabledFieldTooltip>
@@ -561,7 +568,7 @@ function HourBlocksTableSection({
                           aria-label='Permanently delete hour block'
                           disabled={destroyDisabled}
                         >
-                          <Trash className='h-4 w-4' />
+                          <Trash2 className='h-4 w-4' />
                           <span className='sr-only'>Delete permanently</span>
                         </Button>
                       </DisabledFieldTooltip>

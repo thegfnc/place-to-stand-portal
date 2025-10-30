@@ -3,7 +3,14 @@
 import { useMemo, useState, useTransition } from 'react'
 import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
-import { Building2, Pencil, Plus, RefreshCw, Trash, Trash2 } from 'lucide-react'
+import {
+  Archive,
+  Building2,
+  Pencil,
+  Plus,
+  RefreshCw,
+  Trash2,
+} from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -252,13 +259,13 @@ export function ClientsSettingsTable({
     <div className='space-y-6'>
       <ConfirmDialog
         open={Boolean(deleteTarget)}
-        title='Delete client?'
+        title='Archive client?'
         description={
           deleteTarget
-            ? `Deleting ${deleteTarget.name} hides it from selectors and reporting. Existing projects stay linked.`
-            : 'Deleting this client hides it from selectors and reporting. Existing projects stay linked.'
+            ? `Archiving ${deleteTarget.name} hides it from selectors and reporting. Existing projects stay linked.`
+            : 'Archiving this client hides it from selectors and reporting. Existing projects stay linked.'
         }
-        confirmLabel='Delete'
+        confirmLabel='Archive'
         confirmVariant='destructive'
         confirmDisabled={isPending}
         onCancel={handleCancelDelete}
@@ -525,8 +532,8 @@ function ClientsTableSection({
                           aria-label='Delete client'
                           disabled={deleteDisabled}
                         >
-                          <Trash2 className='h-4 w-4' />
-                          <span className='sr-only'>Delete</span>
+                          <Archive className='h-4 w-4' />
+                          <span className='sr-only'>Archive</span>
                         </Button>
                       </DisabledFieldTooltip>
                     ) : null}
@@ -543,7 +550,7 @@ function ClientsTableSection({
                           aria-label='Permanently delete client'
                           disabled={destroyDisabled}
                         >
-                          <Trash className='h-4 w-4' />
+                          <Trash2 className='h-4 w-4' />
                           <span className='sr-only'>Delete permanently</span>
                         </Button>
                       </DisabledFieldTooltip>

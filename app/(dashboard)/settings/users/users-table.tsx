@@ -81,9 +81,9 @@ export function UsersSettingsTable({
     <div className='space-y-6'>
       <ConfirmDialog
         open={deleteDialog.open}
-        title='Delete user?'
+        title='Archive user?'
         description={deleteDialog.description}
-        confirmLabel='Delete'
+        confirmLabel='Archive'
         confirmVariant='destructive'
         confirmDisabled={deleteDialog.confirmDisabled}
         onCancel={deleteDialog.onCancel}

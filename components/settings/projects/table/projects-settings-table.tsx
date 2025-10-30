@@ -4,12 +4,12 @@ import { useMemo, useState, useTransition } from 'react'
 import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
 import {
+  Archive,
   Building2,
   FolderKanban,
   Pencil,
   Plus,
   RefreshCw,
-  Trash,
   Trash2,
 } from 'lucide-react'
 
@@ -548,7 +548,7 @@ function ProjectsTableSection({
                           aria-label='Archive project'
                           disabled={deleteDisabled}
                         >
-                          <Trash2 className='h-4 w-4' />
+                          <Archive className='h-4 w-4' />
                           <span className='sr-only'>Archive</span>
                         </Button>
                       </DisabledFieldTooltip>
@@ -566,7 +566,7 @@ function ProjectsTableSection({
                           aria-label='Permanently delete project'
                           disabled={destroyDisabled}
                         >
-                          <Trash className='h-4 w-4' />
+                          <Trash2 className='h-4 w-4' />
                           <span className='sr-only'>Delete permanently</span>
                         </Button>
                       </DisabledFieldTooltip>

@@ -43,10 +43,10 @@ export function MyTasksWidget({ tasks, role, className }: MyTasksWidgetProps) {
     >
       <header className='flex items-start justify-between gap-3 border-b px-5 py-4'>
         <div>
-          <h2 id='my-tasks-heading' className='text-lg font-semibold'>
+          <h2 id='my-tasks-heading' className='text-base font-semibold'>
             My Tasks
           </h2>
-          <p className='text-muted-foreground text-sm'>{description}</p>
+          <p className='text-muted-foreground text-xs'>{description}</p>
         </div>
       </header>
       <div className='flex-1 overflow-hidden'>

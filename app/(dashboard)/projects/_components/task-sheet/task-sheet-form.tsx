@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useMemo } from 'react'
-import { Redo2, Trash2, Undo2 } from 'lucide-react'
+import { Archive, Redo2, Undo2 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { DisabledFieldTooltip } from '@/components/ui/disabled-field-tooltip'
@@ -358,7 +358,7 @@ export function TaskSheetForm({
                   disabled={deleteDisabled}
                   aria-label='Delete task'
                 >
-                  <Trash2 className='h-4 w-4' />
+                  <Archive className='h-4 w-4' />
                 </Button>
               </DisabledFieldTooltip>
             ) : null}

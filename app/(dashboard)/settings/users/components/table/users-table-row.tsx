@@ -1,7 +1,7 @@
 'use client'
 
 import { format } from 'date-fns'
-import { Pencil, RefreshCw, Trash, Trash2, User } from 'lucide-react'
+import { Archive, Pencil, RefreshCw, Trash2, User } from 'lucide-react'
 
 import { TableCell, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
@@ -109,7 +109,7 @@ export function UsersTableRow({
                 aria-label='Delete user'
                 disabled={row.deleteDisabled}
               >
-                <Trash2 className='h-4 w-4' />
+                <Archive className='h-4 w-4' />
                 <span className='sr-only'>Delete</span>
               </Button>
             </DisabledFieldTooltip>
@@ -127,7 +127,7 @@ export function UsersTableRow({
                 aria-label='Permanently delete user'
                 disabled={row.destroyDisabled}
               >
-                <Trash className='h-4 w-4' />
+                <Trash2 className='h-4 w-4' />
                 <span className='sr-only'>Delete permanently</span>
               </Button>
             </DisabledFieldTooltip>

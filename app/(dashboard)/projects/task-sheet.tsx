@@ -240,9 +240,9 @@ export function TaskSheet(props: TaskSheetProps) {
       </Sheet>
       <ConfirmDialog
         open={isDeleteDialogOpen}
-        title='Delete task?'
-        description='Deleting this task removes it from the project board. Proceed?'
-        confirmLabel='Delete'
+        title='Archive task?'
+        description='Archiving this task removes it from the project board. Proceed?'
+        confirmLabel='Archive'
         confirmVariant='destructive'
         confirmDisabled={isPending}
         onCancel={handleCancelDelete}
