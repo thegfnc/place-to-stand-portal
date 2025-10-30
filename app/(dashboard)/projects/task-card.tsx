@@ -79,8 +79,9 @@ function CardContent({
             <Users2 className='h-3.5 w-3.5' /> {assignedSummary}
           </div>
         </div>
-        <div className='text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-2 text-xs'>
-          {dueMeta ? (
+
+        {dueMeta ? (
+          <div className='text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-2 text-xs'>
             <div
               className={cn(
                 'inline-flex items-center gap-1',
@@ -90,22 +91,24 @@ function CardContent({
               <CalendarDays className='h-3.5 w-3.5' />
               {dueMeta.label}
             </div>
-          ) : null}
-        </div>
-        <div className='text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-2 text-xs'>
-          {task.commentCount > 0 ? (
-            <span className='inline-flex items-center gap-1'>
-              <MessageCircle className='h-3.5 w-3.5' />
-              {task.commentCount}
-            </span>
-          ) : null}
-          {attachmentCount > 0 ? (
-            <span className='inline-flex items-center gap-1'>
-              <Paperclip className='h-3.5 w-3.5' />
-              {attachmentCount}
-            </span>
-          ) : null}
-        </div>
+          </div>
+        ) : null}
+        {task.commentCount > 0 || attachmentCount > 0 ? (
+          <div className='text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-2 text-xs'>
+            {task.commentCount > 0 ? (
+              <span className='inline-flex items-center gap-1'>
+                <MessageCircle className='h-3.5 w-3.5' />
+                {task.commentCount}
+              </span>
+            ) : null}
+            {attachmentCount > 0 ? (
+              <span className='inline-flex items-center gap-1'>
+                <Paperclip className='h-3.5 w-3.5' />
+                {attachmentCount}
+              </span>
+            ) : null}
+          </div>
+        ) : null}
       </div>
     </>
   )
