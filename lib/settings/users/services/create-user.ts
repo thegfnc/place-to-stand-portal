@@ -102,5 +102,5 @@ export async function createPortalUser(
     return { error: 'Unable to send invite email. Please try again.' }
   }
 
-  return {}
+  return { userId }
 }

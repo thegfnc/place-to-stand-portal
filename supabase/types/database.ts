@@ -9,6 +9,75 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      activity_logs: {
+        Row: {
+          actor_id: string
+          actor_role: Database['public']['Enums']['user_role']
+          context_route: string | null
+          created_at: string
+          deleted_at: string | null
+          id: string
+          metadata: Json
+          restored_at: string | null
+          summary: string
+          target_client_id: string | null
+          target_id: string | null
+          target_project_id: string | null
+          target_type: string
+          updated_at: string
+          verb: string
+        }
+        Insert: {
+          actor_id: string
+          actor_role?: Database['public']['Enums']['user_role']
+          context_route?: string | null
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          metadata?: Json
+          restored_at?: string | null
+          summary: string
+          target_client_id?: string | null
+          target_id?: string | null
+          target_project_id?: string | null
+          target_type: string
+          updated_at?: string
+          verb: string
+        }
+        Update: {
+          actor_id?: string
+          actor_role?: Database['public']['Enums']['user_role']
+          context_route?: string | null
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          metadata?: Json
+          restored_at?: string | null
+          summary?: string
+          target_client_id?: string | null
+          target_id?: string | null
+          target_project_id?: string | null
+          target_type?: string
+          updated_at?: string
+          verb?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'activity_logs_actor_id_fkey'
+            columns: ['actor_id']
+            isOneToOne: false
+            referencedRelation: 'current_user_with_role'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'activity_logs_actor_id_fkey'
+            columns: ['actor_id']
+            isOneToOne: false
+            referencedRelation: 'users'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       client_members: {
         Row: {
           client_id: string
@@ -664,6 +733,25 @@ export type Database = {
       is_project_member: {
         Args: { target_project_id: string }
         Returns: boolean
+      }
+      log_activity: {
+        Args: {
+          p_actor_id: string
+          p_actor_role: Database['public']['Enums']['user_role'] | null
+          p_verb: string
+          p_summary: string
+          p_target_type: string
+          p_target_id?: string | null
+          p_target_client_id?: string | null
+          p_target_project_id?: string | null
+          p_context_route?: string | null
+          p_metadata?: Json | null
+        }
+        Returns: void
+      }
+      resolve_actor_role: {
+        Args: { p_actor_id: string }
+        Returns: Database['public']['Enums']['user_role']
       }
     }
     Enums: {

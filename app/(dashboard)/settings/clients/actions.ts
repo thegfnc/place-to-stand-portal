@@ -2,6 +2,12 @@
 
 import { revalidatePath } from 'next/cache'
 import { requireUser } from '@/lib/auth/session'
+import { logActivity } from '@/lib/activity/logger'
+import {
+  clientArchivedEvent,
+  clientCreatedEvent,
+  clientUpdatedEvent,
+} from '@/lib/activity/events'
 import {
   clientSchema,
   deleteClientSchema,
@@ -83,6 +89,22 @@ export async function saveClient(
           return syncResult
         }
 
+        const event = clientCreatedEvent({
+          name: trimmedName,
+          memberIds: normalizedMemberIds,
+        })
+
+        await logActivity({
+          actorId: user.id,
+          actorRole: user.role,
+          verb: event.verb,
+          summary: event.summary,
+          targetType: 'CLIENT',
+          targetId: inserted.id,
+          targetClientId: inserted.id,
+          metadata: event.metadata,
+        })
+
         revalidatePath('/settings/clients')
         return {}
       }
@@ -129,6 +151,37 @@ export async function saveClient(
     }
   }
 
+  const { data: existingClient, error: existingClientError } = await supabase
+    .from('clients')
+    .select('id, name, slug, notes')
+    .eq('id', id)
+    .maybeSingle()
+
+  if (existingClientError) {
+    console.error('Failed to load client for update', existingClientError)
+    return { error: 'Unable to update client.' }
+  }
+
+  if (!existingClient) {
+    return { error: 'Client not found.' }
+  }
+
+  const { data: existingMemberRows, error: existingMembersError } =
+    await supabase
+      .from('client_members')
+      .select('user_id')
+      .eq('client_id', id)
+      .is('deleted_at', null)
+
+  if (existingMembersError) {
+    console.error('Failed to load client members', existingMembersError)
+    return { error: 'Unable to update client members.' }
+  }
+
+  const existingMemberIds = (existingMemberRows ?? []).map(
+    member => member.user_id
+  )
+
   const { error } = await supabase
     .from('clients')
     .update({ name: trimmedName, slug: slugToUpdate, notes: cleanedNotes })
@@ -145,6 +198,75 @@ export async function saveClient(
     return syncResult
   }
 
+  const changedFields: string[] = []
+  const previousDetails: Record<string, unknown> = {}
+  const nextDetails: Record<string, unknown> = {}
+
+  if (existingClient.name !== trimmedName) {
+    changedFields.push('name')
+    previousDetails.name = existingClient.name
+    nextDetails.name = trimmedName
+  }
+
+  const previousSlug = existingClient.slug ?? null
+  const nextSlug = slugToUpdate ?? null
+
+  if (previousSlug !== nextSlug) {
+    changedFields.push('slug')
+    previousDetails.slug = previousSlug
+    nextDetails.slug = nextSlug
+  }
+
+  const previousNotes = existingClient.notes ?? null
+  const nextNotes = cleanedNotes ?? null
+
+  if (previousNotes !== nextNotes) {
+    changedFields.push('notes')
+    previousDetails.notes = previousNotes
+    nextDetails.notes = nextNotes
+  }
+
+  const addedMembers = normalizedMemberIds.filter(
+    memberId => !existingMemberIds.includes(memberId)
+  )
+  const removedMembers = existingMemberIds.filter(
+    memberId => !normalizedMemberIds.includes(memberId)
+  )
+
+  const hasMemberChanges = addedMembers.length > 0 || removedMembers.length > 0
+
+  if (hasMemberChanges) {
+    changedFields.push('members')
+  }
+
+  if (changedFields.length > 0 || hasMemberChanges) {
+    const detailsPayload =
+      Object.keys(previousDetails).length > 0 ||
+      Object.keys(nextDetails).length > 0
+        ? { before: previousDetails, after: nextDetails }
+        : undefined
+
+    const event = clientUpdatedEvent({
+      name: trimmedName,
+      changedFields,
+      memberChanges: hasMemberChanges
+        ? { added: addedMembers, removed: removedMembers }
+        : undefined,
+      details: detailsPayload,
+    })
+
+    await logActivity({
+      actorId: user.id,
+      actorRole: user.role,
+      verb: event.verb,
+      summary: event.summary,
+      targetType: 'CLIENT',
+      targetId: id,
+      targetClientId: id,
+      metadata: event.metadata,
+    })
+  }
+
   revalidatePath('/settings/clients')
 
   return {}
@@ -153,7 +275,7 @@ export async function saveClient(
 export async function softDeleteClient(input: {
   id: string
 }): Promise<ClientActionResult> {
-  await requireUser()
+  const user = await requireUser()
   const parsed = deleteClientSchema.safeParse(input)
 
   if (!parsed.success) {
@@ -161,6 +283,21 @@ export async function softDeleteClient(input: {
   }
 
   const supabase = getSupabaseServerClient()
+  const { data: existingClient, error: loadError } = await supabase
+    .from('clients')
+    .select('id, name')
+    .eq('id', parsed.data.id)
+    .maybeSingle()
+
+  if (loadError) {
+    console.error('Failed to load client for archive', loadError)
+    return { error: 'Unable to archive client.' }
+  }
+
+  if (!existingClient) {
+    return { error: 'Client not found.' }
+  }
+
   const { error } = await supabase
     .from('clients')
     .update({ deleted_at: new Date().toISOString() })
@@ -170,6 +307,19 @@ export async function softDeleteClient(input: {
     console.error('Failed to archive client', error)
     return { error: error.message }
   }
+
+  const event = clientArchivedEvent({ name: existingClient.name })
+
+  await logActivity({
+    actorId: user.id,
+    actorRole: user.role,
+    verb: event.verb,
+    summary: event.summary,
+    targetType: 'CLIENT',
+    targetId: existingClient.id,
+    targetClientId: existingClient.id,
+    metadata: event.metadata,
+  })
 
   revalidatePath('/settings/clients')
 

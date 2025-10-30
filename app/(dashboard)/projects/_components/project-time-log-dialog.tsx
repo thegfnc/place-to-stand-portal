@@ -42,9 +42,12 @@ import type {
   ProjectMemberWithUser,
   TaskWithRelations,
 } from '@/lib/types'
+import { logClientActivity } from '@/lib/activity/client'
+import { timeLogCreatedEvent } from '@/lib/activity/events'
 import { getSupabaseBrowserClient } from '@/lib/supabase/client'
 import { buildAssigneeItems } from '@/lib/projects/task-sheet/task-sheet-utils'
 import { UNASSIGNED_ASSIGNEE_VALUE } from '@/lib/projects/task-sheet/task-sheet-constants'
+import type { Json } from '@/supabase/types/database'
 
 export const TIME_LOGS_QUERY_KEY = 'project-time-logs' as const
 
@@ -66,6 +69,7 @@ type ProjectTimeLogDialogProps = {
   onOpenChange: (open: boolean) => void
   projectId: string
   projectName: string
+  clientId: string | null
   clientName: string | null
   clientRemainingHours: number | null
   tasks: TaskWithRelations[]
@@ -92,6 +96,7 @@ export function ProjectTimeLogDialog({
   onOpenChange,
   projectId,
   projectName,
+  clientId,
   clientName,
   clientRemainingHours,
   tasks,
@@ -248,6 +253,27 @@ export function ProjectTimeLogDialog({
           .eq('id', timeLogId)
         throw linkError
       }
+
+      const event = timeLogCreatedEvent({
+        hours: parsedHours,
+        projectName,
+        linkedTaskCount: selectedTaskIds.length,
+      })
+
+      const metadata = {
+        taskIds: selectedTaskIds,
+        notePresent: Boolean(noteInput.trim()),
+        loggedOn: loggedOnInput,
+      }
+
+      await logClientActivity(event, {
+        actorId: logUserId,
+        targetType: 'TIME_LOG',
+        targetId: timeLogId,
+        targetProjectId: projectId,
+        targetClientId: clientId ?? null,
+        metadata: JSON.parse(JSON.stringify(metadata)) as Json,
+      })
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: baseQueryKey })

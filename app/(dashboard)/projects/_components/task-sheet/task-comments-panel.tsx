@@ -16,9 +16,16 @@ import {
   isContentEmpty,
   sanitizeEditorHtml,
 } from '@/components/ui/rich-text-editor/utils'
+import { logClientActivity } from '@/lib/activity/client'
+import {
+  taskCommentCreatedEvent,
+  taskCommentDeletedEvent,
+  taskCommentUpdatedEvent,
+} from '@/lib/activity/events'
 import { getSupabaseBrowserClient } from '@/lib/supabase/client'
 import { normalizeRichTextContent } from '@/lib/projects/task-sheet/task-sheet-utils'
 import type { TaskCommentWithAuthor } from '@/lib/types'
+import type { Json } from '@/supabase/types/database'
 
 const COMMENTS_QUERY_KEY = 'task-comments'
 
@@ -27,6 +34,8 @@ type TaskCommentsPanelProps = {
   projectId: string
   currentUserId: string
   canComment: boolean
+  taskTitle?: string | null
+  clientId?: string | null
 }
 
 const prepareCommentBody = (content: string) => {
@@ -45,6 +54,8 @@ export function TaskCommentsPanel({
   projectId,
   currentUserId,
   canComment,
+  taskTitle,
+  clientId,
 }: TaskCommentsPanelProps) {
   const router = useRouter()
   const supabase = getSupabaseBrowserClient()
@@ -110,15 +121,35 @@ export function TaskCommentsPanel({
         throw new Error('Task ID is required to post a comment.')
       }
 
-      const { error } = await supabase.from('task_comments').insert({
-        task_id: taskId,
-        author_id: currentUserId,
-        body,
-      })
+      const { data, error } = await supabase
+        .from('task_comments')
+        .insert({
+          task_id: taskId,
+          author_id: currentUserId,
+          body,
+        })
+        .select('id')
+        .single()
 
-      if (error) {
-        throw error
+      if (error || !data) {
+        throw error ?? new Error('Comment was created without an identifier.')
       }
+
+      const event = taskCommentCreatedEvent({ taskTitle })
+      const metadata = {
+        taskId,
+        commentId: data.id,
+        bodyLength: body.length,
+      }
+
+      await logClientActivity(event, {
+        actorId: currentUserId,
+        targetType: 'COMMENT',
+        targetId: data.id,
+        targetProjectId: projectId,
+        targetClientId: clientId ?? null,
+        metadata: JSON.parse(JSON.stringify(metadata)) as Json,
+      })
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: commentsQueryKey })
@@ -152,6 +183,22 @@ export function TaskCommentsPanel({
       if (error) {
         throw error
       }
+
+      const event = taskCommentUpdatedEvent({ taskTitle })
+      const metadata = {
+        taskId,
+        commentId: id,
+        bodyLength: body.length,
+      }
+
+      await logClientActivity(event, {
+        actorId: currentUserId,
+        targetType: 'COMMENT',
+        targetId: id,
+        targetProjectId: projectId,
+        targetClientId: clientId ?? null,
+        metadata: JSON.parse(JSON.stringify(metadata)) as Json,
+      })
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: commentsQueryKey })
@@ -183,6 +230,21 @@ export function TaskCommentsPanel({
       if (error) {
         throw error
       }
+
+      const event = taskCommentDeletedEvent({ taskTitle })
+      const metadata = {
+        taskId,
+        commentId: id,
+      }
+
+      await logClientActivity(event, {
+        actorId: currentUserId,
+        targetType: 'COMMENT',
+        targetId: id,
+        targetProjectId: projectId,
+        targetClientId: clientId ?? null,
+        metadata: JSON.parse(JSON.stringify(metadata)) as Json,
+      })
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: commentsQueryKey })

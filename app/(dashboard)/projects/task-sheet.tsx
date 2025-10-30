@@ -16,6 +16,7 @@ import { TaskSheetForm } from './_components/task-sheet/task-sheet-form'
 import { TaskSheetHeader } from './_components/task-sheet/task-sheet-header'
 import type { UserRole } from '@/lib/auth/session'
 import { TaskCommentsPanel } from './_components/task-sheet/task-comments-panel'
+import { TaskActivityPanel } from './_components/task-sheet/task-activity-panel'
 
 type TaskSheetProps = {
   open: boolean
@@ -211,6 +212,13 @@ export function TaskSheet(props: TaskSheetProps) {
                   projectId={props.project.id}
                   currentUserId={props.currentUserId}
                   canComment
+                  taskTitle={props.task.title}
+                  clientId={props.project.client?.id ?? null}
+                />
+                <TaskActivityPanel
+                  taskId={props.task.id}
+                  projectId={props.project.id}
+                  clientId={props.project.client?.id ?? null}
                 />
               </div>
             ) : null}

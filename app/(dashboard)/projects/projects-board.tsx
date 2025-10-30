@@ -346,6 +346,7 @@ export function ProjectsBoard(props: Props) {
             onOpenChange={handleTimeLogDialogOpenChange}
             projectId={activeProject.id}
             projectName={activeProject.name}
+            clientId={activeProject.client?.id ?? null}
             clientName={activeProject.client?.name ?? null}
             clientRemainingHours={
               activeProject.burndown.totalClientRemainingHours
