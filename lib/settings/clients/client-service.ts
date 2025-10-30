@@ -22,10 +22,18 @@ export const clientSchema = z.object({
   memberIds: z.array(z.string().uuid()).optional(),
 })
 
-export const deleteClientSchema = z.object({ id: z.string().uuid() })
+const clientIdentifierSchema = {
+  id: z.string().uuid(),
+}
+
+export const deleteClientSchema = z.object(clientIdentifierSchema)
+export const restoreClientSchema = z.object(clientIdentifierSchema)
+export const destroyClientSchema = z.object(clientIdentifierSchema)
 
 export type ClientInput = z.infer<typeof clientSchema>
 export type DeleteClientInput = z.infer<typeof deleteClientSchema>
+export type RestoreClientInput = z.infer<typeof restoreClientSchema>
+export type DestroyClientInput = z.infer<typeof destroyClientSchema>
 
 export type ClientActionResult = {
   error?: string

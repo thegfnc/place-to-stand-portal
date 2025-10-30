@@ -191,6 +191,16 @@ export const clientArchivedEvent = (args: { name: string }): ActivityEvent => ({
   summary: `Archived client "${args.name}"`,
 })
 
+export const clientRestoredEvent = (args: { name: string }): ActivityEvent => ({
+  verb: ActivityVerbs.CLIENT_RESTORED,
+  summary: `Restored client "${args.name}"`,
+})
+
+export const clientDeletedEvent = (args: { name: string }): ActivityEvent => ({
+  verb: ActivityVerbs.CLIENT_DELETED,
+  summary: `Permanently deleted client "${args.name}"`,
+})
+
 export const projectCreatedEvent = (args: {
   name: string
   status: string

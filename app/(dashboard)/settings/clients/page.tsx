@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 
 import { ClientsSettingsTable } from './clients-table'
+import { AppShellHeader } from '@/components/layout/app-shell'
 import { requireRole } from '@/lib/auth/session'
 import { getSupabaseServiceClient } from '@/lib/supabase/service'
 
@@ -22,7 +23,6 @@ export default async function ClientsSettingsPage() {
       .select(
         `id, name, slug, notes, created_by, created_at, updated_at, deleted_at, projects:projects ( id, deleted_at, status )`
       )
-      .is('deleted_at', null)
       .order('name'),
     supabase
       .from('client_members')
@@ -83,12 +83,25 @@ export default async function ClientsSettingsPage() {
     }))
 
   return (
-    <ClientsSettingsTable
-      clients={
-        (clients ?? []) as Parameters<typeof ClientsSettingsTable>[0]['clients']
-      }
-      clientUsers={clientDirectory}
-      membersByClient={membersByClient}
-    />
+    <>
+      <AppShellHeader>
+        <div className='flex flex-col'>
+          <h1 className='text-2xl font-semibold tracking-tight'>Clients</h1>
+          <p className='text-muted-foreground text-sm'>
+            Track active organizations and control which projects roll up to
+            each client.
+          </p>
+        </div>
+      </AppShellHeader>
+      <ClientsSettingsTable
+        clients={
+          (clients ?? []) as Parameters<
+            typeof ClientsSettingsTable
+          >[0]['clients']
+        }
+        clientUsers={clientDirectory}
+        membersByClient={membersByClient}
+      />
+    </>
   )
 }

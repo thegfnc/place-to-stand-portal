@@ -5,18 +5,24 @@ import { requireUser } from '@/lib/auth/session'
 import { logActivity } from '@/lib/activity/logger'
 import {
   clientArchivedEvent,
+  clientDeletedEvent,
   clientCreatedEvent,
+  clientRestoredEvent,
   clientUpdatedEvent,
 } from '@/lib/activity/events'
 import {
   clientSchema,
   deleteClientSchema,
+  destroyClientSchema,
   generateUniqueClientSlug,
   clientSlugExists,
+  restoreClientSchema,
   syncClientMembers,
   toClientSlug,
   type ClientActionResult,
   type ClientInput,
+  type DestroyClientInput,
+  type RestoreClientInput,
 } from '@/lib/settings/clients/client-service'
 import { getSupabaseServerClient } from '@/lib/supabase/server'
 const INSERT_RETRY_LIMIT = 3
@@ -309,6 +315,187 @@ export async function softDeleteClient(input: {
   }
 
   const event = clientArchivedEvent({ name: existingClient.name })
+
+  await logActivity({
+    actorId: user.id,
+    actorRole: user.role,
+    verb: event.verb,
+    summary: event.summary,
+    targetType: 'CLIENT',
+    targetId: existingClient.id,
+    targetClientId: existingClient.id,
+    metadata: event.metadata,
+  })
+
+  revalidatePath('/settings/clients')
+
+  return {}
+}
+
+export async function restoreClient(
+  input: RestoreClientInput
+): Promise<ClientActionResult> {
+  const user = await requireUser()
+  const parsed = restoreClientSchema.safeParse(input)
+
+  if (!parsed.success) {
+    return { error: 'Invalid restore request.' }
+  }
+
+  const supabase = getSupabaseServerClient()
+  const { data: existingClient, error: loadError } = await supabase
+    .from('clients')
+    .select('id, name, deleted_at')
+    .eq('id', parsed.data.id)
+    .maybeSingle()
+
+  if (loadError) {
+    console.error('Failed to load client for restore', loadError)
+    return { error: 'Unable to restore client.' }
+  }
+
+  if (!existingClient) {
+    return { error: 'Client not found.' }
+  }
+
+  if (!existingClient.deleted_at) {
+    return { error: 'Client is already active.' }
+  }
+
+  const { error: restoreError } = await supabase
+    .from('clients')
+    .update({ deleted_at: null })
+    .eq('id', parsed.data.id)
+
+  if (restoreError) {
+    console.error('Failed to restore client', restoreError)
+    return { error: restoreError.message }
+  }
+
+  const event = clientRestoredEvent({ name: existingClient.name })
+
+  await logActivity({
+    actorId: user.id,
+    actorRole: user.role,
+    verb: event.verb,
+    summary: event.summary,
+    targetType: 'CLIENT',
+    targetId: existingClient.id,
+    targetClientId: existingClient.id,
+    metadata: event.metadata,
+  })
+
+  revalidatePath('/settings/clients')
+
+  return {}
+}
+
+export async function destroyClient(
+  input: DestroyClientInput
+): Promise<ClientActionResult> {
+  const user = await requireUser()
+  const parsed = destroyClientSchema.safeParse(input)
+
+  if (!parsed.success) {
+    return { error: 'Invalid permanent delete request.' }
+  }
+
+  const supabase = getSupabaseServerClient()
+  const { data: existingClient, error: loadError } = await supabase
+    .from('clients')
+    .select('id, name, deleted_at')
+    .eq('id', parsed.data.id)
+    .maybeSingle()
+
+  if (loadError) {
+    console.error('Failed to load client for permanent delete', loadError)
+    return { error: 'Unable to permanently delete client.' }
+  }
+
+  if (!existingClient) {
+    return { error: 'Client not found.' }
+  }
+
+  if (!existingClient.deleted_at) {
+    return {
+      error: 'Archive the client before permanently deleting.',
+    }
+  }
+
+  const [
+    { count: projectCount, error: projectError },
+    { count: hourBlockCount, error: hourBlockError },
+  ] = await Promise.all([
+    supabase
+      .from('projects')
+      .select('id', { count: 'exact', head: true })
+      .eq('client_id', parsed.data.id),
+    supabase
+      .from('hour_blocks')
+      .select('id', { count: 'exact', head: true })
+      .eq('client_id', parsed.data.id),
+  ])
+
+  if (projectError) {
+    console.error('Failed to check client projects before delete', projectError)
+    return { error: 'Unable to verify project dependencies.' }
+  }
+
+  if (hourBlockError) {
+    console.error(
+      'Failed to check client hour blocks before delete',
+      hourBlockError
+    )
+    return { error: 'Unable to verify hour block dependencies.' }
+  }
+
+  const blockingResources: string[] = []
+
+  if ((projectCount ?? 0) > 0) {
+    blockingResources.push('projects')
+  }
+
+  if ((hourBlockCount ?? 0) > 0) {
+    blockingResources.push('hour blocks')
+  }
+
+  if (blockingResources.length > 0) {
+    const resourceSummary =
+      blockingResources.length === 1
+        ? blockingResources[0]
+        : `${blockingResources.slice(0, -1).join(', ')} and ${
+            blockingResources[blockingResources.length - 1]
+          }`
+
+    return {
+      error: `Cannot permanently delete this client while ${resourceSummary} reference it.`,
+    }
+  }
+
+  const { error: memberDeleteError } = await supabase
+    .from('client_members')
+    .delete()
+    .eq('client_id', parsed.data.id)
+
+  if (memberDeleteError) {
+    console.error(
+      'Failed to remove client memberships before delete',
+      memberDeleteError
+    )
+    return { error: 'Unable to remove client memberships.' }
+  }
+
+  const { error: deleteError } = await supabase
+    .from('clients')
+    .delete()
+    .eq('id', parsed.data.id)
+
+  if (deleteError) {
+    console.error('Failed to permanently delete client', deleteError)
+    return { error: deleteError.message }
+  }
+
+  const event = clientDeletedEvent({ name: existingClient.name })
 
   await logActivity({
     actorId: user.id,
