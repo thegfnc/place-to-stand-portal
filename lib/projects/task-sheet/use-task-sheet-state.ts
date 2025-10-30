@@ -22,10 +22,7 @@ import {
   TASK_STATUSES,
   UNASSIGNED_ASSIGNEE_VALUE,
 } from './task-sheet-constants'
-import {
-  getDisabledReason,
-  normalizeRichTextContent,
-} from './task-sheet-utils'
+import { getDisabledReason, normalizeRichTextContent } from './task-sheet-utils'
 import type { TaskSheetFormValues } from './task-sheet-schema'
 import { useTaskSheetForm } from './hooks/use-task-sheet-form'
 import {

@@ -1,12 +1,6 @@
 'use client'
 
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import type { ToastOptions } from '@/components/ui/use-toast'
 import type { TaskWithRelations } from '@/lib/types'
@@ -88,9 +82,8 @@ export const useTaskAttachments = ({
     }))
   }, [taskAttachments])
 
-  const [attachments, setAttachments] = useState<AttachmentDraft[]>(
-    defaultAttachments
-  )
+  const [attachments, setAttachments] =
+    useState<AttachmentDraft[]>(defaultAttachments)
   const [attachmentsToRemove, setAttachmentsToRemove] = useState<string[]>([])
   const [pendingUploadCount, setPendingUploadCount] = useState(0)
   const pendingPathsRef = useRef<Set<string>>(new Set())

@@ -11,10 +11,7 @@ import type {
 } from '@/lib/types'
 import type { BoardColumnId } from '@/lib/projects/board/board-constants'
 
-import {
-  buildAssigneeItems,
-  createDefaultValues,
-} from '../task-sheet-utils'
+import { buildAssigneeItems, createDefaultValues } from '../task-sheet-utils'
 import {
   taskSheetFormSchema,
   type TaskSheetFormValues,
@@ -69,10 +66,7 @@ export const useTaskSheetForm = ({
     [admins, currentAssigneeId, project.members]
   )
 
-  const sheetTitle = useMemo(
-    () => (task ? 'Edit task' : 'Add task'),
-    [task]
-  )
+  const sheetTitle = useMemo(() => (task ? 'Edit task' : 'Add task'), [task])
 
   const editorKey = useMemo(() => (task ? task.id : 'new-task'), [task])
 
