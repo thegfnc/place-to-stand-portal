@@ -42,10 +42,18 @@ export const projectSchema = z
     }
   })
 
-export const deleteProjectSchema = z.object({ id: z.string().uuid() })
+const projectIdentifierSchema = {
+  id: z.string().uuid(),
+}
+
+export const deleteProjectSchema = z.object(projectIdentifierSchema)
+export const restoreProjectSchema = z.object(projectIdentifierSchema)
+export const destroyProjectSchema = z.object(projectIdentifierSchema)
 
 export type ProjectInput = z.infer<typeof projectSchema>
 export type DeleteProjectInput = z.infer<typeof deleteProjectSchema>
+export type RestoreProjectInput = z.infer<typeof restoreProjectSchema>
+export type DestroyProjectInput = z.infer<typeof destroyProjectSchema>
 
 export type ProjectActionResult = {
   error?: string

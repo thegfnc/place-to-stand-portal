@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 
 import { ProjectsSettingsTable } from './projects-table'
+import { AppShellHeader } from '@/components/layout/app-shell'
 import { requireRole } from '@/lib/auth/session'
 import { getSupabaseServiceClient } from '@/lib/supabase/service'
 import type { Database } from '@/supabase/types/database'
@@ -32,20 +33,19 @@ export default async function ProjectsSettingsPage() {
       .from('projects')
       .select(
         `
-        id,
-        name,
-        status,
-        slug,
-        client_id,
-        created_by,
-        starts_on,
-        ends_on,
-        created_at,
-        updated_at,
-        deleted_at
-      `
+          id,
+          name,
+          status,
+          slug,
+          client_id,
+          created_by,
+          starts_on,
+          ends_on,
+          created_at,
+          updated_at,
+          deleted_at
+        `
       )
-      .is('deleted_at', null)
       .order('name', { ascending: true }),
     supabase.from('clients').select('id, name, deleted_at').order('name'),
     supabase
@@ -129,11 +129,21 @@ export default async function ProjectsSettingsPage() {
     }))
 
   return (
-    <ProjectsSettingsTable
-      projects={hydratedProjects}
-      clients={(clients ?? []) as ClientRow[]}
-      contractorUsers={contractorDirectory}
-      membersByProject={contractorMembersByProject}
-    />
+    <>
+      <AppShellHeader>
+        <div className='flex flex-col'>
+          <h1 className='text-2xl font-semibold tracking-tight'>Projects</h1>
+          <p className='text-muted-foreground text-sm'>
+            Review active projects with quick insight into timing and client.
+          </p>
+        </div>
+      </AppShellHeader>
+      <ProjectsSettingsTable
+        projects={hydratedProjects}
+        clients={(clients ?? []) as ClientRow[]}
+        contractorUsers={contractorDirectory}
+        membersByProject={contractorMembersByProject}
+      />
+    </>
   )
 }

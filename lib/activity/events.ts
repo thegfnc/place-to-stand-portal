@@ -242,6 +242,18 @@ export const projectArchivedEvent = (args: {
   summary: `Archived project "${args.name}"`,
 })
 
+export const projectRestoredEvent = (args: {
+  name: string
+}): ActivityEvent => ({
+  verb: ActivityVerbs.PROJECT_RESTORED,
+  summary: `Restored project "${args.name}"`,
+})
+
+export const projectDeletedEvent = (args: { name: string }): ActivityEvent => ({
+  verb: ActivityVerbs.PROJECT_DELETED,
+  summary: `Permanently deleted project "${args.name}"`,
+})
+
 export const hourBlockCreatedEvent = (args: {
   clientName?: string | null
   hoursPurchased: number
