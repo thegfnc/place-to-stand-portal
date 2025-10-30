@@ -7,6 +7,7 @@ import { logActivity } from '@/lib/activity/logger'
 import {
   userArchivedEvent,
   userCreatedEvent,
+  userDeletedEvent,
   userRestoredEvent,
   userUpdatedEvent,
 } from '@/lib/activity/events'
@@ -14,6 +15,7 @@ import { getSupabaseServerClient } from '@/lib/supabase/server'
 
 import {
   createPortalUser,
+  destroyPortalUser,
   restorePortalUser,
   softDeletePortalUser,
   updatePortalUser,
@@ -21,10 +23,12 @@ import {
 import {
   createUserSchema,
   deleteUserSchema,
+  destroyUserSchema,
   restoreUserSchema,
   updateUserSchema,
   type CreateUserInput,
   type DeleteUserInput,
+  type DestroyUserInput,
   type RestoreUserInput,
   type UpdateUserInput,
 } from '@/lib/settings/users/user-validation'
@@ -283,6 +287,62 @@ export async function restoreUser(
       fullName: resolvedUser.full_name ?? resolvedUser.email ?? 'User',
       email: resolvedUser.email ?? undefined,
       role: resolvedUser.role,
+    })
+
+    await logActivity({
+      actorId: actor.id,
+      actorRole: actor.role,
+      verb: event.verb,
+      summary: event.summary,
+      targetType: 'USER',
+      targetId: payload.id,
+      metadata: event.metadata,
+    })
+
+    revalidatePath('/settings/users')
+    revalidatePath('/settings/clients')
+    revalidatePath('/settings/projects')
+  }
+
+  return result
+}
+
+export async function destroyUser(
+  input: DestroyUserInput
+): Promise<ActionResult> {
+  const actor = await requireRole('ADMIN')
+
+  const parsed = destroyUserSchema.safeParse(input)
+
+  if (!parsed.success) {
+    return { error: 'Invalid permanent delete request.' }
+  }
+
+  const payload = parsed.data
+  const supabase = getSupabaseServerClient()
+
+  const { data: existingUser, error: existingUserError } = await supabase
+    .from('users')
+    .select('id, email, full_name, role')
+    .eq('id', payload.id)
+    .maybeSingle()
+
+  if (existingUserError) {
+    console.error('Failed to load user for permanent delete', existingUserError)
+    return { error: 'Unable to permanently delete user.' }
+  }
+
+  if (!existingUser) {
+    return { error: 'User not found.' }
+  }
+
+  const result = await destroyPortalUser(payload)
+
+  if (!result.error) {
+    const event = userDeletedEvent({
+      fullName: existingUser.full_name ?? existingUser.email ?? 'User',
+      email: existingUser.email ?? undefined,
+      role: existingUser.role,
     })
 
     await logActivity({

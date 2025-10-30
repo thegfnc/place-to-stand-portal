@@ -44,6 +44,7 @@ export const ActivityVerbs = {
   USER_UPDATED: 'USER_UPDATED',
   USER_ARCHIVED: 'USER_ARCHIVED',
   USER_RESTORED: 'USER_RESTORED',
+  USER_DELETED: 'USER_DELETED',
 } as const
 
 export type ActivityVerb = (typeof ActivityVerbs)[keyof typeof ActivityVerbs]

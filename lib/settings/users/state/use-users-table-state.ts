@@ -11,6 +11,7 @@ import { useRouter } from 'next/navigation'
 import { useToast } from '@/components/ui/use-toast'
 
 import {
+  destroyUser,
   restoreUser,
   softDeleteUser,
 } from '@/app/(dashboard)/settings/users/actions'
@@ -30,6 +31,7 @@ export type UserRowState = {
   status: UserStatus
   isDeleting: boolean
   isRestoring: boolean
+  isDestroying: boolean
   deleteDisabled: boolean
   deleteDisabledReason: string | null
   restoreDisabled: boolean
@@ -39,6 +41,9 @@ export type UserRowState = {
   onEdit: () => void
   onRestore: () => void
   onRequestDelete: () => void
+  destroyDisabled: boolean
+  destroyDisabledReason: string | null
+  onRequestDestroy: () => void
 }
 
 export type UseUsersTableStateArgs = {
@@ -66,6 +71,7 @@ type UsersTableState = {
   rows: UserRowState[]
   sheet: SheetState
   deleteDialog: DeleteDialogState
+  destroyDialog: DeleteDialogState
   onOpenCreate: () => void
   selfDeleteReason: string
 }
@@ -89,6 +95,16 @@ const buildDialogDescription = (
   return `Deleting ${targetName} removes their access. They are currently assigned to ${formatCount(summary.clients, 'client')}, ${formatCount(summary.projects, 'project')}, and ${formatCount(summary.tasks, 'task')}. Deleting this user will also remove those assignments.`
 }
 
+const buildDestroyDialogDescription = (target: UserRow | null) => {
+  if (!target) {
+    return 'Permanently deleting a user removes their profile, memberships, and activity history. This cannot be undone.'
+  }
+
+  const targetName = target.full_name ?? target.email ?? 'this user'
+
+  return `Permanently deleting ${targetName} removes their profile, memberships, and activity history. This action cannot be undone.`
+}
+
 export const useUsersTableState = ({
   users,
   currentUserId,
@@ -102,6 +118,9 @@ export const useUsersTableState = ({
   const [pendingRestoreId, setPendingRestoreId] = useState<string | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<UserRow | null>(null)
   const deleteTargetRef = useRef<UserRow | null>(null)
+  const [pendingDestroyId, setPendingDestroyId] = useState<string | null>(null)
+  const [destroyTarget, setDestroyTarget] = useState<UserRow | null>(null)
+  const destroyTargetRef = useRef<UserRow | null>(null)
   const [isPending, startTransition] = useTransition()
   const pendingReason = 'Please wait for the current request to finish.'
   const selfDeleteReason = 'You cannot delete your own account.'
@@ -231,6 +250,71 @@ export const useUsersTableState = ({
     toast,
   ])
 
+  const handleCancelDestroy = useCallback(() => {
+    if (isPending) {
+      return
+    }
+
+    setDestroyTarget(null)
+    destroyTargetRef.current = null
+  }, [isPending])
+
+  const handleRequestDestroy = useCallback(
+    (user: UserRow) => {
+      if (!user.deleted_at || isPending) {
+        return
+      }
+
+      setDestroyTarget(user)
+    },
+    [isPending]
+  )
+
+  const handleConfirmDestroy = useCallback(() => {
+    if (isPending) {
+      return
+    }
+
+    const target = destroyTarget ?? destroyTargetRef.current
+
+    if (!target) {
+      return
+    }
+
+    if (!target.deleted_at) {
+      setDestroyTarget(null)
+      destroyTargetRef.current = null
+      return
+    }
+
+    setDestroyTarget(null)
+    setPendingDestroyId(target.id)
+
+    startTransition(async () => {
+      try {
+        const result = await destroyUser({ id: target.id })
+
+        if (result.error) {
+          toast({
+            title: 'Unable to permanently delete user',
+            description: result.error,
+            variant: 'destructive',
+          })
+          return
+        }
+
+        toast({
+          title: 'User permanently deleted',
+          description: `${target.full_name ?? target.email} has been removed from the portal.`,
+        })
+        router.refresh()
+      } finally {
+        setPendingDestroyId(null)
+        destroyTargetRef.current = null
+      }
+    })
+  }, [destroyTarget, isPending, router, startTransition, toast])
+
   const handleRestore = useCallback(
     (user: UserRow) => {
       if (!user.deleted_at) {
@@ -270,28 +354,45 @@ export const useUsersTableState = ({
     }
   }, [deleteTarget])
 
+  useEffect(() => {
+    if (destroyTarget && destroyTargetRef.current !== destroyTarget) {
+      destroyTargetRef.current = destroyTarget
+    }
+  }, [destroyTarget])
+
   const dialogTarget = deleteTarget ?? deleteTargetRef.current
+  const destroyDialogTarget = destroyTarget ?? destroyTargetRef.current
 
   const rows = useMemo<UserRowState[]>(
     () =>
       sortedUsers.map(user => {
         const isDeleting = isPending && pendingDeleteId === user.id
         const isRestoring = isPending && pendingRestoreId === user.id
+        const isDestroying = isPending && pendingDestroyId === user.id
 
         const deleteDisabled =
           isDeleting ||
           isRestoring ||
+          isDestroying ||
           user.id === currentUserId ||
           Boolean(user.deleted_at)
-        const restoreDisabled = isRestoring || isDeleting
-        const editDisabled = isDeleting || isRestoring
+        const restoreDisabled = isRestoring || isDeleting || isDestroying
+        const editDisabled = isDeleting || isRestoring || isDestroying
 
         const deleteDisabledReason = deleteDisabled
-          ? isDeleting || isRestoring
+          ? isDeleting || isRestoring || isDestroying
             ? pendingReason
             : user.id === currentUserId
               ? selfDeleteReason
               : null
+          : null
+
+        const destroyDisabled =
+          isDestroying || isDeleting || isRestoring || !user.deleted_at
+        const destroyDisabledReason = destroyDisabled
+          ? !user.deleted_at
+            ? 'Archive the user before permanently deleting.'
+            : pendingReason
           : null
 
         const status: UserStatus = user.deleted_at
@@ -303,6 +404,7 @@ export const useUsersTableState = ({
           status,
           isDeleting,
           isRestoring,
+          isDestroying,
           deleteDisabled,
           deleteDisabledReason,
           restoreDisabled,
@@ -312,14 +414,19 @@ export const useUsersTableState = ({
           onEdit: () => handleEdit(user),
           onRestore: () => handleRestore(user),
           onRequestDelete: () => handleRequestDelete(user),
+          destroyDisabled,
+          destroyDisabledReason,
+          onRequestDestroy: () => handleRequestDestroy(user),
         }
       }),
     [
       currentUserId,
       handleEdit,
+      handleRequestDestroy,
       handleRequestDelete,
       handleRestore,
       isPending,
+      pendingDestroyId,
       pendingDeleteId,
       pendingReason,
       pendingRestoreId,
@@ -336,6 +443,14 @@ export const useUsersTableState = ({
     onConfirm: handleConfirmDelete,
   }
 
+  const destroyDialog: DeleteDialogState = {
+    open: Boolean(destroyTarget),
+    description: buildDestroyDialogDescription(destroyDialogTarget),
+    confirmDisabled: isPending,
+    onCancel: handleCancelDestroy,
+    onConfirm: handleConfirmDestroy,
+  }
+
   const sheet: SheetState = {
     open: sheetOpen,
     selectedUser,
@@ -347,6 +462,7 @@ export const useUsersTableState = ({
     rows,
     sheet,
     deleteDialog,
+    destroyDialog,
     onOpenCreate: handleOpenCreate,
     selfDeleteReason,
   }

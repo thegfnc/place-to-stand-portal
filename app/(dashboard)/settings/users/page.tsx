@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 
 import { UsersSettingsTable } from './users-table'
+import { AppShellHeader } from '@/components/layout/app-shell'
 import { requireRole, requireUser } from '@/lib/auth/session'
 import { getSupabaseServiceClient } from '@/lib/supabase/service'
 
@@ -70,10 +71,23 @@ export default async function UsersSettingsPage() {
   }
 
   return (
-    <UsersSettingsTable
-      users={users ?? []}
-      currentUserId={currentUser.id}
-      assignments={assignmentCounts}
-    />
+    <>
+      <AppShellHeader>
+        <div className='flex flex-col'>
+          <h1 className='text-2xl font-semibold tracking-tight'>
+            Team members
+          </h1>
+          <p className='text-muted-foreground text-sm'>
+            Invite administrators, contractors, and clients to collaborate
+            inside the portal.
+          </p>
+        </div>
+      </AppShellHeader>
+      <UsersSettingsTable
+        users={users ?? []}
+        currentUserId={currentUser.id}
+        assignments={assignmentCounts}
+      />
+    </>
   )
 }

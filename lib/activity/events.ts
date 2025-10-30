@@ -334,3 +334,16 @@ export const userRestoredEvent = (args: {
     role: args.role,
   }),
 })
+
+export const userDeletedEvent = (args: {
+  fullName: string
+  email?: string
+  role?: string
+}): ActivityEvent => ({
+  verb: ActivityVerbs.USER_DELETED,
+  summary: `Permanently deleted user ${args.fullName}`,
+  metadata: toMetadata({
+    email: args.email,
+    role: args.role,
+  }),
+})

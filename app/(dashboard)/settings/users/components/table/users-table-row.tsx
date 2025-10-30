@@ -1,7 +1,7 @@
 'use client'
 
 import { format } from 'date-fns'
-import { Pencil, RefreshCw, Trash2, User } from 'lucide-react'
+import { Pencil, RefreshCw, Trash, Trash2, User } from 'lucide-react'
 
 import { TableCell, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
@@ -22,14 +22,23 @@ const ROLE_LABELS: Record<Database['public']['Enums']['user_role'], string> = {
 type UsersTableRowProps = {
   row: UserRowState
   selfDeleteReason: string
+  mode: 'active' | 'archive'
 }
 
-export function UsersTableRow({ row, selfDeleteReason }: UsersTableRowProps) {
+export function UsersTableRow({
+  row,
+  selfDeleteReason,
+  mode,
+}: UsersTableRowProps) {
   const { user } = row
   const deleteTitle =
     row.deleteDisabled && row.deleteDisabledReason === selfDeleteReason
       ? 'Cannot delete your own account'
       : 'Delete user'
+  const showEdit = mode === 'active'
+  const showSoftDelete = mode === 'active'
+  const showRestore = mode === 'archive'
+  const showDestroy = mode === 'archive'
 
   return (
     <TableRow className={user.deleted_at ? 'opacity-60' : undefined}>
@@ -53,21 +62,23 @@ export function UsersTableRow({ row, selfDeleteReason }: UsersTableRowProps) {
       </TableCell>
       <TableCell className='text-right'>
         <div className='flex justify-end gap-2'>
-          <DisabledFieldTooltip
-            disabled={row.editDisabled}
-            reason={row.editDisabledReason}
-          >
-            <Button
-              variant='outline'
-              size='icon'
-              onClick={row.onEdit}
-              title='Edit user'
+          {showEdit ? (
+            <DisabledFieldTooltip
               disabled={row.editDisabled}
+              reason={row.editDisabledReason}
             >
-              <Pencil className='h-4 w-4' />
-            </Button>
-          </DisabledFieldTooltip>
-          {user.deleted_at ? (
+              <Button
+                variant='outline'
+                size='icon'
+                onClick={row.onEdit}
+                title='Edit user'
+                disabled={row.editDisabled}
+              >
+                <Pencil className='h-4 w-4' />
+              </Button>
+            </DisabledFieldTooltip>
+          ) : null}
+          {showRestore ? (
             <DisabledFieldTooltip
               disabled={row.restoreDisabled}
               reason={row.restoreDisabledReason}
@@ -84,7 +95,8 @@ export function UsersTableRow({ row, selfDeleteReason }: UsersTableRowProps) {
                 <span className='sr-only'>Restore</span>
               </Button>
             </DisabledFieldTooltip>
-          ) : (
+          ) : null}
+          {showSoftDelete ? (
             <DisabledFieldTooltip
               disabled={row.deleteDisabled}
               reason={row.deleteDisabledReason}
@@ -101,7 +113,25 @@ export function UsersTableRow({ row, selfDeleteReason }: UsersTableRowProps) {
                 <span className='sr-only'>Delete</span>
               </Button>
             </DisabledFieldTooltip>
-          )}
+          ) : null}
+          {showDestroy ? (
+            <DisabledFieldTooltip
+              disabled={row.destroyDisabled}
+              reason={row.destroyDisabledReason}
+            >
+              <Button
+                variant='destructive'
+                size='icon'
+                onClick={row.onRequestDestroy}
+                title='Permanently delete user'
+                aria-label='Permanently delete user'
+                disabled={row.destroyDisabled}
+              >
+                <Trash className='h-4 w-4' />
+                <span className='sr-only'>Delete permanently</span>
+              </Button>
+            </DisabledFieldTooltip>
+          ) : null}
         </div>
       </TableCell>
     </TableRow>
