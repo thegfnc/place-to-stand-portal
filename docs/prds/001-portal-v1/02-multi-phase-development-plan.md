@@ -98,6 +98,7 @@ This document breaks down the Unified Client & Project Management System into a 
 - Create the "Home" page that all users land on after login.
 - Develop the "My Tasks" widget, which should display a list of tasks assigned to the logged-in user.
 - Ensure the widget is functional for all roles (showing assigned tasks for Admins/Contractors and tasks requiring attention for Clients).
+- This view should be in a bentobox style so that we can place more widgets that span different amounts of columns and rows in the future.
 
 ### **3.3. Final UI/UX Polish**
 
