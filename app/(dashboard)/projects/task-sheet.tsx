@@ -17,6 +17,7 @@ import { TaskSheetHeader } from './_components/task-sheet/task-sheet-header'
 import type { UserRole } from '@/lib/auth/session'
 import { TaskCommentsPanel } from './_components/task-sheet/task-comments-panel'
 import { TaskActivityPanel } from './_components/task-sheet/task-activity-panel'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 type TaskSheetProps = {
   open: boolean
@@ -206,20 +207,30 @@ export function TaskSheet(props: TaskSheetProps) {
               isDragActive={!dropDisabled && isDragActive}
             />
             {props.task ? (
-              <div className='space-y-6 px-6'>
-                <TaskCommentsPanel
-                  taskId={props.task.id}
-                  projectId={props.project.id}
-                  currentUserId={props.currentUserId}
-                  canComment
-                  taskTitle={props.task.title}
-                  clientId={props.project.client?.id ?? null}
-                />
-                <TaskActivityPanel
-                  taskId={props.task.id}
-                  projectId={props.project.id}
-                  clientId={props.project.client?.id ?? null}
-                />
+              <div className='px-6'>
+                <Tabs defaultValue='comments' className='w-full'>
+                  <TabsList className='grid w-full grid-cols-2'>
+                    <TabsTrigger value='comments'>Comments</TabsTrigger>
+                    <TabsTrigger value='activity'>Activity</TabsTrigger>
+                  </TabsList>
+                  <TabsContent value='comments' className='mt-6'>
+                    <TaskCommentsPanel
+                      taskId={props.task.id}
+                      projectId={props.project.id}
+                      currentUserId={props.currentUserId}
+                      canComment
+                      taskTitle={props.task.title}
+                      clientId={props.project.client?.id ?? null}
+                    />
+                  </TabsContent>
+                  <TabsContent value='activity' className='mt-6'>
+                    <TaskActivityPanel
+                      taskId={props.task.id}
+                      projectId={props.project.id}
+                      clientId={props.project.client?.id ?? null}
+                    />
+                  </TabsContent>
+                </Tabs>
               </div>
             ) : null}
           </div>

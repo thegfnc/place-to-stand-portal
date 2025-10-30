@@ -28,7 +28,6 @@ export function TaskActivityPanel({
 
   return (
     <div className='space-y-4'>
-      <Separator />
       <h3 className='text-base font-semibold'>Activity</h3>
       <ActivityFeed
         targetType='TASK'

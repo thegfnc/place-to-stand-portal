@@ -9,7 +9,6 @@ import { Loader2, Pencil, Send, Trash2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { DisabledFieldTooltip } from '@/components/ui/disabled-field-tooltip'
-import { Separator } from '@/components/ui/separator'
 import { RichTextEditor } from '@/components/ui/rich-text-editor'
 import { useToast } from '@/components/ui/use-toast'
 import {
@@ -335,7 +334,6 @@ export function TaskCommentsPanel({
 
   return (
     <>
-      <Separator />
       <h3 className='mb-4 text-base font-semibold'>Comments</h3>
       {isLoading ? (
         <div className='text-muted-foreground flex items-center gap-2 text-sm'>
