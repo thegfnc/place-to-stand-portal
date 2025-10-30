@@ -4,20 +4,25 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import type { LucideIcon } from 'lucide-react'
 import {
-  KanbanSquare,
-  Users2,
-  Building2,
-  FolderKanban,
   Clock3,
+  FolderKanban,
+  KanbanSquare,
+  Building2,
+  Users2,
+  Home as HomeIcon,
 } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
 import type { AppUser, UserRole } from '@/lib/auth/session'
 
 import { UserMenu } from './user-menu'
+import Image from 'next/image'
+
+import PTSLogoTransparent from '../../public/pts-logo-transparent.png'
+import { Separator } from '../ui/separator'
 
 type NavGroup = {
-  title: string
+  title?: string | null
   roles: UserRole[]
   items: Array<{
     href: string
@@ -27,6 +32,17 @@ type NavGroup = {
 }
 
 const NAV_GROUPS: NavGroup[] = [
+  {
+    title: null,
+    roles: ['ADMIN', 'CONTRACTOR', 'CLIENT'],
+    items: [
+      {
+        href: '/home',
+        label: 'Home',
+        icon: HomeIcon,
+      },
+    ],
+  },
   {
     title: 'Work',
     roles: ['ADMIN', 'CONTRACTOR', 'CLIENT'],
@@ -79,18 +95,25 @@ export function Sidebar({ user }: Props) {
       <div className='flex flex-1 flex-col'>
         <div className='space-y-10 px-6 py-8'>
           <div>
-            <span className='text-muted-foreground text-xs font-semibold tracking-wide uppercase'>
-              Place to Stand
-            </span>
-            <p className='mt-2 text-base font-semibold'>Portal</p>
+            <Image
+              src={PTSLogoTransparent}
+              alt='Place To Stand Agency logo'
+              className='px-4'
+            />
+            <Separator className='mt-6' />
           </div>
-          <nav className='space-y-10'>
+          <nav className='space-y-8'>
             {NAV_GROUPS.filter(group => group.roles.includes(role)).map(
-              group => (
-                <div key={group.title} className='space-y-3'>
-                  <p className='text-muted-foreground text-xs font-semibold tracking-wide uppercase'>
-                    {group.title}
-                  </p>
+              (group, index) => (
+                <div
+                  key={group.title ?? `group-${index}`}
+                  className='space-y-2'
+                >
+                  {group.title ? (
+                    <p className='text-muted-foreground text-xs font-semibold tracking-wide uppercase'>
+                      {group.title}
+                    </p>
+                  ) : null}
                   <div className='space-y-1'>
                     {group.items.map(item => {
                       const Icon = item.icon
@@ -103,11 +126,12 @@ export function Sidebar({ user }: Props) {
                           key={item.href}
                           href={item.href}
                           className={cn(
-                            'flex items-center gap-3 rounded-md px-3 py-2 text-sm transition',
+                            'focus-visible:ring-primary focus-visible:ring-offset-background flex items-center gap-3 rounded-md px-3 py-2 text-sm transition focus-visible:ring-2 focus-visible:ring-offset-2',
                             isActive
                               ? 'bg-primary text-primary-foreground shadow-sm'
                               : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                           )}
+                          aria-current={isActive ? 'page' : undefined}
                         >
                           <Icon className='h-4 w-4' />
                           <span>{item.label}</span>

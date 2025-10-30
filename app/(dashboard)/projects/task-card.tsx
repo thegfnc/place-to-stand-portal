@@ -1,13 +1,22 @@
 'use client'
 
-import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import {
+  useEffect,
+  useMemo,
+  useState,
+  type CSSProperties,
+  type KeyboardEvent,
+} from 'react'
 import { CSS } from '@dnd-kit/utilities'
 import { useDraggable } from '@dnd-kit/core'
 import { CalendarDays, MessageCircle, Paperclip, Users2 } from 'lucide-react'
-import { format, parseISO } from 'date-fns'
 
 import { cn } from '@/lib/utils'
 import type { TaskWithRelations } from '@/lib/types'
+import {
+  TASK_DUE_TONE_CLASSES,
+  getTaskDueMeta,
+} from '@/lib/projects/task-due-date'
 
 type AssigneeInfo = {
   id: string
@@ -50,18 +59,7 @@ function CardContent({
     : 'Unassigned'
   const descriptionPreview = toPlainText(task.description)
   const attachmentCount = task.attachments.length
-  let dueDateLabel: string | null = null
-
-  if (task.due_on) {
-    try {
-      const parsed = parseISO(task.due_on)
-      dueDateLabel = Number.isNaN(parsed.getTime())
-        ? task.due_on
-        : format(parsed, 'MMM d, yyyy')
-    } catch {
-      dueDateLabel = task.due_on
-    }
-  }
+  const dueMeta = task.due_on ? getTaskDueMeta(task.due_on) : null
 
   return (
     <>
@@ -77,6 +75,24 @@ function CardContent({
       </div>
       <div className='mt-4 space-y-2'>
         <div className='text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-2 text-xs'>
+          <div className='inline-flex items-center gap-1'>
+            <Users2 className='h-3.5 w-3.5' /> {assignedSummary}
+          </div>
+        </div>
+        <div className='text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-2 text-xs'>
+          {dueMeta ? (
+            <div
+              className={cn(
+                'inline-flex items-center gap-1',
+                TASK_DUE_TONE_CLASSES[dueMeta.tone]
+              )}
+            >
+              <CalendarDays className='h-3.5 w-3.5' />
+              {dueMeta.label}
+            </div>
+          ) : null}
+        </div>
+        <div className='text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-2 text-xs'>
           {task.commentCount > 0 ? (
             <span className='inline-flex items-center gap-1'>
               <MessageCircle className='h-3.5 w-3.5' />
@@ -87,17 +103,6 @@ function CardContent({
             <span className='inline-flex items-center gap-1'>
               <Paperclip className='h-3.5 w-3.5' />
               {attachmentCount}
-            </span>
-          ) : null}
-        </div>
-        <div className='text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-2 text-xs'>
-          <span className='inline-flex items-center gap-1'>
-            <Users2 className='h-3.5 w-3.5' /> {assignedSummary}
-          </span>
-          {dueDateLabel ? (
-            <span className='inline-flex items-center gap-1'>
-              <CalendarDays className='h-3.5 w-3.5' />
-              {dueDateLabel}
             </span>
           ) : null}
         </div>
@@ -123,7 +128,12 @@ export function TaskCard({
         projectId: task.project_id,
       },
     })
-
+  const listenersMap = listeners ?? {}
+  const draggableKeyDown = (
+    listenersMap as {
+      onKeyDown?: (event: KeyboardEvent<HTMLDivElement>) => void
+    }
+  ).onKeyDown
   const [isMounted, setIsMounted] = useState(false)
 
   useEffect(() => {
@@ -151,9 +161,19 @@ export function TaskCard({
       ref={setNodeRef}
       style={style}
       {...(isMounted ? attributes : cleanedAttributes)}
-      {...listeners}
+      {...listenersMap}
       role='button'
       onClick={() => onEdit(task)}
+      onKeyDown={event => {
+        draggableKeyDown?.(event)
+        if (event.defaultPrevented) {
+          return
+        }
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault()
+          onEdit(task)
+        }
+      }}
       className={cn(
         'group bg-card rounded-lg border p-4 text-left shadow-sm transition',
         draggable ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer',
