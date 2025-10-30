@@ -218,7 +218,9 @@ export function BacklogSection({
           <h3 className='text-muted-foreground text-sm font-semibold tracking-wide uppercase'>
             {label}
           </h3>
-          <span className='text-muted-foreground text-xs'>{tasks.length}</span>
+          <span className='text-muted-foreground text-[11px]'>
+            {tasks.length}
+          </span>
         </div>
         {canManage && onCreateTask ? (
           <Button
