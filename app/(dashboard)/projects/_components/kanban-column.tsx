@@ -1,10 +1,15 @@
 import { Plus } from 'lucide-react'
 import { useDroppable } from '@dnd-kit/core'
 
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import type { BoardColumnId } from '@/lib/projects/board/board-constants'
 import { cn } from '@/lib/utils'
 import type { TaskWithRelations } from '@/lib/types'
+import {
+  getTaskStatusLabel,
+  getTaskStatusToken,
+} from '@/lib/projects/task-status'
 
 import { TaskCard } from '../task-card'
 
@@ -32,6 +37,9 @@ export function KanbanColumn({
   onCreateTask,
 }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id: columnId })
+  const statusToken = getTaskStatusToken(columnId)
+  const statusLabel = getTaskStatusLabel(columnId)
+  const displayLabel = label || statusLabel
 
   return (
     <div
@@ -43,9 +51,15 @@ export function KanbanColumn({
     >
       <div className='flex items-center justify-between gap-2'>
         <div className='flex items-center gap-3'>
-          <h2 className='text-muted-foreground text-sm font-semibold tracking-wide uppercase'>
-            {label}
-          </h2>
+          <Badge
+            variant='outline'
+            className={cn(
+              'text-xs font-semibold tracking-wide uppercase',
+              statusToken
+            )}
+          >
+            {displayLabel}
+          </Badge>
           <span className='text-muted-foreground text-[10px]'>
             {tasks.length}
           </span>
