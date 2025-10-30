@@ -301,6 +301,24 @@ export const hourBlockArchivedEvent = (args: {
     : 'Archived hour block',
 })
 
+export const hourBlockRestoredEvent = (args: {
+  clientName?: string | null
+}): ActivityEvent => ({
+  verb: ActivityVerbs.HOUR_BLOCK_RESTORED,
+  summary: args.clientName
+    ? `Restored hour block for ${args.clientName}`
+    : 'Restored hour block',
+})
+
+export const hourBlockDeletedEvent = (args: {
+  clientName?: string | null
+}): ActivityEvent => ({
+  verb: ActivityVerbs.HOUR_BLOCK_DELETED,
+  summary: args.clientName
+    ? `Permanently deleted hour block for ${args.clientName}`
+    : 'Permanently deleted hour block',
+})
+
 export const userCreatedEvent = (args: {
   fullName: string
   role: string

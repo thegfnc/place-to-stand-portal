@@ -8,6 +8,8 @@ import { logActivity } from '@/lib/activity/logger'
 import {
   hourBlockArchivedEvent,
   hourBlockCreatedEvent,
+  hourBlockDeletedEvent,
+  hourBlockRestoredEvent,
   hourBlockUpdatedEvent,
 } from '@/lib/activity/events'
 import { getSupabaseServerClient } from '@/lib/supabase/server'
@@ -33,6 +35,8 @@ const hourBlockSchema = z.object({
 })
 
 const deleteSchema = z.object({ id: z.string().uuid() })
+const restoreSchema = z.object({ id: z.string().uuid() })
+const destroySchema = z.object({ id: z.string().uuid() })
 
 type ActionResult = {
   error?: string
@@ -250,6 +254,158 @@ export async function softDeleteHourBlock(
   }
 
   const event = hourBlockArchivedEvent({
+    clientName: existingHourBlock.client?.name ?? null,
+  })
+
+  await logActivity({
+    actorId: user.id,
+    actorRole: user.role,
+    verb: event.verb,
+    summary: event.summary,
+    targetType: 'HOUR_BLOCK',
+    targetId: existingHourBlock.id,
+    targetClientId: existingHourBlock.client_id,
+    metadata: event.metadata,
+  })
+
+  revalidatePath('/settings/hour-blocks')
+
+  return {}
+}
+
+type RestoreInput = z.infer<typeof restoreSchema>
+
+export async function restoreHourBlock(
+  input: RestoreInput
+): Promise<ActionResult> {
+  const user = await requireUser()
+  const parsed = restoreSchema.safeParse(input)
+
+  if (!parsed.success) {
+    return { error: 'Invalid restore request.' }
+  }
+
+  const supabase = getSupabaseServerClient()
+  const hourBlockId = parsed.data.id
+
+  const { data: existingHourBlock, error: loadError } = await supabase
+    .from('hour_blocks')
+    .select(
+      `
+        id,
+        client_id,
+        deleted_at,
+        client:clients ( name )
+      `
+    )
+    .eq('id', hourBlockId)
+    .maybeSingle()
+
+  if (loadError) {
+    console.error('Failed to load hour block for restore', loadError)
+    return { error: 'Unable to restore hour block.' }
+  }
+
+  if (!existingHourBlock) {
+    return { error: 'Hour block not found.' }
+  }
+
+  if (!existingHourBlock.deleted_at) {
+    return { error: 'Hour block is already active.' }
+  }
+
+  const { error: restoreError } = await supabase
+    .from('hour_blocks')
+    .update({ deleted_at: null })
+    .eq('id', hourBlockId)
+
+  if (restoreError) {
+    console.error('Failed to restore hour block', restoreError)
+    return { error: restoreError.message }
+  }
+
+  const event = hourBlockRestoredEvent({
+    clientName: existingHourBlock.client?.name ?? null,
+  })
+
+  await logActivity({
+    actorId: user.id,
+    actorRole: user.role,
+    verb: event.verb,
+    summary: event.summary,
+    targetType: 'HOUR_BLOCK',
+    targetId: existingHourBlock.id,
+    targetClientId: existingHourBlock.client_id,
+    metadata: event.metadata,
+  })
+
+  revalidatePath('/settings/hour-blocks')
+
+  return {}
+}
+
+type DestroyInput = z.infer<typeof destroySchema>
+
+export async function destroyHourBlock(
+  input: DestroyInput
+): Promise<ActionResult> {
+  const user = await requireUser()
+  const parsed = destroySchema.safeParse(input)
+
+  if (!parsed.success) {
+    return { error: 'Invalid permanent delete request.' }
+  }
+
+  const supabase = getSupabaseServerClient()
+  const hourBlockId = parsed.data.id
+
+  const { data: existingHourBlock, error: loadError } = await supabase
+    .from('hour_blocks')
+    .select(
+      `
+        id,
+        client_id,
+        deleted_at,
+        client:clients ( name )
+      `
+    )
+    .eq('id', hourBlockId)
+    .maybeSingle()
+
+  if (loadError) {
+    console.error('Failed to load hour block for permanent delete', loadError)
+    return { error: 'Unable to permanently delete hour block.' }
+  }
+
+  if (!existingHourBlock) {
+    return { error: 'Hour block not found.' }
+  }
+
+  if (!existingHourBlock.deleted_at) {
+    return {
+      error: 'Archive the hour block before permanently deleting.',
+    }
+  }
+
+  const { error: deleteError } = await supabase
+    .from('hour_blocks')
+    .delete()
+    .eq('id', hourBlockId)
+
+  if (deleteError) {
+    console.error('Failed to permanently delete hour block', deleteError)
+
+    if (deleteError.code === '23503') {
+      return {
+        error:
+          'Cannot permanently delete this hour block while other records reference it.',
+      }
+    }
+
+    return { error: deleteError.message }
+  }
+
+  const event = hourBlockDeletedEvent({
     clientName: existingHourBlock.client?.name ?? null,
   })
 

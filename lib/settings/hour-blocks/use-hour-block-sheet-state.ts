@@ -224,7 +224,7 @@ export function useHourBlockSheetState({
       }
 
       toast({
-        title: 'Hour block deleted',
+        title: 'Hour block archived',
         description:
           'It will be hidden from active tracking but remains available historically.',
       })

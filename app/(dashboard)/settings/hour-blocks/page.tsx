@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 
 import { HourBlocksSettingsTable } from './hour-blocks-table'
+import { AppShellHeader } from '@/components/layout/app-shell'
 import { requireRole } from '@/lib/auth/session'
 import { getSupabaseServiceClient } from '@/lib/supabase/service'
 import type { Database } from '@/supabase/types/database'
@@ -61,9 +62,20 @@ export default async function HourBlocksSettingsPage() {
   }
 
   return (
-    <HourBlocksSettingsTable
-      hourBlocks={(hourBlocks ?? []) as HourBlockWithClient[]}
-      clients={(clients ?? []) as ClientRow[]}
-    />
+    <>
+      <AppShellHeader>
+        <div className='flex flex-col'>
+          <h1 className='text-2xl font-semibold tracking-tight'>Hour Blocks</h1>
+          <p className='text-muted-foreground text-sm'>
+            Track purchased hour blocks by client for quick allocation
+            visibility.
+          </p>
+        </div>
+      </AppShellHeader>
+      <HourBlocksSettingsTable
+        hourBlocks={(hourBlocks ?? []) as HourBlockWithClient[]}
+        clients={(clients ?? []) as ClientRow[]}
+      />
+    </>
   )
 }
