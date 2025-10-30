@@ -142,7 +142,7 @@ export function UsersSettingsTable({
             </div>
             <UsersActivityFeed
               targetType='USER'
-              pageSize={15}
+              pageSize={20}
               emptyState='No recent user management activity.'
               requireContext={false}
             />

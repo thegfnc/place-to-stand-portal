@@ -34,6 +34,7 @@ export function TaskActivityPanel({
         targetId={taskId}
         projectId={projectId}
         clientId={clientId ?? null}
+        pageSize={20}
         emptyState='No activity recorded yet.'
       />
     </div>

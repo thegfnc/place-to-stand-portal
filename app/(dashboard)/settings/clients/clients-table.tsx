@@ -338,7 +338,7 @@ export function ClientsSettingsTable({
             </div>
             <ClientsActivityFeed
               targetType='CLIENT'
-              pageSize={15}
+              pageSize={20}
               emptyState='No recent client activity.'
               requireContext={false}
             />

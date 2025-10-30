@@ -352,7 +352,7 @@ export function HourBlocksSettingsTable({ hourBlocks, clients }: Props) {
             </div>
             <HourBlocksActivityFeed
               targetType='HOUR_BLOCK'
-              pageSize={15}
+              pageSize={20}
               emptyState='No recent hour block activity.'
               requireContext={false}
             />

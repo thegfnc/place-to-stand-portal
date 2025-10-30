@@ -358,7 +358,7 @@ export function ProjectsSettingsTable(props: ProjectsSettingsTableProps) {
             </div>
             <ProjectsActivityFeed
               targetType='PROJECT'
-              pageSize={15}
+              pageSize={20}
               emptyState='No recent project activity.'
               requireContext={false}
             />
