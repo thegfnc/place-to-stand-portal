@@ -59,7 +59,9 @@ function CardContent({
     : 'Unassigned'
   const descriptionPreview = toPlainText(task.description)
   const attachmentCount = task.attachments.length
-  const dueMeta = task.due_on ? getTaskDueMeta(task.due_on) : null
+  const dueMeta = task.due_on
+    ? getTaskDueMeta(task.due_on, { status: task.status })
+    : null
 
   return (
     <>

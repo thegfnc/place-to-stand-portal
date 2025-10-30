@@ -53,7 +53,9 @@ export function MyTasksWidget({ tasks, role, className }: MyTasksWidgetProps) {
         {tasks.length ? (
           <ul className='divide-border flex h-full flex-col divide-y'>
             {tasks.map(task => {
-              const dueMeta = getTaskDueMeta(task.dueOn)
+              const dueMeta = getTaskDueMeta(task.dueOn, {
+                status: task.status,
+              })
               const linkMeta = getLinkMeta(task)
               const statusToken = getTaskStatusToken(task.status)
               const statusLabel = getTaskStatusLabel(task.status)

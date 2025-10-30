@@ -13,6 +13,7 @@ import { CSS } from '@dnd-kit/utilities'
 import { format, formatDistanceToNow, parseISO } from 'date-fns'
 import { MessageCircle, Paperclip, Plus } from 'lucide-react'
 
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
   Table,
@@ -23,6 +24,10 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import type { BoardColumnId } from '@/lib/projects/board/board-constants'
+import {
+  getTaskStatusLabel,
+  getTaskStatusToken,
+} from '@/lib/projects/task-status'
 import { cn } from '@/lib/utils'
 import type { TaskWithRelations } from '@/lib/types'
 
@@ -204,6 +209,9 @@ export function BacklogSection({
   onCreateTask,
 }: BacklogSectionProps) {
   const { setNodeRef, isOver } = useDroppable({ id: status })
+  const statusToken = getTaskStatusToken(status)
+  const statusLabel = getTaskStatusLabel(status)
+  const displayLabel = label || statusLabel
 
   return (
     <section
@@ -215,9 +223,15 @@ export function BacklogSection({
     >
       <div className='flex items-center justify-between gap-2 border-b px-4 py-3'>
         <div className='flex items-center gap-2'>
-          <h3 className='text-muted-foreground text-sm font-semibold tracking-wide uppercase'>
-            {label}
-          </h3>
+          <Badge
+            variant='outline'
+            className={cn(
+              'text-xs font-semibold tracking-wide uppercase',
+              statusToken
+            )}
+          >
+            {displayLabel}
+          </Badge>
           <span className='text-muted-foreground text-[11px]'>
             {tasks.length}
           </span>

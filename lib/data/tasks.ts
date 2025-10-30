@@ -36,7 +36,6 @@ const STATUS_PRIORITY: Record<string, number> = {
 }
 
 const ACTIVE_STATUSES = new Set([
-  'BACKLOG',
   'ON_DECK',
   'IN_PROGRESS',
   'BLOCKED',

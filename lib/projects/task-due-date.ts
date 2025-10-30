@@ -13,7 +13,14 @@ export type TaskDueMeta = {
   tone: TaskDueTone
 }
 
-export function getTaskDueMeta(dueOn: string | null): TaskDueMeta {
+type TaskDueMetaOptions = {
+  status?: string | null
+}
+
+export function getTaskDueMeta(
+  dueOn: string | null,
+  options: TaskDueMetaOptions = {}
+): TaskDueMeta {
   if (!dueOn) {
     return { label: 'No set due date', tone: 'default' }
   }
@@ -22,6 +29,16 @@ export function getTaskDueMeta(dueOn: string | null): TaskDueMeta {
 
   if (Number.isNaN(parsed.getTime())) {
     return { label: dueOn, tone: 'default' }
+  }
+
+  const normalizedStatus = options.status?.toUpperCase() ?? null
+  const isDone = normalizedStatus === 'DONE'
+
+  if (isDone) {
+    return {
+      label: `Due ${format(parsed, 'MMM d')}`,
+      tone: 'default',
+    }
   }
 
   if (isToday(parsed)) {
