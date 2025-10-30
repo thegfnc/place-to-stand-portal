@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import {
+  startTransition,
   useCallback,
   useEffect,
   useMemo,
@@ -13,6 +14,8 @@ import { DndContext, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
 import { Loader2 } from 'lucide-react'
 
 import { ActivityFeed } from '@/components/activity/activity-feed'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { AppShellHeader } from '@/components/layout/app-shell'
 import type { TaskWithRelations } from '@/lib/types'
@@ -95,6 +98,18 @@ export function ProjectsBoard({
   const [viewTimeLogsProjectId, setViewTimeLogsProjectId] = useState<
     string | null
   >(null)
+  const [assignedFilterMap, setAssignedFilterMap] = useState<
+    Record<string, boolean>
+  >({})
+  const activeProjectId = activeProject?.id ?? null
+  const storageNamespace = props.currentUserId
+    ? `projects-board-assigned-filter:${props.currentUserId}`
+    : null
+  const bootstrappedNamespaceRef = useRef<string | null>(null)
+  const hasBootstrappedAssignedFiltersRef = useRef(false)
+  const onlyAssignedToMe = activeProjectId
+    ? (assignedFilterMap[activeProjectId] ?? false)
+    : false
   const clientSlug =
     activeProject?.client?.slug ??
     (activeProject?.client_id
@@ -164,9 +179,131 @@ export function ProjectsBoard({
   const boardViewportRef = useRef<HTMLDivElement | null>(null)
 
   const boardScrollKey = useMemo(() => {
-    if (!activeProject?.id) return null
-    return `projects-board-scroll:${activeProject.id}`
-  }, [activeProject?.id])
+    if (!activeProjectId) return null
+    return `projects-board-scroll:${activeProjectId}`
+  }, [activeProjectId])
+
+  const handleAssignedFilterChange = useCallback(
+    (value: boolean) => {
+      if (!activeProjectId) {
+        return
+      }
+
+      setAssignedFilterMap(prev => {
+        if (value) {
+          if (prev[activeProjectId]) {
+            return prev
+          }
+
+          return { ...prev, [activeProjectId]: true }
+        }
+
+        if (!prev[activeProjectId]) {
+          return prev
+        }
+
+        const next = { ...prev }
+        delete next[activeProjectId]
+        return next
+      })
+    },
+    [activeProjectId, setAssignedFilterMap]
+  )
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return
+    }
+
+    if (!storageNamespace) {
+      hasBootstrappedAssignedFiltersRef.current = false
+      bootstrappedNamespaceRef.current = null
+
+      startTransition(() => {
+        setAssignedFilterMap(current => {
+          hasBootstrappedAssignedFiltersRef.current = true
+          return Object.keys(current).length ? {} : current
+        })
+      })
+
+      return
+    }
+
+    if (bootstrappedNamespaceRef.current === storageNamespace) {
+      return
+    }
+
+    hasBootstrappedAssignedFiltersRef.current = false
+    bootstrappedNamespaceRef.current = storageNamespace
+
+    let nextMap: Record<string, boolean> = {}
+
+    try {
+      const raw = window.sessionStorage.getItem(storageNamespace)
+
+      if (raw) {
+        const parsed = JSON.parse(raw) as Record<string, unknown>
+        nextMap = Object.fromEntries(
+          Object.entries(parsed).filter(
+            (entry): entry is [string, boolean] => typeof entry[1] === 'boolean'
+          )
+        )
+      }
+    } catch {
+      nextMap = {}
+    }
+
+    const nextEntries = Object.entries(nextMap)
+
+    startTransition(() => {
+      setAssignedFilterMap(current => {
+        const currentEntries = Object.entries(current)
+
+        if (currentEntries.length === nextEntries.length) {
+          const hasDifference = nextEntries.some(
+            ([key, value]) => current[key] !== value
+          )
+
+          if (!hasDifference) {
+            hasBootstrappedAssignedFiltersRef.current = true
+            return current
+          }
+        }
+
+        if (!nextEntries.length && !currentEntries.length) {
+          hasBootstrappedAssignedFiltersRef.current = true
+          return current
+        }
+
+        hasBootstrappedAssignedFiltersRef.current = true
+        return nextMap
+      })
+    })
+  }, [storageNamespace])
+
+  useEffect(() => {
+    if (
+      typeof window === 'undefined' ||
+      !storageNamespace ||
+      !hasBootstrappedAssignedFiltersRef.current
+    ) {
+      return
+    }
+
+    try {
+      if (Object.keys(assignedFilterMap).length === 0) {
+        window.sessionStorage.removeItem(storageNamespace)
+        return
+      }
+
+      window.sessionStorage.setItem(
+        storageNamespace,
+        JSON.stringify(assignedFilterMap)
+      )
+    } catch {
+      // Ignore storage failures (private browsing, quota, etc.)
+    }
+  }, [assignedFilterMap, storageNamespace])
 
   const persistBoardScroll = useCallback(() => {
     if (!boardScrollKey) {
@@ -246,6 +383,26 @@ export function ProjectsBoard({
   const onDeckTasks = backlogGroups.get('ON_DECK') ?? []
   const backlogTasks = backlogGroups.get('BACKLOG') ?? []
   const activeSheetTaskId = sheetTask?.id ?? null
+  const tasksByColumnToRender = useMemo(() => {
+    if (!onlyAssignedToMe) {
+      return tasksByColumn
+    }
+
+    const filtered = new Map<string, TaskWithRelations[]>()
+
+    tasksByColumn.forEach((columnTasks, columnId) => {
+      filtered.set(
+        columnId,
+        columnTasks.filter(task =>
+          task.assignees.some(
+            assignee => assignee.user_id === props.currentUserId
+          )
+        )
+      )
+    })
+
+    return filtered
+  }, [onlyAssignedToMe, props.currentUserId, tasksByColumn])
 
   if (props.projects.length === 0) {
     return (
@@ -303,7 +460,7 @@ export function ProjectsBoard({
       </AppShellHeader>
       <div className='flex h-full min-h-0 flex-col gap-4 sm:gap-6'>
         <Tabs value={initialTab} className='flex min-h-0 flex-1 flex-col gap-2'>
-          <div className='flex items-end justify-between gap-3'>
+          <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
             <TabsList className='bg-muted/40 h-10 w-full justify-start gap-2 rounded-lg p-1 sm:w-auto'>
               <TabsTrigger
                 value='board'
@@ -365,6 +522,24 @@ export function ProjectsBoard({
                 </Link>
               </TabsTrigger>
             </TabsList>
+            {initialTab === 'board' ? (
+              <div className='bg-background/80 flex w-full justify-end rounded-md border p-2 sm:w-auto'>
+                <Label
+                  htmlFor='projects-board-assigned-filter'
+                  className='text-muted-foreground cursor-pointer'
+                >
+                  <Checkbox
+                    id='projects-board-assigned-filter'
+                    checked={onlyAssignedToMe}
+                    onCheckedChange={value =>
+                      handleAssignedFilterChange(value === true)
+                    }
+                    className='h-4 w-4'
+                  />
+                  <span>Only show tasks assigned to me</span>
+                </Label>
+              </div>
+            ) : null}
           </div>
           {initialTab === 'board' ? (
             <TabsContent
@@ -400,7 +575,7 @@ export function ProjectsBoard({
                               key={column.id}
                               columnId={column.id}
                               label={column.label}
-                              tasks={tasksByColumn.get(column.id) ?? []}
+                              tasks={tasksByColumnToRender.get(column.id) ?? []}
                               renderAssignees={renderAssignees}
                               onEditTask={handleEditTask}
                               canManage={canManageTasks}
