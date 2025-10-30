@@ -2,8 +2,8 @@ export const BOARD_COLUMNS = [
   { id: 'BACKLOG', label: 'Backlog' },
   { id: 'ON_DECK', label: 'On Deck' },
   { id: 'IN_PROGRESS', label: 'In Progress' },
-  { id: 'IN_REVIEW', label: 'In Review' },
   { id: 'BLOCKED', label: 'Blocked' },
+  { id: 'IN_REVIEW', label: 'In Review' },
   { id: 'DONE', label: 'Done' },
 ] as const
 

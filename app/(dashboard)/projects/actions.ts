@@ -27,8 +27,8 @@ const TASK_STATUSES = [
   'BACKLOG',
   'ON_DECK',
   'IN_PROGRESS',
-  'IN_REVIEW',
   'BLOCKED',
+  'IN_REVIEW',
   'DONE',
   'ARCHIVED',
 ] as const
