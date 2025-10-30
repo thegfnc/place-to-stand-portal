@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import {
   useCallback,
   useEffect,
@@ -73,7 +74,6 @@ export function ProjectsBoard({
     handleEditTask,
     handleSheetOpenChange,
     defaultTaskStatus,
-    navigateToProject,
   } = useProjectsBoardState(props)
 
   const canLogTime = props.currentUserRole !== 'CLIENT'
@@ -87,48 +87,21 @@ export function ProjectsBoard({
   const [viewTimeLogsProjectId, setViewTimeLogsProjectId] = useState<
     string | null
   >(null)
-  const [activeTab, setActiveTab] = useState<'board' | 'activity'>(initialTab)
-  const sheetTaskId = sheetTask?.id ?? null
+  const clientSlug =
+    activeProject?.client?.slug ??
+    (activeProject?.client_id
+      ? (props.clients.find(client => client.id === activeProject.client_id)
+          ?.slug ?? null)
+      : null)
 
-  const handleTabChange = useCallback(
-    (value: string) => {
-      const nextTab = value === 'activity' ? 'activity' : 'board'
-
-      if (nextTab === activeTab) {
-        return
-      }
-
-      setActiveTab(nextTab)
-
-      if (!activeProject) {
-        return
-      }
-
-      if (nextTab === 'activity') {
-        navigateToProject(activeProject.id, { view: 'activity' })
-        return
-      }
-
-      navigateToProject(activeProject.id, {
-        view: 'board',
-        taskId: sheetTaskId,
-      })
-    },
-    [activeProject, activeTab, navigateToProject, sheetTaskId]
-  )
-
-  const handleProjectChange = useCallback(
-    (projectId: string | null) => {
-      handleProjectSelect(projectId)
-
-      if (!projectId || activeTab === 'board') {
-        return
-      }
-
-      navigateToProject(projectId, { view: 'activity' })
-    },
-    [activeTab, handleProjectSelect, navigateToProject]
-  )
+  const projectSlug = activeProject?.slug ?? null
+  const projectPathBase =
+    clientSlug && projectSlug ? `/projects/${clientSlug}/${projectSlug}` : null
+  const boardHref = projectPathBase ? `${projectPathBase}/board` : '/projects'
+  const activityHref = projectPathBase
+    ? `${projectPathBase}/activity`
+    : '/projects'
+  const activityDisabled = !projectPathBase
 
   const handleTimeLogDialogOpenChange = useCallback(
     (open: boolean) => {
@@ -263,7 +236,7 @@ export function ProjectsBoard({
             selectedClientId={selectedClientId}
             selectedProjectId={selectedProjectId}
             onClientChange={handleClientSelect}
-            onProjectChange={handleProjectChange}
+            onProjectChange={handleProjectSelect}
           />
         </AppShellHeader>
         <div className='flex h-full flex-col gap-6'>
@@ -286,7 +259,7 @@ export function ProjectsBoard({
             selectedClientId={selectedClientId}
             selectedProjectId={selectedProjectId}
             onClientChange={handleClientSelect}
-            onProjectChange={handleProjectChange}
+            onProjectChange={handleProjectSelect}
           />
           <div className='flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-6'>
             {activeProject ? (
@@ -308,107 +281,135 @@ export function ProjectsBoard({
         </div>
       </AppShellHeader>
       <div className='flex h-full min-h-0 flex-col gap-4 sm:gap-6'>
-        <Tabs
-          value={activeTab}
-          onValueChange={handleTabChange}
-          className='flex min-h-0 flex-1 flex-col gap-2'
-        >
+        <Tabs value={initialTab} className='flex min-h-0 flex-1 flex-col gap-2'>
           <div className='flex items-end justify-between gap-3'>
             <TabsList className='bg-muted/40 h-10 w-full justify-start gap-2 rounded-lg p-1 sm:w-auto'>
-              <TabsTrigger value='board' className='px-3 py-1.5 text-sm'>
-                Board
+              <TabsTrigger
+                value='board'
+                className='px-3 py-1.5 text-sm'
+                asChild
+              >
+                <Link href={boardHref} prefetch={false}>
+                  Board
+                </Link>
               </TabsTrigger>
-              <TabsTrigger value='activity' className='px-3 py-1.5 text-sm'>
-                Activity
+              <TabsTrigger
+                value='activity'
+                className='px-3 py-1.5 text-sm'
+                asChild
+                disabled={activityDisabled}
+              >
+                <Link
+                  href={activityHref}
+                  prefetch={false}
+                  aria-disabled={activityDisabled}
+                  tabIndex={activityDisabled ? -1 : undefined}
+                  onClick={event => {
+                    if (activityDisabled) {
+                      event.preventDefault()
+                    }
+                  }}
+                  className={
+                    activityDisabled
+                      ? 'pointer-events-none opacity-50'
+                      : undefined
+                  }
+                >
+                  Activity
+                </Link>
               </TabsTrigger>
             </TabsList>
           </div>
-          <TabsContent
-            value='board'
-            className='flex min-h-0 flex-1 flex-col gap-4 sm:gap-6'
-          >
-            {feedback ? (
-              <p className='border-destructive/40 bg-destructive/10 text-destructive rounded-md border px-3 py-2 text-sm'>
-                {feedback}
-              </p>
-            ) : null}
-            {!activeProject ? (
-              <ProjectsBoardEmpty
-                title={NO_SELECTION_TITLE}
-                description={NO_SELECTION_DESCRIPTION}
-              />
-            ) : (
-              <div className='relative min-h-0 flex-1'>
-                <div className='absolute inset-0 overflow-hidden'>
-                  <div
-                    ref={boardViewportRef}
-                    className='h-full min-h-0 overflow-x-auto'
-                    onScroll={handleBoardScroll}
-                  >
-                    <DndContext
-                      sensors={sensors}
-                      onDragStart={handleDragStart}
-                      onDragEnd={handleDragEnd}
+          {initialTab === 'board' ? (
+            <TabsContent
+              value='board'
+              className='flex min-h-0 flex-1 flex-col gap-4 sm:gap-6'
+            >
+              {feedback ? (
+                <p className='border-destructive/40 bg-destructive/10 text-destructive rounded-md border px-3 py-2 text-sm'>
+                  {feedback}
+                </p>
+              ) : null}
+              {!activeProject ? (
+                <ProjectsBoardEmpty
+                  title={NO_SELECTION_TITLE}
+                  description={NO_SELECTION_DESCRIPTION}
+                />
+              ) : (
+                <div className='relative min-h-0 flex-1'>
+                  <div className='absolute inset-0 overflow-hidden'>
+                    <div
+                      ref={boardViewportRef}
+                      className='h-full min-h-0 overflow-x-auto'
+                      onScroll={handleBoardScroll}
                     >
-                      <div className='flex h-full w-max gap-4 p-1'>
-                        {BOARD_COLUMNS.map(column => (
-                          <KanbanColumn
-                            key={column.id}
-                            columnId={column.id}
-                            label={column.label}
-                            tasks={tasksByColumn.get(column.id) ?? []}
-                            renderAssignees={renderAssignees}
-                            onEditTask={handleEditTask}
-                            canManage={canManageTasks}
-                            activeTaskId={sheetTask?.id ?? null}
-                            onCreateTask={status => openCreateSheet(status)}
-                          />
-                        ))}
-                      </div>
-                      <TaskDragOverlay
-                        draggingTask={draggingTask}
-                        renderAssignees={renderAssignees}
-                      />
-                    </DndContext>
+                      <DndContext
+                        sensors={sensors}
+                        onDragStart={handleDragStart}
+                        onDragEnd={handleDragEnd}
+                      >
+                        <div className='flex h-full w-max gap-4 p-1'>
+                          {BOARD_COLUMNS.map(column => (
+                            <KanbanColumn
+                              key={column.id}
+                              columnId={column.id}
+                              label={column.label}
+                              tasks={tasksByColumn.get(column.id) ?? []}
+                              renderAssignees={renderAssignees}
+                              onEditTask={handleEditTask}
+                              canManage={canManageTasks}
+                              activeTaskId={sheetTask?.id ?? null}
+                              onCreateTask={status => openCreateSheet(status)}
+                            />
+                          ))}
+                        </div>
+                        <TaskDragOverlay
+                          draggingTask={draggingTask}
+                          renderAssignees={renderAssignees}
+                        />
+                      </DndContext>
+                    </div>
                   </div>
+                  {isPending && !scrimLocked ? (
+                    <div className='bg-background/60 pointer-events-none absolute inset-0 flex items-center justify-center'>
+                      <Loader2 className='text-muted-foreground h-6 w-6 animate-spin' />
+                    </div>
+                  ) : null}
                 </div>
-                {isPending && !scrimLocked ? (
-                  <div className='bg-background/60 pointer-events-none absolute inset-0 flex items-center justify-center'>
-                    <Loader2 className='text-muted-foreground h-6 w-6 animate-spin' />
+              )}
+            </TabsContent>
+          ) : null}
+          {initialTab === 'activity' ? (
+            <TabsContent
+              value='activity'
+              className='flex min-h-0 flex-1 flex-col gap-4 sm:gap-6'
+            >
+              {!activeProject ? (
+                <ProjectsBoardEmpty
+                  title={NO_SELECTION_TITLE}
+                  description={NO_SELECTION_DESCRIPTION}
+                />
+              ) : (
+                <section className='bg-background rounded-xl border p-6 shadow-sm'>
+                  <div className='space-y-1'>
+                    <h3 className='text-lg font-semibold'>Project activity</h3>
+                    <p className='text-muted-foreground text-sm'>
+                      Review task updates, comments, and assignments for this
+                      project.
+                    </p>
                   </div>
-                ) : null}
-              </div>
-            )}
-          </TabsContent>
-          <TabsContent
-            value='activity'
-            className='flex min-h-0 flex-1 flex-col gap-4 sm:gap-6'
-          >
-            {!activeProject ? (
-              <ProjectsBoardEmpty
-                title={NO_SELECTION_TITLE}
-                description={NO_SELECTION_DESCRIPTION}
-              />
-            ) : (
-              <section className='bg-background rounded-xl border p-6 shadow-sm'>
-                <div className='space-y-1'>
-                  <h3 className='text-lg font-semibold'>Project activity</h3>
-                  <p className='text-muted-foreground text-sm'>
-                    Review task updates, comments, and assignments for this
-                    project.
-                  </p>
-                </div>
-                <div className='mt-3'>
-                  <ActivityFeed
-                    targetType={['PROJECT', 'TASK']}
-                    projectId={activeProject.id}
-                    clientId={activeProject.client?.id ?? null}
-                    emptyState='No project activity yet.'
-                  />
-                </div>
-              </section>
-            )}
-          </TabsContent>
+                  <div className='mt-3'>
+                    <ActivityFeed
+                      targetType={['PROJECT', 'TASK']}
+                      projectId={activeProject.id}
+                      clientId={activeProject.client?.id ?? null}
+                      emptyState='No project activity yet.'
+                    />
+                  </div>
+                </section>
+              )}
+            </TabsContent>
+          ) : null}
         </Tabs>
         {activeProject ? (
           <TaskSheet
