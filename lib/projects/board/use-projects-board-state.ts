@@ -30,6 +30,7 @@ export type UseProjectsBoardStateArgs = {
   activeClientId: string | null
   activeProjectId: string | null
   activeTaskId: string | null
+  currentView: 'board' | 'activity' | 'backlog'
 }
 
 type MemberDirectoryEntry = { name: string }
@@ -75,6 +76,7 @@ export const useProjectsBoardState = ({
   activeClientId,
   activeProjectId,
   activeTaskId,
+  currentView,
 }: UseProjectsBoardStateArgs): ProjectsBoardState => {
   const router = useRouter()
   const pathname = usePathname()
@@ -117,6 +119,7 @@ export const useProjectsBoardState = ({
     startTransition,
     navigateToProject,
     setFeedback,
+    currentView,
   })
 
   const { tasksByProject, setTasksByProject } = useBoardTaskCollections({
@@ -189,6 +192,7 @@ export const useProjectsBoardState = ({
     activeTaskId,
     navigateToProject,
     startTransition,
+    currentView,
   })
 
   const { handleDragStart, handleDragEnd, draggingTask } = useBoardDnDState({

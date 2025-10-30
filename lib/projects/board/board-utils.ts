@@ -71,7 +71,10 @@ export const createClientSlugLookup = (
 export const buildBoardPath = (
   projectId: string,
   lookups: BoardLookups,
-  options: { taskId?: string | null; view?: 'board' | 'activity' } = {}
+  options: {
+    taskId?: string | null
+    view?: 'board' | 'activity' | 'backlog'
+  } = {}
 ) => {
   const { taskId = null, view = 'board' } = options
   const project = lookups.projectLookup.get(projectId)
@@ -94,6 +97,11 @@ export const buildBoardPath = (
 
   if (view === 'activity') {
     return `${rootPath}/activity`
+  }
+
+  if (view === 'backlog') {
+    const backlogPath = `${rootPath}/backlog`
+    return taskId ? `${backlogPath}/${taskId}` : backlogPath
   }
 
   const boardPath = `${rootPath}/board`

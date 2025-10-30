@@ -33,6 +33,7 @@ type UseBoardSheetStateArgs = {
     options?: NavigateOptions
   ) => void
   startTransition: TransitionStartFunction
+  currentView: 'board' | 'activity' | 'backlog'
 }
 
 export const useBoardSheetState = ({
@@ -43,6 +44,7 @@ export const useBoardSheetState = ({
   activeTaskId,
   navigateToProject,
   startTransition,
+  currentView,
 }: UseBoardSheetStateArgs) => {
   const [isSheetOpen, setIsSheetOpen] = useState(() => Boolean(activeTaskId))
   const [sheetTask, setSheetTask] = useState<TaskWithRelations | undefined>(
@@ -112,7 +114,11 @@ export const useBoardSheetState = ({
       setDefaultTaskStatus(status ?? 'BACKLOG')
 
       if (targetProjectId) {
-        navigateToProject(targetProjectId, { taskId: null, replace: true })
+        navigateToProject(targetProjectId, {
+          taskId: null,
+          replace: true,
+          view: currentView,
+        })
       } else {
         navigateToProject(null, { replace: true })
       }
@@ -122,7 +128,7 @@ export const useBoardSheetState = ({
       setSheetTask(undefined)
       setIsSheetOpen(true)
     },
-    [activeProject?.id, navigateToProject, selectedProjectId]
+    [activeProject?.id, currentView, navigateToProject, selectedProjectId]
   )
 
   const handleEditTask = useCallback(
@@ -130,9 +136,12 @@ export const useBoardSheetState = ({
       setScrimLocked(true)
       setRouteTaskId(task.id)
       setPendingTaskId(task.id)
-      navigateToProject(task.project_id, { taskId: task.id })
+      navigateToProject(task.project_id, {
+        taskId: task.id,
+        view: currentView,
+      })
     },
-    [navigateToProject]
+    [currentView, navigateToProject]
   )
 
   const handleSheetOpenChange = useCallback(
@@ -150,6 +159,7 @@ export const useBoardSheetState = ({
             navigateToProject(projectIdForSheet, {
               taskId: null,
               replace: true,
+              view: currentView,
             })
           })
         }
@@ -158,6 +168,7 @@ export const useBoardSheetState = ({
       }
     },
     [
+      currentView,
       navigateToProject,
       routeTaskId,
       selectedProjectId,

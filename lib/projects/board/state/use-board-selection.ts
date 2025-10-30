@@ -48,6 +48,7 @@ type BoardSelectionArgs = {
     options?: NavigateOptions
   ) => void
   setFeedback: Dispatch<SetStateAction<string | null>>
+  currentView: 'board' | 'activity' | 'backlog'
 }
 
 export const useBoardSelectionState = ({
@@ -59,6 +60,7 @@ export const useBoardSelectionState = ({
   startTransition,
   navigateToProject,
   setFeedback,
+  currentView,
 }: BoardSelectionArgs) => {
   const [selectedClientId, setSelectedClientId] = useState<string | null>(() =>
     resolveInitialClientId(projects, clients, activeClientId, activeProjectId)
@@ -145,11 +147,20 @@ export const useBoardSelectionState = ({
       startTransition(() => {
         setSelectedProjectId(nextProjectId)
         if (nextProjectId) {
-          navigateToProject(nextProjectId, { replace: true })
+          navigateToProject(nextProjectId, {
+            replace: true,
+            view: currentView,
+          })
         }
       })
     }
-  }, [filteredProjects, navigateToProject, selectedProjectId, startTransition])
+  }, [
+    currentView,
+    filteredProjects,
+    navigateToProject,
+    selectedProjectId,
+    startTransition,
+  ])
 
   const handleClientSelect = useCallback(
     (clientId: string) => {
@@ -188,10 +199,14 @@ export const useBoardSelectionState = ({
       })
 
       if (nextProjectId) {
-        navigateToProject(nextProjectId, { replace: true })
+        navigateToProject(nextProjectId, {
+          replace: true,
+          view: currentView,
+        })
       }
     },
     [
+      currentView,
       navigateToProject,
       projectsByClientId,
       selectedProjectId,
@@ -214,9 +229,9 @@ export const useBoardSelectionState = ({
       setFeedback((prev: string | null) =>
         prev === NO_CLIENT_PROJECTS_MESSAGE ? null : prev
       )
-      navigateToProject(projectId)
+      navigateToProject(projectId, { view: currentView })
     },
-    [navigateToProject, setFeedback, startTransition]
+    [currentView, navigateToProject, setFeedback, startTransition]
   )
 
   return {

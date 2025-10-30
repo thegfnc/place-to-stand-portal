@@ -16,10 +16,15 @@ import { ActivityFeed } from '@/components/activity/activity-feed'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { AppShellHeader } from '@/components/layout/app-shell'
 import type { TaskWithRelations } from '@/lib/types'
-import { BOARD_COLUMNS } from '@/lib/projects/board/board-constants'
+import {
+  BACKLOG_SECTIONS,
+  BOARD_COLUMNS,
+} from '@/lib/projects/board/board-constants'
+import { groupTasksByColumn } from '@/lib/projects/board/board-utils'
 import { useProjectsBoardState } from '@/lib/projects/board/use-projects-board-state'
 
 import { KanbanColumn } from './_components/kanban-column'
+import { BacklogSection } from './_components/backlog-section'
 import { ProjectsBoardEmpty } from './_components/projects-board-empty'
 import { ProjectsBoardHeader } from './_components/projects-board-header'
 import { TaskDragOverlay } from './_components/task-drag-overlay'
@@ -28,8 +33,10 @@ import { ProjectBurndownWidget } from './_components/project-burndown-widget'
 import { ProjectTimeLogDialog } from './_components/project-time-log-dialog'
 import { ProjectTimeLogHistoryDialog } from './_components/project-time-log-history-dialog'
 
-type Props = Parameters<typeof useProjectsBoardState>[0]
-type ProjectsBoardProps = Props & { initialTab?: 'board' | 'activity' }
+type Props = Omit<Parameters<typeof useProjectsBoardState>[0], 'currentView'>
+type ProjectsBoardProps = Props & {
+  initialTab?: 'board' | 'activity' | 'backlog'
+}
 
 const NO_PROJECTS_TITLE = 'No projects assigned yet'
 const NO_PROJECTS_DESCRIPTION =
@@ -42,6 +49,7 @@ export function ProjectsBoard({
   initialTab = 'board',
   ...props
 }: ProjectsBoardProps) {
+  const currentView = initialTab
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
@@ -74,7 +82,7 @@ export function ProjectsBoard({
     handleEditTask,
     handleSheetOpenChange,
     defaultTaskStatus,
-  } = useProjectsBoardState(props)
+  } = useProjectsBoardState({ ...props, currentView })
 
   const canLogTime = props.currentUserRole !== 'CLIENT'
   const addTimeLogDisabledReason = canLogTime
@@ -98,9 +106,13 @@ export function ProjectsBoard({
   const projectPathBase =
     clientSlug && projectSlug ? `/projects/${clientSlug}/${projectSlug}` : null
   const boardHref = projectPathBase ? `${projectPathBase}/board` : '/projects'
+  const backlogHref = projectPathBase
+    ? `${projectPathBase}/backlog`
+    : '/projects'
   const activityHref = projectPathBase
     ? `${projectPathBase}/activity`
     : '/projects'
+  const backlogDisabled = !projectPathBase
   const activityDisabled = !projectPathBase
 
   const handleTimeLogDialogOpenChange = useCallback(
@@ -126,7 +138,7 @@ export function ProjectsBoard({
       setTimeLogProjectId(activeProject.id)
       setIsTimeLogDialogOpen(true)
     },
-    [activeProject, canLogTime]
+    [activeProject, canLogTime, setIsTimeLogDialogOpen, setTimeLogProjectId]
   )
 
   const handleViewTimeLogsDialogOpenChange = useCallback(
@@ -146,7 +158,7 @@ export function ProjectsBoard({
       setViewTimeLogsProjectId(activeProject.id)
       setIsViewTimeLogsOpen(true)
     },
-    [activeProject]
+    [activeProject, setIsViewTimeLogsOpen, setViewTimeLogsProjectId]
   )
 
   const boardViewportRef = useRef<HTMLDivElement | null>(null)
@@ -226,6 +238,15 @@ export function ProjectsBoard({
     [memberDirectory]
   )
 
+  const backlogGroups = useMemo(
+    () => groupTasksByColumn(activeProjectTasks, BACKLOG_SECTIONS),
+    [activeProjectTasks]
+  )
+
+  const onDeckTasks = backlogGroups.get('ON_DECK') ?? []
+  const backlogTasks = backlogGroups.get('BACKLOG') ?? []
+  const activeSheetTaskId = sheetTask?.id ?? null
+
   if (props.projects.length === 0) {
     return (
       <>
@@ -294,6 +315,31 @@ export function ProjectsBoard({
                 </Link>
               </TabsTrigger>
               <TabsTrigger
+                value='backlog'
+                className='px-3 py-1.5 text-sm'
+                asChild
+                disabled={backlogDisabled}
+              >
+                <Link
+                  href={backlogHref}
+                  prefetch={false}
+                  aria-disabled={backlogDisabled}
+                  tabIndex={backlogDisabled ? -1 : undefined}
+                  onClick={event => {
+                    if (backlogDisabled) {
+                      event.preventDefault()
+                    }
+                  }}
+                  className={
+                    backlogDisabled
+                      ? 'pointer-events-none opacity-50'
+                      : undefined
+                  }
+                >
+                  Backlog
+                </Link>
+              </TabsTrigger>
+              <TabsTrigger
                 value='activity'
                 className='px-3 py-1.5 text-sm'
                 asChild
@@ -358,8 +404,8 @@ export function ProjectsBoard({
                               renderAssignees={renderAssignees}
                               onEditTask={handleEditTask}
                               canManage={canManageTasks}
-                              activeTaskId={sheetTask?.id ?? null}
-                              onCreateTask={status => openCreateSheet(status)}
+                              activeTaskId={activeSheetTaskId}
+                              onCreateTask={openCreateSheet}
                             />
                           ))}
                         </div>
@@ -370,6 +416,64 @@ export function ProjectsBoard({
                       </DndContext>
                     </div>
                   </div>
+                  {isPending && !scrimLocked ? (
+                    <div className='bg-background/60 pointer-events-none absolute inset-0 flex items-center justify-center'>
+                      <Loader2 className='text-muted-foreground h-6 w-6 animate-spin' />
+                    </div>
+                  ) : null}
+                </div>
+              )}
+            </TabsContent>
+          ) : null}
+          {initialTab === 'backlog' ? (
+            <TabsContent
+              value='backlog'
+              className='flex min-h-0 flex-1 flex-col gap-4 sm:gap-6'
+            >
+              {feedback ? (
+                <p className='border-destructive/40 bg-destructive/10 text-destructive rounded-md border px-3 py-2 text-sm'>
+                  {feedback}
+                </p>
+              ) : null}
+              {!activeProject ? (
+                <ProjectsBoardEmpty
+                  title={NO_SELECTION_TITLE}
+                  description={NO_SELECTION_DESCRIPTION}
+                />
+              ) : (
+                <div className='relative min-h-0 flex-1'>
+                  <DndContext
+                    sensors={sensors}
+                    onDragStart={handleDragStart}
+                    onDragEnd={handleDragEnd}
+                  >
+                    <div className='flex min-h-0 flex-1 flex-col gap-4'>
+                      <BacklogSection
+                        status='ON_DECK'
+                        label='On Deck'
+                        tasks={onDeckTasks}
+                        canManage={canManageTasks}
+                        renderAssignees={renderAssignees}
+                        onEditTask={handleEditTask}
+                        activeTaskId={activeSheetTaskId}
+                        onCreateTask={openCreateSheet}
+                      />
+                      <BacklogSection
+                        status='BACKLOG'
+                        label='Backlog'
+                        tasks={backlogTasks}
+                        canManage={canManageTasks}
+                        renderAssignees={renderAssignees}
+                        onEditTask={handleEditTask}
+                        activeTaskId={activeSheetTaskId}
+                        onCreateTask={openCreateSheet}
+                      />
+                    </div>
+                    <TaskDragOverlay
+                      draggingTask={draggingTask}
+                      renderAssignees={renderAssignees}
+                    />
+                  </DndContext>
                   {isPending && !scrimLocked ? (
                     <div className='bg-background/60 pointer-events-none absolute inset-0 flex items-center justify-center'>
                       <Loader2 className='text-muted-foreground h-6 w-6 animate-spin' />

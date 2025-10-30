@@ -1,4 +1,4 @@
-export const BOARD_COLUMNS = [
+const TASK_STATUS_METADATA = [
   { id: 'BACKLOG', label: 'Backlog' },
   { id: 'ON_DECK', label: 'On Deck' },
   { id: 'IN_PROGRESS', label: 'In Progress' },
@@ -7,7 +7,26 @@ export const BOARD_COLUMNS = [
   { id: 'DONE', label: 'Done' },
 ] as const
 
-export type BoardColumnId = (typeof BOARD_COLUMNS)[number]['id']
+const [
+  BACKLOG_STATUS,
+  ON_DECK_STATUS,
+  IN_PROGRESS_STATUS,
+  BLOCKED_STATUS,
+  IN_REVIEW_STATUS,
+  DONE_STATUS,
+] = TASK_STATUS_METADATA
+
+export const BOARD_COLUMNS = [
+  ON_DECK_STATUS,
+  IN_PROGRESS_STATUS,
+  BLOCKED_STATUS,
+  IN_REVIEW_STATUS,
+  DONE_STATUS,
+] as const
+
+export const BACKLOG_SECTIONS = [ON_DECK_STATUS, BACKLOG_STATUS] as const
+
+export type BoardColumnId = (typeof TASK_STATUS_METADATA)[number]['id']
 
 export const BOARD_BASE_PATH = '/projects'
 
