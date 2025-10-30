@@ -296,7 +296,7 @@ export function HourBlocksSettingsTable({ hourBlocks, clients }: Props) {
           <TabsList>
             <TabsTrigger value='hour-blocks'>Hour Blocks</TabsTrigger>
             <TabsTrigger value='archive'>Archive</TabsTrigger>
-            <TabsTrigger value='activity'>Activity Log</TabsTrigger>
+            <TabsTrigger value='activity'>Activity</TabsTrigger>
           </TabsList>
           {activeTab === 'hour-blocks' ? (
             <DisabledFieldTooltip

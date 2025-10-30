@@ -198,7 +198,7 @@ export const SearchableCombobox = React.forwardRef<
                 className='h-9'
               />
               <CommandEmpty>{emptyMessage}</CommandEmpty>
-              <CommandList className='max-h-[min(60vh,260px)] overflow-y-auto overscroll-contain pr-1'>
+              <CommandList className='max-h-[min(60vh,260px)] overflow-y-auto overscroll-contain'>
                 <CommandGroup>
                   {items.map(item => {
                     const searchValue = [item.label, ...(item.keywords ?? [])]

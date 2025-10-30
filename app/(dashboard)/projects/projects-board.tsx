@@ -28,6 +28,7 @@ import { ProjectTimeLogDialog } from './_components/project-time-log-dialog'
 import { ProjectTimeLogHistoryDialog } from './_components/project-time-log-history-dialog'
 
 type Props = Parameters<typeof useProjectsBoardState>[0]
+type ProjectsBoardProps = Props & { initialTab?: 'board' | 'activity' }
 
 const NO_PROJECTS_TITLE = 'No projects assigned yet'
 const NO_PROJECTS_DESCRIPTION =
@@ -36,7 +37,10 @@ const NO_SELECTION_TITLE = 'No project selected'
 const NO_SELECTION_DESCRIPTION =
   'Choose a client and project above to view the associated tasks.'
 
-export function ProjectsBoard(props: Props) {
+export function ProjectsBoard({
+  initialTab = 'board',
+  ...props
+}: ProjectsBoardProps) {
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
@@ -69,6 +73,7 @@ export function ProjectsBoard(props: Props) {
     handleEditTask,
     handleSheetOpenChange,
     defaultTaskStatus,
+    navigateToProject,
   } = useProjectsBoardState(props)
 
   const canLogTime = props.currentUserRole !== 'CLIENT'
@@ -82,10 +87,48 @@ export function ProjectsBoard(props: Props) {
   const [viewTimeLogsProjectId, setViewTimeLogsProjectId] = useState<
     string | null
   >(null)
-  const [activeTab, setActiveTab] = useState<'board' | 'activity'>('board')
-  const handleTabChange = useCallback((value: string) => {
-    setActiveTab(value === 'activity' ? 'activity' : 'board')
-  }, [])
+  const [activeTab, setActiveTab] = useState<'board' | 'activity'>(initialTab)
+  const sheetTaskId = sheetTask?.id ?? null
+
+  const handleTabChange = useCallback(
+    (value: string) => {
+      const nextTab = value === 'activity' ? 'activity' : 'board'
+
+      if (nextTab === activeTab) {
+        return
+      }
+
+      setActiveTab(nextTab)
+
+      if (!activeProject) {
+        return
+      }
+
+      if (nextTab === 'activity') {
+        navigateToProject(activeProject.id, { view: 'activity' })
+        return
+      }
+
+      navigateToProject(activeProject.id, {
+        view: 'board',
+        taskId: sheetTaskId,
+      })
+    },
+    [activeProject, activeTab, navigateToProject, sheetTaskId]
+  )
+
+  const handleProjectChange = useCallback(
+    (projectId: string | null) => {
+      handleProjectSelect(projectId)
+
+      if (!projectId || activeTab === 'board') {
+        return
+      }
+
+      navigateToProject(projectId, { view: 'activity' })
+    },
+    [activeTab, handleProjectSelect, navigateToProject]
+  )
 
   const handleTimeLogDialogOpenChange = useCallback(
     (open: boolean) => {
@@ -220,7 +263,7 @@ export function ProjectsBoard(props: Props) {
             selectedClientId={selectedClientId}
             selectedProjectId={selectedProjectId}
             onClientChange={handleClientSelect}
-            onProjectChange={handleProjectSelect}
+            onProjectChange={handleProjectChange}
           />
         </AppShellHeader>
         <div className='flex h-full flex-col gap-6'>
@@ -243,7 +286,7 @@ export function ProjectsBoard(props: Props) {
             selectedClientId={selectedClientId}
             selectedProjectId={selectedProjectId}
             onClientChange={handleClientSelect}
-            onProjectChange={handleProjectSelect}
+            onProjectChange={handleProjectChange}
           />
           <div className='flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-6'>
             {activeProject ? (
@@ -276,7 +319,7 @@ export function ProjectsBoard(props: Props) {
                 Board
               </TabsTrigger>
               <TabsTrigger value='activity' className='px-3 py-1.5 text-sm'>
-                Activity Log
+                Activity
               </TabsTrigger>
             </TabsList>
           </div>
@@ -357,7 +400,7 @@ export function ProjectsBoard(props: Props) {
                 </div>
                 <div className='mt-3'>
                   <ActivityFeed
-                    targetType='PROJECT'
+                    targetType={['PROJECT', 'TASK']}
                     projectId={activeProject.id}
                     clientId={activeProject.client?.id ?? null}
                     emptyState='No project activity yet.'

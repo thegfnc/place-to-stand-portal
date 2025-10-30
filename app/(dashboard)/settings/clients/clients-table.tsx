@@ -287,7 +287,7 @@ export function ClientsSettingsTable({
           <TabsList>
             <TabsTrigger value='clients'>Clients</TabsTrigger>
             <TabsTrigger value='archive'>Archive</TabsTrigger>
-            <TabsTrigger value='activity'>Activity log</TabsTrigger>
+            <TabsTrigger value='activity'>Activity</TabsTrigger>
           </TabsList>
           {activeTab === 'clients' ? (
             <Button onClick={openCreate}>

@@ -63,6 +63,7 @@ type ProjectsBoardState = {
     typeof useBoardSheetState
   >['handleSheetOpenChange']
   defaultTaskStatus: BoardColumnId
+  navigateToProject: ReturnType<typeof useBoardNavigation>
 }
 
 export const useProjectsBoardState = ({
@@ -234,5 +235,6 @@ export const useProjectsBoardState = ({
     handleEditTask,
     handleSheetOpenChange,
     defaultTaskStatus,
+    navigateToProject,
   }
 }

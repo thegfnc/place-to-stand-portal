@@ -108,7 +108,7 @@ export function UsersSettingsTable({
           <TabsList>
             <TabsTrigger value='users'>Users</TabsTrigger>
             <TabsTrigger value='archive'>Archive</TabsTrigger>
-            <TabsTrigger value='activity'>Activity log</TabsTrigger>
+            <TabsTrigger value='activity'>Activity</TabsTrigger>
           </TabsList>
           {showAddButton ? (
             <Button onClick={onOpenCreate}>

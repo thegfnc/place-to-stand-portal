@@ -71,8 +71,9 @@ export const createClientSlugLookup = (
 export const buildBoardPath = (
   projectId: string,
   lookups: BoardLookups,
-  taskId?: string | null
+  options: { taskId?: string | null; view?: 'board' | 'activity' } = {}
 ) => {
+  const { taskId = null, view = 'board' } = options
   const project = lookups.projectLookup.get(projectId)
 
   if (!project) {
@@ -89,8 +90,14 @@ export const buildBoardPath = (
     return null
   }
 
-  const basePath = `/projects/${clientSlug}/${projectSlug}/board`
-  return taskId ? `${basePath}/${taskId}` : basePath
+  const rootPath = `/projects/${clientSlug}/${projectSlug}`
+
+  if (view === 'activity') {
+    return `${rootPath}/activity`
+  }
+
+  const boardPath = `${rootPath}/board`
+  return taskId ? `${boardPath}/${taskId}` : boardPath
 }
 
 export const groupTasksByColumn = (

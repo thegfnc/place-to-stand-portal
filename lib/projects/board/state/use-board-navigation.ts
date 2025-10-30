@@ -31,7 +31,7 @@ export const useBoardNavigation = ({
 }: BoardNavigationArgs) =>
   useCallback(
     (projectId: string | null, options: NavigateOptions = {}) => {
-      const { taskId = null, replace = false } = options
+      const { taskId = null, replace = false, view = 'board' } = options
 
       if (!projectId) {
         if (pathname !== BOARD_BASE_PATH) {
@@ -48,7 +48,7 @@ export const useBoardNavigation = ({
           projectsByClientId,
           clientSlugLookup,
         },
-        taskId
+        { taskId, view }
       )
 
       if (!path) {

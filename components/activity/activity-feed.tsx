@@ -21,7 +21,10 @@ type ActivityApiResponse = {
 }
 
 export type ActivityFeedProps = {
-  targetType: ActivityTargetType | string
+  targetType:
+    | ActivityTargetType
+    | string
+    | ReadonlyArray<ActivityTargetType | string>
   targetId?: string | null
   projectId?: string | null
   clientId?: string | null
@@ -57,18 +60,33 @@ export function ActivityFeed({
   const queryEnabled = requiresContext
     ? Boolean(targetType && hasContext)
     : Boolean(targetType)
+  const normalizedTargetTypes = useMemo(() => {
+    if (!targetType) {
+      return [] as string[]
+    }
+
+    const values = Array.isArray(targetType)
+      ? targetType
+      : ([targetType] as Array<ActivityTargetType | string>)
+
+    return [...values]
+      .map(value => String(value))
+      .filter(value => value.length > 0)
+      .sort()
+  }, [targetType])
+  const targetTypeKey = normalizedTargetTypes.join(',')
   const queryKey = useMemo(
     () =>
       [
         'activity-feed',
-        String(targetType),
+        targetTypeKey,
         targetId ?? null,
         projectId ?? null,
         clientId ?? null,
         pageSize,
         requiresContext,
       ] as const,
-    [targetType, targetId, projectId, clientId, pageSize, requiresContext]
+    [targetTypeKey, targetId, projectId, clientId, pageSize, requiresContext]
   )
 
   const activityQuery = useInfiniteQuery<
@@ -83,12 +101,14 @@ export function ActivityFeed({
     initialPageParam: null,
     getNextPageParam: lastPage => lastPage.nextCursor ?? undefined,
     queryFn: async ({ pageParam }) => {
-      if (!queryEnabled) {
+      if (!queryEnabled || normalizedTargetTypes.length === 0) {
         return { logs: [], hasMore: false, nextCursor: null }
       }
 
       const params = new URLSearchParams()
-      params.set('targetType', String(targetType))
+      normalizedTargetTypes.forEach(type => {
+        params.append('targetType', type)
+      })
 
       if (targetId) {
         params.set('targetId', targetId)

@@ -302,7 +302,7 @@ export function ProjectsSettingsTable(props: ProjectsSettingsTableProps) {
           <TabsList>
             <TabsTrigger value='projects'>Projects</TabsTrigger>
             <TabsTrigger value='archive'>Archive</TabsTrigger>
-            <TabsTrigger value='activity'>Activity log</TabsTrigger>
+            <TabsTrigger value='activity'>Activity</TabsTrigger>
           </TabsList>
           {activeTab === 'projects' ? (
             <DisabledFieldTooltip

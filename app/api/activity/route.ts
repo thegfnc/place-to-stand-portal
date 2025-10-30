@@ -37,31 +37,45 @@ export async function GET(request: NextRequest) {
   const url = new URL(request.url)
   const params = url.searchParams
 
-  const targetTypeParam = params.get('targetType')
+  const targetTypeParams = params.getAll('targetType').filter(Boolean)
+  const legacyTargetTypeParam = params.get('targetType')
   const targetId = params.get('targetId')
   const projectId = params.get('projectId')
   const clientId = params.get('clientId')
   const cursor = params.get('cursor')
   const limitParam = params.get('limit')
 
-  if (!targetTypeParam && !targetId && !projectId && !clientId) {
+  const requestedTargetTypes = targetTypeParams.length
+    ? targetTypeParams
+    : legacyTargetTypeParam
+      ? [legacyTargetTypeParam]
+      : []
+
+  if (!requestedTargetTypes.length && !targetId && !projectId && !clientId) {
     return NextResponse.json(
       { error: 'A target filter is required.' },
       { status: 400 }
     )
   }
 
-  let targetType: ActivityTargetType | undefined
+  let targetType: ActivityTargetType | ActivityTargetType[] | undefined
 
-  if (targetTypeParam) {
-    if (!isActivityTargetType(targetTypeParam)) {
+  if (requestedTargetTypes.length) {
+    const invalid = requestedTargetTypes.filter(
+      value => !isActivityTargetType(value)
+    )
+
+    if (invalid.length) {
       return NextResponse.json(
         { error: 'Unsupported activity target type.' },
         { status: 400 }
       )
     }
 
-    targetType = targetTypeParam
+    targetType =
+      requestedTargetTypes.length === 1
+        ? (requestedTargetTypes[0] as ActivityTargetType)
+        : (requestedTargetTypes as ActivityTargetType[])
   }
 
   let limit: number | undefined

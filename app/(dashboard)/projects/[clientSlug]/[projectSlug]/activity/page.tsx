@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import type { Metadata } from 'next'
 
-import { ProjectsBoard } from '../../../../projects-board'
+import { ProjectsBoard } from '../../../projects-board'
 import { fetchProjectsWithRelations } from '@/lib/data/projects'
 import { fetchAdminUsers } from '@/lib/data/users'
 import { requireUser } from '@/lib/auth/session'
@@ -14,13 +14,12 @@ type PageProps = {
   params: Promise<{
     clientSlug: string
     projectSlug: string
-    taskId?: string[]
   }>
 }
 
-export default async function ProjectBoardRoute({ params }: PageProps) {
+export default async function ProjectActivityRoute({ params }: PageProps) {
   const resolvedParams = await params
-  const { clientSlug, projectSlug, taskId } = resolvedParams
+  const { clientSlug, projectSlug } = resolvedParams
   const user = await requireUser()
   const [projects, admins] = await Promise.all([
     fetchProjectsWithRelations({
@@ -58,22 +57,16 @@ export default async function ProjectBoardRoute({ params }: PageProps) {
     ? (project.client?.slug ?? clientSlugById.get(project.client_id) ?? null)
     : null
 
-  const requestedTaskPath = Array.isArray(taskId)
-    ? taskId.filter(segment => Boolean(segment)).join('/')
-    : ''
-
   if (!canonicalClientSlug) {
     redirect('/projects')
   }
 
   if (canonicalClientSlug !== clientSlug) {
-    const suffix = requestedTaskPath ? `/${requestedTaskPath}` : ''
-    redirect(`/projects/${canonicalClientSlug}/${project.slug}/board${suffix}`)
+    redirect(`/projects/${canonicalClientSlug}/${project.slug}/activity`)
   }
 
   const activeClientId = project.client_id ?? null
   const activeProjectId = project.id
-  const activeTaskId = Array.isArray(taskId) ? (taskId[0] ?? null) : null
 
   return (
     <ProjectsBoard
@@ -84,8 +77,8 @@ export default async function ProjectBoardRoute({ params }: PageProps) {
       admins={admins}
       activeClientId={activeClientId}
       activeProjectId={activeProjectId}
-      activeTaskId={activeTaskId}
-      initialTab='board'
+      activeTaskId={null}
+      initialTab='activity'
     />
   )
 }
