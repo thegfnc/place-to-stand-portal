@@ -152,6 +152,7 @@ export const useUsersTableState = ({
     }
 
     setDeleteTarget(null)
+    deleteTargetRef.current = null
   }, [isPending])
 
   const handleRequestDelete = useCallback(
@@ -171,48 +172,64 @@ export const useUsersTableState = ({
   )
 
   const handleConfirmDelete = useCallback(() => {
-    setDeleteTarget(prev => {
-      if (!prev) {
-        return prev
-      }
+    if (isPending) {
+      return
+    }
 
-      if (prev.id === currentUserId) {
-        notifySelfDeleteBlocked()
-        return null
-      }
+    const target = deleteTarget ?? deleteTargetRef.current
 
-      if (prev.deleted_at) {
-        return null
-      }
+    if (!target) {
+      return
+    }
 
-      const user = prev
-      setPendingDeleteId(user.id)
-      startTransition(async () => {
-        try {
-          const result = await softDeleteUser({ id: user.id })
+    if (target.id === currentUserId) {
+      notifySelfDeleteBlocked()
+      setDeleteTarget(null)
+      deleteTargetRef.current = null
+      return
+    }
 
-          if (result.error) {
-            toast({
-              title: 'Unable to delete user',
-              description: result.error,
-              variant: 'destructive',
-            })
-            return
-          }
+    if (target.deleted_at) {
+      setDeleteTarget(null)
+      deleteTargetRef.current = null
+      return
+    }
 
+    setDeleteTarget(null)
+    setPendingDeleteId(target.id)
+
+    startTransition(async () => {
+      try {
+        const result = await softDeleteUser({ id: target.id })
+
+        if (result.error) {
           toast({
-            title: 'User deleted',
-            description: `${user.full_name ?? user.email} can no longer access the portal.`,
+            title: 'Unable to delete user',
+            description: result.error,
+            variant: 'destructive',
           })
-          router.refresh()
-        } finally {
-          setPendingDeleteId(null)
+          return
         }
-      })
 
-      return null
+        toast({
+          title: 'User deleted',
+          description: `${target.full_name ?? target.email} can no longer access the portal.`,
+        })
+        router.refresh()
+      } finally {
+        setPendingDeleteId(null)
+        deleteTargetRef.current = null
+      }
     })
-  }, [currentUserId, notifySelfDeleteBlocked, router, startTransition, toast])
+  }, [
+    currentUserId,
+    deleteTarget,
+    isPending,
+    notifySelfDeleteBlocked,
+    router,
+    startTransition,
+    toast,
+  ])
 
   const handleRestore = useCallback(
     (user: UserRow) => {
