@@ -196,6 +196,7 @@ type RefineSectionProps = {
   onEditTask: (task: TaskWithRelations) => void
   activeTaskId: string | null
   onCreateTask?: (status: BoardColumnId) => void
+  description?: string
 }
 
 export function RefineSection({
@@ -207,11 +208,15 @@ export function RefineSection({
   onEditTask,
   activeTaskId,
   onCreateTask,
+  description,
 }: RefineSectionProps) {
   const { setNodeRef, isOver } = useDroppable({ id: status })
   const statusToken = getTaskStatusToken(status)
   const statusLabel = getTaskStatusLabel(status)
   const displayLabel = label || statusLabel
+  const sectionDescription =
+    description ??
+    `Tasks currently in the ${displayLabel} column awaiting refinement.`
 
   return (
     <section
@@ -221,33 +226,37 @@ export function RefineSection({
         isOver && 'ring-primary ring-2'
       )}
     >
-      <div className='flex items-center justify-between gap-2 border-b px-4 py-3'>
-        <div className='flex items-center gap-2'>
-          <Badge
-            variant='outline'
-            className={cn(
-              'text-xs font-semibold tracking-wide uppercase',
-              statusToken
-            )}
-          >
-            {displayLabel}
-          </Badge>
-          <span className='text-muted-foreground text-[11px]'>
-            {tasks.length}
-          </span>
+      <div className='border-b px-4 py-3'>
+        <div className='flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between'>
+          <div className='flex flex-col gap-2'>
+            <div className='flex items-center gap-2'>
+              <Badge
+                variant='outline'
+                className={cn('text-xs font-semibold uppercase', statusToken)}
+              >
+                {displayLabel}
+              </Badge>
+              <span className='text-muted-foreground text-[11px]'>
+                {tasks.length}
+              </span>
+            </div>
+            <p className='text-muted-foreground text-xs'>
+              {sectionDescription}
+            </p>
+          </div>
+          {canManage && onCreateTask ? (
+            <Button
+              type='button'
+              size='icon'
+              variant='ghost'
+              className='h-7 w-7 self-start sm:self-auto'
+              onClick={() => onCreateTask(status)}
+            >
+              <Plus className='h-4 w-4' />
+              <span className='sr-only'>Add task to {label}</span>
+            </Button>
+          ) : null}
         </div>
-        {canManage && onCreateTask ? (
-          <Button
-            type='button'
-            size='icon'
-            variant='ghost'
-            className='h-7 w-7'
-            onClick={() => onCreateTask(status)}
-          >
-            <Plus className='h-4 w-4' />
-            <span className='sr-only'>Add task to {label}</span>
-          </Button>
-        ) : null}
       </div>
       <div className='px-2 pt-1 pb-2'>
         <Table>

@@ -100,7 +100,8 @@ export const buildBoardPath = (
   }
 
   if (view === 'review') {
-    return `${rootPath}/review`
+    const reviewPath = `${rootPath}/review`
+    return taskId ? `${reviewPath}/${taskId}` : reviewPath
   }
 
   if (view === 'refine') {

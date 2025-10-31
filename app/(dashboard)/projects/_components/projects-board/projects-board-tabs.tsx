@@ -177,6 +177,7 @@ export function ProjectsBoardTabs(props: ProjectsBoardTabsProps) {
         acceptAllDisabled={acceptAllDisabled}
         acceptAllDisabledReason={acceptAllDisabledReason}
         isAcceptingDone={isAcceptingDone}
+        activeSheetTaskId={activeSheetTaskId}
         onUnacceptTask={onUnacceptTask}
         onRestoreTask={onRestoreTask}
         onDestroyTask={onDestroyTask}

@@ -1,8 +1,15 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { formatDistanceToNow, parseISO } from 'date-fns'
-import { CheckCircle2, Loader2, RefreshCw, Trash2 } from 'lucide-react'
+import { format, formatDistanceToNow, parseISO } from 'date-fns'
+import {
+  CheckCircle2,
+  Loader2,
+  MessageCircle,
+  Paperclip,
+  RefreshCw,
+  Trash2,
+} from 'lucide-react'
 
 import { TabsContent } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
@@ -48,6 +55,7 @@ export type ReviewTabContentProps = {
   acceptAllDisabled: boolean
   acceptAllDisabledReason: string | null
   isAcceptingDone: boolean
+  activeSheetTaskId: string | null
   onUnacceptTask: (taskId: string) => void
   onRestoreTask: (taskId: string) => void
   onDestroyTask: (taskId: string) => void
@@ -61,7 +69,24 @@ const DONE_BADGE = getTaskStatusToken('DONE')
 const ACCEPTED_BADGE = getTaskStatusToken('ACCEPTED')
 const ARCHIVED_BADGE = getTaskStatusToken('ARCHIVED')
 
-const formatTimestamp = (value: string | null | undefined) => {
+const formatDueDate = (value: string | null | undefined) => {
+  if (!value) {
+    return '—'
+  }
+
+  try {
+    const parsed = parseISO(value)
+    if (Number.isNaN(parsed.getTime())) {
+      return value
+    }
+
+    return format(parsed, 'MMM d, yyyy')
+  } catch {
+    return value
+  }
+}
+
+const formatUpdatedAt = (value: string | null | undefined) => {
   if (!value) {
     return '—'
   }
@@ -89,6 +114,62 @@ const summarizeAssignees = (
   return assignees.map(person => person.name).join(', ')
 }
 
+type ReviewTaskDataCellsProps = {
+  task: TaskWithRelations
+  renderAssignees: RenderAssigneeFn
+  updatedAtOverride?: string | null | undefined
+}
+
+function ReviewTaskDataCells({
+  task,
+  renderAssignees,
+  updatedAtOverride,
+}: ReviewTaskDataCellsProps) {
+  const commentCount = task.commentCount ?? 0
+  const attachmentCount = task.attachments?.length ?? 0
+  const assignedSummary = summarizeAssignees(task, renderAssignees)
+  const updatedValue = updatedAtOverride ?? task.updated_at ?? null
+
+  return (
+    <>
+      <TableCell className='py-3 align-top'>
+        <div className='flex flex-col gap-1'>
+          <span className='text-sm leading-snug font-medium'>{task.title}</span>
+          <span className='text-muted-foreground text-xs'>
+            {assignedSummary}
+          </span>
+        </div>
+      </TableCell>
+      <TableCell className='text-muted-foreground py-3 text-center text-xs'>
+        {commentCount > 0 ? (
+          <span className='inline-flex items-center gap-1'>
+            <MessageCircle className='h-3.5 w-3.5' />
+            {commentCount}
+          </span>
+        ) : (
+          '—'
+        )}
+      </TableCell>
+      <TableCell className='text-muted-foreground py-3 text-center text-xs'>
+        {attachmentCount > 0 ? (
+          <span className='inline-flex items-center gap-1'>
+            <Paperclip className='h-3.5 w-3.5' />
+            {attachmentCount}
+          </span>
+        ) : (
+          '—'
+        )}
+      </TableCell>
+      <TableCell className='text-muted-foreground py-3 text-sm'>
+        {formatDueDate(task.due_on ?? null)}
+      </TableCell>
+      <TableCell className='text-muted-foreground py-3 text-sm'>
+        {formatUpdatedAt(updatedValue)}
+      </TableCell>
+    </>
+  )
+}
+
 export function ReviewTabContent(props: ReviewTabContentProps) {
   const {
     isActive,
@@ -104,6 +185,7 @@ export function ReviewTabContent(props: ReviewTabContentProps) {
     acceptAllDisabled,
     acceptAllDisabledReason,
     isAcceptingDone,
+    activeSheetTaskId,
     onUnacceptTask,
     onRestoreTask,
     onDestroyTask,
@@ -237,8 +319,14 @@ export function ReviewTabContent(props: ReviewTabContentProps) {
                     <TableHead className='text-muted-foreground text-xs font-semibold uppercase'>
                       Task
                     </TableHead>
+                    <TableHead className='text-muted-foreground text-center text-xs font-semibold uppercase'>
+                      Comments
+                    </TableHead>
+                    <TableHead className='text-muted-foreground text-center text-xs font-semibold uppercase'>
+                      Files
+                    </TableHead>
                     <TableHead className='text-muted-foreground text-xs font-semibold uppercase'>
-                      Assignees
+                      Due
                     </TableHead>
                     <TableHead className='text-muted-foreground text-xs font-semibold uppercase'>
                       Updated
@@ -253,7 +341,7 @@ export function ReviewTabContent(props: ReviewTabContentProps) {
                     <TableRow>
                       <TableCell
                         className='text-muted-foreground py-8 text-center text-sm'
-                        colSpan={4}
+                        colSpan={6}
                       >
                         Nothing in Done yet.
                       </TableCell>
@@ -278,10 +366,12 @@ export function ReviewTabContent(props: ReviewTabContentProps) {
                         Boolean(disabledReason) ||
                         isCurrentAction ||
                         isAcceptingDone
+                      const isActive = task.id === activeSheetTaskId
 
                       return (
                         <TableRow
                           key={task.id}
+                          data-state={isActive ? 'selected' : undefined}
                           role='button'
                           tabIndex={0}
                           onClick={() => onEditTask(task)}
@@ -291,17 +381,15 @@ export function ReviewTabContent(props: ReviewTabContentProps) {
                               onEditTask(task)
                             }
                           }}
-                          className='hover:bg-muted/50 cursor-pointer focus-visible:ring-2 focus-visible:ring-offset-0 focus-visible:outline-none'
+                          className={cn(
+                            'group cursor-pointer transition-colors focus-visible:ring-2 focus-visible:ring-offset-0 focus-visible:outline-none',
+                            isActive ? 'bg-primary/5' : 'hover:bg-muted/50'
+                          )}
                         >
-                          <TableCell className='py-3 text-sm font-medium'>
-                            {task.title}
-                          </TableCell>
-                          <TableCell className='text-muted-foreground py-3 text-sm'>
-                            {summarizeAssignees(task, renderAssignees)}
-                          </TableCell>
-                          <TableCell className='text-muted-foreground py-3 text-sm'>
-                            {formatTimestamp(task.updated_at)}
-                          </TableCell>
+                          <ReviewTaskDataCells
+                            task={task}
+                            renderAssignees={renderAssignees}
+                          />
                           <TableCell className='py-3 text-right'>
                             <DisabledFieldTooltip
                               disabled={Boolean(disabledReason)}
@@ -321,7 +409,7 @@ export function ReviewTabContent(props: ReviewTabContentProps) {
                                 {isCurrentAction ? (
                                   <Loader2 className='mr-2 h-4 w-4 animate-spin' />
                                 ) : (
-                                  <CheckCircle2 className='h-4 w-4' />
+                                  <CheckCircle2 className='mr-2 h-4 w-4' />
                                 )}
                                 Accept
                               </Button>
@@ -367,11 +455,14 @@ export function ReviewTabContent(props: ReviewTabContentProps) {
                     <TableHead className='text-muted-foreground text-xs font-semibold uppercase'>
                       Task
                     </TableHead>
-                    <TableHead className='text-muted-foreground text-xs font-semibold uppercase'>
-                      Assignees
+                    <TableHead className='text-muted-foreground text-center text-xs font-semibold uppercase'>
+                      Comments
+                    </TableHead>
+                    <TableHead className='text-muted-foreground text-center text-xs font-semibold uppercase'>
+                      Files
                     </TableHead>
                     <TableHead className='text-muted-foreground text-xs font-semibold uppercase'>
-                      Accepted
+                      Due
                     </TableHead>
                     <TableHead className='text-muted-foreground text-xs font-semibold uppercase'>
                       Updated
@@ -386,7 +477,7 @@ export function ReviewTabContent(props: ReviewTabContentProps) {
                     <TableRow>
                       <TableCell
                         className='text-muted-foreground py-8 text-center text-sm'
-                        colSpan={5}
+                        colSpan={6}
                       >
                         No tasks have been accepted yet.
                       </TableCell>
@@ -404,10 +495,14 @@ export function ReviewTabContent(props: ReviewTabContentProps) {
                         (blockOtherActions
                           ? 'Please wait for the current task update to finish.'
                           : null)
+                      const isActive = task.id === activeSheetTaskId
+                      const updatedOverride =
+                        task.accepted_at ?? task.updated_at ?? null
 
                       return (
                         <TableRow
                           key={task.id}
+                          data-state={isActive ? 'selected' : undefined}
                           role='button'
                           tabIndex={0}
                           onClick={() => onEditTask(task)}
@@ -417,20 +512,16 @@ export function ReviewTabContent(props: ReviewTabContentProps) {
                               onEditTask(task)
                             }
                           }}
-                          className='hover:bg-muted/50 cursor-pointer focus-visible:ring-2 focus-visible:ring-offset-0 focus-visible:outline-none'
+                          className={cn(
+                            'group cursor-pointer transition-colors focus-visible:ring-2 focus-visible:ring-offset-0 focus-visible:outline-none',
+                            isActive ? 'bg-primary/5' : 'hover:bg-muted/50'
+                          )}
                         >
-                          <TableCell className='py-3 text-sm font-medium'>
-                            {task.title}
-                          </TableCell>
-                          <TableCell className='text-muted-foreground py-3 text-sm'>
-                            {summarizeAssignees(task, renderAssignees)}
-                          </TableCell>
-                          <TableCell className='text-muted-foreground py-3 text-sm'>
-                            {formatTimestamp(task.accepted_at)}
-                          </TableCell>
-                          <TableCell className='text-muted-foreground py-3 text-sm'>
-                            {formatTimestamp(task.updated_at)}
-                          </TableCell>
+                          <ReviewTaskDataCells
+                            task={task}
+                            renderAssignees={renderAssignees}
+                            updatedAtOverride={updatedOverride}
+                          />
                           <TableCell className='py-3 text-right'>
                             <DisabledFieldTooltip
                               disabled={Boolean(disabledReason)}
@@ -497,8 +588,14 @@ export function ReviewTabContent(props: ReviewTabContentProps) {
                     <TableHead className='text-muted-foreground text-xs font-semibold uppercase'>
                       Task
                     </TableHead>
+                    <TableHead className='text-muted-foreground text-center text-xs font-semibold uppercase'>
+                      Comments
+                    </TableHead>
+                    <TableHead className='text-muted-foreground text-center text-xs font-semibold uppercase'>
+                      Files
+                    </TableHead>
                     <TableHead className='text-muted-foreground text-xs font-semibold uppercase'>
-                      Deleted
+                      Due
                     </TableHead>
                     <TableHead className='text-muted-foreground text-xs font-semibold uppercase'>
                       Updated
@@ -513,7 +610,7 @@ export function ReviewTabContent(props: ReviewTabContentProps) {
                     <TableRow>
                       <TableCell
                         className='text-muted-foreground py-8 text-center text-sm'
-                        colSpan={4}
+                        colSpan={6}
                       >
                         No archived tasks yet.
                       </TableCell>
@@ -535,10 +632,14 @@ export function ReviewTabContent(props: ReviewTabContentProps) {
                         (blockOtherActions
                           ? 'Please wait for the current task update to finish.'
                           : null)
+                      const isActive = task.id === activeSheetTaskId
+                      const updatedOverride =
+                        task.deleted_at ?? task.updated_at ?? null
 
                       return (
                         <TableRow
                           key={task.id}
+                          data-state={isActive ? 'selected' : undefined}
                           role='button'
                           tabIndex={0}
                           onClick={() => onEditTask(task)}
@@ -548,17 +649,16 @@ export function ReviewTabContent(props: ReviewTabContentProps) {
                               onEditTask(task)
                             }
                           }}
-                          className='hover:bg-muted/50 cursor-pointer focus-visible:ring-2 focus-visible:ring-offset-0 focus-visible:outline-none'
+                          className={cn(
+                            'group cursor-pointer transition-colors focus-visible:ring-2 focus-visible:ring-offset-0 focus-visible:outline-none',
+                            isActive ? 'bg-primary/5' : 'hover:bg-muted/50'
+                          )}
                         >
-                          <TableCell className='py-3 text-sm font-medium'>
-                            {task.title}
-                          </TableCell>
-                          <TableCell className='text-muted-foreground py-3 text-sm'>
-                            {formatTimestamp(task.deleted_at)}
-                          </TableCell>
-                          <TableCell className='text-muted-foreground py-3 text-sm'>
-                            {formatTimestamp(task.updated_at)}
-                          </TableCell>
+                          <ReviewTaskDataCells
+                            task={task}
+                            renderAssignees={renderAssignees}
+                            updatedAtOverride={updatedOverride}
+                          />
                           <TableCell className='py-3 text-right'>
                             <div className='flex justify-end gap-2'>
                               <DisabledFieldTooltip

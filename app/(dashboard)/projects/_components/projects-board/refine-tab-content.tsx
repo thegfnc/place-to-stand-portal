@@ -15,6 +15,12 @@ import type { TaskWithRelations } from '@/lib/types'
 import type { RenderAssigneeFn } from '../../../../../lib/projects/board/board-selectors'
 import type { ProjectsBoardActiveProject } from './board-tab-content'
 
+const ON_DECK_SECTION_DESCRIPTION =
+  'Tasks that have been refined and are queued for development.'
+
+const BACKLOG_SECTION_DESCRIPTION =
+  'Ideas and requests waiting to be refined for upcoming cycles.'
+
 export type RefineTabContentProps = {
   isActive: boolean
   feedback: string | null
@@ -88,6 +94,7 @@ export function RefineTabContent(props: RefineTabContentProps) {
                 onEditTask={onEditTask}
                 activeTaskId={activeSheetTaskId}
                 onCreateTask={onCreateTask}
+                description={ON_DECK_SECTION_DESCRIPTION}
               />
               <RefineSection
                 status={BACKLOG_SECTIONS[1].id}
@@ -98,6 +105,7 @@ export function RefineTabContent(props: RefineTabContentProps) {
                 onEditTask={onEditTask}
                 activeTaskId={activeSheetTaskId}
                 onCreateTask={onCreateTask}
+                description={BACKLOG_SECTION_DESCRIPTION}
               />
             </div>
             <TaskDragOverlay
