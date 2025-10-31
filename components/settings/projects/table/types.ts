@@ -21,3 +21,7 @@ export type ProjectsSettingsTableProps = {
   contractorUsers: ContractorUserSummary[]
   membersByProject: Record<string, ContractorUserSummary[]>
 }
+
+export type ProjectsTableMode = 'active' | 'archive'
+
+export type ProjectsTab = 'projects' | 'archive' | 'activity'
