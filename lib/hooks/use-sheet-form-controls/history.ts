@@ -1,81 +1,33 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { FieldValues, UseFormReturn } from 'react-hook-form'
+import type { FieldValues } from 'react-hook-form'
+
+import { cloneData, cloneValues } from './clone'
+import type { FormHistoryArgs, FormHistoryReturn, FormSnapshot } from './types'
 
 const DEFAULT_MAX_SNAPSHOTS = 100
 const DEFAULT_DEBOUNCE_MS = 300
 
-const cloneValues = <T extends FieldValues>(values: T): T => {
-  if (typeof structuredClone === 'function') {
-    return structuredClone(values)
-  }
-
-  return JSON.parse(JSON.stringify(values)) as T
-}
-
-const cloneData = <T>(value: T): T => {
-  if (value === undefined || value === null) {
-    return value
-  }
-
-  if (typeof structuredClone === 'function') {
-    return structuredClone(value)
-  }
-
-  return JSON.parse(JSON.stringify(value)) as T
-}
-
-type FormSnapshot<T extends FieldValues> = {
-  values: T
-  externalState?: unknown
-  signature: string
-}
-
-type UseSheetFormControlsOptions<T extends FieldValues> = {
-  form: UseFormReturn<T>
-  isActive: boolean
-  canSave: boolean
-  onSave: () => void
-  historyKey: string | number
-  maxSnapshots?: number
-  debounceMs?: number
-  getExternalState?: () => unknown
-  applyExternalState?: (state: unknown) => void
-}
-
-type UseSheetFormControlsReturn = {
-  undo: () => void
-  redo: () => void
-  canUndo: boolean
-  canRedo: boolean
-  notifyExternalChange: () => void
-}
-
-export function useSheetFormControls<T extends FieldValues>(
-  options: UseSheetFormControlsOptions<T>
-): UseSheetFormControlsReturn {
-  const {
-    form,
-    isActive,
-    canSave,
-    onSave,
-    historyKey,
-    maxSnapshots,
-    debounceMs,
-    getExternalState,
-    applyExternalState,
-  } = options
+export function useFormHistory<T extends FieldValues>({
+  form,
+  isActive,
+  historyKey,
+  maxSnapshots,
+  debounceMs,
+  getExternalState,
+  applyExternalState,
+}: FormHistoryArgs<T>): FormHistoryReturn {
   const historyRef = useRef<FormSnapshot<T>[]>([])
   const indexRef = useRef(-1)
   const isApplyingRef = useRef(false)
-  const [canUndo, setCanUndo] = useState(false)
-  const [canRedo, setCanRedo] = useState(false)
   const pendingSnapshotRef = useRef<{
     values: T
     externalState?: unknown
   } | null>(null)
   const debounceTimerRef = useRef<number | null>(null)
+  const [canUndo, setCanUndo] = useState(false)
+  const [canRedo, setCanRedo] = useState(false)
 
   const effectiveMaxSnapshots = maxSnapshots ?? DEFAULT_MAX_SNAPSHOTS
   const effectiveDebounceMs = debounceMs ?? DEFAULT_DEBOUNCE_MS
@@ -145,7 +97,7 @@ export function useSheetFormControls<T extends FieldValues>(
     [buildSnapshot, effectiveMaxSnapshots, refreshCapabilities]
   )
 
-  const flushPendingSnapshot = useCallback(() => {
+  const flushPendingSnapshots = useCallback(() => {
     if (!pendingSnapshotRef.current) {
       clearPendingTimer()
       return
@@ -160,7 +112,7 @@ export function useSheetFormControls<T extends FieldValues>(
   const applySnapshot = useCallback(
     (snapshot: FormSnapshot<T>, nextIndex: number) => {
       isApplyingRef.current = true
-      flushPendingSnapshot()
+      flushPendingSnapshots()
       form.reset(cloneValues(snapshot.values))
 
       if (applyExternalState) {
@@ -179,19 +131,19 @@ export function useSheetFormControls<T extends FieldValues>(
         Promise.resolve().then(releaseFlag)
       }
     },
-    [applyExternalState, flushPendingSnapshot, form, refreshCapabilities]
+    [applyExternalState, flushPendingSnapshots, form, refreshCapabilities]
   )
 
   const resetHistory = useCallback(
     (values: T, externalState?: unknown) => {
-      flushPendingSnapshot()
+      flushPendingSnapshots()
       const snapshot = buildSnapshot(values, externalState)
 
       historyRef.current = [snapshot]
       indexRef.current = 0
       refreshCapabilities()
     },
-    [buildSnapshot, flushPendingSnapshot, refreshCapabilities]
+    [buildSnapshot, flushPendingSnapshots, refreshCapabilities]
   )
 
   const scheduleSnapshot = useCallback(
@@ -220,11 +172,16 @@ export function useSheetFormControls<T extends FieldValues>(
         pushSnapshot(snapshot.values, snapshot.externalState)
       }, effectiveDebounceMs)
     },
-    [clearPendingTimer, effectiveDebounceMs, isActive, pushSnapshot]
+    [
+      clearPendingTimer,
+      effectiveDebounceMs,
+      isActive,
+      pushSnapshot,
+    ]
   )
 
   const undo = useCallback(() => {
-    flushPendingSnapshot()
+    flushPendingSnapshots()
     if (indexRef.current <= 0) {
       return
     }
@@ -237,10 +194,10 @@ export function useSheetFormControls<T extends FieldValues>(
     }
 
     applySnapshot(snapshot, nextIndex)
-  }, [applySnapshot, flushPendingSnapshot])
+  }, [applySnapshot, flushPendingSnapshots])
 
   const redo = useCallback(() => {
-    flushPendingSnapshot()
+    flushPendingSnapshots()
     if (indexRef.current >= historyRef.current.length - 1) {
       return
     }
@@ -253,11 +210,11 @@ export function useSheetFormControls<T extends FieldValues>(
     }
 
     applySnapshot(snapshot, nextIndex)
-  }, [applySnapshot, flushPendingSnapshot])
+  }, [applySnapshot, flushPendingSnapshots])
 
   useEffect(() => {
     if (!isActive) {
-      flushPendingSnapshot()
+      flushPendingSnapshots()
       return
     }
 
@@ -273,10 +230,10 @@ export function useSheetFormControls<T extends FieldValues>(
 
     return () => {
       subscription.unsubscribe()
-      flushPendingSnapshot()
+      flushPendingSnapshots()
     }
   }, [
-    flushPendingSnapshot,
+    flushPendingSnapshots,
     form,
     getExternalState,
     historyKey,
@@ -284,73 +241,6 @@ export function useSheetFormControls<T extends FieldValues>(
     resetHistory,
     scheduleSnapshot,
   ])
-
-  useEffect(() => {
-    if (!isActive) {
-      return
-    }
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      const key = event.key.toLowerCase()
-      const hasMeta = event.metaKey
-      const hasCtrl = event.ctrlKey
-      const modifierActive = hasMeta || hasCtrl
-
-      if (!modifierActive) {
-        return
-      }
-
-      if (key === 's') {
-        if (!canSave) {
-          return
-        }
-
-        event.preventDefault()
-        flushPendingSnapshot()
-        onSave()
-        return
-      }
-
-      if (key === 'z') {
-        if (event.shiftKey) {
-          flushPendingSnapshot()
-          if (indexRef.current >= historyRef.current.length - 1) {
-            return
-          }
-
-          event.preventDefault()
-          redo()
-          return
-        }
-
-        if (indexRef.current <= 0) {
-          return
-        }
-
-        event.preventDefault()
-        flushPendingSnapshot()
-        undo()
-        return
-      }
-
-      if (key === 'y' && hasCtrl && !hasMeta) {
-        flushPendingSnapshot()
-        if (indexRef.current >= historyRef.current.length - 1) {
-          return
-        }
-
-        event.preventDefault()
-        redo()
-      }
-    }
-
-    window.addEventListener('keydown', handleKeyDown)
-
-    return () => {
-      flushPendingSnapshot()
-      window.removeEventListener('keydown', handleKeyDown)
-    }
-  }, [canSave, flushPendingSnapshot, isActive, onSave, redo, undo])
 
   const notifyExternalChange = useCallback(() => {
     if (!isActive) {
@@ -365,6 +255,7 @@ export function useSheetFormControls<T extends FieldValues>(
     redo,
     canUndo,
     canRedo,
+    flushPendingSnapshots,
     notifyExternalChange,
   }
 }

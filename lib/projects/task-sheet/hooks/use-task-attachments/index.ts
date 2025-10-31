@@ -2,85 +2,32 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
-import type { ToastOptions } from '@/components/ui/use-toast'
-import type { TaskWithRelations } from '@/lib/types'
 import {
   ACCEPTED_TASK_ATTACHMENT_MIME_TYPES,
   MAX_TASK_ATTACHMENT_FILE_SIZE,
 } from '@/lib/storage/task-attachment-constants'
 
-const UPLOAD_ENDPOINT = '/api/uploads/task-attachment'
+import { buildDefaultAttachments } from './default-attachments'
+import {
+  UPLOAD_ENDPOINT,
+  type AttachmentDraft,
+  type AttachmentItem,
+  type UseTaskAttachmentsArgs,
+  type UseTaskAttachmentsReturn,
+} from './types'
 
-type AttachmentDraft = {
-  id: string | null
-  storagePath: string
-  originalName: string
-  mimeType: string
-  fileSize: number
-  isPending: boolean
-  downloadUrl: string | null
-  previewUrl: string | null
-}
-
-export type AttachmentItem = {
-  key: string
-  id: string | null
-  name: string
-  mimeType: string
-  size: number
-  isPending: boolean
-  url: string | null
-}
-
-export type AttachmentSubmission = {
-  toAttach: Array<{
-    path: string
-    originalName: string
-    mimeType: string
-    fileSize: number
-  }>
-  toRemove: string[]
-}
-
-export type UseTaskAttachmentsArgs = {
-  task?: TaskWithRelations
-  canManage: boolean
-  toast: (options: ToastOptions) => void
-}
-
-export type UseTaskAttachmentsReturn = {
-  attachmentItems: AttachmentItem[]
-  attachmentsDirty: boolean
-  isUploading: boolean
-  handleAttachmentUpload: (files: FileList | File[]) => void
-  handleAttachmentRemove: (key: string) => void
-  resetAttachmentsState: (options?: { preservePending?: boolean }) => void
-  buildSubmissionPayload: () => AttachmentSubmission | undefined
-}
+const makeAttachmentKey = (attachment: AttachmentDraft) =>
+  attachment.id ?? attachment.storagePath
 
 export const useTaskAttachments = ({
   task,
   canManage,
   toast,
 }: UseTaskAttachmentsArgs): UseTaskAttachmentsReturn => {
-  const taskAttachments = task?.attachments ?? null
-
-  const defaultAttachments = useMemo<AttachmentDraft[]>(() => {
-    if (!taskAttachments?.length) {
-      return []
-    }
-
-    return taskAttachments.map(attachment => ({
-      id: attachment.id,
-      storagePath: attachment.storage_path,
-      originalName: attachment.original_name,
-      mimeType: attachment.mime_type,
-      fileSize: Number(attachment.file_size ?? 0),
-      isPending: false,
-      downloadUrl: `/api/storage/task-attachment/${attachment.id}`,
-      previewUrl: null,
-    }))
-  }, [taskAttachments])
+  const defaultAttachments = useMemo(
+    () => buildDefaultAttachments(task),
+    [task]
+  )
 
   const [attachments, setAttachments] =
     useState<AttachmentDraft[]>(defaultAttachments)
@@ -171,11 +118,6 @@ export const useTaskAttachments = ({
 
     return false
   }, [attachments, attachmentsToRemove, defaultAttachments])
-
-  const makeAttachmentKey = useCallback(
-    (attachment: AttachmentDraft) => attachment.id ?? attachment.storagePath,
-    []
-  )
 
   const handleAttachmentUpload = useCallback(
     async (fileList: FileList | File[]) => {
@@ -302,7 +244,7 @@ export const useTaskAttachments = ({
         prev.filter(attachment => makeAttachmentKey(attachment) !== key)
       )
     },
-    [attachments, cleanupPendingAttachments, makeAttachmentKey]
+    [attachments, cleanupPendingAttachments]
   )
 
   const attachmentItems = useMemo<AttachmentItem[]>(
@@ -316,7 +258,7 @@ export const useTaskAttachments = ({
         isPending: attachment.isPending,
         url: attachment.downloadUrl,
       })),
-    [attachments, makeAttachmentKey]
+    [attachments]
   )
 
   const isUploading = pendingUploadCount > 0
@@ -363,3 +305,10 @@ export const useTaskAttachments = ({
     buildSubmissionPayload,
   }
 }
+
+export type {
+  AttachmentItem,
+  AttachmentSubmission,
+  UseTaskAttachmentsArgs,
+  UseTaskAttachmentsReturn,
+} from './types'

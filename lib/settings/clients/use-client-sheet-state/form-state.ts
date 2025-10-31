@@ -1,101 +1,50 @@
-'use client'
-
-import { useCallback, useEffect, useMemo, useState, useTransition } from 'react'
-import { useForm, type UseFormReturn } from 'react-hook-form'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 
+import { saveClient } from '@/app/(dashboard)/settings/clients/actions'
 import { useUnsavedChangesWarning } from '@/lib/hooks/use-unsaved-changes-warning'
-import { useToast } from '@/components/ui/use-toast'
-
-import {
-  saveClient,
-  softDeleteClient,
-} from '@/app/(dashboard)/settings/clients/actions'
 
 import {
   CLIENT_MEMBERS_HELP_TEXT,
   NO_AVAILABLE_CLIENT_USERS_MESSAGE,
   PENDING_REASON,
-} from './client-sheet-constants'
+} from '../client-sheet-constants'
 import {
   attachDisplayName,
   cloneMembers,
   formatUserDisplayName,
   type ClientMember,
-  type ClientRow,
-  type ClientUserSummary,
-} from './client-sheet-utils'
+} from '../client-sheet-utils'
 import {
   clientSheetFormSchema,
   type ClientSheetFormValues,
-} from './client-sheet-schema'
+} from '../client-sheet-schema'
 
-export type UseClientSheetStateArgs = {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  onComplete: () => void
-  client: ClientRow | null
-  allClientUsers: ClientUserSummary[]
-  clientMembers: Record<string, ClientUserSummary[]>
-}
+import type {
+  BaseFormState,
+  ClientMemberOption,
+  ClientSheetFormStateArgs,
+} from './types'
 
-export type ClientMemberOption = ClientMember
-
-export type UseClientSheetStateReturn = {
-  form: UseFormReturn<ClientSheetFormValues>
-  isEditing: boolean
-  feedback: string | null
-  isPending: boolean
-  addButtonDisabled: boolean
-  addButtonDisabledReason: string | null
-  submitDisabled: boolean
-  submitDisabledReason: string | null
-  deleteDisabled: boolean
-  deleteDisabledReason: string | null
-  selectedMembers: ClientMemberOption[]
-  availableMembers: ClientMemberOption[]
-  membersHelpText: string
-  isPickerOpen: boolean
-  removalCandidate: ClientMemberOption | null
-  removalName: string | null
-  clientDisplayName: string
-  sheetTitle: string
-  sheetDescription: string
-  pendingReason: string
-  isDeleteDialogOpen: boolean
-  unsavedChangesDialog: ReturnType<typeof useUnsavedChangesWarning>['dialog']
-  handleSheetOpenChange: (open: boolean) => void
-  handleFormSubmit: (values: ClientSheetFormValues) => void
-  handlePickerOpenChange: (open: boolean) => void
-  handleAddMember: (member: ClientMemberOption) => void
-  handleRequestRemoval: (member: ClientMemberOption) => void
-  handleCancelRemoval: () => void
-  handleConfirmRemoval: () => void
-  handleRequestDelete: () => void
-  handleCancelDelete: () => void
-  handleConfirmDelete: () => void
-  replaceMembers: (members: ClientMemberOption[]) => void
-}
-
-export const useClientSheetState = ({
+export function useClientSheetFormState({
   open,
   onOpenChange,
   onComplete,
   client,
-  allClientUsers,
   clientMembers,
-}: UseClientSheetStateArgs): UseClientSheetStateReturn => {
-  const isEditing = Boolean(client)
-  const [feedback, setFeedback] = useState<string | null>(null)
-  const [isPending, startTransition] = useTransition()
+  allClientUsers,
+  isEditing,
+  isPending,
+  startTransition,
+  setFeedback,
+  toast,
+}: ClientSheetFormStateArgs): BaseFormState {
   const [isPickerOpen, setIsPickerOpen] = useState(false)
-  const [removalCandidate, setRemovalCandidate] = useState<ClientMember | null>(
-    null
-  )
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [removalCandidate, setRemovalCandidate] =
+    useState<ClientMember | null>(null)
   const [savedMemberIds, setSavedMemberIds] = useState<string[]>([])
   const [selectedMembers, setSelectedMembers] = useState<ClientMember[]>([])
-  const { toast } = useToast()
 
   const initialMembers = useMemo(() => {
     if (!client) return [] as ClientMember[]
@@ -141,8 +90,6 @@ export const useClientSheetState = ({
 
   const submitDisabled = isPending
   const submitDisabledReason = submitDisabled ? PENDING_REASON : null
-  const deleteDisabled = isPending
-  const deleteDisabledReason = deleteDisabled ? PENDING_REASON : null
 
   const hasUnsavedChanges = form.formState.isDirty || membershipDirty
 
@@ -164,7 +111,7 @@ export const useClientSheetState = ({
     setSelectedMembers(memberSnapshot)
     setRemovalCandidate(null)
     setIsPickerOpen(false)
-  }, [client, form, initialMembers])
+  }, [client, form, initialMembers, setFeedback])
 
   useEffect(() => {
     if (!open) {
@@ -204,7 +151,7 @@ export const useClientSheetState = ({
     [addButtonDisabled]
   )
 
-  const handleAddMember = useCallback((member: ClientMember) => {
+  const handleAddMember = useCallback((member: ClientMemberOption) => {
     setSelectedMembers(prev => {
       if (prev.some(existing => existing.id === member.id)) {
         return prev
@@ -214,7 +161,7 @@ export const useClientSheetState = ({
     setIsPickerOpen(false)
   }, [])
 
-  const handleRequestRemoval = useCallback((member: ClientMember) => {
+  const handleRequestRemoval = useCallback((member: ClientMemberOption) => {
     setRemovalCandidate(member)
   }, [])
 
@@ -232,7 +179,7 @@ export const useClientSheetState = ({
     setRemovalCandidate(null)
   }, [removalCandidate])
 
-  const replaceMembers = useCallback((members: ClientMember[]) => {
+  const replaceMembers = useCallback((members: ClientMemberOption[]) => {
     setSelectedMembers(cloneMembers(members))
     setRemovalCandidate(null)
     setIsPickerOpen(false)
@@ -249,7 +196,7 @@ export const useClientSheetState = ({
         setFeedback(null)
 
         const payload = {
-          id: client?.id,
+          id: client?.id ?? undefined,
           name: values.name.trim(),
           slug: isEditing
             ? values.slug?.trim()
@@ -297,82 +244,28 @@ export const useClientSheetState = ({
       onComplete,
       onOpenChange,
       selectedMembers,
+      setFeedback,
       startTransition,
       toast,
     ]
   )
 
-  const handleRequestDelete = useCallback(() => {
-    if (!client || isPending) {
-      return
-    }
-
-    setIsDeleteDialogOpen(true)
-  }, [client, isPending])
-
-  const handleCancelDelete = useCallback(() => {
-    if (isPending) {
-      return
-    }
-
-    setIsDeleteDialogOpen(false)
-  }, [isPending])
-
-  const handleConfirmDelete = useCallback(() => {
-    if (!client || isPending) {
-      return
-    }
-
-    setIsDeleteDialogOpen(false)
-    startTransition(async () => {
-      setFeedback(null)
-      const result = await softDeleteClient({ id: client.id })
-
-      if (result.error) {
-        setFeedback(result.error)
-        return
-      }
-
-      toast({
-        title: 'Client deleted',
-        description: `${client.name} is hidden from selectors but remains available for history.`,
-      })
-
-      onOpenChange(false)
-      onComplete()
-    })
-  }, [client, isPending, onComplete, onOpenChange, startTransition, toast])
-
   const removalName = removalCandidate
     ? formatUserDisplayName(removalCandidate)
     : null
 
-  const clientDisplayName = client?.name ?? 'this client'
-
   return {
     form,
-    isEditing,
-    feedback,
-    isPending,
     addButtonDisabled,
     addButtonDisabledReason,
     submitDisabled,
     submitDisabledReason,
-    deleteDisabled,
-    deleteDisabledReason,
-    selectedMembers,
     availableMembers,
+    selectedMembers,
     membersHelpText: CLIENT_MEMBERS_HELP_TEXT,
     isPickerOpen,
     removalCandidate,
     removalName,
-    clientDisplayName,
-    sheetTitle: isEditing ? 'Edit client' : 'Add client',
-    sheetDescription: isEditing
-      ? 'Adjust display details or delete the organization.'
-      : 'Register a client so projects and reporting stay organized.',
-    pendingReason: PENDING_REASON,
-    isDeleteDialogOpen,
     unsavedChangesDialog,
     handleSheetOpenChange,
     handleFormSubmit,
@@ -381,9 +274,6 @@ export const useClientSheetState = ({
     handleRequestRemoval,
     handleCancelRemoval,
     handleConfirmRemoval,
-    handleRequestDelete,
-    handleCancelDelete,
-    handleConfirmDelete,
     replaceMembers,
   }
 }
