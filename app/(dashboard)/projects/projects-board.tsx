@@ -23,6 +23,7 @@ import { useProjectsBoardState } from '@/lib/projects/board/use-projects-board-s
 import { useToast } from '@/components/ui/use-toast'
 import {
   acceptDoneTasks,
+  acceptTask,
   destroyTask,
   restoreTask,
   unacceptTask,
@@ -31,11 +32,11 @@ import type { ActionResult } from './actions/action-types'
 
 type Props = Omit<Parameters<typeof useProjectsBoardState>[0], 'currentView'>
 type ProjectsBoardProps = Props & {
-  initialTab?: 'board' | 'activity' | 'refine' | 'archive'
+  initialTab?: 'board' | 'activity' | 'refine' | 'review'
 }
 
-type ArchiveActionKind = 'unaccept' | 'restore' | 'destroy'
-type ArchiveActionState = { type: ArchiveActionKind; taskId: string }
+type ReviewActionKind = 'accept' | 'unaccept' | 'restore' | 'destroy'
+type ReviewActionState = { type: ReviewActionKind; taskId: string }
 
 const NO_PROJECTS_TITLE = 'No projects assigned yet'
 const NO_PROJECTS_DESCRIPTION =
@@ -91,9 +92,9 @@ export function ProjectsBoard({
     ? `projects-board-assigned-filter:${props.currentUserId}`
     : null
   const [isAcceptingDone, startAcceptingDone] = useTransition()
-  const [isArchiveActionPending, startArchiveAction] = useTransition()
-  const [pendingArchiveAction, setPendingArchiveAction] =
-    useState<ArchiveActionState | null>(null)
+  const [isReviewActionPending, startReviewAction] = useTransition()
+  const [pendingReviewAction, setPendingReviewAction] =
+    useState<ReviewActionState | null>(null)
 
   const { onlyAssignedToMe, handleAssignedFilterChange } =
     useBoardAssignedFilter({
@@ -129,12 +130,10 @@ export function ProjectsBoard({
   const activityHref = projectPathBase
     ? `${projectPathBase}/activity`
     : '/projects'
-  const archiveHref = projectPathBase
-    ? `${projectPathBase}/archive`
-    : '/projects'
+  const reviewHref = projectPathBase ? `${projectPathBase}/review` : '/projects'
   const refineDisabled = !projectPathBase
   const activityDisabled = !projectPathBase
-  const archiveDisabled = !projectPathBase
+  const reviewDisabled = !projectPathBase
 
   const renderAssignees = useMemo(
     () => createRenderAssignees(memberDirectory),
@@ -181,11 +180,11 @@ export function ProjectsBoard({
       ? 'No tasks are ready for acceptance.'
       : null
 
-  const archiveActionTaskId = pendingArchiveAction?.taskId ?? null
-  const archiveActionType = pendingArchiveAction?.type ?? null
-  const archiveActionDisabledReason = canAcceptTasks
+  const reviewActionTaskId = pendingReviewAction?.taskId ?? null
+  const reviewActionType = pendingReviewAction?.type ?? null
+  const reviewActionDisabledReason = canAcceptTasks
     ? null
-    : 'Only administrators can manage archived tasks.'
+    : 'Only administrators can manage review tasks.'
 
   const handleAcceptAllDone = useCallback(() => {
     if (!activeProject) {
@@ -229,9 +228,9 @@ export function ProjectsBoard({
     })
   }, [activeProject, canAcceptTasks, startAcceptingDone, toast])
 
-  const performArchiveAction = useCallback(
+  const performReviewAction = useCallback(
     (
-      type: ArchiveActionKind,
+      type: ReviewActionKind,
       taskId: string,
       action: () => Promise<ActionResult>,
       success: { title: string; description?: string },
@@ -241,21 +240,21 @@ export function ProjectsBoard({
         toast({
           variant: 'destructive',
           title: 'Action not allowed',
-          description: 'Only administrators can manage archived tasks.',
+          description: 'Only administrators can manage review tasks.',
         })
         return
       }
 
       if (
-        pendingArchiveAction &&
-        pendingArchiveAction.taskId === taskId &&
-        pendingArchiveAction.type === type
+        pendingReviewAction &&
+        pendingReviewAction.taskId === taskId &&
+        pendingReviewAction.type === type
       ) {
         return
       }
 
-      setPendingArchiveAction({ type, taskId })
-      startArchiveAction(async () => {
+      setPendingReviewAction({ type, taskId })
+      startReviewAction(async () => {
         try {
           const result = await action()
 
@@ -273,23 +272,39 @@ export function ProjectsBoard({
             description: success.description,
           })
         } catch (error) {
-          console.error('Archive action failed', error)
+          console.error('Review action failed', error)
           toast({
             variant: 'destructive',
             title: errorTitle,
             description: 'An unexpected error occurred.',
           })
         } finally {
-          setPendingArchiveAction(null)
+          setPendingReviewAction(null)
         }
       })
     },
-    [canAcceptTasks, pendingArchiveAction, startArchiveAction, toast]
+    [canAcceptTasks, pendingReviewAction, startReviewAction, toast]
+  )
+
+  const handleAcceptTask = useCallback(
+    (taskId: string) => {
+      performReviewAction(
+        'accept',
+        taskId,
+        () => acceptTask({ taskId }),
+        {
+          title: 'Task accepted',
+          description: 'The task has been moved out of Done.',
+        },
+        'Unable to accept task'
+      )
+    },
+    [performReviewAction]
   )
 
   const handleUnacceptTask = useCallback(
     (taskId: string) => {
-      performArchiveAction(
+      performReviewAction(
         'unaccept',
         taskId,
         () => unacceptTask({ taskId }),
@@ -297,12 +312,12 @@ export function ProjectsBoard({
         'Unable to unaccept task'
       )
     },
-    [performArchiveAction]
+    [performReviewAction]
   )
 
   const handleRestoreTask = useCallback(
     (taskId: string) => {
-      performArchiveAction(
+      performReviewAction(
         'restore',
         taskId,
         () => restoreTask({ taskId }),
@@ -313,12 +328,12 @@ export function ProjectsBoard({
         'Unable to restore task'
       )
     },
-    [performArchiveAction]
+    [performReviewAction]
   )
 
   const handleDestroyTask = useCallback(
     (taskId: string) => {
-      performArchiveAction(
+      performReviewAction(
         'destroy',
         taskId,
         () => destroyTask({ taskId }),
@@ -326,7 +341,7 @@ export function ProjectsBoard({
         'Unable to delete task'
       )
     },
-    [performArchiveAction]
+    [performReviewAction]
   )
 
   if (props.projects.length === 0) {
@@ -389,10 +404,10 @@ export function ProjectsBoard({
           boardHref={boardHref}
           refineHref={refineHref}
           activityHref={activityHref}
-          archiveHref={archiveHref}
+          reviewHref={reviewHref}
           refineDisabled={refineDisabled}
           activityDisabled={activityDisabled}
-          archiveDisabled={archiveDisabled}
+          reviewDisabled={reviewDisabled}
           onlyAssignedToMe={onlyAssignedToMe}
           onAssignedFilterChange={handleAssignedFilterChange}
           feedback={feedback}
@@ -431,19 +446,21 @@ export function ProjectsBoard({
           backlogTasks={backlogTasks}
           activeSheetTaskId={activeSheetTaskId}
           activityTargetClientId={activeProject?.client?.id ?? null}
+          doneTasks={doneColumnTasks}
           acceptedTasks={acceptedTasks}
           archivedTasks={archivedTasks}
           onAcceptAllDone={handleAcceptAllDone}
           acceptAllDisabled={acceptAllDisabled}
           acceptAllDisabledReason={acceptAllDisabledReason}
           isAcceptingDone={isAcceptingDone}
+          onAcceptTask={handleAcceptTask}
           onUnacceptTask={handleUnacceptTask}
           onRestoreTask={handleRestoreTask}
           onDestroyTask={handleDestroyTask}
-          archiveActionTaskId={archiveActionTaskId}
-          archiveActionType={archiveActionType}
-          archiveActionDisabledReason={archiveActionDisabledReason}
-          isArchiveActionPending={isArchiveActionPending}
+          reviewActionTaskId={reviewActionTaskId}
+          reviewActionType={reviewActionType}
+          reviewActionDisabledReason={reviewActionDisabledReason}
+          isReviewActionPending={isReviewActionPending}
         />
         {activeProject ? (
           <TaskSheet

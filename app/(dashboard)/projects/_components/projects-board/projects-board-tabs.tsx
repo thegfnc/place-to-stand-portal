@@ -7,20 +7,20 @@ import type { RenderAssigneeFn } from '../../../../../lib/projects/board/board-s
 import { BoardTabContent } from './board-tab-content'
 import { RefineTabContent } from './refine-tab-content'
 import { ActivityTabContent } from './activity-tab-content'
-import { ArchiveTabContent } from './archive-tab-content'
-import type { ArchiveActionKind } from './archive-tab-content'
+import { ReviewTabContent } from './review-tab-content'
+import type { ReviewActionKind } from './review-tab-content'
 import { ProjectsBoardTabsHeader } from './projects-board-tabs-header'
 import type { ProjectsBoardActiveProject } from './board-tab-content'
 
 export type ProjectsBoardTabsProps = {
-  initialTab: 'board' | 'refine' | 'activity' | 'archive'
+  initialTab: 'board' | 'refine' | 'activity' | 'review'
   boardHref: string
   refineHref: string
   activityHref: string
-  archiveHref: string
+  reviewHref: string
   refineDisabled: boolean
   activityDisabled: boolean
-  archiveDisabled: boolean
+  reviewDisabled: boolean
   onlyAssignedToMe: boolean
   onAssignedFilterChange: (checked: boolean) => void
   feedback: string | null
@@ -42,19 +42,21 @@ export type ProjectsBoardTabsProps = {
   backlogTasks: TaskWithRelations[]
   activeSheetTaskId: string | null
   activityTargetClientId: string | null
+  doneTasks: TaskWithRelations[]
   acceptedTasks: TaskWithRelations[]
   archivedTasks: TaskWithRelations[]
   onAcceptAllDone: () => void
   acceptAllDisabled: boolean
   acceptAllDisabledReason: string | null
   isAcceptingDone: boolean
+  onAcceptTask: (taskId: string) => void
   onUnacceptTask: (taskId: string) => void
   onRestoreTask: (taskId: string) => void
   onDestroyTask: (taskId: string) => void
-  archiveActionTaskId: string | null
-  archiveActionType: ArchiveActionKind | null
-  archiveActionDisabledReason: string | null
-  isArchiveActionPending: boolean
+  reviewActionTaskId: string | null
+  reviewActionType: ReviewActionKind | null
+  reviewActionDisabledReason: string | null
+  isReviewActionPending: boolean
 }
 
 export function ProjectsBoardTabs(props: ProjectsBoardTabsProps) {
@@ -63,10 +65,10 @@ export function ProjectsBoardTabs(props: ProjectsBoardTabsProps) {
     boardHref,
     refineHref,
     activityHref,
-    archiveHref,
+    reviewHref,
     refineDisabled,
     activityDisabled,
-    archiveDisabled,
+    reviewDisabled,
     onlyAssignedToMe,
     onAssignedFilterChange,
     feedback,
@@ -88,19 +90,21 @@ export function ProjectsBoardTabs(props: ProjectsBoardTabsProps) {
     backlogTasks,
     activeSheetTaskId,
     activityTargetClientId,
+    doneTasks,
     acceptedTasks,
     archivedTasks,
     onAcceptAllDone,
     acceptAllDisabled,
     acceptAllDisabledReason,
     isAcceptingDone,
+    onAcceptTask,
     onUnacceptTask,
     onRestoreTask,
     onDestroyTask,
-    archiveActionTaskId,
-    archiveActionType,
-    archiveActionDisabledReason,
-    isArchiveActionPending,
+    reviewActionTaskId,
+    reviewActionType,
+    reviewActionDisabledReason,
+    isReviewActionPending,
   } = props
 
   return (
@@ -110,10 +114,10 @@ export function ProjectsBoardTabs(props: ProjectsBoardTabsProps) {
         boardHref={boardHref}
         refineHref={refineHref}
         activityHref={activityHref}
-        archiveHref={archiveHref}
+        reviewHref={reviewHref}
         refineDisabled={refineDisabled}
         activityDisabled={activityDisabled}
-        archiveDisabled={archiveDisabled}
+        reviewDisabled={reviewDisabled}
         onlyAssignedToMe={onlyAssignedToMe}
         onAssignedFilterChange={onAssignedFilterChange}
       />
@@ -159,14 +163,16 @@ export function ProjectsBoardTabs(props: ProjectsBoardTabsProps) {
         activeProject={activeProject}
         activityTargetClientId={activityTargetClientId}
       />
-      <ArchiveTabContent
-        isActive={initialTab === 'archive'}
+      <ReviewTabContent
+        isActive={initialTab === 'review'}
         activeProject={activeProject}
         feedback={feedback}
+        doneTasks={doneTasks}
         acceptedTasks={acceptedTasks}
         archivedTasks={archivedTasks}
         renderAssignees={renderAssignees}
         onEditTask={onEditTask}
+        onAcceptTask={onAcceptTask}
         onAcceptAllDone={onAcceptAllDone}
         acceptAllDisabled={acceptAllDisabled}
         acceptAllDisabledReason={acceptAllDisabledReason}
@@ -174,10 +180,10 @@ export function ProjectsBoardTabs(props: ProjectsBoardTabsProps) {
         onUnacceptTask={onUnacceptTask}
         onRestoreTask={onRestoreTask}
         onDestroyTask={onDestroyTask}
-        archiveActionTaskId={archiveActionTaskId}
-        archiveActionType={archiveActionType}
-        archiveActionDisabledReason={archiveActionDisabledReason}
-        isArchiveActionPending={isArchiveActionPending}
+        reviewActionTaskId={reviewActionTaskId}
+        reviewActionType={reviewActionType}
+        reviewActionDisabledReason={reviewActionDisabledReason}
+        isReviewActionPending={isReviewActionPending}
       />
     </Tabs>
   )

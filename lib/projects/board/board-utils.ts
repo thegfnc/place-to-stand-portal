@@ -73,7 +73,7 @@ export const buildBoardPath = (
   lookups: BoardLookups,
   options: {
     taskId?: string | null
-    view?: 'board' | 'activity' | 'refine' | 'archive'
+    view?: 'board' | 'activity' | 'refine' | 'review'
   } = {}
 ) => {
   const { taskId = null, view = 'board' } = options
@@ -99,8 +99,8 @@ export const buildBoardPath = (
     return `${rootPath}/activity`
   }
 
-  if (view === 'archive') {
-    return `${rootPath}/archive`
+  if (view === 'review') {
+    return `${rootPath}/review`
   }
 
   if (view === 'refine') {

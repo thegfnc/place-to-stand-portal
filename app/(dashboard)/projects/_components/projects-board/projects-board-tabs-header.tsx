@@ -5,14 +5,14 @@ import { Label } from '@/components/ui/label'
 import { TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 export type ProjectsBoardTabsHeaderProps = {
-  initialTab: 'board' | 'refine' | 'activity' | 'archive'
+  initialTab: 'board' | 'refine' | 'activity' | 'review'
   boardHref: string
   refineHref: string
   activityHref: string
-  archiveHref: string
+  reviewHref: string
   refineDisabled: boolean
   activityDisabled: boolean
-  archiveDisabled: boolean
+  reviewDisabled: boolean
   onlyAssignedToMe: boolean
   onAssignedFilterChange: (checked: boolean) => void
 }
@@ -23,10 +23,10 @@ export function ProjectsBoardTabsHeader(props: ProjectsBoardTabsHeaderProps) {
     boardHref,
     refineHref,
     activityHref,
-    archiveHref,
+    reviewHref,
     refineDisabled,
     activityDisabled,
-    archiveDisabled,
+    reviewDisabled,
     onlyAssignedToMe,
     onAssignedFilterChange,
   } = props
@@ -63,26 +63,26 @@ export function ProjectsBoardTabsHeader(props: ProjectsBoardTabsHeaderProps) {
           </Link>
         </TabsTrigger>
         <TabsTrigger
-          value='archive'
+          value='review'
           className='px-3 py-1.5 text-sm'
           asChild
-          disabled={archiveDisabled}
+          disabled={reviewDisabled}
         >
           <Link
-            href={archiveHref}
+            href={reviewHref}
             prefetch={false}
-            aria-disabled={archiveDisabled}
-            tabIndex={archiveDisabled ? -1 : undefined}
+            aria-disabled={reviewDisabled}
+            tabIndex={reviewDisabled ? -1 : undefined}
             onClick={event => {
-              if (archiveDisabled) {
+              if (reviewDisabled) {
                 event.preventDefault()
               }
             }}
             className={
-              archiveDisabled ? 'pointer-events-none opacity-50' : undefined
+              reviewDisabled ? 'pointer-events-none opacity-50' : undefined
             }
           >
-            Archive
+            Review
           </Link>
         </TabsTrigger>
         <TabsTrigger

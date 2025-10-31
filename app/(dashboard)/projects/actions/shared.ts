@@ -8,6 +8,6 @@ export async function revalidateProjectTaskViews() {
     revalidatePath('/projects/[clientSlug]/[projectSlug]/board'),
     revalidatePath('/projects/[clientSlug]/[projectSlug]/refine'),
     revalidatePath('/projects/[clientSlug]/[projectSlug]/activity'),
-    revalidatePath('/projects/[clientSlug]/[projectSlug]/archive'),
+    revalidatePath('/projects/[clientSlug]/[projectSlug]/review'),
   ])
 }

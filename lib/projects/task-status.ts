@@ -9,9 +9,11 @@ const TASK_STATUS_TOKENS = {
     'border-transparent bg-amber-100 text-amber-900 dark:bg-amber-900/40 dark:text-amber-200',
   IN_REVIEW:
     'border-transparent bg-violet-100 text-violet-800 dark:bg-violet-900/40 dark:text-violet-200',
-  DONE: 'border-transparent bg-slate-100 text-slate-800 dark:bg-slate-800/40 dark:text-slate-200',
+  DONE: 'border-transparent bg-slate-200 text-slate-700 dark:bg-slate-700/60 dark:text-slate-200',
+  ACCEPTED:
+    'border-transparent bg-slate-100 text-slate-800 dark:bg-slate-800/40 dark:text-slate-200',
   ARCHIVED:
-    'border-transparent bg-slate-200 text-slate-700 dark:bg-slate-700/60 dark:text-slate-200',
+    'border-transparent bg-slate-100 text-slate-800 dark:bg-slate-800/40 dark:text-slate-200',
 } as const
 
 const TASK_STATUS_LABELS = {
@@ -21,6 +23,7 @@ const TASK_STATUS_LABELS = {
   BLOCKED: 'Blocked',
   IN_REVIEW: 'In Review',
   DONE: 'Done',
+  ACCEPTED: 'Accepted',
   ARCHIVED: 'Archived',
 } as const
 

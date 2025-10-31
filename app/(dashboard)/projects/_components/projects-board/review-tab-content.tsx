@@ -1,11 +1,13 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { formatDistanceToNow, parseISO } from 'date-fns'
-import { Loader2 } from 'lucide-react'
+import { CheckCircle2, Loader2, RefreshCw, Trash2 } from 'lucide-react'
 
 import { TabsContent } from '@/components/ui/tabs'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { DisabledFieldTooltip } from '@/components/ui/disabled-field-tooltip'
 import {
   Table,
@@ -24,17 +26,24 @@ import {
 import type { ProjectsBoardActiveProject } from './board-tab-content'
 import type { TaskWithRelations } from '@/lib/types'
 import type { RenderAssigneeFn } from '../../../../../lib/projects/board/board-selectors'
+import {
+  getTaskStatusLabel,
+  getTaskStatusToken,
+} from '@/lib/projects/task-status'
+import { cn } from '@/lib/utils'
 
-export type ArchiveActionKind = 'unaccept' | 'restore' | 'destroy'
+export type ReviewActionKind = 'accept' | 'unaccept' | 'restore' | 'destroy'
 
-export type ArchiveTabContentProps = {
+export type ReviewTabContentProps = {
   isActive: boolean
   feedback: string | null
   activeProject: ProjectsBoardActiveProject
+  doneTasks: TaskWithRelations[]
   acceptedTasks: TaskWithRelations[]
   archivedTasks: TaskWithRelations[]
   renderAssignees: RenderAssigneeFn
   onEditTask: (task: TaskWithRelations) => void
+  onAcceptTask: (taskId: string) => void
   onAcceptAllDone: () => void
   acceptAllDisabled: boolean
   acceptAllDisabledReason: string | null
@@ -42,14 +51,15 @@ export type ArchiveTabContentProps = {
   onUnacceptTask: (taskId: string) => void
   onRestoreTask: (taskId: string) => void
   onDestroyTask: (taskId: string) => void
-  archiveActionTaskId: string | null
-  archiveActionType: ArchiveActionKind | null
-  archiveActionDisabledReason: string | null
-  isArchiveActionPending: boolean
+  reviewActionTaskId: string | null
+  reviewActionType: ReviewActionKind | null
+  reviewActionDisabledReason: string | null
+  isReviewActionPending: boolean
 }
 
-const ACCEPTED_TITLE = 'Accepted tasks awaiting client sign-off'
-const ARCHIVED_TITLE = 'Archived tasks'
+const DONE_BADGE = getTaskStatusToken('DONE')
+const ACCEPTED_BADGE = getTaskStatusToken('ACCEPTED')
+const ARCHIVED_BADGE = getTaskStatusToken('ARCHIVED')
 
 const formatTimestamp = (value: string | null | undefined) => {
   if (!value) {
@@ -79,15 +89,17 @@ const summarizeAssignees = (
   return assignees.map(person => person.name).join(', ')
 }
 
-export function ArchiveTabContent(props: ArchiveTabContentProps) {
+export function ReviewTabContent(props: ReviewTabContentProps) {
   const {
     isActive,
     feedback,
     activeProject,
+    doneTasks,
     acceptedTasks,
     archivedTasks,
     renderAssignees,
     onEditTask,
+    onAcceptTask,
     onAcceptAllDone,
     acceptAllDisabled,
     acceptAllDisabledReason,
@@ -95,11 +107,36 @@ export function ArchiveTabContent(props: ArchiveTabContentProps) {
     onUnacceptTask,
     onRestoreTask,
     onDestroyTask,
-    archiveActionTaskId,
-    archiveActionType,
-    archiveActionDisabledReason,
-    isArchiveActionPending,
+    reviewActionTaskId,
+    reviewActionType,
+    reviewActionDisabledReason,
+    isReviewActionPending,
   } = props
+
+  const [destroyTarget, setDestroyTarget] = useState<TaskWithRelations | null>(
+    null
+  )
+
+  const handleCancelDestroy = () => {
+    setDestroyTarget(null)
+  }
+
+  const handleConfirmDestroy = () => {
+    if (!destroyTarget) {
+      return
+    }
+
+    onDestroyTask(destroyTarget.id)
+    setDestroyTarget(null)
+  }
+
+  const sortedDone = useMemo(() => {
+    return doneTasks.slice().sort((a, b) => {
+      const aTime = a.updated_at ? Date.parse(a.updated_at) : 0
+      const bTime = b.updated_at ? Date.parse(b.updated_at) : 0
+      return bTime - aTime
+    })
+  }, [doneTasks])
 
   const sortedAccepted = useMemo(() => {
     return acceptedTasks.slice().sort((a, b) => {
@@ -123,44 +160,207 @@ export function ArchiveTabContent(props: ArchiveTabContentProps) {
 
   return (
     <TabsContent
-      value='archive'
+      value='review'
       className='flex min-h-0 flex-1 flex-col gap-4 sm:gap-6'
     >
       {feedback ? <p className={FEEDBACK_CLASSES}>{feedback}</p> : null}
+      <ConfirmDialog
+        open={Boolean(destroyTarget)}
+        title='Delete task permanently?'
+        description={
+          destroyTarget
+            ? `This will permanently remove "${destroyTarget.title}" and all of its history.`
+            : 'This action cannot be undone.'
+        }
+        confirmLabel='Delete forever'
+        confirmVariant='destructive'
+        confirmDisabled={Boolean(
+          isReviewActionPending &&
+            reviewActionType === 'destroy' &&
+            reviewActionTaskId === destroyTarget?.id
+        )}
+        onCancel={handleCancelDestroy}
+        onConfirm={handleConfirmDestroy}
+      />
       {!activeProject ? (
         <ProjectsBoardEmpty
           title={NO_SELECTION_TITLE}
           description={NO_SELECTION_DESCRIPTION}
         />
       ) : (
-        <div className='flex min-h-0 flex-1 flex-col gap-6'>
-          <section className='bg-background rounded-xl border p-6 shadow-sm'>
-            <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
-              <div className='space-y-1'>
-                <h3 className='text-lg font-semibold'>{ACCEPTED_TITLE}</h3>
-                <p className='text-muted-foreground text-sm'>
-                  Tasks in Done that have been accepted by an administrator.
-                </p>
-              </div>
-              <DisabledFieldTooltip
-                disabled={acceptAllDisabled || isAcceptingDone}
-                reason={acceptAllDisabledReason}
-              >
-                <Button
-                  type='button'
-                  variant='secondary'
-                  size='sm'
-                  onClick={onAcceptAllDone}
+        <div className='flex min-h-0 flex-1 flex-col gap-4 sm:gap-6'>
+          <section className='bg-background rounded-xl border shadow-sm'>
+            <div className='border-b px-4 py-3'>
+              <div className='flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between'>
+                <div className='flex flex-col gap-2'>
+                  <div className='flex items-center gap-2'>
+                    <Badge
+                      variant='outline'
+                      className={cn(
+                        'text-xs font-semibold uppercase',
+                        DONE_BADGE
+                      )}
+                    >
+                      {getTaskStatusLabel('DONE')}
+                    </Badge>
+                    <span className='text-muted-foreground text-[11px]'>
+                      {sortedDone.length}
+                    </span>
+                  </div>
+                  <p className='text-muted-foreground text-xs'>
+                    Tasks currently in the Done column awaiting client review.
+                  </p>
+                </div>
+                <DisabledFieldTooltip
                   disabled={acceptAllDisabled || isAcceptingDone}
+                  reason={acceptAllDisabledReason}
                 >
-                  {isAcceptingDone ? (
-                    <Loader2 className='h-4 w-4 animate-spin' />
-                  ) : null}
-                  Accept all Done tasks
-                </Button>
-              </DisabledFieldTooltip>
+                  <Button
+                    type='button'
+                    variant='secondary'
+                    size='sm'
+                    onClick={onAcceptAllDone}
+                    disabled={acceptAllDisabled || isAcceptingDone}
+                  >
+                    {isAcceptingDone ? (
+                      <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                    ) : null}
+                    Accept all Done tasks
+                  </Button>
+                </DisabledFieldTooltip>
+              </div>
             </div>
-            <div className='mt-4 overflow-x-auto'>
+            <div className='px-2 pt-1 pb-2'>
+              <Table>
+                <TableHeader>
+                  <TableRow className='bg-muted/30 hover:bg-muted/30'>
+                    <TableHead className='text-muted-foreground text-xs font-semibold uppercase'>
+                      Task
+                    </TableHead>
+                    <TableHead className='text-muted-foreground text-xs font-semibold uppercase'>
+                      Assignees
+                    </TableHead>
+                    <TableHead className='text-muted-foreground text-xs font-semibold uppercase'>
+                      Updated
+                    </TableHead>
+                    <TableHead className='text-muted-foreground text-right text-xs font-semibold uppercase'>
+                      Actions
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {sortedDone.length === 0 ? (
+                    <TableRow>
+                      <TableCell
+                        className='text-muted-foreground py-8 text-center text-sm'
+                        colSpan={4}
+                      >
+                        Nothing in Done yet.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    sortedDone.map(task => {
+                      const isCurrentAction =
+                        isReviewActionPending &&
+                        reviewActionTaskId === task.id &&
+                        reviewActionType === 'accept'
+                      const blockOtherActions =
+                        isReviewActionPending && reviewActionTaskId !== task.id
+                      const disabledReason =
+                        reviewActionDisabledReason ??
+                        (isAcceptingDone
+                          ? 'Accepting all Done tasks…'
+                          : blockOtherActions
+                            ? 'Please wait for the current task update to finish.'
+                            : null)
+
+                      const buttonDisabled =
+                        Boolean(disabledReason) ||
+                        isCurrentAction ||
+                        isAcceptingDone
+
+                      return (
+                        <TableRow
+                          key={task.id}
+                          role='button'
+                          tabIndex={0}
+                          onClick={() => onEditTask(task)}
+                          onKeyDown={event => {
+                            if (event.key === 'Enter' || event.key === ' ') {
+                              event.preventDefault()
+                              onEditTask(task)
+                            }
+                          }}
+                          className='hover:bg-muted/50 cursor-pointer focus-visible:ring-2 focus-visible:ring-offset-0 focus-visible:outline-none'
+                        >
+                          <TableCell className='py-3 text-sm font-medium'>
+                            {task.title}
+                          </TableCell>
+                          <TableCell className='text-muted-foreground py-3 text-sm'>
+                            {summarizeAssignees(task, renderAssignees)}
+                          </TableCell>
+                          <TableCell className='text-muted-foreground py-3 text-sm'>
+                            {formatTimestamp(task.updated_at)}
+                          </TableCell>
+                          <TableCell className='py-3 text-right'>
+                            <DisabledFieldTooltip
+                              disabled={Boolean(disabledReason)}
+                              reason={disabledReason}
+                            >
+                              <Button
+                                type='button'
+                                size='sm'
+                                variant='outline'
+                                onClick={event => {
+                                  event.preventDefault()
+                                  event.stopPropagation()
+                                  onAcceptTask(task.id)
+                                }}
+                                disabled={buttonDisabled}
+                              >
+                                {isCurrentAction ? (
+                                  <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                                ) : (
+                                  <CheckCircle2 className='mr-2 h-4 w-4' />
+                                )}
+                                Accept
+                              </Button>
+                            </DisabledFieldTooltip>
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </section>
+
+          <section className='bg-background rounded-xl border shadow-sm'>
+            <div className='border-b px-4 py-3'>
+              <div className='flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between'>
+                <div className='flex flex-col gap-2'>
+                  <div className='flex items-center gap-2'>
+                    <Badge
+                      variant='outline'
+                      className={cn(
+                        'text-xs font-semibold uppercase',
+                        ACCEPTED_BADGE
+                      )}
+                    >
+                      {getTaskStatusLabel('ACCEPTED')}
+                    </Badge>
+                    <span className='text-muted-foreground text-[11px]'>
+                      {sortedAccepted.length}
+                    </span>
+                  </div>
+                  <p className='text-muted-foreground text-xs'>
+                    Tasks approved and accepted by client.
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className='px-2 pt-1 pb-2'>
               <Table>
                 <TableHeader>
                   <TableRow className='bg-muted/30 hover:bg-muted/30'>
@@ -194,14 +394,13 @@ export function ArchiveTabContent(props: ArchiveTabContentProps) {
                   ) : (
                     sortedAccepted.map(task => {
                       const isCurrentAction =
-                        isArchiveActionPending &&
-                        archiveActionTaskId === task.id &&
-                        archiveActionType === 'unaccept'
+                        isReviewActionPending &&
+                        reviewActionTaskId === task.id &&
+                        reviewActionType === 'unaccept'
                       const blockOtherActions =
-                        isArchiveActionPending &&
-                        archiveActionTaskId !== task.id
+                        isReviewActionPending && reviewActionTaskId !== task.id
                       const disabledReason =
-                        archiveActionDisabledReason ??
+                        reviewActionDisabledReason ??
                         (blockOtherActions
                           ? 'Please wait for the current task update to finish.'
                           : null)
@@ -220,7 +419,7 @@ export function ArchiveTabContent(props: ArchiveTabContentProps) {
                           }}
                           className='hover:bg-muted/50 cursor-pointer focus-visible:ring-2 focus-visible:ring-offset-0 focus-visible:outline-none'
                         >
-                          <TableCell className='py-3 align-top text-sm font-medium'>
+                          <TableCell className='py-3 text-sm font-medium'>
                             {task.title}
                           </TableCell>
                           <TableCell className='text-muted-foreground py-3 text-sm'>
@@ -251,7 +450,7 @@ export function ArchiveTabContent(props: ArchiveTabContentProps) {
                                 }
                               >
                                 {isCurrentAction ? (
-                                  <Loader2 className='h-4 w-4 animate-spin' />
+                                  <Loader2 className='mr-2 h-4 w-4 animate-spin' />
                                 ) : null}
                                 Unaccept
                               </Button>
@@ -266,16 +465,32 @@ export function ArchiveTabContent(props: ArchiveTabContentProps) {
             </div>
           </section>
 
-          <section className='bg-background rounded-xl border p-6 shadow-sm'>
-            <div className='space-y-1'>
-              <h3 className='text-lg font-semibold'>{ARCHIVED_TITLE}</h3>
-              <p className='text-muted-foreground text-sm'>
-                Archived tasks are kept for reference. Restore them to make
-                updates or permanently delete them to remove them from the
-                project.
-              </p>
+          <section className='bg-background rounded-xl border shadow-sm'>
+            <div className='border-b px-4 py-3'>
+              <div className='flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between'>
+                <div className='flex flex-col gap-2'>
+                  <div className='flex items-center gap-2'>
+                    <Badge
+                      variant='outline'
+                      className={cn(
+                        'text-xs font-semibold uppercase',
+                        ARCHIVED_BADGE
+                      )}
+                    >
+                      {getTaskStatusLabel('ARCHIVED')}
+                    </Badge>
+                    <span className='text-muted-foreground text-[11px]'>
+                      {sortedArchived.length}
+                    </span>
+                  </div>
+                  <p className='text-muted-foreground text-xs'>
+                    Archived tasks remain available for reference until
+                    permanently deleted.
+                  </p>
+                </div>
+              </div>
             </div>
-            <div className='mt-4 overflow-x-auto'>
+            <div className='px-2 pt-1 pb-2'>
               <Table>
                 <TableHeader>
                   <TableRow className='bg-muted/30 hover:bg-muted/30'>
@@ -306,18 +521,17 @@ export function ArchiveTabContent(props: ArchiveTabContentProps) {
                   ) : (
                     sortedArchived.map(task => {
                       const isRestoreAction =
-                        isArchiveActionPending &&
-                        archiveActionTaskId === task.id &&
-                        archiveActionType === 'restore'
+                        isReviewActionPending &&
+                        reviewActionTaskId === task.id &&
+                        reviewActionType === 'restore'
                       const isDestroyAction =
-                        isArchiveActionPending &&
-                        archiveActionTaskId === task.id &&
-                        archiveActionType === 'destroy'
+                        isReviewActionPending &&
+                        reviewActionTaskId === task.id &&
+                        reviewActionType === 'destroy'
                       const blockOtherActions =
-                        isArchiveActionPending &&
-                        archiveActionTaskId !== task.id
+                        isReviewActionPending && reviewActionTaskId !== task.id
                       const disabledReason =
-                        archiveActionDisabledReason ??
+                        reviewActionDisabledReason ??
                         (blockOtherActions
                           ? 'Please wait for the current task update to finish.'
                           : null)
@@ -336,7 +550,7 @@ export function ArchiveTabContent(props: ArchiveTabContentProps) {
                           }}
                           className='hover:bg-muted/50 cursor-pointer focus-visible:ring-2 focus-visible:ring-offset-0 focus-visible:outline-none'
                         >
-                          <TableCell className='py-3 align-top text-sm font-medium'>
+                          <TableCell className='py-3 text-sm font-medium'>
                             {task.title}
                           </TableCell>
                           <TableCell className='text-muted-foreground py-3 text-sm'>
@@ -353,21 +567,24 @@ export function ArchiveTabContent(props: ArchiveTabContentProps) {
                               >
                                 <Button
                                   type='button'
-                                  size='sm'
-                                  variant='outline'
+                                  size='icon'
+                                  variant='secondary'
                                   onClick={event => {
                                     event.preventDefault()
                                     event.stopPropagation()
                                     onRestoreTask(task.id)
                                   }}
+                                  title='Restore task'
+                                  aria-label='Restore task'
                                   disabled={
                                     Boolean(disabledReason) || isRestoreAction
                                   }
                                 >
                                   {isRestoreAction ? (
                                     <Loader2 className='h-4 w-4 animate-spin' />
-                                  ) : null}
-                                  Restore
+                                  ) : (
+                                    <RefreshCw className='h-4 w-4' />
+                                  )}
                                 </Button>
                               </DisabledFieldTooltip>
                               <DisabledFieldTooltip
@@ -376,21 +593,24 @@ export function ArchiveTabContent(props: ArchiveTabContentProps) {
                               >
                                 <Button
                                   type='button'
-                                  size='sm'
+                                  size='icon'
                                   variant='destructive'
                                   onClick={event => {
                                     event.preventDefault()
                                     event.stopPropagation()
-                                    onDestroyTask(task.id)
+                                    setDestroyTarget(task)
                                   }}
+                                  title='Delete task permanently'
+                                  aria-label='Delete task permanently'
                                   disabled={
                                     Boolean(disabledReason) || isDestroyAction
                                   }
                                 >
                                   {isDestroyAction ? (
                                     <Loader2 className='h-4 w-4 animate-spin' />
-                                  ) : null}
-                                  Delete
+                                  ) : (
+                                    <Trash2 className='h-4 w-4' />
+                                  )}
                                 </Button>
                               </DisabledFieldTooltip>
                             </div>
