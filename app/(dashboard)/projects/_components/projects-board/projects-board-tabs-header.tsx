@@ -83,20 +83,18 @@ export function ProjectsBoardTabsHeader(props: ProjectsBoardTabsHeaderProps) {
         </TabsTrigger>
       </TabsList>
       {initialTab === 'board' ? (
-        <div className='bg-background/80 flex w-full justify-end rounded-md border p-2 sm:w-auto'>
-          <Label
-            htmlFor='projects-board-assigned-filter'
-            className='text-muted-foreground cursor-pointer'
-          >
-            <Checkbox
-              id='projects-board-assigned-filter'
-              checked={onlyAssignedToMe}
-              onCheckedChange={value => onAssignedFilterChange(value === true)}
-              className='h-4 w-4'
-            />
-            <span>Only show tasks assigned to me</span>
-          </Label>
-        </div>
+        <Label
+          htmlFor='projects-board-assigned-filter'
+          className='text-muted-foreground bg-background/80 flex w-full cursor-pointer justify-end rounded-md border p-2 sm:w-auto'
+        >
+          <Checkbox
+            id='projects-board-assigned-filter'
+            checked={onlyAssignedToMe}
+            onCheckedChange={value => onAssignedFilterChange(value === true)}
+            className='h-4 w-4'
+          />
+          <span>Only show tasks assigned to me</span>
+        </Label>
       ) : null}
     </div>
   )
