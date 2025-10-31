@@ -1,39 +1,23 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQueryClient } from '@tanstack/react-query'
 import { format } from 'date-fns'
-import { useToast } from '@/components/ui/use-toast'
-import { logClientActivity } from '@/lib/activity/client'
-import { timeLogCreatedEvent } from '@/lib/activity/events'
-import { buildAssigneeItems } from '@/lib/projects/task-sheet/task-sheet-utils'
-import { UNASSIGNED_ASSIGNEE_VALUE } from '@/lib/projects/task-sheet/task-sheet-constants'
-import { getSupabaseBrowserClient } from '@/lib/supabase/client'
-import type { Json } from '@/supabase/types/database'
+
 import type { SearchableComboboxItem } from '@/components/ui/searchable-combobox'
+import { useToast } from '@/components/ui/use-toast'
+import { getSupabaseBrowserClient } from '@/lib/supabase/client'
 
-import type {
-  FieldError,
-  ProjectTimeLogDialogParams,
-  TimeLogFormErrors,
-  TimeLogFormField,
-} from './types'
+import {
+  useProjectTimeLogMutation,
+  type UseProjectTimeLogMutationOptions,
+} from './use-project-time-log-mutation'
+import { useTimeLogFormState } from './time-log-form-state'
+import { useTimeLogOverage } from './time-log-overage'
+import { useTimeLogTaskSelection } from './time-log-task-selection'
+import type { ProjectTimeLogDialogParams, TimeLogFormErrors } from './types'
 import { TIME_LOGS_QUERY_KEY } from './types'
-
-const HOURS_ERROR_ID = 'time-log-hours-error'
-const DATE_ERROR_ID = 'time-log-date-error'
-const USER_ERROR_ID = 'time-log-user-error'
-const GENERAL_ERROR_ID = 'time-log-general-error'
-
-const makeFieldError = (
-  field: TimeLogFormField,
-  message: string
-): FieldError => {
-  const error = new Error(message) as FieldError
-  error.field = field
-  return error
-}
 
 export type UseProjectTimeLogDialogOptions = ProjectTimeLogDialogParams & {
   onOpenChange: (open: boolean) => void
@@ -104,6 +88,7 @@ export function useProjectTimeLogDialog(
 
   const canLogTime = currentUserRole !== 'CLIENT'
   const canSelectUser = currentUserRole === 'ADMIN'
+
   const router = useRouter()
   const supabase = getSupabaseBrowserClient()
   const queryClient = useQueryClient()
@@ -111,230 +96,91 @@ export function useProjectTimeLogDialog(
 
   const getToday = useCallback(() => format(new Date(), 'yyyy-MM-dd'), [])
 
-  const [hoursInput, setHoursInput] = useState('')
-  const [noteInput, setNoteInput] = useState('')
-  const [loggedOnInput, setLoggedOnInput] = useState(() => getToday())
-  const [selectedUserId, setSelectedUserId] = useState(currentUserId)
-  const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([])
-  const [isTaskPickerOpen, setIsTaskPickerOpen] = useState(false)
-  const [taskRemovalCandidate, setTaskRemovalCandidate] = useState<
-    ProjectTimeLogDialogParams['tasks'][number] | null
-  >(null)
-  const [overageConfirmOpen, setOverageConfirmOpen] = useState(false)
-  const [pendingOverageHours, setPendingOverageHours] = useState<number | null>(
-    null
-  )
-  const [formErrors, setFormErrors] = useState<TimeLogFormErrors>({})
+  const {
+    hoursInput,
+    onHoursChange,
+    loggedOnInput,
+    onLoggedOnChange,
+    noteInput,
+    onNoteChange,
+    selectedUserId,
+    onSelectUser,
+    formErrors,
+    setFormErrors,
+    fieldErrorIds,
+    userComboboxItems,
+    prepareForOpen,
+    resetForClose,
+  } = useTimeLogFormState({
+    currentUserId,
+    canSelectUser,
+    admins,
+    projectMembers,
+    getToday,
+  })
 
-  useEffect(() => {
-    setSelectedUserId(currentUserId)
-  }, [currentUserId])
+  const {
+    selectedTaskIds,
+    availableTasks,
+    selectedTasks,
+    isTaskPickerOpen,
+    onTaskPickerOpenChange,
+    onAddTask,
+    requestTaskRemoval: rawRequestTaskRemoval,
+    confirmTaskRemoval,
+    cancelTaskRemoval: rawCancelTaskRemoval,
+    taskRemovalCandidate,
+    initializeSelection,
+    resetSelection,
+  } = useTimeLogTaskSelection(tasks)
 
-  const clearFieldErrors = useCallback((fields: TimeLogFormField[]) => {
-    setFormErrors(prev => {
-      let updated = false
-      const next: TimeLogFormErrors = { ...prev }
-
-      for (const field of fields) {
-        if (next[field]) {
-          delete next[field]
-          updated = true
-        }
-      }
-
-      return updated ? next : prev
-    })
-  }, [])
+  const {
+    requestConfirmation,
+    reset: resetOverage,
+    overageDialog,
+  } = useTimeLogOverage({ clientRemainingHours })
 
   const baseQueryKey = useMemo(
     () => [TIME_LOGS_QUERY_KEY, projectId] as const,
     [projectId]
   )
 
-  const eligibleTasks = useMemo(() => {
-    return tasks.filter(task => {
-      if (task.deleted_at !== null) {
-        return false
-      }
-      if (task.status === 'DONE' || task.status === 'ARCHIVED') {
-        return false
-      }
-      return true
-    })
-  }, [tasks])
+  const handleSuccessReset = useCallback(() => {
+    resetForClose(currentUserId)
+    resetSelection()
+    resetOverage()
+  }, [currentUserId, resetForClose, resetOverage, resetSelection])
 
-  const availableTasks = useMemo(() => {
-    if (selectedTaskIds.length === 0) {
-      return eligibleTasks
-    }
+  const handleClose = useCallback(() => {
+    onOpenChange(false)
+  }, [onOpenChange])
 
-    const selectedSet = new Set(selectedTaskIds)
-    return eligibleTasks.filter(task => !selectedSet.has(task.id))
-  }, [eligibleTasks, selectedTaskIds])
-
-  useEffect(() => {
-    if (!isTaskPickerOpen) {
-      return
-    }
-    if (availableTasks.length === 0) {
-      setIsTaskPickerOpen(false)
-    }
-  }, [availableTasks, isTaskPickerOpen])
-
-  const selectedTasks = useMemo(() => {
-    if (selectedTaskIds.length === 0) {
-      return []
-    }
-
-    const taskLookup = new Map<
-      string,
-      ProjectTimeLogDialogParams['tasks'][number]
-    >()
-    eligibleTasks.forEach(task => {
-      taskLookup.set(task.id, task)
-    })
-
-    return selectedTaskIds
-      .map(taskId => taskLookup.get(taskId))
-      .filter((task): task is ProjectTimeLogDialogParams['tasks'][number] =>
-        Boolean(task)
-      )
-  }, [eligibleTasks, selectedTaskIds])
-
-  const userComboboxItems = useMemo<SearchableComboboxItem[]>(() => {
-    if (!canSelectUser) {
-      return []
-    }
-
-    return buildAssigneeItems({
-      admins,
-      members: projectMembers,
-      currentAssigneeId: selectedUserId,
-    }).filter(item => item.value !== UNASSIGNED_ASSIGNEE_VALUE)
-  }, [admins, canSelectUser, projectMembers, selectedUserId])
-
-  const createLog = useMutation({
-    mutationFn: async () => {
-      const parsedHours = Number.parseFloat(hoursInput)
-
-      if (!Number.isFinite(parsedHours) || parsedHours <= 0) {
-        throw makeFieldError(
-          'hours',
-          'Enter a valid number of hours greater than zero.'
-        )
-      }
-
-      const logUserId = canSelectUser ? selectedUserId : currentUserId
-
-      if (!logUserId) {
-        throw makeFieldError('user', 'Select a teammate before logging time.')
-      }
-
-      const payload = {
-        project_id: projectId,
-        user_id: logUserId,
-        hours: parsedHours,
-        logged_on: loggedOnInput,
-        note: noteInput.trim() ? noteInput.trim() : null,
-      }
-
-      const { data, error } = await supabase
-        .from('time_logs')
-        .insert(payload)
-        .select('id')
-        .single()
-
-      if (error) {
-        throw error
-      }
-
-      const timeLogId = data?.id ?? null
-
-      if (!timeLogId) {
-        throw new Error('Time log was created without an identifier.')
-      }
-
-      if (selectedTaskIds.length === 0) {
-        return
-      }
-
-      const { error: linkError } = await supabase.from('time_log_tasks').insert(
-        selectedTaskIds.map(taskId => ({
-          time_log_id: timeLogId,
-          task_id: taskId,
-        }))
-      )
-
-      if (linkError) {
-        await supabase
-          .from('time_logs')
-          .update({ deleted_at: new Date().toISOString() })
-          .eq('id', timeLogId)
-        throw linkError
-      }
-
-      const event = timeLogCreatedEvent({
-        hours: parsedHours,
-        projectName,
-        linkedTaskCount: selectedTaskIds.length,
-      })
-
-      const metadata = {
-        taskIds: selectedTaskIds,
-        notePresent: Boolean(noteInput.trim()),
-        loggedOn: loggedOnInput,
-      }
-
-      await logClientActivity(event, {
-        actorId: logUserId,
-        targetType: 'TIME_LOG',
-        targetId: timeLogId,
-        targetProjectId: projectId,
-        targetClientId: clientId ?? null,
-        metadata: JSON.parse(JSON.stringify(metadata)) as Json,
-      })
+  const mutationOptions: UseProjectTimeLogMutationOptions = {
+    supabase,
+    queryClient,
+    router,
+    toast,
+    baseQueryKey,
+    project: {
+      id: projectId,
+      name: projectName,
+      clientId,
     },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: baseQueryKey })
-      setHoursInput('')
-      setNoteInput('')
-      setLoggedOnInput(getToday())
-      setSelectedTaskIds([])
-      setSelectedUserId(currentUserId)
-      setTaskRemovalCandidate(null)
-      setFormErrors({})
-      onOpenChange(false)
-      toast({
-        title: 'Time logged',
-        description: 'Your hours are now included in the burndown.',
-      })
-      router.refresh()
+    currentUserId,
+    canSelectUser,
+    formValues: {
+      hoursInput,
+      loggedOnInput,
+      noteInput,
+      selectedUserId,
     },
-    onError: error => {
-      console.error('Failed to log time', error)
-      const field = (error as FieldError | null)?.field
-      const message =
-        error instanceof Error
-          ? error.message
-          : typeof error === 'object' &&
-              error !== null &&
-              'message' in error &&
-              typeof (error as { message?: unknown }).message === 'string'
-            ? ((error as { message?: string }).message ?? '')
-            : ''
-      const fallbackMessage = 'Please try again shortly.'
-      const resolvedMessage =
-        message && message.trim().length > 0 ? message : fallbackMessage
+    selectedTaskIds,
+    onSuccessReset: handleSuccessReset,
+    onClose: handleClose,
+    setFormErrors,
+  }
 
-      if (field && field !== 'general') {
-        setFormErrors({ [field]: resolvedMessage })
-        return
-      }
-
-      setFormErrors({ general: resolvedMessage })
-    },
-  })
-
+  const createLog = useProjectTimeLogMutation(mutationOptions)
   const isMutating = createLog.isPending
 
   const disableCreate =
@@ -343,6 +189,39 @@ export function useProjectTimeLogDialog(
     !hoursInput.trim() ||
     !loggedOnInput.trim() ||
     (canSelectUser && !selectedUserId)
+
+  const projectLabel = useMemo(() => {
+    return clientName ? `${projectName} · ${clientName}` : projectName
+  }, [clientName, projectName])
+
+  const taskPickerButtonDisabled = isMutating || availableTasks.length === 0
+
+  const taskPickerReason = isMutating
+    ? 'Logging time...'
+    : availableTasks.length === 0
+      ? 'All eligible tasks are already linked.'
+      : null
+
+  const requestTaskRemoval = useCallback(
+    (task: ProjectTimeLogDialogParams['tasks'][number]) => {
+      if (isMutating) {
+        return
+      }
+      rawRequestTaskRemoval(task)
+    },
+    [isMutating, rawRequestTaskRemoval]
+  )
+
+  const cancelTaskRemoval = useCallback(() => {
+    if (isMutating) {
+      return
+    }
+    rawCancelTaskRemoval()
+  }, [isMutating, rawCancelTaskRemoval])
+
+  const runMutation = useCallback(() => {
+    createLog.mutate()
+  }, [createLog])
 
   const handleSubmit = useCallback(
     (event: React.FormEvent<HTMLFormElement>) => {
@@ -379,159 +258,68 @@ export function useProjectTimeLogDialog(
 
       setFormErrors({})
 
-      const shouldConfirmOverage =
-        Number.isFinite(parsedHours) &&
-        parsedHours > 0 &&
-        clientRemainingHours !== null &&
-        parsedHours > clientRemainingHours
-
-      if (shouldConfirmOverage) {
-        setPendingOverageHours(parsedHours)
-        setOverageConfirmOpen(true)
+      if (requestConfirmation(parsedHours, runMutation)) {
         return
       }
 
-      createLog.mutate()
+      runMutation()
     },
     [
       canLogTime,
       canSelectUser,
-      clientRemainingHours,
-      createLog,
       hoursInput,
       isMutating,
       loggedOnInput,
+      requestConfirmation,
+      runMutation,
       selectedUserId,
+      setFormErrors,
     ]
   )
 
   const handleDialogOpenChange = useCallback(
     (nextOpen: boolean) => {
       if (nextOpen) {
-        setLoggedOnInput(getToday())
-        setSelectedUserId(currentUserId)
-        setSelectedTaskIds([])
-        setPendingOverageHours(null)
-        setOverageConfirmOpen(false)
+        prepareForOpen(currentUserId)
+        initializeSelection()
+        resetOverage()
       } else {
-        setHoursInput('')
-        setNoteInput('')
-        setLoggedOnInput(getToday())
-        setSelectedTaskIds([])
-        setSelectedUserId(currentUserId)
-        setTaskRemovalCandidate(null)
-        setPendingOverageHours(null)
-        setOverageConfirmOpen(false)
+        resetForClose(currentUserId)
+        resetSelection()
+        resetOverage()
       }
 
-      setFormErrors({})
       onOpenChange(nextOpen)
     },
-    [currentUserId, getToday, onOpenChange]
+    [
+      currentUserId,
+      initializeSelection,
+      onOpenChange,
+      prepareForOpen,
+      resetForClose,
+      resetOverage,
+      resetSelection,
+    ]
   )
 
-  const projectLabel = useMemo(() => {
-    return clientName ? `${projectName} · ${clientName}` : projectName
-  }, [clientName, projectName])
-
-  const taskPickerButtonDisabled = isMutating || availableTasks.length === 0
-
-  const taskPickerReason = isMutating
-    ? 'Logging time...'
-    : availableTasks.length === 0
-      ? 'All eligible tasks are already linked.'
-      : null
-
-  const onAddTask = useCallback((taskId: string) => {
-    setSelectedTaskIds(prev => {
-      if (prev.includes(taskId)) {
-        return prev
-      }
-      return [...prev, taskId]
-    })
-  }, [])
-
-  const requestTaskRemoval = useCallback(
-    (task: ProjectTimeLogDialogParams['tasks'][number]) => {
-      if (isMutating) {
-        return
-      }
-      setTaskRemovalCandidate(task)
-    },
-    [isMutating]
-  )
-
-  const confirmTaskRemoval = useCallback(() => {
-    if (!taskRemovalCandidate) {
-      return
+  const guardedOverageDialog = useMemo(() => {
+    return {
+      isOpen: overageDialog.isOpen,
+      description: overageDialog.description,
+      confirm: () => {
+        if (isMutating) {
+          return
+        }
+        overageDialog.confirm()
+      },
+      cancel: () => {
+        if (isMutating) {
+          return
+        }
+        overageDialog.cancel()
+      },
     }
-
-    setSelectedTaskIds(prev =>
-      prev.filter(taskId => taskId !== taskRemovalCandidate.id)
-    )
-    setTaskRemovalCandidate(null)
-  }, [taskRemovalCandidate])
-
-  const cancelTaskRemoval = useCallback(() => {
-    if (isMutating) {
-      return
-    }
-    setTaskRemovalCandidate(null)
-  }, [isMutating])
-
-  const overageDescription = useMemo(() => {
-    if (pendingOverageHours === null || clientRemainingHours === null) {
-      return "This log will exceed the client's remaining hours. Continue anyway?"
-    }
-
-    const remainingAfter = clientRemainingHours - pendingOverageHours
-    return `Logging ${pendingOverageHours.toFixed(2)} hrs will push the client balance to ${remainingAfter.toFixed(2)} hrs. Continue?`
-  }, [clientRemainingHours, pendingOverageHours])
-
-  const handleOverageConfirm = useCallback(() => {
-    if (isMutating) {
-      return
-    }
-    setOverageConfirmOpen(false)
-    setPendingOverageHours(null)
-    createLog.mutate()
-  }, [createLog, isMutating])
-
-  const handleOverageCancel = useCallback(() => {
-    if (isMutating) {
-      return
-    }
-    setOverageConfirmOpen(false)
-    setPendingOverageHours(null)
-  }, [isMutating])
-
-  const onHoursChange = useCallback(
-    (value: string) => {
-      setHoursInput(value)
-      clearFieldErrors(['hours', 'general'])
-    },
-    [clearFieldErrors]
-  )
-
-  const onLoggedOnChange = useCallback(
-    (value: string) => {
-      setLoggedOnInput(value)
-      clearFieldErrors(['loggedOn', 'general'])
-    },
-    [clearFieldErrors]
-  )
-
-  const onSelectUser = useCallback(
-    (value: string) => {
-      setSelectedUserId(value)
-      clearFieldErrors(['user', 'general'])
-    },
-    [clearFieldErrors]
-  )
-
-  const onNoteChange = useCallback((value: string) => {
-    setNoteInput(value)
-  }, [])
+  }, [isMutating, overageDialog])
 
   return {
     canLogTime,
@@ -540,12 +328,7 @@ export function useProjectTimeLogDialog(
     isMutating,
     disableCreate,
     formErrors,
-    fieldErrorIds: {
-      hours: formErrors.hours ? HOURS_ERROR_ID : undefined,
-      loggedOn: formErrors.loggedOn ? DATE_ERROR_ID : undefined,
-      user: formErrors.user ? USER_ERROR_ID : undefined,
-      general: formErrors.general ? GENERAL_ERROR_ID : undefined,
-    },
+    fieldErrorIds,
     hoursInput,
     onHoursChange,
     loggedOnInput,
@@ -561,7 +344,7 @@ export function useProjectTimeLogDialog(
     availableTasks,
     selectedTasks,
     onAddTask,
-    onTaskPickerOpenChange: setIsTaskPickerOpen,
+    onTaskPickerOpenChange,
     isTaskPickerOpen,
     taskPickerButtonDisabled,
     taskPickerReason,
@@ -569,11 +352,6 @@ export function useProjectTimeLogDialog(
     taskRemovalCandidate,
     confirmTaskRemoval,
     cancelTaskRemoval,
-    overageDialog: {
-      isOpen: overageConfirmOpen,
-      description: overageDescription,
-      confirm: handleOverageConfirm,
-      cancel: handleOverageCancel,
-    },
+    overageDialog: guardedOverageDialog,
   }
 }
