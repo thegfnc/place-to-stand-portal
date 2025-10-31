@@ -8,20 +8,14 @@ import { useToast } from '@/components/ui/use-toast'
 import { sanitizeEditorHtml } from '@/components/ui/rich-text-editor/utils'
 import { getSupabaseBrowserClient } from '@/lib/supabase/client'
 
-import {
-  TASK_COMMENTS_QUERY_KEY,
-  prepareCommentBody,
-} from './helpers'
+import { TASK_COMMENTS_QUERY_KEY, prepareCommentBody } from './helpers'
 import {
   useCreateTaskCommentMutation,
   useDeleteTaskCommentMutation,
   useUpdateTaskCommentMutation,
 } from './mutations'
 import { useTaskCommentsQuery } from './queries'
-import type {
-  UseTaskCommentsOptions,
-  UseTaskCommentsState,
-} from './types'
+import type { UseTaskCommentsOptions, UseTaskCommentsState } from './types'
 import type { TaskCommentWithAuthor } from '@/lib/types'
 
 export function useTaskComments(

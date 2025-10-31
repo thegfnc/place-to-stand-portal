@@ -86,5 +86,14 @@ export function useHistoryKeyboardShortcuts({
       flushPendingSnapshots()
       window.removeEventListener('keydown', handleKeyDown)
     }
-  }, [canRedo, canSave, canUndo, flushPendingSnapshots, isActive, onSave, redo, undo])
+  }, [
+    canRedo,
+    canSave,
+    canUndo,
+    flushPendingSnapshots,
+    isActive,
+    onSave,
+    redo,
+    undo,
+  ])
 }

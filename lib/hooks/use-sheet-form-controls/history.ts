@@ -172,12 +172,7 @@ export function useFormHistory<T extends FieldValues>({
         pushSnapshot(snapshot.values, snapshot.externalState)
       }, effectiveDebounceMs)
     },
-    [
-      clearPendingTimer,
-      effectiveDebounceMs,
-      isActive,
-      pushSnapshot,
-    ]
+    [clearPendingTimer, effectiveDebounceMs, isActive, pushSnapshot]
   )
 
   const undo = useCallback(() => {

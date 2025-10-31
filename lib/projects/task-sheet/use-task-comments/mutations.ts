@@ -15,7 +15,7 @@ import type { CommentActivityMetadata } from './types'
 import type { SupabaseBrowserClient } from './queries'
 
 type RouterInstance = ReturnType<typeof useRouter>
- type ToastFn = ReturnType<typeof useToast>['toast']
+type ToastFn = ReturnType<typeof useToast>['toast']
 
 type BaseMutationArgs = {
   taskId: string | null
@@ -48,7 +48,10 @@ const logCommentActivity = async (
     BaseMutationArgs,
     'currentUserId' | 'projectId' | 'clientId' | 'taskTitle'
   >,
-  eventFactory: typeof taskCommentCreatedEvent | typeof taskCommentUpdatedEvent | typeof taskCommentDeletedEvent
+  eventFactory:
+    | typeof taskCommentCreatedEvent
+    | typeof taskCommentUpdatedEvent
+    | typeof taskCommentDeletedEvent
 ) => {
   const event = eventFactory({ taskTitle: args.taskTitle })
 

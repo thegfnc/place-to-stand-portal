@@ -42,14 +42,12 @@ export async function updateUser(
   const payload = parsed.data
   const supabase = getSupabase()
 
-  const {
-    data: existingUser,
-    error: existingUserError,
-  } = await fetchUserById<ExistingUserRecord>(
-    supabase,
-    payload.id,
-    `id, email, full_name, role, avatar_url`
-  )
+  const { data: existingUser, error: existingUserError } =
+    await fetchUserById<ExistingUserRecord>(
+      supabase,
+      payload.id,
+      `id, email, full_name, role, avatar_url`
+    )
 
   if (existingUserError) {
     console.error('Failed to load user for update', existingUserError)
@@ -63,14 +61,12 @@ export async function updateUser(
   const result = await updatePortalUser(payload)
 
   if (!result.error) {
-    const {
-      data: updatedUser,
-      error: updatedUserError,
-    } = await fetchUserById<UpdatedUserRecord>(
-      supabase,
-      payload.id,
-      `full_name, role, avatar_url`
-    )
+    const { data: updatedUser, error: updatedUserError } =
+      await fetchUserById<UpdatedUserRecord>(
+        supabase,
+        payload.id,
+        `full_name, role, avatar_url`
+      )
 
     if (updatedUserError) {
       console.error('Failed to reload user after update', updatedUserError)

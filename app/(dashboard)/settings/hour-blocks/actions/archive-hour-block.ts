@@ -9,10 +9,7 @@ import { getSupabaseServerClient } from '@/lib/supabase/server'
 
 import { deleteSchema } from './schemas'
 import type { ActionResult, DeleteInput } from './types'
-import {
-  HOUR_BLOCKS_SETTINGS_PATH,
-  fetchHourBlockWithClient,
-} from './helpers'
+import { HOUR_BLOCKS_SETTINGS_PATH, fetchHourBlockWithClient } from './helpers'
 
 export async function softDeleteHourBlock(
   input: DeleteInput

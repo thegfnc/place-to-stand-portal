@@ -1,4 +1,9 @@
-import type { SupabaseQueryError, SupabaseServerClient, ClientSummary, HourBlockWithClient } from './types'
+import type {
+  SupabaseQueryError,
+  SupabaseServerClient,
+  ClientSummary,
+  HourBlockWithClient,
+} from './types'
 
 export const HOUR_BLOCKS_SETTINGS_PATH = '/settings/hour-blocks'
 
@@ -33,7 +38,10 @@ export async function fetchActiveClient(
 export async function fetchHourBlockWithClient(
   supabase: SupabaseServerClient,
   hourBlockId: string
-): Promise<{ hourBlock: HourBlockWithClient | null; error: SupabaseQueryError }> {
+): Promise<{
+  hourBlock: HourBlockWithClient | null
+  error: SupabaseQueryError
+}> {
   const result = await supabase
     .from('hour_blocks')
     .select(

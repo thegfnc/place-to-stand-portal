@@ -56,7 +56,15 @@ export function useClientDeletionState({
       onOpenChange(false)
       onComplete()
     })
-  }, [client, isPending, onComplete, onOpenChange, setFeedback, startTransition, toast])
+  }, [
+    client,
+    isPending,
+    onComplete,
+    onOpenChange,
+    setFeedback,
+    startTransition,
+    toast,
+  ])
 
   return {
     isDeleteDialogOpen,

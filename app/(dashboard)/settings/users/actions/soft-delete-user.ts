@@ -35,14 +35,12 @@ export async function softDeleteUser(
   const payload = parsed.data
   const supabase = getSupabase()
 
-  const {
-    data: existingUser,
-    error: existingUserError,
-  } = await fetchUserById<UserSummary>(
-    supabase,
-    payload.id,
-    `id, email, full_name, role`
-  )
+  const { data: existingUser, error: existingUserError } =
+    await fetchUserById<UserSummary>(
+      supabase,
+      payload.id,
+      `id, email, full_name, role`
+    )
 
   if (existingUserError) {
     console.error('Failed to load user for archive', existingUserError)

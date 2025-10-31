@@ -9,10 +9,7 @@ import { getSupabaseServerClient } from '@/lib/supabase/server'
 
 import { restoreSchema } from './schemas'
 import type { ActionResult, RestoreInput } from './types'
-import {
-  HOUR_BLOCKS_SETTINGS_PATH,
-  fetchHourBlockWithClient,
-} from './helpers'
+import { HOUR_BLOCKS_SETTINGS_PATH, fetchHourBlockWithClient } from './helpers'
 
 export async function restoreHourBlock(
   input: RestoreInput

@@ -35,14 +35,12 @@ export async function restoreUser(
   const payload = parsed.data
   const supabase = getSupabase()
 
-  const {
-    data: existingUser,
-    error: existingUserError,
-  } = await fetchUserById<UserSummary>(
-    supabase,
-    payload.id,
-    `id, email, full_name, role`
-  )
+  const { data: existingUser, error: existingUserError } =
+    await fetchUserById<UserSummary>(
+      supabase,
+      payload.id,
+      `id, email, full_name, role`
+    )
 
   if (existingUserError) {
     console.error('Failed to load user for restore', existingUserError)
@@ -56,14 +54,12 @@ export async function restoreUser(
   const result = await restorePortalUser(payload)
 
   if (!result.error) {
-    const {
-      data: restoredUser,
-      error: restoredUserError,
-    } = await fetchUserById<UserSummary>(
-      supabase,
-      payload.id,
-      `email, full_name, role`
-    )
+    const { data: restoredUser, error: restoredUserError } =
+      await fetchUserById<UserSummary>(
+        supabase,
+        payload.id,
+        `email, full_name, role`
+      )
 
     if (restoredUserError) {
       console.error('Failed to reload user after restore', restoredUserError)

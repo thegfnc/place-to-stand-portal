@@ -9,10 +9,7 @@ import { getSupabaseServerClient } from '@/lib/supabase/server'
 
 import { destroySchema } from './schemas'
 import type { ActionResult, DestroyInput } from './types'
-import {
-  HOUR_BLOCKS_SETTINGS_PATH,
-  fetchHourBlockWithClient,
-} from './helpers'
+import { HOUR_BLOCKS_SETTINGS_PATH, fetchHourBlockWithClient } from './helpers'
 
 export async function destroyHourBlock(
   input: DestroyInput

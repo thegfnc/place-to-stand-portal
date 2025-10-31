@@ -41,8 +41,9 @@ export function useClientSheetFormState({
   toast,
 }: ClientSheetFormStateArgs): BaseFormState {
   const [isPickerOpen, setIsPickerOpen] = useState(false)
-  const [removalCandidate, setRemovalCandidate] =
-    useState<ClientMember | null>(null)
+  const [removalCandidate, setRemovalCandidate] = useState<ClientMember | null>(
+    null
+  )
   const [savedMemberIds, setSavedMemberIds] = useState<string[]>([])
   const [selectedMembers, setSelectedMembers] = useState<ClientMember[]>([])
 
