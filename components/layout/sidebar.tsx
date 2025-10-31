@@ -33,7 +33,7 @@ type NavGroup = {
 
 const NAV_GROUPS: NavGroup[] = [
   {
-    title: null,
+    title: 'Portal',
     roles: ['ADMIN', 'CONTRACTOR', 'CLIENT'],
     items: [
       {

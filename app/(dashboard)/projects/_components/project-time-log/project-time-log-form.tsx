@@ -1,40 +1,16 @@
-import { ChevronsUpDown, ListPlus, Loader2, PlusCircle, X } from 'lucide-react'
+import { Loader2, PlusCircle } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { DisabledFieldTooltip } from '@/components/ui/disabled-field-tooltip'
 import { Input } from '@/components/ui/input'
-import {
-  SearchableCombobox,
-  type SearchableComboboxItem,
-} from '@/components/ui/searchable-combobox'
+import { type SearchableComboboxItem } from '@/components/ui/searchable-combobox'
 import { Textarea } from '@/components/ui/textarea'
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from '@/components/ui/command'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover'
 import type { TaskWithRelations } from '@/lib/types'
 import type { TimeLogFormErrors } from '@/lib/projects/time-log/types'
 
-const formatTaskStatusLabel = (status: string | null) => {
-  if (!status) {
-    return null
-  }
-
-  return status
-    .toLowerCase()
-    .split('_')
-    .map(part => (part ? part[0].toUpperCase() + part.slice(1) : part))
-    .join(' ')
-}
+import { SelectedTaskList } from './selected-task-list'
+import { TaskSelector } from './task-selector'
+import { UserSelectField } from './user-select-field'
 
 export type ProjectTimeLogFormProps = {
   canLogTime: boolean
@@ -160,137 +136,36 @@ export function ProjectTimeLogForm(props: ProjectTimeLogFormProps) {
         ) : null}
       </div>
       {canSelectUser ? (
-        <div className='space-y-2 sm:col-span-2'>
-          <label htmlFor='time-log-user' className='text-sm font-medium'>
-            Log hours for
-          </label>
-          <SearchableCombobox
-            id='time-log-user'
-            value={selectedUserId}
-            onChange={onSelectUser}
-            items={userComboboxItems}
-            placeholder='Select teammate'
-            searchPlaceholder='Search collaborators...'
-            emptyMessage='No eligible collaborators found.'
-            disabled={isMutating}
-            ariaDescribedBy={fieldErrorIds.user}
-            ariaInvalid={Boolean(formErrors.user)}
-          />
-          {formErrors.user ? (
-            <p
-              id={fieldErrorIds.user}
-              className='text-destructive text-xs'
-              role='alert'
-            >
-              {formErrors.user}
-            </p>
-          ) : null}
-        </div>
+        <UserSelectField
+          selectedUserId={selectedUserId}
+          onSelectUser={onSelectUser}
+          items={userComboboxItems}
+          disabled={isMutating}
+          fieldErrorId={fieldErrorIds.user}
+          errorMessage={formErrors.user}
+        />
       ) : null}
       <div className='space-y-2 sm:col-span-2'>
         <label htmlFor='time-log-task' className='text-sm font-medium'>
           Link to tasks (optional)
         </label>
-        <Popover open={isTaskPickerOpen} onOpenChange={onTaskPickerOpenChange}>
-          <DisabledFieldTooltip
-            disabled={taskPickerButtonDisabled}
-            reason={taskPickerReason}
-          >
-            <div className='w-full'>
-              <PopoverTrigger asChild>
-                <Button
-                  type='button'
-                  variant='outline'
-                  className='w-full justify-between'
-                  disabled={taskPickerButtonDisabled}
-                >
-                  <span className='flex items-center gap-2'>
-                    <ListPlus className='h-4 w-4' />
-                    {availableTasks.length > 0
-                      ? 'Add task link'
-                      : 'All tasks linked'}
-                  </span>
-                  <ChevronsUpDown className='h-4 w-4 opacity-50' />
-                </Button>
-              </PopoverTrigger>
-            </div>
-          </DisabledFieldTooltip>
-          <PopoverContent className='w-[320px] p-0' align='start'>
-            <Command>
-              <CommandInput placeholder='Search tasks...' />
-              <CommandEmpty>No matching tasks.</CommandEmpty>
-              <CommandList>
-                <CommandGroup heading='Tasks'>
-                  {availableTasks.map(task => {
-                    const formattedStatus = formatTaskStatusLabel(task.status)
-
-                    return (
-                      <CommandItem
-                        key={task.id}
-                        value={`${task.title} ${task.id}`}
-                        onSelect={() => {
-                          onAddTask(task.id)
-                          onTaskPickerOpenChange(false)
-                        }}
-                      >
-                        <div className='flex flex-col'>
-                          <span className='font-medium'>{task.title}</span>
-                          {formattedStatus ? (
-                            <span className='text-muted-foreground text-xs'>
-                              {formattedStatus}
-                            </span>
-                          ) : null}
-                        </div>
-                      </CommandItem>
-                    )
-                  })}
-                </CommandGroup>
-              </CommandList>
-            </Command>
-          </PopoverContent>
-        </Popover>
+        <TaskSelector
+          availableTasks={availableTasks}
+          onAddTask={onAddTask}
+          isOpen={isTaskPickerOpen}
+          onOpenChange={onTaskPickerOpenChange}
+          disabled={taskPickerButtonDisabled}
+          disabledReason={taskPickerReason}
+        />
         <p className='text-muted-foreground text-xs'>
           Leave empty to apply hours to the project only.
         </p>
-        <div className='space-y-2'>
-          {selectedTasks.length === 0
-            ? null
-            : selectedTasks.map(task => {
-                const formattedStatus = formatTaskStatusLabel(task.status)
-
-                return (
-                  <div
-                    key={task.id}
-                    className='bg-muted/40 flex items-center justify-between rounded-md border px-3 py-2'
-                  >
-                    <div className='flex flex-col text-sm leading-tight'>
-                      <span className='font-medium'>{task.title}</span>
-                      {formattedStatus ? (
-                        <span className='text-muted-foreground text-xs'>
-                          {formattedStatus}
-                        </span>
-                      ) : null}
-                    </div>
-                    <DisabledFieldTooltip
-                      disabled={isMutating}
-                      reason={isMutating ? 'Logging time...' : null}
-                    >
-                      <Button
-                        type='button'
-                        variant='ghost'
-                        size='icon'
-                        className='text-muted-foreground hover:text-destructive'
-                        onClick={() => requestTaskRemoval(task)}
-                        disabled={isMutating}
-                        aria-label={`Remove ${task.title}`}
-                      >
-                        <X className='h-4 w-4' />
-                      </Button>
-                    </DisabledFieldTooltip>
-                  </div>
-                )
-              })}
-        </div>
+        <SelectedTaskList
+          tasks={selectedTasks}
+          isActionDisabled={isMutating}
+          disabledReason={isMutating ? 'Logging time...' : null}
+          onRemove={requestTaskRemoval}
+        />
       </div>
       <div className='space-y-2 sm:col-span-2'>
         <label htmlFor='time-log-note' className='text-sm font-medium'>
