@@ -279,7 +279,7 @@ export function ReviewTabContent(props: ReviewTabContentProps) {
                     <Badge
                       variant='outline'
                       className={cn(
-                        'text-xs font-semibold uppercase',
+                        'text-sm font-semibold uppercase',
                         DONE_BADGE
                       )}
                     >
@@ -432,7 +432,7 @@ export function ReviewTabContent(props: ReviewTabContentProps) {
                     <Badge
                       variant='outline'
                       className={cn(
-                        'text-xs font-semibold uppercase',
+                        'text-sm font-semibold uppercase',
                         ACCEPTED_BADGE
                       )}
                     >
@@ -564,7 +564,7 @@ export function ReviewTabContent(props: ReviewTabContentProps) {
                     <Badge
                       variant='outline'
                       className={cn(
-                        'text-xs font-semibold uppercase',
+                        'text-sm font-semibold uppercase',
                         ARCHIVED_BADGE
                       )}
                     >

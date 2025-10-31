@@ -232,7 +232,7 @@ export function RefineSection({
             <div className='flex items-center gap-2'>
               <Badge
                 variant='outline'
-                className={cn('text-xs font-semibold uppercase', statusToken)}
+                className={cn('text-sm font-semibold uppercase', statusToken)}
               >
                 {displayLabel}
               </Badge>
