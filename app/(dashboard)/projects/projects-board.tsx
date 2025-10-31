@@ -31,7 +31,7 @@ import type { ActionResult } from './actions/action-types'
 
 type Props = Omit<Parameters<typeof useProjectsBoardState>[0], 'currentView'>
 type ProjectsBoardProps = Props & {
-  initialTab?: 'board' | 'activity' | 'backlog' | 'archive'
+  initialTab?: 'board' | 'activity' | 'refine' | 'archive'
 }
 
 type ArchiveActionKind = 'unaccept' | 'restore' | 'destroy'
@@ -125,16 +125,14 @@ export function ProjectsBoard({
   const projectPathBase =
     clientSlug && projectSlug ? `/projects/${clientSlug}/${projectSlug}` : null
   const boardHref = projectPathBase ? `${projectPathBase}/board` : '/projects'
-  const backlogHref = projectPathBase
-    ? `${projectPathBase}/backlog`
-    : '/projects'
+  const refineHref = projectPathBase ? `${projectPathBase}/refine` : '/projects'
   const activityHref = projectPathBase
     ? `${projectPathBase}/activity`
     : '/projects'
   const archiveHref = projectPathBase
     ? `${projectPathBase}/archive`
     : '/projects'
-  const backlogDisabled = !projectPathBase
+  const refineDisabled = !projectPathBase
   const activityDisabled = !projectPathBase
   const archiveDisabled = !projectPathBase
 
@@ -389,10 +387,10 @@ export function ProjectsBoard({
         <ProjectsBoardTabs
           initialTab={initialTab}
           boardHref={boardHref}
-          backlogHref={backlogHref}
+          refineHref={refineHref}
           activityHref={activityHref}
           archiveHref={archiveHref}
-          backlogDisabled={backlogDisabled}
+          refineDisabled={refineDisabled}
           activityDisabled={activityDisabled}
           archiveDisabled={archiveDisabled}
           onlyAssignedToMe={onlyAssignedToMe}

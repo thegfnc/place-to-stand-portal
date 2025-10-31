@@ -5,12 +5,12 @@ import { Label } from '@/components/ui/label'
 import { TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 export type ProjectsBoardTabsHeaderProps = {
-  initialTab: 'board' | 'backlog' | 'activity' | 'archive'
+  initialTab: 'board' | 'refine' | 'activity' | 'archive'
   boardHref: string
-  backlogHref: string
+  refineHref: string
   activityHref: string
   archiveHref: string
-  backlogDisabled: boolean
+  refineDisabled: boolean
   activityDisabled: boolean
   archiveDisabled: boolean
   onlyAssignedToMe: boolean
@@ -21,10 +21,10 @@ export function ProjectsBoardTabsHeader(props: ProjectsBoardTabsHeaderProps) {
   const {
     initialTab,
     boardHref,
-    backlogHref,
+    refineHref,
     activityHref,
     archiveHref,
-    backlogDisabled,
+    refineDisabled,
     activityDisabled,
     archiveDisabled,
     onlyAssignedToMe,
@@ -40,26 +40,26 @@ export function ProjectsBoardTabsHeader(props: ProjectsBoardTabsHeaderProps) {
           </Link>
         </TabsTrigger>
         <TabsTrigger
-          value='backlog'
+          value='refine'
           className='px-3 py-1.5 text-sm'
           asChild
-          disabled={backlogDisabled}
+          disabled={refineDisabled}
         >
           <Link
-            href={backlogHref}
+            href={refineHref}
             prefetch={false}
-            aria-disabled={backlogDisabled}
-            tabIndex={backlogDisabled ? -1 : undefined}
+            aria-disabled={refineDisabled}
+            tabIndex={refineDisabled ? -1 : undefined}
             onClick={event => {
-              if (backlogDisabled) {
+              if (refineDisabled) {
                 event.preventDefault()
               }
             }}
             className={
-              backlogDisabled ? 'pointer-events-none opacity-50' : undefined
+              refineDisabled ? 'pointer-events-none opacity-50' : undefined
             }
           >
-            Backlog
+            Refine
           </Link>
         </TabsTrigger>
         <TabsTrigger

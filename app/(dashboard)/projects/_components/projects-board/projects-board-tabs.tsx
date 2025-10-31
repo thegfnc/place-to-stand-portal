@@ -5,7 +5,7 @@ import type { DndContextProps } from '@dnd-kit/core'
 import type { RenderAssigneeFn } from '../../../../../lib/projects/board/board-selectors'
 
 import { BoardTabContent } from './board-tab-content'
-import { BacklogTabContent } from './backlog-tab-content'
+import { RefineTabContent } from './refine-tab-content'
 import { ActivityTabContent } from './activity-tab-content'
 import { ArchiveTabContent } from './archive-tab-content'
 import type { ArchiveActionKind } from './archive-tab-content'
@@ -13,12 +13,12 @@ import { ProjectsBoardTabsHeader } from './projects-board-tabs-header'
 import type { ProjectsBoardActiveProject } from './board-tab-content'
 
 export type ProjectsBoardTabsProps = {
-  initialTab: 'board' | 'backlog' | 'activity' | 'archive'
+  initialTab: 'board' | 'refine' | 'activity' | 'archive'
   boardHref: string
-  backlogHref: string
+  refineHref: string
   activityHref: string
   archiveHref: string
-  backlogDisabled: boolean
+  refineDisabled: boolean
   activityDisabled: boolean
   archiveDisabled: boolean
   onlyAssignedToMe: boolean
@@ -61,10 +61,10 @@ export function ProjectsBoardTabs(props: ProjectsBoardTabsProps) {
   const {
     initialTab,
     boardHref,
-    backlogHref,
+    refineHref,
     activityHref,
     archiveHref,
-    backlogDisabled,
+    refineDisabled,
     activityDisabled,
     archiveDisabled,
     onlyAssignedToMe,
@@ -108,10 +108,10 @@ export function ProjectsBoardTabs(props: ProjectsBoardTabsProps) {
       <ProjectsBoardTabsHeader
         initialTab={initialTab}
         boardHref={boardHref}
-        backlogHref={backlogHref}
+        refineHref={refineHref}
         activityHref={activityHref}
         archiveHref={archiveHref}
-        backlogDisabled={backlogDisabled}
+        refineDisabled={refineDisabled}
         activityDisabled={activityDisabled}
         archiveDisabled={archiveDisabled}
         onlyAssignedToMe={onlyAssignedToMe}
@@ -136,8 +136,8 @@ export function ProjectsBoardTabs(props: ProjectsBoardTabsProps) {
         onBoardScroll={onBoardScroll}
         activeSheetTaskId={activeSheetTaskId}
       />
-      <BacklogTabContent
-        isActive={initialTab === 'backlog'}
+      <RefineTabContent
+        isActive={initialTab === 'refine'}
         feedback={feedback}
         activeProject={activeProject}
         onDeckTasks={onDeckTasks}

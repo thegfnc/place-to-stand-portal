@@ -1,7 +1,7 @@
 import { DndContext, type DndContextProps } from '@dnd-kit/core'
 
 import { TabsContent } from '@/components/ui/tabs'
-import { BacklogSection } from '../backlog-section'
+import { RefineSection } from '../refine-section'
 import { ProjectsBoardEmpty } from '../projects-board-empty'
 import { TaskDragOverlay } from '../task-drag-overlay'
 import { LoadingScrim } from './loading-scrim'
@@ -15,7 +15,7 @@ import type { TaskWithRelations } from '@/lib/types'
 import type { RenderAssigneeFn } from '../../../../../lib/projects/board/board-selectors'
 import type { ProjectsBoardActiveProject } from './board-tab-content'
 
-export type BacklogTabContentProps = {
+export type RefineTabContentProps = {
   isActive: boolean
   feedback: string | null
   activeProject: ProjectsBoardActiveProject
@@ -34,7 +34,7 @@ export type BacklogTabContentProps = {
   activeSheetTaskId: string | null
 }
 
-export function BacklogTabContent(props: BacklogTabContentProps) {
+export function RefineTabContent(props: RefineTabContentProps) {
   const {
     isActive,
     feedback,
@@ -62,7 +62,7 @@ export function BacklogTabContent(props: BacklogTabContentProps) {
 
   return (
     <TabsContent
-      value='backlog'
+      value='refine'
       className='flex min-h-0 flex-1 flex-col gap-4 sm:gap-6'
     >
       {feedback ? <p className={FEEDBACK_CLASSES}>{feedback}</p> : null}
@@ -79,7 +79,7 @@ export function BacklogTabContent(props: BacklogTabContentProps) {
             onDragEnd={onDragEnd}
           >
             <div className='flex min-h-0 flex-1 flex-col gap-4'>
-              <BacklogSection
+              <RefineSection
                 status={BACKLOG_SECTIONS[0].id}
                 label='On Deck'
                 tasks={onDeckTasks}
@@ -89,7 +89,7 @@ export function BacklogTabContent(props: BacklogTabContentProps) {
                 activeTaskId={activeSheetTaskId}
                 onCreateTask={onCreateTask}
               />
-              <BacklogSection
+              <RefineSection
                 status={BACKLOG_SECTIONS[1].id}
                 label='Backlog'
                 tasks={backlogTasks}

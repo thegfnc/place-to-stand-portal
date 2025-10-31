@@ -63,7 +63,7 @@ const formatUpdatedAt = (value: string) => {
 
 type AssigneeInfo = { id: string; name: string }
 
-type BacklogTaskRowProps = {
+type RefineTaskRowProps = {
   task: TaskWithRelations
   assignees: AssigneeInfo[]
   onEdit: (task: TaskWithRelations) => void
@@ -71,13 +71,13 @@ type BacklogTaskRowProps = {
   isActive?: boolean
 }
 
-function BacklogTaskRow({
+function RefineTaskRow({
   task,
   assignees,
   onEdit,
   draggable,
   isActive = false,
-}: BacklogTaskRowProps) {
+}: RefineTaskRowProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
       id: task.id,
@@ -185,7 +185,7 @@ function BacklogTaskRow({
   )
 }
 
-type BacklogSectionProps = {
+type RefineSectionProps = {
   status: BoardColumnId
   label: string
   tasks: TaskWithRelations[]
@@ -198,7 +198,7 @@ type BacklogSectionProps = {
   onCreateTask?: (status: BoardColumnId) => void
 }
 
-export function BacklogSection({
+export function RefineSection({
   status,
   label,
   tasks,
@@ -207,7 +207,7 @@ export function BacklogSection({
   onEditTask,
   activeTaskId,
   onCreateTask,
-}: BacklogSectionProps) {
+}: RefineSectionProps) {
   const { setNodeRef, isOver } = useDroppable({ id: status })
   const statusToken = getTaskStatusToken(status)
   const statusLabel = getTaskStatusLabel(status)
@@ -282,7 +282,7 @@ export function BacklogSection({
               </TableRow>
             ) : (
               tasks.map(task => (
-                <BacklogTaskRow
+                <RefineTaskRow
                   key={task.id}
                   task={task}
                   assignees={renderAssignees(task)}

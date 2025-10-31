@@ -48,7 +48,7 @@ type BoardSelectionArgs = {
     options?: NavigateOptions
   ) => void
   setFeedback: Dispatch<SetStateAction<string | null>>
-  currentView: 'board' | 'activity' | 'backlog' | 'archive'
+  currentView: 'board' | 'activity' | 'refine' | 'archive'
 }
 
 export const useBoardSelectionState = ({
