@@ -162,6 +162,9 @@ export function useUpdateTaskCommentMutation({
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey })
       onSuccess?.()
+      if (taskId) {
+        router.refresh()
+      }
       toast({
         title: 'Comment updated',
         description: 'Your message has been refreshed.',
