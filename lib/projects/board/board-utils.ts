@@ -73,7 +73,7 @@ export const buildBoardPath = (
   lookups: BoardLookups,
   options: {
     taskId?: string | null
-    view?: 'board' | 'activity' | 'backlog'
+    view?: 'board' | 'activity' | 'backlog' | 'archive'
   } = {}
 ) => {
   const { taskId = null, view = 'board' } = options
@@ -97,6 +97,10 @@ export const buildBoardPath = (
 
   if (view === 'activity') {
     return `${rootPath}/activity`
+  }
+
+  if (view === 'archive') {
+    return `${rootPath}/archive`
   }
 
   if (view === 'backlog') {
@@ -129,6 +133,10 @@ export const groupTasksByColumn = (
     .forEach(task => {
       const status = task.status
       if (!columnIds.has(status as BoardColumnId)) {
+        return
+      }
+
+      if (status === 'DONE' && task.accepted_at) {
         return
       }
 

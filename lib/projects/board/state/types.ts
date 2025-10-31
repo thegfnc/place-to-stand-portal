@@ -5,5 +5,5 @@ export type TaskLookup = Map<string, TaskWithRelations[]>
 export type NavigateOptions = {
   taskId?: string | null
   replace?: boolean
-  view?: 'board' | 'activity' | 'backlog'
+  view?: 'board' | 'activity' | 'backlog' | 'archive'
 }

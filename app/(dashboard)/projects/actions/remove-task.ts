@@ -1,6 +1,4 @@
 'use server'
-
-import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 
 import { logActivity } from '@/lib/activity/logger'
@@ -11,7 +9,8 @@ import { getSupabaseServiceClient } from '@/lib/supabase/service'
 import { deleteAttachmentObject } from '@/lib/storage/task-attachments'
 import type { Json } from '@/supabase/types/database'
 
-import type { ActionResult } from './shared'
+import { revalidateProjectTaskViews } from './shared'
+import type { ActionResult } from './action-types'
 
 export async function removeTask(input: {
   taskId: string
@@ -129,8 +128,7 @@ export async function removeTask(input: {
     metadata: archiveMetadata,
   })
 
-  revalidatePath('/projects')
-  revalidatePath('/projects/[clientSlug]/[projectSlug]/board')
+  revalidateProjectTaskViews()
 
   return {}
 }

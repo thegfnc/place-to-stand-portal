@@ -46,7 +46,9 @@ export function assembleProjectsWithRelations({
     relations.timeLogs,
     projectClientLookup
   )
-  const tasksByProject = groupTasksByProject(relations.tasks)
+  const { activeTasksByProject, archivedTasksByProject } = groupTasksByProject(
+    relations.tasks
+  )
 
   const scopedProjects =
     shouldScopeToUser && options.forUserId
@@ -59,7 +61,8 @@ export function assembleProjectsWithRelations({
       ? (clientLookup.get(project.client_id) ?? null)
       : null,
     members: membersByProject.get(project.id) ?? [],
-    tasks: tasksByProject.get(project.id) ?? [],
+    tasks: activeTasksByProject.get(project.id) ?? [],
+    archivedTasks: archivedTasksByProject.get(project.id) ?? [],
     burndown: buildProjectBurndown(
       project,
       purchasedHoursByClient,
@@ -183,13 +186,15 @@ function summarizeTimeLogs(
   return { timeLogTotalsByProject, timeLogTotalsByClient }
 }
 
-function groupTasksByProject(
-  tasks: RawTaskWithRelations[]
-): Map<string, TaskWithRelations[]> {
-  const tasksByProject = new Map<string, TaskWithRelations[]>()
+function groupTasksByProject(tasks: RawTaskWithRelations[]): {
+  activeTasksByProject: Map<string, TaskWithRelations[]>
+  archivedTasksByProject: Map<string, TaskWithRelations[]>
+} {
+  const activeTasksByProject = new Map<string, TaskWithRelations[]>()
+  const archivedTasksByProject = new Map<string, TaskWithRelations[]>()
 
   tasks.forEach(task => {
-    if (!task || task.deleted_at) {
+    if (!task || !task.project_id) {
       return
     }
 
@@ -212,17 +217,23 @@ function groupTasksByProject(
       attachment => attachment && !attachment.deleted_at
     )
 
-    const existingTasks = tasksByProject.get(task.project_id) ?? []
-    existingTasks.push({
+    const normalizedTask: TaskWithRelations = {
       ...taskFields,
       assignees: safeAssignees,
       commentCount,
       attachments: safeAttachments,
-    })
-    tasksByProject.set(task.project_id, existingTasks)
+    }
+
+    const targetMap = task.deleted_at
+      ? archivedTasksByProject
+      : activeTasksByProject
+
+    const existingTasks = targetMap.get(task.project_id) ?? []
+    existingTasks.push(normalizedTask)
+    targetMap.set(task.project_id, existingTasks)
   })
 
-  return tasksByProject
+  return { activeTasksByProject, archivedTasksByProject }
 }
 
 function scopeProjects(

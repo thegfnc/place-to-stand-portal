@@ -449,6 +449,7 @@ export type Database = {
       }
       tasks: {
         Row: {
+          accepted_at: string | null
           created_at: string
           created_by: string | null
           deleted_at: string | null
@@ -462,6 +463,7 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          accepted_at?: string | null
           created_at?: string
           created_by?: string | null
           deleted_at?: string | null
@@ -475,6 +477,7 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          accepted_at?: string | null
           created_at?: string
           created_by?: string | null
           deleted_at?: string | null

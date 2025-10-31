@@ -7,16 +7,20 @@ import type { RenderAssigneeFn } from '../../../../../lib/projects/board/board-s
 import { BoardTabContent } from './board-tab-content'
 import { BacklogTabContent } from './backlog-tab-content'
 import { ActivityTabContent } from './activity-tab-content'
+import { ArchiveTabContent } from './archive-tab-content'
+import type { ArchiveActionKind } from './archive-tab-content'
 import { ProjectsBoardTabsHeader } from './projects-board-tabs-header'
 import type { ProjectsBoardActiveProject } from './board-tab-content'
 
 export type ProjectsBoardTabsProps = {
-  initialTab: 'board' | 'backlog' | 'activity'
+  initialTab: 'board' | 'backlog' | 'activity' | 'archive'
   boardHref: string
   backlogHref: string
   activityHref: string
+  archiveHref: string
   backlogDisabled: boolean
   activityDisabled: boolean
+  archiveDisabled: boolean
   onlyAssignedToMe: boolean
   onAssignedFilterChange: (checked: boolean) => void
   feedback: string | null
@@ -38,6 +42,19 @@ export type ProjectsBoardTabsProps = {
   backlogTasks: TaskWithRelations[]
   activeSheetTaskId: string | null
   activityTargetClientId: string | null
+  acceptedTasks: TaskWithRelations[]
+  archivedTasks: TaskWithRelations[]
+  onAcceptAllDone: () => void
+  acceptAllDisabled: boolean
+  acceptAllDisabledReason: string | null
+  isAcceptingDone: boolean
+  onUnacceptTask: (taskId: string) => void
+  onRestoreTask: (taskId: string) => void
+  onDestroyTask: (taskId: string) => void
+  archiveActionTaskId: string | null
+  archiveActionType: ArchiveActionKind | null
+  archiveActionDisabledReason: string | null
+  isArchiveActionPending: boolean
 }
 
 export function ProjectsBoardTabs(props: ProjectsBoardTabsProps) {
@@ -46,8 +63,10 @@ export function ProjectsBoardTabs(props: ProjectsBoardTabsProps) {
     boardHref,
     backlogHref,
     activityHref,
+    archiveHref,
     backlogDisabled,
     activityDisabled,
+    archiveDisabled,
     onlyAssignedToMe,
     onAssignedFilterChange,
     feedback,
@@ -69,6 +88,19 @@ export function ProjectsBoardTabs(props: ProjectsBoardTabsProps) {
     backlogTasks,
     activeSheetTaskId,
     activityTargetClientId,
+    acceptedTasks,
+    archivedTasks,
+    onAcceptAllDone,
+    acceptAllDisabled,
+    acceptAllDisabledReason,
+    isAcceptingDone,
+    onUnacceptTask,
+    onRestoreTask,
+    onDestroyTask,
+    archiveActionTaskId,
+    archiveActionType,
+    archiveActionDisabledReason,
+    isArchiveActionPending,
   } = props
 
   return (
@@ -78,8 +110,10 @@ export function ProjectsBoardTabs(props: ProjectsBoardTabsProps) {
         boardHref={boardHref}
         backlogHref={backlogHref}
         activityHref={activityHref}
+        archiveHref={archiveHref}
         backlogDisabled={backlogDisabled}
         activityDisabled={activityDisabled}
+        archiveDisabled={archiveDisabled}
         onlyAssignedToMe={onlyAssignedToMe}
         onAssignedFilterChange={onAssignedFilterChange}
       />
@@ -124,6 +158,26 @@ export function ProjectsBoardTabs(props: ProjectsBoardTabsProps) {
         isActive={initialTab === 'activity'}
         activeProject={activeProject}
         activityTargetClientId={activityTargetClientId}
+      />
+      <ArchiveTabContent
+        isActive={initialTab === 'archive'}
+        activeProject={activeProject}
+        feedback={feedback}
+        acceptedTasks={acceptedTasks}
+        archivedTasks={archivedTasks}
+        renderAssignees={renderAssignees}
+        onEditTask={onEditTask}
+        onAcceptAllDone={onAcceptAllDone}
+        acceptAllDisabled={acceptAllDisabled}
+        acceptAllDisabledReason={acceptAllDisabledReason}
+        isAcceptingDone={isAcceptingDone}
+        onUnacceptTask={onUnacceptTask}
+        onRestoreTask={onRestoreTask}
+        onDestroyTask={onDestroyTask}
+        archiveActionTaskId={archiveActionTaskId}
+        archiveActionType={archiveActionType}
+        archiveActionDisabledReason={archiveActionDisabledReason}
+        isArchiveActionPending={isArchiveActionPending}
       />
     </Tabs>
   )

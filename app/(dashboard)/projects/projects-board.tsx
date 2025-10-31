@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useCallback, useMemo, useState, useTransition } from 'react'
 import { PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
 
 import { AppShellHeader } from '@/components/layout/app-shell'
@@ -20,11 +20,22 @@ import { useBoardScrollPersistence } from '@/lib/projects/board/state/use-board-
 import { useBoardTimeLogDialogs } from '@/lib/projects/board/state/use-board-time-log-dialogs'
 import { groupTasksByColumn } from '@/lib/projects/board/board-utils'
 import { useProjectsBoardState } from '@/lib/projects/board/use-projects-board-state'
+import { useToast } from '@/components/ui/use-toast'
+import {
+  acceptDoneTasks,
+  destroyTask,
+  restoreTask,
+  unacceptTask,
+} from './actions'
+import type { ActionResult } from './actions/action-types'
 
 type Props = Omit<Parameters<typeof useProjectsBoardState>[0], 'currentView'>
 type ProjectsBoardProps = Props & {
-  initialTab?: 'board' | 'activity' | 'backlog'
+  initialTab?: 'board' | 'activity' | 'backlog' | 'archive'
 }
+
+type ArchiveActionKind = 'unaccept' | 'restore' | 'destroy'
+type ArchiveActionState = { type: ArchiveActionKind; taskId: string }
 
 const NO_PROJECTS_TITLE = 'No projects assigned yet'
 const NO_PROJECTS_DESCRIPTION =
@@ -41,6 +52,7 @@ export function ProjectsBoard({
       },
     })
   )
+  const { toast } = useToast()
 
   const {
     isPending,
@@ -51,6 +63,7 @@ export function ProjectsBoard({
     projectItems,
     activeProject,
     activeProjectTasks,
+    activeProjectArchivedTasks,
     canManageTasks,
     memberDirectory,
     tasksByColumn,
@@ -77,6 +90,10 @@ export function ProjectsBoard({
   const storageNamespace = props.currentUserId
     ? `projects-board-assigned-filter:${props.currentUserId}`
     : null
+  const [isAcceptingDone, startAcceptingDone] = useTransition()
+  const [isArchiveActionPending, startArchiveAction] = useTransition()
+  const [pendingArchiveAction, setPendingArchiveAction] =
+    useState<ArchiveActionState | null>(null)
 
   const { onlyAssignedToMe, handleAssignedFilterChange } =
     useBoardAssignedFilter({
@@ -114,8 +131,12 @@ export function ProjectsBoard({
   const activityHref = projectPathBase
     ? `${projectPathBase}/activity`
     : '/projects'
+  const archiveHref = projectPathBase
+    ? `${projectPathBase}/archive`
+    : '/projects'
   const backlogDisabled = !projectPathBase
   const activityDisabled = !projectPathBase
+  const archiveDisabled = !projectPathBase
 
   const renderAssignees = useMemo(
     () => createRenderAssignees(memberDirectory),
@@ -137,6 +158,178 @@ export function ProjectsBoard({
 
     return filterTasksByAssignee(tasksByColumn, props.currentUserId)
   }, [onlyAssignedToMe, props.currentUserId, tasksByColumn])
+
+  const canAcceptTasks = props.currentUserRole === 'ADMIN'
+
+  const acceptedTasks = useMemo(
+    () =>
+      activeProjectTasks.filter(
+        task => task.status === 'DONE' && Boolean(task.accepted_at)
+      ),
+    [activeProjectTasks]
+  )
+
+  const archivedTasks = useMemo(
+    () => activeProjectArchivedTasks,
+    [activeProjectArchivedTasks]
+  )
+
+  const doneColumnTasks = tasksByColumnToRender.get('DONE') ?? []
+  const hasAcceptableTasks = doneColumnTasks.length > 0
+  const acceptAllDisabled = !canAcceptTasks || !hasAcceptableTasks
+  const acceptAllDisabledReason = !canAcceptTasks
+    ? 'Only administrators can accept tasks.'
+    : !hasAcceptableTasks
+      ? 'No tasks are ready for acceptance.'
+      : null
+
+  const archiveActionTaskId = pendingArchiveAction?.taskId ?? null
+  const archiveActionType = pendingArchiveAction?.type ?? null
+  const archiveActionDisabledReason = canAcceptTasks
+    ? null
+    : 'Only administrators can manage archived tasks.'
+
+  const handleAcceptAllDone = useCallback(() => {
+    if (!activeProject) {
+      return
+    }
+
+    if (!canAcceptTasks) {
+      toast({
+        variant: 'destructive',
+        title: 'Action not allowed',
+        description: 'Only administrators can accept tasks.',
+      })
+      return
+    }
+
+    startAcceptingDone(async () => {
+      const result = await acceptDoneTasks({ projectId: activeProject.id })
+
+      if (result.error) {
+        toast({
+          variant: 'destructive',
+          title: 'Unable to accept tasks',
+          description: result.error,
+        })
+        return
+      }
+
+      if (result.acceptedCount > 0) {
+        const plural = result.acceptedCount === 1 ? '' : 's'
+        toast({
+          title: 'Tasks accepted',
+          description: `${result.acceptedCount} task${plural} moved out of Done.`,
+        })
+        return
+      }
+
+      toast({
+        title: 'No tasks to accept',
+        description: 'All tasks in Done are already accepted.',
+      })
+    })
+  }, [activeProject, canAcceptTasks, startAcceptingDone, toast])
+
+  const performArchiveAction = useCallback(
+    (
+      type: ArchiveActionKind,
+      taskId: string,
+      action: () => Promise<ActionResult>,
+      success: { title: string; description?: string },
+      errorTitle: string
+    ) => {
+      if (!canAcceptTasks) {
+        toast({
+          variant: 'destructive',
+          title: 'Action not allowed',
+          description: 'Only administrators can manage archived tasks.',
+        })
+        return
+      }
+
+      if (
+        pendingArchiveAction &&
+        pendingArchiveAction.taskId === taskId &&
+        pendingArchiveAction.type === type
+      ) {
+        return
+      }
+
+      setPendingArchiveAction({ type, taskId })
+      startArchiveAction(async () => {
+        try {
+          const result = await action()
+
+          if (result.error) {
+            toast({
+              variant: 'destructive',
+              title: errorTitle,
+              description: result.error,
+            })
+            return
+          }
+
+          toast({
+            title: success.title,
+            description: success.description,
+          })
+        } catch (error) {
+          console.error('Archive action failed', error)
+          toast({
+            variant: 'destructive',
+            title: errorTitle,
+            description: 'An unexpected error occurred.',
+          })
+        } finally {
+          setPendingArchiveAction(null)
+        }
+      })
+    },
+    [canAcceptTasks, pendingArchiveAction, startArchiveAction, toast]
+  )
+
+  const handleUnacceptTask = useCallback(
+    (taskId: string) => {
+      performArchiveAction(
+        'unaccept',
+        taskId,
+        () => unacceptTask({ taskId }),
+        { title: 'Task reopened for client review.' },
+        'Unable to unaccept task'
+      )
+    },
+    [performArchiveAction]
+  )
+
+  const handleRestoreTask = useCallback(
+    (taskId: string) => {
+      performArchiveAction(
+        'restore',
+        taskId,
+        () => restoreTask({ taskId }),
+        {
+          title: 'Task restored',
+          description: 'The task has been returned to the project board.',
+        },
+        'Unable to restore task'
+      )
+    },
+    [performArchiveAction]
+  )
+
+  const handleDestroyTask = useCallback(
+    (taskId: string) => {
+      performArchiveAction(
+        'destroy',
+        taskId,
+        () => destroyTask({ taskId }),
+        { title: 'Task permanently deleted' },
+        'Unable to delete task'
+      )
+    },
+    [performArchiveAction]
+  )
 
   if (props.projects.length === 0) {
     return (
@@ -198,8 +391,10 @@ export function ProjectsBoard({
           boardHref={boardHref}
           backlogHref={backlogHref}
           activityHref={activityHref}
+          archiveHref={archiveHref}
           backlogDisabled={backlogDisabled}
           activityDisabled={activityDisabled}
+          archiveDisabled={archiveDisabled}
           onlyAssignedToMe={onlyAssignedToMe}
           onAssignedFilterChange={handleAssignedFilterChange}
           feedback={feedback}
@@ -238,6 +433,19 @@ export function ProjectsBoard({
           backlogTasks={backlogTasks}
           activeSheetTaskId={activeSheetTaskId}
           activityTargetClientId={activeProject?.client?.id ?? null}
+          acceptedTasks={acceptedTasks}
+          archivedTasks={archivedTasks}
+          onAcceptAllDone={handleAcceptAllDone}
+          acceptAllDisabled={acceptAllDisabled}
+          acceptAllDisabledReason={acceptAllDisabledReason}
+          isAcceptingDone={isAcceptingDone}
+          onUnacceptTask={handleUnacceptTask}
+          onRestoreTask={handleRestoreTask}
+          onDestroyTask={handleDestroyTask}
+          archiveActionTaskId={archiveActionTaskId}
+          archiveActionType={archiveActionType}
+          archiveActionDisabledReason={archiveActionDisabledReason}
+          isArchiveActionPending={isArchiveActionPending}
         />
         {activeProject ? (
           <TaskSheet

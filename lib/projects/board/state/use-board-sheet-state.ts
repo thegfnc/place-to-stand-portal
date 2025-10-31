@@ -33,7 +33,7 @@ type UseBoardSheetStateArgs = {
     options?: NavigateOptions
   ) => void
   startTransition: TransitionStartFunction
-  currentView: 'board' | 'activity' | 'backlog'
+  currentView: 'board' | 'activity' | 'backlog' | 'archive'
 }
 
 export const useBoardSheetState = ({

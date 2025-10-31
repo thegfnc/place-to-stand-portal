@@ -30,7 +30,7 @@ export type UseProjectsBoardStateArgs = {
   activeClientId: string | null
   activeProjectId: string | null
   activeTaskId: string | null
-  currentView: 'board' | 'activity' | 'backlog'
+  currentView: 'board' | 'activity' | 'backlog' | 'archive'
 }
 
 type MemberDirectoryEntry = { name: string }
@@ -45,6 +45,7 @@ type ProjectsBoardState = {
   projectItems: Array<{ value: string; label: string; keywords: string[] }>
   activeProject: ProjectWithRelations | null
   activeProjectTasks: TaskWithRelations[]
+  activeProjectArchivedTasks: TaskWithRelations[]
   canManageTasks: boolean
   memberDirectory: Map<string, MemberDirectoryEntry>
   tasksByColumn: Map<string, TaskWithRelations[]>
@@ -140,6 +141,13 @@ export const useProjectsBoardState = ({
     return tasksByProject.get(activeProject.id) ?? activeProject.tasks
   }, [activeProject, tasksByProject])
 
+  const activeProjectArchivedTasks = useMemo(() => {
+    if (!activeProject) {
+      return [] as TaskWithRelations[]
+    }
+    return activeProject.archivedTasks ?? []
+  }, [activeProject])
+
   const canManageTasks = useMemo(() => {
     if (!activeProject) return false
     if (currentUserRole === 'ADMIN') return true
@@ -222,6 +230,7 @@ export const useProjectsBoardState = ({
     projectItems,
     activeProject,
     activeProjectTasks,
+    activeProjectArchivedTasks,
     canManageTasks,
     memberDirectory,
     tasksByColumn,

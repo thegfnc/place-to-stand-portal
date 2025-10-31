@@ -45,5 +45,6 @@ export type ProjectWithRelations = DbProject & {
   client: DbClient | null
   members: ProjectMemberWithUser[]
   tasks: TaskWithRelations[]
+  archivedTasks: TaskWithRelations[]
   burndown: ProjectBurndownSummary
 }

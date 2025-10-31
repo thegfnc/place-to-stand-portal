@@ -67,6 +67,49 @@ export const taskArchivedEvent = (args: { title: string }): ActivityEvent => ({
   summary: `Archived task "${args.title}"`,
 })
 
+export const taskAcceptedEvent = (args: { title: string }): ActivityEvent => ({
+  verb: ActivityVerbs.TASK_ACCEPTED,
+  summary: `Accepted task "${args.title}"`,
+})
+
+export const tasksAcceptedEvent = (args: {
+  count: number
+  projectName?: string | null
+  taskIds?: string[]
+}): ActivityEvent => {
+  const { count, projectName = null, taskIds = [] } = args
+  const plural = count === 1 ? '' : 's'
+  const summary = projectName
+    ? `Accepted ${count} task${plural} for ${projectName}`
+    : `Accepted ${count} task${plural}`
+
+  return {
+    verb: ActivityVerbs.TASKS_ACCEPTED,
+    summary,
+    metadata: toMetadata({
+      count,
+      taskIds,
+    }),
+  }
+}
+
+export const taskAcceptanceRevertedEvent = (args: {
+  title: string
+}): ActivityEvent => ({
+  verb: ActivityVerbs.TASK_ACCEPTANCE_REVERTED,
+  summary: `Reopened task "${args.title}" for client review`,
+})
+
+export const taskRestoredEvent = (args: { title: string }): ActivityEvent => ({
+  verb: ActivityVerbs.TASK_RESTORED,
+  summary: `Restored task "${args.title}"`,
+})
+
+export const taskDeletedEvent = (args: { title: string }): ActivityEvent => ({
+  verb: ActivityVerbs.TASK_DELETED,
+  summary: `Permanently deleted task "${args.title}"`,
+})
+
 export const taskCommentCreatedEvent = (
   args: {
     taskTitle?: string | null

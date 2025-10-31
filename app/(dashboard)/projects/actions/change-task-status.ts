@@ -1,6 +1,5 @@
 'use server'
 
-import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 
 import { logActivity } from '@/lib/activity/logger'
@@ -8,7 +7,9 @@ import { taskStatusChangedEvent } from '@/lib/activity/events'
 import { requireUser } from '@/lib/auth/session'
 import { getSupabaseServerClient } from '@/lib/supabase/server'
 
-import { statusSchema, TASK_STATUSES, type ActionResult } from './shared'
+import { revalidateProjectTaskViews } from './shared'
+import { statusSchema, TASK_STATUSES } from './shared-schemas'
+import type { ActionResult } from './action-types'
 
 export async function changeTaskStatus(input: {
   taskId: string
@@ -84,8 +85,7 @@ export async function changeTaskStatus(input: {
     })
   }
 
-  revalidatePath('/projects')
-  revalidatePath('/projects/[clientSlug]/[projectSlug]/board')
+  revalidateProjectTaskViews()
 
   return {}
 }

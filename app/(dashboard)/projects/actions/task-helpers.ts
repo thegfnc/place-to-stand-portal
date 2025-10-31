@@ -7,7 +7,7 @@ import {
 } from '@/lib/storage/task-attachments'
 import type { Database } from '@/supabase/types/database'
 
-import type { AttachmentPayload } from './shared'
+import type { AttachmentPayload } from './shared-schemas'
 
 export async function syncAssignees(
   supabase: SupabaseClient<Database>,

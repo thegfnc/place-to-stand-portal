@@ -5,12 +5,14 @@ import { Label } from '@/components/ui/label'
 import { TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 export type ProjectsBoardTabsHeaderProps = {
-  initialTab: 'board' | 'backlog' | 'activity'
+  initialTab: 'board' | 'backlog' | 'activity' | 'archive'
   boardHref: string
   backlogHref: string
   activityHref: string
+  archiveHref: string
   backlogDisabled: boolean
   activityDisabled: boolean
+  archiveDisabled: boolean
   onlyAssignedToMe: boolean
   onAssignedFilterChange: (checked: boolean) => void
 }
@@ -21,8 +23,10 @@ export function ProjectsBoardTabsHeader(props: ProjectsBoardTabsHeaderProps) {
     boardHref,
     backlogHref,
     activityHref,
+    archiveHref,
     backlogDisabled,
     activityDisabled,
+    archiveDisabled,
     onlyAssignedToMe,
     onAssignedFilterChange,
   } = props
@@ -56,6 +60,29 @@ export function ProjectsBoardTabsHeader(props: ProjectsBoardTabsHeaderProps) {
             }
           >
             Backlog
+          </Link>
+        </TabsTrigger>
+        <TabsTrigger
+          value='archive'
+          className='px-3 py-1.5 text-sm'
+          asChild
+          disabled={archiveDisabled}
+        >
+          <Link
+            href={archiveHref}
+            prefetch={false}
+            aria-disabled={archiveDisabled}
+            tabIndex={archiveDisabled ? -1 : undefined}
+            onClick={event => {
+              if (archiveDisabled) {
+                event.preventDefault()
+              }
+            }}
+            className={
+              archiveDisabled ? 'pointer-events-none opacity-50' : undefined
+            }
+          >
+            Archive
           </Link>
         </TabsTrigger>
         <TabsTrigger

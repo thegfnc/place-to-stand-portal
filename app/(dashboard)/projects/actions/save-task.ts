@@ -1,7 +1,5 @@
 'use server'
 
-import { revalidatePath } from 'next/cache'
-
 import { requireUser } from '@/lib/auth/session'
 import { logActivity } from '@/lib/activity/logger'
 import { taskCreatedEvent, taskUpdatedEvent } from '@/lib/activity/events'
@@ -9,7 +7,9 @@ import { getSupabaseServerClient } from '@/lib/supabase/server'
 import { getSupabaseServiceClient } from '@/lib/supabase/service'
 import { ensureTaskAttachmentBucket } from '@/lib/storage/task-attachments'
 
-import { baseTaskSchema, type BaseTaskInput, type ActionResult } from './shared'
+import { revalidateProjectTaskViews } from './shared'
+import { baseTaskSchema, type BaseTaskInput } from './shared-schemas'
+import type { ActionResult } from './action-types'
 import { syncAssignees, syncAttachments } from './task-helpers'
 
 export async function saveTask(input: BaseTaskInput): Promise<ActionResult> {
@@ -262,8 +262,7 @@ export async function saveTask(input: BaseTaskInput): Promise<ActionResult> {
     }
   }
 
-  revalidatePath('/projects')
-  revalidatePath('/projects/[clientSlug]/[projectSlug]/board')
+  revalidateProjectTaskViews()
 
   return {}
 }
