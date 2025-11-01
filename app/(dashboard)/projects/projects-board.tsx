@@ -32,7 +32,7 @@ import type { ActionResult } from './actions/action-types'
 
 type Props = Omit<Parameters<typeof useProjectsBoardState>[0], 'currentView'>
 type ProjectsBoardProps = Props & {
-  initialTab?: 'board' | 'activity' | 'refine' | 'review'
+  initialTab?: 'board' | 'calendar' | 'activity' | 'refine' | 'review'
 }
 
 type ReviewActionKind = 'accept' | 'unaccept' | 'restore' | 'destroy'
@@ -76,10 +76,14 @@ export function ProjectsBoard({
     handleProjectSelect,
     handleDragStart,
     handleDragEnd,
+    handleCalendarDragStart,
+    handleCalendarDragEnd,
     openCreateSheet,
     handleEditTask,
     handleSheetOpenChange,
     defaultTaskStatus,
+    defaultTaskDueOn,
+    calendarDraggingTask,
   } = useProjectsBoardState({ ...props, currentView: initialTab })
 
   const canLogTime = props.currentUserRole !== 'CLIENT'
@@ -126,11 +130,15 @@ export function ProjectsBoard({
   const projectPathBase =
     clientSlug && projectSlug ? `/projects/${clientSlug}/${projectSlug}` : null
   const boardHref = projectPathBase ? `${projectPathBase}/board` : '/projects'
+  const calendarHref = projectPathBase
+    ? `${projectPathBase}/calendar`
+    : '/projects'
   const refineHref = projectPathBase ? `${projectPathBase}/refine` : '/projects'
   const activityHref = projectPathBase
     ? `${projectPathBase}/activity`
     : '/projects'
   const reviewHref = projectPathBase ? `${projectPathBase}/review` : '/projects'
+  const calendarDisabled = !projectPathBase
   const refineDisabled = !projectPathBase
   const activityDisabled = !projectPathBase
   const reviewDisabled = !projectPathBase
@@ -155,6 +163,29 @@ export function ProjectsBoard({
 
     return filterTasksByAssignee(tasksByColumn, props.currentUserId)
   }, [onlyAssignedToMe, props.currentUserId, tasksByColumn])
+
+  const calendarTasks = useMemo(() => {
+    const sourceTasks =
+      onlyAssignedToMe && props.currentUserId
+        ? activeProjectTasks.filter(task =>
+            task.assignees.some(
+              assignee => assignee.user_id === props.currentUserId
+            )
+          )
+        : activeProjectTasks
+
+    return sourceTasks.filter(task => {
+      if (!task.due_on) {
+        return false
+      }
+
+      if (task.status === 'DONE' && task.accepted_at) {
+        return false
+      }
+
+      return true
+    })
+  }, [activeProjectTasks, onlyAssignedToMe, props.currentUserId])
 
   const canAcceptTasks = props.currentUserRole === 'ADMIN'
 
@@ -344,6 +375,13 @@ export function ProjectsBoard({
     [performReviewAction]
   )
 
+  const handleCreateTaskForDate = useCallback(
+    (dueOn: string) => {
+      openCreateSheet(undefined, { dueOn })
+    },
+    [openCreateSheet]
+  )
+
   if (props.projects.length === 0) {
     return (
       <>
@@ -402,9 +440,11 @@ export function ProjectsBoard({
         <ProjectsBoardTabs
           initialTab={initialTab}
           boardHref={boardHref}
+          calendarHref={calendarHref}
           refineHref={refineHref}
           activityHref={activityHref}
           reviewHref={reviewHref}
+          calendarDisabled={calendarDisabled}
           refineDisabled={refineDisabled}
           activityDisabled={activityDisabled}
           reviewDisabled={reviewDisabled}
@@ -432,12 +472,17 @@ export function ProjectsBoard({
           canManageTasks={canManageTasks}
           renderAssignees={renderAssignees}
           tasksByColumn={tasksByColumnToRender}
+          calendarTasks={calendarTasks}
           onEditTask={handleEditTask}
           onCreateTask={openCreateSheet}
+          onCreateTaskForDate={handleCreateTaskForDate}
           sensors={sensors}
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
+          onCalendarDragStart={handleCalendarDragStart}
+          onCalendarDragEnd={handleCalendarDragEnd}
           draggingTask={draggingTask}
+          calendarDraggingTask={calendarDraggingTask}
           scrimLocked={scrimLocked}
           isPending={isPending}
           boardViewportRef={boardViewportRef}
@@ -473,6 +518,7 @@ export function ProjectsBoard({
             currentUserId={props.currentUserId}
             currentUserRole={props.currentUserRole}
             defaultStatus={defaultTaskStatus}
+            defaultDueOn={defaultTaskDueOn}
           />
         ) : null}
         {activeProject ? (

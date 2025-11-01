@@ -30,6 +30,7 @@ type TaskSheetProps = {
   currentUserId: string
   currentUserRole: UserRole
   defaultStatus: BoardColumnId
+  defaultDueOn: string | null
 }
 
 export function TaskSheet(props: TaskSheetProps) {

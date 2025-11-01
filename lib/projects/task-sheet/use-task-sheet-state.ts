@@ -40,6 +40,7 @@ export type UseTaskSheetStateArgs = {
   canManage: boolean
   admins: DbUser[]
   defaultStatus: BoardColumnId
+  defaultDueOn: string | null
 }
 
 type UseTaskSheetStateReturn = {
@@ -81,6 +82,7 @@ export const useTaskSheetState = ({
   canManage,
   admins,
   defaultStatus,
+  defaultDueOn,
 }: UseTaskSheetStateArgs): UseTaskSheetStateReturn => {
   const [feedback, setFeedback] = useState<string | null>(null)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
@@ -99,6 +101,7 @@ export const useTaskSheetState = ({
     project,
     admins,
     defaultStatus,
+    defaultDueOn,
   })
   const {
     attachmentItems,

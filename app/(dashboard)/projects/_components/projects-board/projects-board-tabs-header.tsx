@@ -5,11 +5,13 @@ import { Label } from '@/components/ui/label'
 import { TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 export type ProjectsBoardTabsHeaderProps = {
-  initialTab: 'board' | 'refine' | 'activity' | 'review'
+  initialTab: 'board' | 'calendar' | 'refine' | 'activity' | 'review'
   boardHref: string
+  calendarHref: string
   refineHref: string
   activityHref: string
   reviewHref: string
+  calendarDisabled: boolean
   refineDisabled: boolean
   activityDisabled: boolean
   reviewDisabled: boolean
@@ -21,9 +23,11 @@ export function ProjectsBoardTabsHeader(props: ProjectsBoardTabsHeaderProps) {
   const {
     initialTab,
     boardHref,
+    calendarHref,
     refineHref,
     activityHref,
     reviewHref,
+    calendarDisabled,
     refineDisabled,
     activityDisabled,
     reviewDisabled,
@@ -37,6 +41,29 @@ export function ProjectsBoardTabsHeader(props: ProjectsBoardTabsHeaderProps) {
         <TabsTrigger value='board' className='px-3 py-1.5 text-sm' asChild>
           <Link href={boardHref} prefetch={false}>
             Board
+          </Link>
+        </TabsTrigger>
+        <TabsTrigger
+          value='calendar'
+          className='px-3 py-1.5 text-sm'
+          asChild
+          disabled={calendarDisabled}
+        >
+          <Link
+            href={calendarHref}
+            prefetch={false}
+            aria-disabled={calendarDisabled}
+            tabIndex={calendarDisabled ? -1 : undefined}
+            onClick={event => {
+              if (calendarDisabled) {
+                event.preventDefault()
+              }
+            }}
+            className={
+              calendarDisabled ? 'pointer-events-none opacity-50' : undefined
+            }
+          >
+            Calendar
           </Link>
         </TabsTrigger>
         <TabsTrigger
@@ -109,7 +136,7 @@ export function ProjectsBoardTabsHeader(props: ProjectsBoardTabsHeaderProps) {
           </Link>
         </TabsTrigger>
       </TabsList>
-      {initialTab === 'board' ? (
+      {initialTab === 'board' || initialTab === 'calendar' ? (
         <Label
           htmlFor='projects-board-assigned-filter'
           className='text-muted-foreground bg-background/80 flex w-full cursor-pointer justify-end rounded-md border p-2 sm:w-auto'

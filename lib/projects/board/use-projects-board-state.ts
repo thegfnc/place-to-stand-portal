@@ -20,6 +20,7 @@ import { useBoardNavigation } from './state/use-board-navigation'
 import { useBoardSelectionState } from './state/use-board-selection'
 import { useBoardSheetState } from './state/use-board-sheet-state'
 import { useBoardTaskCollections } from './state/use-board-task-collections'
+import { useCalendarDnDState } from '../calendar/state/use-calendar-dnd-state'
 
 export type UseProjectsBoardStateArgs = {
   projects: ProjectWithRelations[]
@@ -30,7 +31,7 @@ export type UseProjectsBoardStateArgs = {
   activeClientId: string | null
   activeProjectId: string | null
   activeTaskId: string | null
-  currentView: 'board' | 'activity' | 'refine' | 'review'
+  currentView: 'board' | 'calendar' | 'activity' | 'refine' | 'review'
 }
 
 type MemberDirectoryEntry = { name: string }
@@ -50,6 +51,7 @@ type ProjectsBoardState = {
   memberDirectory: Map<string, MemberDirectoryEntry>
   tasksByColumn: Map<string, TaskWithRelations[]>
   draggingTask: TaskWithRelations | null
+  calendarDraggingTask: TaskWithRelations | null
   addTaskDisabled: boolean
   addTaskDisabledReason: string | null
   isSheetOpen: boolean
@@ -59,12 +61,17 @@ type ProjectsBoardState = {
   handleProjectSelect: (projectId: string | null) => void
   handleDragStart: ReturnType<typeof useBoardDnDState>['handleDragStart']
   handleDragEnd: ReturnType<typeof useBoardDnDState>['handleDragEnd']
+  handleCalendarDragStart: ReturnType<
+    typeof useCalendarDnDState
+  >['handleDragStart']
+  handleCalendarDragEnd: ReturnType<typeof useCalendarDnDState>['handleDragEnd']
   openCreateSheet: ReturnType<typeof useBoardSheetState>['openCreateSheet']
   handleEditTask: ReturnType<typeof useBoardSheetState>['handleEditTask']
   handleSheetOpenChange: ReturnType<
     typeof useBoardSheetState
   >['handleSheetOpenChange']
   defaultTaskStatus: BoardColumnId
+  defaultTaskDueOn: string | null
   navigateToProject: ReturnType<typeof useBoardNavigation>
 }
 
@@ -192,6 +199,7 @@ export const useProjectsBoardState = ({
     handleEditTask,
     handleSheetOpenChange,
     defaultTaskStatus,
+    defaultTaskDueOn,
   } = useBoardSheetState({
     projects,
     tasksByProject,
@@ -211,6 +219,19 @@ export const useProjectsBoardState = ({
     activeProjectTasks,
     startTransition,
     setFeedback,
+  })
+
+  const {
+    handleDragStart: handleCalendarDragStart,
+    handleDragEnd: handleCalendarDragEnd,
+    draggingTask: calendarDraggingTask,
+  } = useCalendarDnDState({
+    canManageTasks,
+    tasksByProject,
+    setTasksByProject,
+    startTransition,
+    setFeedback,
+    activeProjectTasks,
   })
 
   const addTaskDisabled = !activeProject || !canManageTasks
@@ -244,10 +265,14 @@ export const useProjectsBoardState = ({
     handleProjectSelect,
     handleDragStart,
     handleDragEnd,
+    handleCalendarDragStart,
+    handleCalendarDragEnd,
     openCreateSheet,
     handleEditTask,
     handleSheetOpenChange,
     defaultTaskStatus,
+    defaultTaskDueOn,
+    calendarDraggingTask,
     navigateToProject,
   }
 }

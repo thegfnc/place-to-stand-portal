@@ -27,6 +27,7 @@ type CreateDefaultValuesArgs = {
   task: TaskWithRelations | undefined
   currentAssigneeId: string | null
   defaultStatus: BoardColumnId
+  defaultDueOn: string | null
 }
 
 const tidyRole = (role: string | null | undefined) => {
@@ -204,11 +205,12 @@ export const createDefaultValues = ({
   task,
   currentAssigneeId,
   defaultStatus,
+  defaultDueOn,
 }: CreateDefaultValuesArgs): TaskSheetFormValues => ({
   title: task?.title ?? '',
   description: task?.description ?? null,
   status: task?.status ?? defaultStatus,
-  dueOn: toDateInputValue(task?.due_on),
+  dueOn: toDateInputValue(task?.due_on ?? defaultDueOn ?? null),
   assigneeId: currentAssigneeId ?? null,
 })
 

@@ -22,6 +22,7 @@ export type UseTaskSheetFormArgs = {
   project: ProjectWithRelations
   admins: DbUser[]
   defaultStatus: BoardColumnId
+  defaultDueOn: string | null
 }
 
 export type UseTaskSheetFormReturn = {
@@ -38,6 +39,7 @@ export const useTaskSheetForm = ({
   project,
   admins,
   defaultStatus,
+  defaultDueOn,
 }: UseTaskSheetFormArgs): UseTaskSheetFormReturn => {
   const currentAssigneeId = task?.assignees[0]?.user_id ?? null
 
@@ -47,8 +49,9 @@ export const useTaskSheetForm = ({
         task,
         currentAssigneeId,
         defaultStatus,
+        defaultDueOn,
       }),
-    [task, currentAssigneeId, defaultStatus]
+    [task, currentAssigneeId, defaultStatus, defaultDueOn]
   )
 
   const form = useForm<TaskSheetFormValues>({

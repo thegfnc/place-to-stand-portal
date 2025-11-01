@@ -5,6 +5,7 @@ import type { DndContextProps } from '@dnd-kit/core'
 import type { RenderAssigneeFn } from '../../../../../lib/projects/board/board-selectors'
 
 import { BoardTabContent } from './board-tab-content'
+import { CalendarTabContent } from './calendar-tab-content'
 import { RefineTabContent } from './refine-tab-content'
 import { ActivityTabContent } from './activity-tab-content'
 import { ReviewTabContent } from './review-tab-content'
@@ -13,11 +14,13 @@ import { ProjectsBoardTabsHeader } from './projects-board-tabs-header'
 import type { ProjectsBoardActiveProject } from './board-tab-content'
 
 export type ProjectsBoardTabsProps = {
-  initialTab: 'board' | 'refine' | 'activity' | 'review'
+  initialTab: 'board' | 'calendar' | 'refine' | 'activity' | 'review'
   boardHref: string
+  calendarHref: string
   refineHref: string
   activityHref: string
   reviewHref: string
+  calendarDisabled: boolean
   refineDisabled: boolean
   activityDisabled: boolean
   reviewDisabled: boolean
@@ -28,12 +31,17 @@ export type ProjectsBoardTabsProps = {
   canManageTasks: boolean
   renderAssignees: RenderAssigneeFn
   tasksByColumn: ReadonlyMap<string, TaskWithRelations[]>
+  calendarTasks: TaskWithRelations[]
   onEditTask: (task: TaskWithRelations) => void
   onCreateTask: () => void
+  onCreateTaskForDate: (dueOn: string) => void
   sensors: DndContextProps['sensors']
   onDragStart: DndContextProps['onDragStart']
   onDragEnd: DndContextProps['onDragEnd']
+  onCalendarDragStart: DndContextProps['onDragStart']
+  onCalendarDragEnd: DndContextProps['onDragEnd']
   draggingTask: TaskWithRelations | null
+  calendarDraggingTask: TaskWithRelations | null
   scrimLocked: boolean
   isPending: boolean
   boardViewportRef: RefObject<HTMLDivElement | null>
@@ -63,9 +71,11 @@ export function ProjectsBoardTabs(props: ProjectsBoardTabsProps) {
   const {
     initialTab,
     boardHref,
+    calendarHref,
     refineHref,
     activityHref,
     reviewHref,
+    calendarDisabled,
     refineDisabled,
     activityDisabled,
     reviewDisabled,
@@ -76,12 +86,17 @@ export function ProjectsBoardTabs(props: ProjectsBoardTabsProps) {
     canManageTasks,
     renderAssignees,
     tasksByColumn,
+    calendarTasks,
     onEditTask,
     onCreateTask,
+    onCreateTaskForDate,
     sensors,
     onDragStart,
     onDragEnd,
+    onCalendarDragStart,
+    onCalendarDragEnd,
     draggingTask,
+    calendarDraggingTask,
     scrimLocked,
     isPending,
     boardViewportRef,
@@ -112,9 +127,11 @@ export function ProjectsBoardTabs(props: ProjectsBoardTabsProps) {
       <ProjectsBoardTabsHeader
         initialTab={initialTab}
         boardHref={boardHref}
+        calendarHref={calendarHref}
         refineHref={refineHref}
         activityHref={activityHref}
         reviewHref={reviewHref}
+        calendarDisabled={calendarDisabled}
         refineDisabled={refineDisabled}
         activityDisabled={activityDisabled}
         reviewDisabled={reviewDisabled}
@@ -139,6 +156,22 @@ export function ProjectsBoardTabs(props: ProjectsBoardTabsProps) {
         boardViewportRef={boardViewportRef}
         onBoardScroll={onBoardScroll}
         activeSheetTaskId={activeSheetTaskId}
+      />
+      <CalendarTabContent
+        isActive={initialTab === 'calendar'}
+        feedback={feedback}
+        activeProject={activeProject}
+        tasks={calendarTasks}
+        renderAssignees={renderAssignees}
+        canManageTasks={canManageTasks}
+        onEditTask={onEditTask}
+        onCreateTask={onCreateTaskForDate}
+        sensors={sensors}
+        onDragStart={onCalendarDragStart}
+        onDragEnd={onCalendarDragEnd}
+        draggingTask={calendarDraggingTask}
+        scrimLocked={scrimLocked}
+        isPending={isPending}
       />
       <RefineTabContent
         isActive={initialTab === 'refine'}
