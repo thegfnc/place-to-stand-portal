@@ -20,14 +20,14 @@ import {
   addMonths,
   differenceInCalendarMonths,
   format,
+  getDay,
+  getDaysInMonth,
   getMonth,
   getYear,
-  isSameMonth,
   isWeekend,
   parseISO,
   startOfDay,
   startOfMonth,
-  startOfWeek,
 } from 'date-fns'
 import { Plus, ChevronLeft, ChevronRight } from 'lucide-react'
 
@@ -65,16 +65,12 @@ import {
 import type { ProjectsBoardActiveProject } from './board-tab-content'
 
 const BUFFER_MONTHS = 6
-const DAYS_IN_WEEK = 7
-const WEEKS_PER_MONTH = 6
-const TOTAL_DAYS = DAYS_IN_WEEK * WEEKS_PER_MONTH
 const MONTH_ESTIMATED_HEIGHT = 680
 const YEARS_EITHER_SIDE = 2
 const DEFAULT_PAST_MONTHS = YEARS_EITHER_SIDE * 12
 const DEFAULT_FUTURE_MONTHS = YEARS_EITHER_SIDE * 12
 const MONTH_RANGE_PADDING = 2
-const MIN_MONTH_OFFSET = -DEFAULT_PAST_MONTHS
-const MAX_MONTH_OFFSET = DEFAULT_FUTURE_MONTHS
+const MONTH_SCROLL_PADDING = 16
 
 const monthLabels = Array.from({ length: 12 }, (_, index) => {
   const date = new Date(2025, index, 1)
@@ -115,7 +111,8 @@ type CalendarMonth = {
   monthStart: Date
   label: string
   year: number
-  days: CalendarDay[]
+  daysInMonth: number
+  firstWeekdayIndex: number
 }
 
 type MonthRange = {
@@ -123,13 +120,12 @@ type MonthRange = {
   end: number
 }
 
-const clampRange = ({ start, end }: MonthRange): MonthRange => {
-  return {
-    start: Math.max(start, MIN_MONTH_OFFSET),
-    end: Math.min(end, MAX_MONTH_OFFSET),
-  }
-}
+type ScrollBehaviorOption = 'auto' | 'smooth'
 
+type PendingScrollRequest = {
+  offset: number
+  behavior?: ScrollBehaviorOption
+}
 const deriveBaseRange = (
   baseMonth: Date,
   tasks: TaskWithRelations[]
@@ -156,37 +152,45 @@ const deriveBaseRange = (
     }
   })
 
-  return clampRange({ start: minOffset, end: maxOffset })
+  return { start: minOffset, end: maxOffset }
 }
 
 const buildCalendarMonth = (baseMonth: Date, offset: number): CalendarMonth => {
   const monthStart = addMonths(baseMonth, offset)
   const monthLabel = format(monthStart, 'MMMM')
   const year = getYear(monthStart)
-  const firstVisibleDay = startOfWeek(monthStart, { weekStartsOn: 0 })
-  const days: CalendarDay[] = []
-  const todayKey = format(startOfDay(new Date()), 'yyyy-MM-dd')
-
-  for (let index = 0; index < TOTAL_DAYS; index += 1) {
-    const date = addDays(firstVisibleDay, index)
-    const key = format(date, 'yyyy-MM-dd')
-    days.push({
-      date,
-      key,
-      label: format(date, 'd'),
-      isCurrentMonth: isSameMonth(date, monthStart),
-      isToday: key === todayKey,
-      isWeekend: isWeekend(date),
-    })
-  }
 
   return {
     offset,
     monthStart,
     label: monthLabel,
     year,
-    days,
+    daysInMonth: getDaysInMonth(monthStart),
+    firstWeekdayIndex: getDay(monthStart),
   }
+}
+
+const buildCalendarDays = (
+  month: CalendarMonth,
+  todayKey: string
+): CalendarDay[] => {
+  const { monthStart, daysInMonth } = month
+  const days: CalendarDay[] = []
+
+  for (let index = 0; index < daysInMonth; index += 1) {
+    const date = addDays(monthStart, index)
+    const key = format(date, 'yyyy-MM-dd')
+    days.push({
+      date,
+      key,
+      label: format(date, 'd'),
+      isCurrentMonth: true,
+      isToday: key === todayKey,
+      isWeekend: isWeekend(date),
+    })
+  }
+
+  return days
 }
 
 export function CalendarTabContent({
@@ -210,7 +214,18 @@ export function CalendarTabContent({
     () => deriveBaseRange(baseMonth, tasks),
     [baseMonth, tasks]
   )
-  const monthRange = baseRange
+  const [monthRange, setMonthRange] = useState(baseRange)
+
+  useEffect(() => {
+    setMonthRange(prev => {
+      const nextStart = Math.min(prev.start, baseRange.start)
+      const nextEnd = Math.max(prev.end, baseRange.end)
+      if (nextStart === prev.start && nextEnd === prev.end) {
+        return prev
+      }
+      return { start: nextStart, end: nextEnd }
+    })
+  }, [baseRange.end, baseRange.start])
   const months = useMemo(() => {
     const list: CalendarMonth[] = []
     for (let offset = monthRange.start; offset <= monthRange.end; offset += 1) {
@@ -219,12 +234,33 @@ export function CalendarTabContent({
     return list
   }, [baseMonth, monthRange.end, monthRange.start])
 
+  const todayKey = useMemo(
+    () => format(startOfDay(new Date()), 'yyyy-MM-dd'),
+    []
+  )
+
   const initialMonthIndex = useMemo(
     () => months.findIndex(month => month.offset === 0),
     [months]
   )
 
-  const [activeMonthIndex, setActiveMonthIndex] = useState(initialMonthIndex)
+  const [activeMonthOffset, setActiveMonthOffset] = useState(() => {
+    if (initialMonthIndex !== -1) {
+      return months[initialMonthIndex]?.offset ?? 0
+    }
+    return months[0]?.offset ?? 0
+  })
+
+  const activeMonthIndex = useMemo(() => {
+    const index = months.findIndex(month => month.offset === activeMonthOffset)
+    if (index !== -1) {
+      return index
+    }
+    if (initialMonthIndex !== -1) {
+      return initialMonthIndex
+    }
+    return 0
+  }, [activeMonthOffset, initialMonthIndex, months])
   const [monthValue, setMonthValue] = useState(() =>
     String(getMonth(months[initialMonthIndex]?.monthStart ?? baseMonth))
   )
@@ -233,14 +269,27 @@ export function CalendarTabContent({
   )
 
   useEffect(() => {
-    if (initialMonthIndex === -1) {
-      setActiveMonthIndex(0)
+    if (!months.length) {
       return
     }
-    setActiveMonthIndex(initialMonthIndex)
-  }, [initialMonthIndex])
+
+    const offsetExists = months.some(
+      month => month.offset === activeMonthOffset
+    )
+
+    if (offsetExists) {
+      return
+    }
+
+    const fallbackIndex = initialMonthIndex === -1 ? 0 : initialMonthIndex
+    const fallbackOffset = months[fallbackIndex]?.offset ?? months[0]?.offset
+    if (typeof fallbackOffset === 'number') {
+      setActiveMonthOffset(fallbackOffset)
+    }
+  }, [activeMonthOffset, initialMonthIndex, months])
 
   const containerRef = useRef<HTMLDivElement | null>(null)
+  const headerRef = useRef<HTMLDivElement | null>(null)
   const todayCellRef = useRef<HTMLDivElement | null>(null)
   const hasCenteredTodayRef = useRef(false)
   const resumeSyncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
@@ -272,10 +321,12 @@ export function CalendarTabContent({
   )
 
   const [selectorSyncSuspended, setSelectorSyncSuspended] = useState(false)
+  const [pendingScroll, setPendingScroll] =
+    useState<PendingScrollRequest | null>(null)
 
   useEffect(() => {
     hasCenteredTodayRef.current = false
-  }, [monthRange.end, monthRange.start])
+  }, [baseRange.end, baseRange.start])
 
   const tasksByDate = useMemo(() => {
     const map = new Map<string, TaskWithRelations[]>()
@@ -352,9 +403,12 @@ export function CalendarTabContent({
     }
 
     if (targetIndex !== activeMonthIndex) {
-      setActiveMonthIndex(targetIndex)
+      const targetMonth = months[targetIndex]
+      if (targetMonth && targetMonth.offset !== activeMonthOffset) {
+        setActiveMonthOffset(targetMonth.offset)
+      }
     }
-  }, [activeMonthIndex, virtualMonths])
+  }, [activeMonthIndex, activeMonthOffset, months, virtualMonths])
 
   useEffect(() => {
     const scrollElement = containerRef.current
@@ -393,9 +447,6 @@ export function CalendarTabContent({
   const currentMonthNumber = currentMonth
     ? getMonth(currentMonth.monthStart)
     : getMonth(baseMonth)
-
-  type ScrollBehaviorOption = 'auto' | 'smooth'
-
   const goToMonth = useCallback(
     (
       monthNumber: number,
@@ -404,50 +455,93 @@ export function CalendarTabContent({
     ) => {
       const targetDate = startOfMonth(new Date(year, monthNumber, 1))
       const targetOffset = differenceInCalendarMonths(targetDate, baseMonth)
-      const clampedOffset = Math.max(
-        monthRange.start,
-        Math.min(monthRange.end, targetOffset)
-      )
 
-      const targetIndex = months.findIndex(
-        month => month.offset === clampedOffset
-      )
+      setPendingScroll({
+        offset: targetOffset,
+        behavior: options.behavior,
+      })
 
-      if (targetIndex === -1) {
-        return
-      }
+      setMonthRange(prev => {
+        if (targetOffset >= prev.start && targetOffset <= prev.end) {
+          return prev
+        }
 
-      const shouldSmoothScroll = options.behavior === 'smooth'
-      if (shouldSmoothScroll) {
-        setSelectorSyncSuspended(true)
-      }
-
-      const scrollOptions: {
-        align: 'start'
-        behavior?: ScrollBehaviorOption
-      } = {
-        align: 'start',
-      }
-
-      if (options.behavior) {
-        scrollOptions.behavior = options.behavior
-      }
-
-      monthVirtualizer.scrollToIndex(targetIndex, scrollOptions)
-      setActiveMonthIndex(targetIndex)
-      if (shouldSmoothScroll && targetIndex === activeMonthIndex) {
-        setSelectorSyncSuspended(false)
-      }
+        return {
+          start: Math.min(prev.start, targetOffset - MONTH_RANGE_PADDING),
+          end: Math.max(prev.end, targetOffset + MONTH_RANGE_PADDING),
+        }
+      })
     },
-    [
-      activeMonthIndex,
-      baseMonth,
-      monthRange.end,
-      monthRange.start,
-      monthVirtualizer,
-      months,
-    ]
+    [baseMonth]
   )
+
+  useEffect(() => {
+    if (!pendingScroll) {
+      return
+    }
+
+    const targetIndex = months.findIndex(
+      month => month.offset === pendingScroll.offset
+    )
+
+    if (targetIndex === -1) {
+      return
+    }
+
+    const { behavior } = pendingScroll
+
+    const isRendered = virtualMonths.some(item => item.index === targetIndex)
+
+    if (!isRendered) {
+      monthVirtualizer.scrollToIndex(targetIndex, { align: 'start' })
+      return
+    }
+
+    const scrollElement = containerRef.current
+    if (!scrollElement) {
+      return
+    }
+
+    const targetElement = scrollElement.querySelector<HTMLDivElement>(
+      `[data-offset="${pendingScroll.offset}"]`
+    )
+
+    if (!targetElement) {
+      monthVirtualizer.scrollToIndex(targetIndex, { align: 'start' })
+      return
+    }
+
+    if (behavior === 'smooth') {
+      setSelectorSyncSuspended(true)
+    }
+
+    requestAnimationFrame(() => {
+      const headerHeight = headerRef.current
+        ? headerRef.current.getBoundingClientRect().height
+        : 0
+      const containerRect = scrollElement.getBoundingClientRect()
+      const elementRect = targetElement.getBoundingClientRect()
+      const rawOffset =
+        scrollElement.scrollTop + (elementRect.top - containerRect.top)
+      const targetScrollTop = Math.max(
+        0,
+        rawOffset - headerHeight - MONTH_SCROLL_PADDING
+      )
+
+      scrollElement.scrollTo({
+        top: targetScrollTop,
+        behavior: behavior ?? 'auto',
+      })
+
+      const targetMonth = months[targetIndex]
+      if (targetMonth) {
+        setActiveMonthOffset(targetMonth.offset)
+      }
+
+      setSelectorSyncSuspended(false)
+      setPendingScroll(null)
+    })
+  }, [monthVirtualizer, months, pendingScroll, virtualMonths])
 
   const handleSelectMonth = useCallback(
     (value: string) => {
@@ -529,7 +623,10 @@ export function CalendarTabContent({
               className='absolute inset-0 overflow-y-auto rounded-xl border'
             >
               <div className='flex min-h-0 flex-1 flex-col'>
-                <div className='bg-card sticky top-0 z-20 flex flex-wrap items-center gap-3 rounded-t-xl px-4 py-3 shadow-sm'>
+                <div
+                  ref={headerRef}
+                  className='bg-card sticky top-0 z-20 flex flex-wrap items-center gap-3 rounded-t-xl px-4 py-3 shadow-sm'
+                >
                   <div className='flex items-center gap-2'>
                     <Button
                       type='button'
@@ -616,11 +713,14 @@ export function CalendarTabContent({
                           return null
                         }
 
+                        const days = buildCalendarDays(month, todayKey)
+
                         return (
                           <div
                             key={virtualMonth.key}
                             ref={measureMonthElement}
                             data-index={`${virtualMonth.index}`}
+                            data-offset={month.offset}
                             className={cn(
                               'border-border/60 border-b px-4 py-6',
                               virtualMonth.index === months.length - 1 &&
@@ -645,7 +745,7 @@ export function CalendarTabContent({
                               </div>
                             </div>
                             <div className='grid grid-cols-7 gap-2'>
-                              {month.days.map(day => (
+                              {days.map((day, dayIndex) => (
                                 <CalendarDayCell
                                   key={day.key}
                                   day={day}
@@ -657,6 +757,11 @@ export function CalendarTabContent({
                                   renderAssignees={renderAssignees}
                                   todayCellRef={
                                     day.isToday ? todayCellRef : undefined
+                                  }
+                                  gridColumnStart={
+                                    dayIndex === 0
+                                      ? month.firstWeekdayIndex + 1
+                                      : undefined
                                   }
                                 />
                               ))}
@@ -690,6 +795,7 @@ type CalendarDayCellProps = {
   onEditTask: (task: TaskWithRelations) => void
   renderAssignees: RenderAssigneeFn
   todayCellRef?: RefObject<HTMLDivElement | null>
+  gridColumnStart?: number
 }
 
 function CalendarDayCell({
@@ -701,6 +807,7 @@ function CalendarDayCell({
   onEditTask,
   renderAssignees,
   todayCellRef,
+  gridColumnStart,
 }: CalendarDayCellProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: day.key,
@@ -731,6 +838,7 @@ function CalendarDayCell({
           todayCellRef.current = element
         }
       }}
+      style={gridColumnStart ? { gridColumnStart } : undefined}
       className={cn(
         'bg-background/80 flex h-full min-h-[140px] flex-col gap-2 rounded-lg border p-2 text-xs transition-shadow',
         !day.isCurrentMonth && 'bg-muted/20 text-muted-foreground',
