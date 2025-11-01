@@ -898,9 +898,6 @@ function CalendarTaskCard({
 
   const assignees = renderAssignees(task)
   const primaryAssignee = assignees[0]?.name ?? 'Unassigned'
-  const dueMeta = task.due_on
-    ? getTaskDueMeta(task.due_on, { status: task.status })
-    : null
 
   return (
     <div
@@ -925,18 +922,6 @@ function CalendarTaskCard({
       <p className='line-clamp-2 font-medium'>{task.title}</p>
       <div className='text-muted-foreground mt-1 flex flex-wrap items-center gap-2 text-[11px]'>
         <span>{primaryAssignee}</span>
-        {dueMeta ? (
-          <span
-            className={cn('font-medium', TASK_DUE_TONE_CLASSES[dueMeta.tone])}
-          >
-            {dueMeta.label}
-          </span>
-        ) : null}
-        {task.commentCount > 0 ? (
-          <span>
-            {task.commentCount} comment{task.commentCount === 1 ? '' : 's'}
-          </span>
-        ) : null}
       </div>
     </div>
   )
