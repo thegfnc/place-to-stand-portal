@@ -176,6 +176,7 @@ export function ProjectsBoardTabs(props: ProjectsBoardTabsProps) {
         draggingTask={calendarDraggingTask}
         scrimLocked={scrimLocked}
         isPending={isPending}
+        activeSheetTaskId={activeSheetTaskId}
       />
       <RefineTabContent
         isActive={initialTab === 'refine'}

@@ -66,6 +66,7 @@ import {
   fetchCalendarMonthTasks,
   useCalendarMonthTasks,
 } from '@/lib/projects/calendar/use-calendar-month-tasks'
+import { CalendarTaskCardShell } from './calendar-task-card-shell'
 
 const monthLabels = Array.from({ length: 12 }, (_, index) => {
   const date = new Date(2025, index, 1)
@@ -92,6 +93,7 @@ type CalendarTabContentProps = {
   draggingTask: TaskWithRelations | null
   scrimLocked: boolean
   isPending: boolean
+  activeSheetTaskId: string | null
 }
 
 type CalendarDay = {
@@ -152,6 +154,7 @@ export function CalendarTabContent({
   draggingTask,
   scrimLocked,
   isPending,
+  activeSheetTaskId,
 }: CalendarTabContentProps) {
   const queryClient = useQueryClient()
   const today = useMemo(() => startOfDay(new Date()), [])
@@ -225,9 +228,13 @@ export function CalendarTabContent({
 
   const weekdayHeaders = useMemo(
     () =>
-      Array.from({ length: 7 }, (_, index) =>
-        format(addDays(rangeStart, index), 'EEE')
-      ),
+      Array.from({ length: 7 }, (_, index) => {
+        const date = addDays(rangeStart, index)
+        return {
+          label: format(date, 'EEE'),
+          isWeekend: isWeekend(date),
+        }
+      }),
     [rangeStart]
   )
 
@@ -421,87 +428,93 @@ export function CalendarTabContent({
           <div className='relative min-h-0 flex-1'>
             <div
               ref={containerRef}
-              className='absolute inset-0 overflow-y-auto rounded-xl border'
+              className='bg-card absolute inset-0 overflow-y-auto rounded-xl border'
             >
               <div className='flex min-h-0 flex-1 flex-col'>
                 <div
                   ref={headerRef}
-                  className='bg-card sticky top-0 z-20 flex flex-wrap items-center gap-3 rounded-t-xl px-4 py-3 shadow-sm'
+                  className='bg-card sticky top-0 z-20 flex flex-wrap items-center justify-between gap-3 rounded-t-xl px-4 py-3 shadow-sm'
                 >
-                  <div className='flex items-center gap-2'>
-                    <Button
-                      type='button'
-                      size='icon'
-                      variant='ghost'
-                      onClick={handlePrevMonth}
-                      aria-label='View previous month'
-                    >
-                      <ChevronLeft className='h-4 w-4' />
-                    </Button>
-                    <Button
-                      type='button'
-                      size='icon'
-                      variant='ghost'
-                      onClick={handleNextMonth}
-                      aria-label='View next month'
-                    >
-                      <ChevronRight className='h-4 w-4' />
-                    </Button>
+                  <div className='flex items-center justify-between'>
+                    <div>
+                      <p className='text-lg font-semibold'>
+                        {format(currentMonth, 'MMMM yyyy')}
+                      </p>
+                    </div>
                   </div>
-                  <Select value={monthValue} onValueChange={handleSelectMonth}>
-                    <SelectTrigger className='w-32'>
-                      <SelectValue aria-label='Select month' />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {monthLabels.map(month => (
-                        <SelectItem key={month.value} value={month.value}>
-                          {month.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <form
-                    className='flex items-center gap-2'
-                    onSubmit={event => {
-                      event.preventDefault()
-                      commitYearChange()
-                    }}
-                  >
-                    <label className='text-muted-foreground text-sm font-medium'>
-                      Year
-                      <Input
-                        value={yearValue}
-                        onChange={event => setYearValue(event.target.value)}
-                        onBlur={commitYearChange}
-                        inputMode='numeric'
-                        className='ml-2 w-24'
-                        aria-label='Select year'
-                      />
-                    </label>
-                  </form>
-                  <Button
-                    type='button'
-                    variant='outline'
-                    onClick={handleGoToToday}
-                  >
-                    Today
-                  </Button>
+                  <div className='flex grow items-center justify-end gap-4'>
+                    <Button
+                      type='button'
+                      variant='outline'
+                      onClick={handleGoToToday}
+                    >
+                      Today
+                    </Button>
+                    <div className='flex items-center gap-2'>
+                      <Select
+                        value={monthValue}
+                        onValueChange={handleSelectMonth}
+                      >
+                        <SelectTrigger className='w-32'>
+                          <SelectValue aria-label='Select month' />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {monthLabels.map(month => (
+                            <SelectItem key={month.value} value={month.value}>
+                              {month.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <form
+                        onSubmit={event => {
+                          event.preventDefault()
+                          commitYearChange()
+                        }}
+                      >
+                        <Input
+                          value={yearValue}
+                          onChange={event => setYearValue(event.target.value)}
+                          onBlur={commitYearChange}
+                          inputMode='numeric'
+                          className='w-24'
+                          aria-label='Select year'
+                        />
+                      </form>
+                    </div>
+                    <div className='flex items-center gap-2'>
+                      <Button
+                        type='button'
+                        size='icon'
+                        variant='ghost'
+                        onClick={handlePrevMonth}
+                        aria-label='View previous month'
+                      >
+                        <ChevronLeft className='h-4 w-4' />
+                      </Button>
+                      <Button
+                        type='button'
+                        size='icon'
+                        variant='ghost'
+                        onClick={handleNextMonth}
+                        aria-label='View next month'
+                      >
+                        <ChevronRight className='h-4 w-4' />
+                      </Button>
+                    </div>
+                  </div>
                 </div>
                 <div className='bg-card relative flex min-h-0 flex-1 overflow-hidden'>
                   <div className='flex-1 px-4 py-6'>
-                    <div className='mb-4 flex items-baseline justify-between'>
-                      <div>
-                        <p className='text-lg font-semibold'>
-                          {format(currentMonth, 'MMMM yyyy')}
-                        </p>
-                        <p className='text-muted-foreground text-xs'>
-                          Weeks begin on Sunday and include weekends.
-                        </p>
-                      </div>
-                    </div>
-                    <div className='text-muted-foreground grid grid-cols-7 gap-2 text-center text-xs font-semibold tracking-wide uppercase'>
-                      {weekdayHeaders.map(label => (
-                        <span key={label} className='rounded-md px-2 py-1'>
+                    <div className='grid grid-cols-7 gap-2 text-center text-xs font-semibold uppercase tracking-wide'>
+                      {weekdayHeaders.map(({ label, isWeekend }) => (
+                        <span
+                          key={label}
+                          className={cn(
+                            'rounded-md px-2 py-1 text-muted-foreground',
+                            isWeekend && 'bg-secondary/20 text-secondary-foreground'
+                          )}
+                        >
                           {label}
                         </span>
                       ))}
@@ -517,6 +530,7 @@ export function CalendarTabContent({
                           tasks={tasksByDate.get(day.key) ?? []}
                           onEditTask={onEditTask}
                           renderAssignees={renderAssignees}
+                          activeTaskId={activeSheetTaskId}
                           todayCellRef={day.isToday ? todayCellRef : undefined}
                         />
                       ))}
@@ -530,6 +544,7 @@ export function CalendarTabContent({
           <TaskDragOverlay
             draggingTask={draggingTask}
             renderAssignees={renderAssignees}
+            variant='calendar'
           />
         </DndContext>
       )}
@@ -546,6 +561,7 @@ type CalendarDayCellProps = {
   onEditTask: (task: TaskWithRelations) => void
   renderAssignees: RenderAssigneeFn
   todayCellRef?: RefObject<HTMLDivElement | null>
+  activeTaskId: string | null
 }
 
 function CalendarDayCell({
@@ -557,6 +573,7 @@ function CalendarDayCell({
   onEditTask,
   renderAssignees,
   todayCellRef,
+  activeTaskId,
 }: CalendarDayCellProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: day.key,
@@ -588,15 +605,26 @@ function CalendarDayCell({
         }
       }}
       className={cn(
-        'bg-background/80 flex h-full min-h-[140px] flex-col gap-2 rounded-lg border p-2 text-xs transition-shadow',
-        !day.isCurrentMonth && 'bg-muted/20 text-muted-foreground',
-        day.isWeekend && 'bg-secondary/40',
-        day.isToday && 'border-primary shadow-sm',
+        'flex h-full min-h-[140px] flex-col gap-2 rounded-lg border border-border bg-background p-2 text-xs transition-shadow',
+        !day.isCurrentMonth &&
+          'border-dashed border-muted-foreground/40 bg-muted/60 text-muted-foreground',
+        day.isWeekend &&
+          (day.isCurrentMonth ? 'bg-secondary/20' : 'bg-secondary/10'),
+        day.isWeekend && 'ring-1 ring-secondary/30',
+        day.isToday && 'border-primary bg-primary/10 shadow-sm',
         isOver && 'border-primary ring-primary/40 ring-2'
       )}
     >
       <div className='flex items-center justify-between'>
-        <span className='text-sm font-semibold'>{day.label}</span>
+        <span
+          className={cn(
+            'text-sm font-semibold',
+            day.isWeekend && day.isCurrentMonth && 'text-secondary-foreground',
+            !day.isCurrentMonth && 'text-muted-foreground'
+          )}
+        >
+          {day.label}
+        </span>
         {canManageTasks ? (
           addButton
         ) : (
@@ -606,7 +634,7 @@ function CalendarDayCell({
           </Tooltip>
         )}
       </div>
-      <div className='flex flex-col gap-1 overflow-y-auto pr-1'>
+      <div className='flex flex-col gap-1 overflow-y-auto pr-1 pb-1'>
         {tasks.map(task => (
           <CalendarTaskCard
             key={task.id}
@@ -614,6 +642,7 @@ function CalendarDayCell({
             canManageTasks={canManageTasks}
             onEditTask={onEditTask}
             renderAssignees={renderAssignees}
+            isActive={task.id === activeTaskId}
           />
         ))}
       </div>
@@ -626,6 +655,7 @@ type CalendarTaskCardProps = {
   canManageTasks: boolean
   onEditTask: (task: TaskWithRelations) => void
   renderAssignees: RenderAssigneeFn
+  isActive: boolean
 }
 
 function CalendarTaskCard({
@@ -633,6 +663,7 @@ function CalendarTaskCard({
   canManageTasks,
   onEditTask,
   renderAssignees,
+  isActive,
 }: CalendarTaskCardProps) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: task.id,
@@ -646,12 +677,32 @@ function CalendarTaskCard({
 
   const assignees = renderAssignees(task)
   const primaryAssignee = assignees[0]?.name ?? 'Unassigned'
+  const sanitizedAttributes = useMemo(() => {
+    if (!attributes) {
+      return {}
+    }
+
+    const {
+      role: _omitRole,
+      tabIndex: _omitTabIndex,
+      ['aria-describedby']: _omitDescribedBy,
+      ...rest
+    } = attributes
+    void _omitRole
+    void _omitTabIndex
+    void _omitDescribedBy
+    return rest
+  }, [attributes])
 
   return (
-    <div
+    <CalendarTaskCardShell
       ref={setNodeRef}
-      {...attributes}
-      {...listeners}
+      task={task}
+      primaryAssignee={primaryAssignee}
+      canManageTasks={canManageTasks}
+      isActive={isActive}
+      isDragging={isDragging}
+      hideWhileDragging
       role='button'
       tabIndex={0}
       onClick={() => onEditTask(task)}
@@ -661,16 +712,8 @@ function CalendarTaskCard({
           onEditTask(task)
         }
       }}
-      className={cn(
-        'bg-background rounded-md border px-2 py-1 text-left text-xs shadow-sm transition',
-        canManageTasks ? 'hover:bg-primary/5 cursor-pointer' : 'cursor-default',
-        isDragging && 'border-primary ring-primary/40 ring-2'
-      )}
-    >
-      <p className='line-clamp-2 font-medium'>{task.title}</p>
-      <div className='text-muted-foreground mt-1 flex flex-wrap items-center gap-2 text-[11px]'>
-        <span>{primaryAssignee}</span>
-      </div>
-    </div>
+      {...sanitizedAttributes}
+      {...listeners}
+    />
   )
 }
