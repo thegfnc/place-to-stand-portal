@@ -9,6 +9,7 @@ import type { ProjectWithRelations } from '@/lib/types'
 import { assembleProjectsWithRelations } from './assemble-projects'
 import { fetchBaseProjects } from './fetch-base-projects'
 import { fetchProjectRelations } from './fetch-project-relations'
+export { fetchProjectCalendarTasks } from './fetch-project-calendar-tasks'
 
 export type FetchProjectsWithRelationsOptions = {
   forUserId?: string

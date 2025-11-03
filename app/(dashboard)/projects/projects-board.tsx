@@ -1,7 +1,15 @@
 'use client'
 
-import { useCallback, useMemo, useState, useTransition } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+} from 'react'
 import { PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
+import { useQueryClient } from '@tanstack/react-query'
 
 import { AppShellHeader } from '@/components/layout/app-shell'
 import { ProjectsBoardEmpty } from './_components/projects-board-empty'
@@ -29,6 +37,7 @@ import {
   unacceptTask,
 } from './actions'
 import type { ActionResult } from './actions/action-types'
+import { calendarTasksQueryRoot } from '@/lib/projects/calendar/use-calendar-month-tasks'
 
 type Props = Omit<Parameters<typeof useProjectsBoardState>[0], 'currentView'>
 type ProjectsBoardProps = Props & {
@@ -54,6 +63,7 @@ export function ProjectsBoard({
     })
   )
   const { toast } = useToast()
+  const queryClient = useQueryClient()
 
   const {
     isPending,
@@ -148,6 +158,55 @@ export function ProjectsBoard({
     [memberDirectory]
   )
 
+  const calendarTaskSignature = useMemo(() => {
+    if (!activeProject) {
+      return null
+    }
+
+    const relevantTasks = activeProjectTasks
+      .filter(
+        task => task.due_on && !(task.status === 'DONE' && task.accepted_at)
+      )
+      .map(task =>
+        [
+          task.id,
+          task.due_on ?? '',
+          task.updated_at ?? '',
+          task.status ?? '',
+          task.accepted_at ?? '',
+        ].join(':')
+      )
+
+    if (!relevantTasks.length) {
+      return '__empty__'
+    }
+
+    relevantTasks.sort()
+    return relevantTasks.join('|')
+  }, [activeProject, activeProjectTasks])
+
+  const previousCalendarSignatureRef = useRef<string | null>(null)
+
+  useEffect(() => {
+    if (!activeProject?.id) {
+      previousCalendarSignatureRef.current = null
+      return
+    }
+
+    if (calendarTaskSignature === null) {
+      return
+    }
+
+    if (previousCalendarSignatureRef.current === calendarTaskSignature) {
+      return
+    }
+
+    previousCalendarSignatureRef.current = calendarTaskSignature
+    queryClient.invalidateQueries({
+      queryKey: calendarTasksQueryRoot(activeProject.id),
+    })
+  }, [activeProject?.id, calendarTaskSignature, queryClient])
+
   const backlogGroups = useMemo(
     () => groupTasksByColumn(activeProjectTasks, BACKLOG_SECTIONS),
     [activeProjectTasks]
@@ -163,29 +222,6 @@ export function ProjectsBoard({
 
     return filterTasksByAssignee(tasksByColumn, props.currentUserId)
   }, [onlyAssignedToMe, props.currentUserId, tasksByColumn])
-
-  const calendarTasks = useMemo(() => {
-    const sourceTasks =
-      onlyAssignedToMe && props.currentUserId
-        ? activeProjectTasks.filter(task =>
-            task.assignees.some(
-              assignee => assignee.user_id === props.currentUserId
-            )
-          )
-        : activeProjectTasks
-
-    return sourceTasks.filter(task => {
-      if (!task.due_on) {
-        return false
-      }
-
-      if (task.status === 'DONE' && task.accepted_at) {
-        return false
-      }
-
-      return true
-    })
-  }, [activeProjectTasks, onlyAssignedToMe, props.currentUserId])
 
   const canAcceptTasks = props.currentUserRole === 'ADMIN'
 
@@ -472,7 +508,8 @@ export function ProjectsBoard({
           canManageTasks={canManageTasks}
           renderAssignees={renderAssignees}
           tasksByColumn={tasksByColumnToRender}
-          calendarTasks={calendarTasks}
+          calendarProjectId={activeProject?.id ?? null}
+          calendarAssignedUserId={props.currentUserId ?? null}
           onEditTask={handleEditTask}
           onCreateTask={openCreateSheet}
           onCreateTaskForDate={handleCreateTaskForDate}

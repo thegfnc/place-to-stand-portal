@@ -31,7 +31,8 @@ export type ProjectsBoardTabsProps = {
   canManageTasks: boolean
   renderAssignees: RenderAssigneeFn
   tasksByColumn: ReadonlyMap<string, TaskWithRelations[]>
-  calendarTasks: TaskWithRelations[]
+  calendarProjectId: string | null
+  calendarAssignedUserId: string | null
   onEditTask: (task: TaskWithRelations) => void
   onCreateTask: () => void
   onCreateTaskForDate: (dueOn: string) => void
@@ -86,7 +87,8 @@ export function ProjectsBoardTabs(props: ProjectsBoardTabsProps) {
     canManageTasks,
     renderAssignees,
     tasksByColumn,
-    calendarTasks,
+    calendarProjectId,
+    calendarAssignedUserId,
     onEditTask,
     onCreateTask,
     onCreateTaskForDate,
@@ -161,7 +163,9 @@ export function ProjectsBoardTabs(props: ProjectsBoardTabsProps) {
         isActive={initialTab === 'calendar'}
         feedback={feedback}
         activeProject={activeProject}
-        tasks={calendarTasks}
+        projectId={calendarProjectId}
+        assignedUserId={calendarAssignedUserId}
+        onlyAssignedToMe={onlyAssignedToMe}
         renderAssignees={renderAssignees}
         canManageTasks={canManageTasks}
         onEditTask={onEditTask}

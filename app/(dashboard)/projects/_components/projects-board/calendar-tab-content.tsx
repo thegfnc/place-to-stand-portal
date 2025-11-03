@@ -14,20 +14,21 @@ import {
   useDroppable,
   useDraggable,
 } from '@dnd-kit/core'
-import { useVirtualizer } from '@tanstack/react-virtual'
+import { useQueryClient } from '@tanstack/react-query'
 import {
   addDays,
   addMonths,
-  differenceInCalendarMonths,
+  eachDayOfInterval,
+  endOfMonth,
+  endOfWeek,
   format,
-  getDay,
-  getDaysInMonth,
   getMonth,
   getYear,
+  isSameMonth,
   isWeekend,
-  parseISO,
   startOfDay,
   startOfMonth,
+  startOfWeek,
 } from 'date-fns'
 import { Plus, ChevronLeft, ChevronRight } from 'lucide-react'
 
@@ -58,19 +59,13 @@ import {
 } from './projects-board-tabs.constants'
 import type { RenderAssigneeFn } from '../../../../../lib/projects/board/board-selectors'
 import { TaskDragOverlay } from '../task-drag-overlay'
-import {
-  TASK_DUE_TONE_CLASSES,
-  getTaskDueMeta,
-} from '@/lib/projects/task-due-date'
 import type { ProjectsBoardActiveProject } from './board-tab-content'
-
-const BUFFER_MONTHS = 6
-const MONTH_ESTIMATED_HEIGHT = 680
-const YEARS_EITHER_SIDE = 2
-const DEFAULT_PAST_MONTHS = YEARS_EITHER_SIDE * 12
-const DEFAULT_FUTURE_MONTHS = YEARS_EITHER_SIDE * 12
-const MONTH_RANGE_PADDING = 2
-const MONTH_SCROLL_PADDING = 16
+import {
+  calendarTasksQueryKey,
+  calendarTasksQueryRoot,
+  fetchCalendarMonthTasks,
+  useCalendarMonthTasks,
+} from '@/lib/projects/calendar/use-calendar-month-tasks'
 
 const monthLabels = Array.from({ length: 12 }, (_, index) => {
   const date = new Date(2025, index, 1)
@@ -84,7 +79,9 @@ type CalendarTabContentProps = {
   isActive: boolean
   feedback: string | null
   activeProject: ProjectsBoardActiveProject
-  tasks: TaskWithRelations[]
+  projectId: string | null
+  assignedUserId: string | null
+  onlyAssignedToMe: boolean
   renderAssignees: RenderAssigneeFn
   canManageTasks: boolean
   onEditTask: (task: TaskWithRelations) => void
@@ -106,89 +103,34 @@ type CalendarDay = {
   isWeekend: boolean
 }
 
-type CalendarMonth = {
-  offset: number
-  monthStart: Date
-  label: string
-  year: number
-  daysInMonth: number
-  firstWeekdayIndex: number
-}
+const TODAY_SCROLL_PADDING = 16
+const EMPTY_TASKS: TaskWithRelations[] = []
 
-type MonthRange = {
-  start: number
-  end: number
-}
-
-type ScrollBehaviorOption = 'auto' | 'smooth'
-
-type PendingScrollRequest = {
-  offset: number
-  behavior?: ScrollBehaviorOption
-}
-const deriveBaseRange = (
-  baseMonth: Date,
-  tasks: TaskWithRelations[]
-): MonthRange => {
-  let minOffset = -DEFAULT_PAST_MONTHS
-  let maxOffset = DEFAULT_FUTURE_MONTHS
-
-  tasks.forEach(task => {
-    if (!task.due_on) {
-      return
-    }
-
-    try {
-      const taskMonthStart = startOfMonth(parseISO(task.due_on))
-      const offset = differenceInCalendarMonths(taskMonthStart, baseMonth)
-      minOffset = Math.min(minOffset, offset - MONTH_RANGE_PADDING)
-      maxOffset = Math.max(maxOffset, offset + MONTH_RANGE_PADDING)
-    } catch (error) {
-      console.warn('Invalid task due date encountered in calendar range', {
-        taskId: task.id,
-        dueOn: task.due_on,
-        error,
-      })
-    }
-  })
-
-  return { start: minOffset, end: maxOffset }
-}
-
-const buildCalendarMonth = (baseMonth: Date, offset: number): CalendarMonth => {
-  const monthStart = addMonths(baseMonth, offset)
-  const monthLabel = format(monthStart, 'MMMM')
-  const year = getYear(monthStart)
-
-  return {
-    offset,
-    monthStart,
-    label: monthLabel,
-    year,
-    daysInMonth: getDaysInMonth(monthStart),
-    firstWeekdayIndex: getDay(monthStart),
-  }
+const getCalendarRange = (monthStart: Date) => {
+  const start = startOfWeek(monthStart, { weekStartsOn: 0 })
+  const end = endOfWeek(endOfMonth(monthStart), { weekStartsOn: 0 })
+  return { start, end }
 }
 
 const buildCalendarDays = (
-  month: CalendarMonth,
+  rangeStart: Date,
+  rangeEnd: Date,
+  visibleMonth: Date,
   todayKey: string
 ): CalendarDay[] => {
-  const { monthStart, daysInMonth } = month
   const days: CalendarDay[] = []
 
-  for (let index = 0; index < daysInMonth; index += 1) {
-    const date = addDays(monthStart, index)
+  eachDayOfInterval({ start: rangeStart, end: rangeEnd }).forEach(date => {
     const key = format(date, 'yyyy-MM-dd')
     days.push({
       date,
       key,
       label: format(date, 'd'),
-      isCurrentMonth: true,
+      isCurrentMonth: isSameMonth(date, visibleMonth),
       isToday: key === todayKey,
       isWeekend: isWeekend(date),
     })
-  }
+  })
 
   return days
 }
@@ -197,7 +139,9 @@ export function CalendarTabContent({
   isActive,
   feedback,
   activeProject,
-  tasks,
+  projectId,
+  assignedUserId,
+  onlyAssignedToMe,
   renderAssignees,
   canManageTasks,
   onEditTask,
@@ -209,128 +153,60 @@ export function CalendarTabContent({
   scrimLocked,
   isPending,
 }: CalendarTabContentProps) {
-  const baseMonth = useMemo(() => startOfMonth(startOfDay(new Date())), [])
-  const baseRange = useMemo(
-    () => deriveBaseRange(baseMonth, tasks),
-    [baseMonth, tasks]
-  )
-  const [monthRange, setMonthRange] = useState(baseRange)
+  const queryClient = useQueryClient()
+  const today = useMemo(() => startOfDay(new Date()), [])
+  const baseMonth = useMemo(() => startOfMonth(today), [today])
 
-  useEffect(() => {
-    setMonthRange(prev => {
-      const nextStart = Math.min(prev.start, baseRange.start)
-      const nextEnd = Math.max(prev.end, baseRange.end)
-      if (nextStart === prev.start && nextEnd === prev.end) {
-        return prev
-      }
-      return { start: nextStart, end: nextEnd }
-    })
-  }, [baseRange.end, baseRange.start])
-  const months = useMemo(() => {
-    const list: CalendarMonth[] = []
-    for (let offset = monthRange.start; offset <= monthRange.end; offset += 1) {
-      list.push(buildCalendarMonth(baseMonth, offset))
-    }
-    return list
-  }, [baseMonth, monthRange.end, monthRange.start])
-
-  const todayKey = useMemo(
-    () => format(startOfDay(new Date()), 'yyyy-MM-dd'),
-    []
-  )
-
-  const initialMonthIndex = useMemo(
-    () => months.findIndex(month => month.offset === 0),
-    [months]
-  )
-
-  const [activeMonthOffset, setActiveMonthOffset] = useState(() => {
-    if (initialMonthIndex !== -1) {
-      return months[initialMonthIndex]?.offset ?? 0
-    }
-    return months[0]?.offset ?? 0
-  })
-
-  const activeMonthIndex = useMemo(() => {
-    const index = months.findIndex(month => month.offset === activeMonthOffset)
-    if (index !== -1) {
-      return index
-    }
-    if (initialMonthIndex !== -1) {
-      return initialMonthIndex
-    }
-    return 0
-  }, [activeMonthOffset, initialMonthIndex, months])
+  const [currentMonth, setCurrentMonth] = useState(baseMonth)
   const [monthValue, setMonthValue] = useState(() =>
-    String(getMonth(months[initialMonthIndex]?.monthStart ?? baseMonth))
+    String(getMonth(baseMonth))
   )
-  const [yearValue, setYearValue] = useState(() =>
-    String(getYear(months[initialMonthIndex]?.monthStart ?? baseMonth))
-  )
+  const [yearValue, setYearValue] = useState(() => String(getYear(baseMonth)))
 
   useEffect(() => {
-    if (!months.length) {
-      return
-    }
+    setMonthValue(String(getMonth(currentMonth)))
+    setYearValue(String(getYear(currentMonth)))
+  }, [currentMonth])
 
-    const offsetExists = months.some(
-      month => month.offset === activeMonthOffset
-    )
+  useEffect(() => {
+    setCurrentMonth(baseMonth)
+  }, [activeProject?.id, baseMonth])
 
-    if (offsetExists) {
-      return
-    }
-
-    const fallbackIndex = initialMonthIndex === -1 ? 0 : initialMonthIndex
-    const fallbackOffset = months[fallbackIndex]?.offset ?? months[0]?.offset
-    if (typeof fallbackOffset === 'number') {
-      setActiveMonthOffset(fallbackOffset)
-    }
-  }, [activeMonthOffset, initialMonthIndex, months])
-
-  const containerRef = useRef<HTMLDivElement | null>(null)
-  const headerRef = useRef<HTMLDivElement | null>(null)
-  const todayCellRef = useRef<HTMLDivElement | null>(null)
-  const hasCenteredTodayRef = useRef(false)
-  const resumeSyncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
-    null
+  const { start: rangeStart, end: rangeEnd } = useMemo(
+    () => getCalendarRange(currentMonth),
+    [currentMonth]
   )
-  // eslint-disable-next-line react-hooks/incompatible-library -- Virtualizer intentionally manages dynamic DOM measurements outside React memoization.
-  const monthVirtualizer = useVirtualizer({
-    count: months.length,
-    getScrollElement: () => containerRef.current,
-    estimateSize: () => MONTH_ESTIMATED_HEIGHT,
-    overscan: BUFFER_MONTHS,
-    indexAttribute: 'data-index',
-    getItemKey: index => {
-      const month = months[index]
-      if (!month) {
-        return index
-      }
-      return `${month.year}-${getMonth(month.monthStart)}`
-    },
+
+  const rangeStartIso = useMemo(
+    () => format(rangeStart, 'yyyy-MM-dd'),
+    [rangeStart]
+  )
+  const rangeEndIso = useMemo(() => format(rangeEnd, 'yyyy-MM-dd'), [rangeEnd])
+  const todayKey = useMemo(() => format(today, 'yyyy-MM-dd'), [today])
+
+  const calendarQuery = useCalendarMonthTasks({
+    projectId,
+    start: rangeStart,
+    end: rangeEnd,
+    enabled: isActive && Boolean(projectId),
   })
 
-  const virtualMonths = monthVirtualizer.getVirtualItems()
+  const tasks = calendarQuery.data ?? EMPTY_TASKS
 
-  const measureMonthElement = useCallback(
-    (element: HTMLDivElement | null) => {
-      monthVirtualizer.measureElement(element)
-    },
-    [monthVirtualizer]
-  )
+  const filteredTasks = useMemo(() => {
+    if (!onlyAssignedToMe || !assignedUserId) {
+      return tasks
+    }
 
-  const [selectorSyncSuspended, setSelectorSyncSuspended] = useState(false)
-  const [pendingScroll, setPendingScroll] =
-    useState<PendingScrollRequest | null>(null)
-
-  useEffect(() => {
-    hasCenteredTodayRef.current = false
-  }, [baseRange.end, baseRange.start])
+    return tasks.filter(task =>
+      task.assignees.some(assignee => assignee.user_id === assignedUserId)
+    )
+  }, [assignedUserId, onlyAssignedToMe, tasks])
 
   const tasksByDate = useMemo(() => {
     const map = new Map<string, TaskWithRelations[]>()
-    tasks.forEach(task => {
+
+    filteredTasks.forEach(task => {
       if (!task.due_on) {
         return
       }
@@ -338,263 +214,188 @@ export function CalendarTabContent({
       bucket.push(task)
       map.set(task.due_on, bucket)
     })
+
     return map
-  }, [tasks])
+  }, [filteredTasks])
 
-  useEffect(() => {
-    if (hasCenteredTodayRef.current) {
-      return
-    }
+  const days = useMemo(
+    () => buildCalendarDays(rangeStart, rangeEnd, currentMonth, todayKey),
+    [currentMonth, rangeEnd, rangeStart, todayKey]
+  )
 
-    if (!months.length) {
-      return
-    }
+  const weekdayHeaders = useMemo(
+    () =>
+      Array.from({ length: 7 }, (_, index) =>
+        format(addDays(rangeStart, index), 'EEE')
+      ),
+    [rangeStart]
+  )
 
+  const containerRef = useRef<HTMLDivElement | null>(null)
+  const headerRef = useRef<HTMLDivElement | null>(null)
+  const todayCellRef = useRef<HTMLDivElement | null>(null)
+
+  const scrollTodayIntoView = useCallback(() => {
     const scrollElement = containerRef.current
-    if (!scrollElement) {
+    const targetElement = todayCellRef.current
+
+    if (!scrollElement || !targetElement) {
       return
     }
 
-    hasCenteredTodayRef.current = true
-    const targetIndex = initialMonthIndex === -1 ? 0 : initialMonthIndex
-    monthVirtualizer.scrollToIndex(targetIndex, { align: 'start' })
+    const headerHeight = headerRef.current
+      ? headerRef.current.getBoundingClientRect().height
+      : 0
 
-    requestAnimationFrame(() => {
-      todayCellRef.current?.scrollIntoView({
-        block: 'center',
-        behavior: 'smooth',
-      })
+    const containerRect = scrollElement.getBoundingClientRect()
+    const elementRect = targetElement.getBoundingClientRect()
+    const rawOffset =
+      scrollElement.scrollTop + (elementRect.top - containerRect.top)
+    const targetScrollTop = Math.max(
+      0,
+      rawOffset - headerHeight - TODAY_SCROLL_PADDING
+    )
+
+    scrollElement.scrollTo({
+      top: targetScrollTop,
+      behavior: 'smooth',
     })
-  }, [initialMonthIndex, monthVirtualizer, months.length])
+  }, [])
 
-  useEffect(() => {
-    if (selectorSyncSuspended) {
-      return
-    }
-
-    const currentMonth = months[activeMonthIndex]
-    if (!currentMonth) {
-      return
-    }
-
-    setMonthValue(String(getMonth(currentMonth.monthStart)))
-    setYearValue(String(currentMonth.year))
-  }, [activeMonthIndex, months, selectorSyncSuspended])
-
-  useEffect(() => {
-    const scrollElement = containerRef.current
-    if (!scrollElement || virtualMonths.length === 0) {
-      return
-    }
-
-    const midpoint = scrollElement.scrollTop + scrollElement.clientHeight / 2
-    let targetIndex = virtualMonths[0].index
-    for (const item of virtualMonths) {
-      const itemStart = item.start
-      const itemEnd = item.start + item.size
-      if (midpoint >= itemStart && midpoint < itemEnd) {
-        targetIndex = item.index
-        break
-      }
-
-      if (midpoint >= itemEnd) {
-        targetIndex = item.index
-      }
-    }
-
-    if (targetIndex !== activeMonthIndex) {
-      const targetMonth = months[targetIndex]
-      if (targetMonth && targetMonth.offset !== activeMonthOffset) {
-        setActiveMonthOffset(targetMonth.offset)
-      }
-    }
-  }, [activeMonthIndex, activeMonthOffset, months, virtualMonths])
-
-  useEffect(() => {
-    const scrollElement = containerRef.current
-    if (!scrollElement) {
-      return
-    }
-
-    const handleScroll = () => {
-      if (!selectorSyncSuspended) {
+  const prefetchMonth = useCallback(
+    (month: Date) => {
+      if (!projectId) {
         return
       }
 
-      if (resumeSyncTimeoutRef.current) {
-        clearTimeout(resumeSyncTimeoutRef.current)
-      }
+      const normalized = startOfMonth(month)
+      const { start, end } = getCalendarRange(normalized)
+      const startParam = format(start, 'yyyy-MM-dd')
+      const endParam = format(end, 'yyyy-MM-dd')
 
-      resumeSyncTimeoutRef.current = setTimeout(() => {
-        setSelectorSyncSuspended(false)
-      }, 200)
-    }
-
-    scrollElement.addEventListener('scroll', handleScroll)
-    return () => {
-      scrollElement.removeEventListener('scroll', handleScroll)
-      if (resumeSyncTimeoutRef.current) {
-        clearTimeout(resumeSyncTimeoutRef.current)
-        resumeSyncTimeoutRef.current = null
-      }
-    }
-  }, [selectorSyncSuspended])
-
-  const currentMonth = months[activeMonthIndex]
-  const currentYearNumber = currentMonth
-    ? currentMonth.year
-    : getYear(baseMonth)
-  const currentMonthNumber = currentMonth
-    ? getMonth(currentMonth.monthStart)
-    : getMonth(baseMonth)
-  const goToMonth = useCallback(
-    (
-      monthNumber: number,
-      year: number,
-      options: { behavior?: ScrollBehaviorOption } = {}
-    ) => {
-      const targetDate = startOfMonth(new Date(year, monthNumber, 1))
-      const targetOffset = differenceInCalendarMonths(targetDate, baseMonth)
-
-      setPendingScroll({
-        offset: targetOffset,
-        behavior: options.behavior,
-      })
-
-      setMonthRange(prev => {
-        if (targetOffset >= prev.start && targetOffset <= prev.end) {
-          return prev
-        }
-
-        return {
-          start: Math.min(prev.start, targetOffset - MONTH_RANGE_PADDING),
-          end: Math.max(prev.end, targetOffset + MONTH_RANGE_PADDING),
-        }
+      queryClient.prefetchQuery({
+        queryKey: calendarTasksQueryKey(projectId, startParam, endParam),
+        queryFn: () =>
+          fetchCalendarMonthTasks({
+            projectId,
+            start: startParam,
+            end: endParam,
+          }),
       })
     },
-    [baseMonth]
+    [projectId, queryClient]
   )
 
   useEffect(() => {
-    if (!pendingScroll) {
-      return
-    }
-
-    const targetIndex = months.findIndex(
-      month => month.offset === pendingScroll.offset
-    )
-
-    if (targetIndex === -1) {
-      return
-    }
-
-    const { behavior } = pendingScroll
-
-    const isRendered = virtualMonths.some(item => item.index === targetIndex)
-
-    if (!isRendered) {
-      monthVirtualizer.scrollToIndex(targetIndex, { align: 'start' })
-      return
-    }
-
-    const scrollElement = containerRef.current
-    if (!scrollElement) {
-      return
-    }
-
-    const targetElement = scrollElement.querySelector<HTMLDivElement>(
-      `[data-offset="${pendingScroll.offset}"]`
-    )
-
-    if (!targetElement) {
-      monthVirtualizer.scrollToIndex(targetIndex, { align: 'start' })
-      return
-    }
-
-    if (behavior === 'smooth') {
-      setSelectorSyncSuspended(true)
-    }
-
-    requestAnimationFrame(() => {
-      const headerHeight = headerRef.current
-        ? headerRef.current.getBoundingClientRect().height
-        : 0
-      const containerRect = scrollElement.getBoundingClientRect()
-      const elementRect = targetElement.getBoundingClientRect()
-      const rawOffset =
-        scrollElement.scrollTop + (elementRect.top - containerRect.top)
-      const targetScrollTop = Math.max(
-        0,
-        rawOffset - headerHeight - MONTH_SCROLL_PADDING
-      )
-
-      scrollElement.scrollTo({
-        top: targetScrollTop,
-        behavior: behavior ?? 'auto',
-      })
-
-      const targetMonth = months[targetIndex]
-      if (targetMonth) {
-        setActiveMonthOffset(targetMonth.offset)
-      }
-
-      setSelectorSyncSuspended(false)
-      setPendingScroll(null)
-    })
-  }, [monthVirtualizer, months, pendingScroll, virtualMonths])
+    prefetchMonth(addMonths(currentMonth, -1))
+    prefetchMonth(addMonths(currentMonth, 1))
+  }, [currentMonth, prefetchMonth])
 
   const handleSelectMonth = useCallback(
     (value: string) => {
       setMonthValue(value)
-      const monthNumber = Number(value)
+      const monthNumber = Number.parseInt(value, 10)
+
       if (Number.isNaN(monthNumber)) {
         return
       }
-      goToMonth(monthNumber, currentYearNumber, { behavior: 'smooth' })
+
+      const parsedYear = Number.parseInt(yearValue, 10)
+      const yearNumber = Number.isNaN(parsedYear)
+        ? getYear(currentMonth)
+        : parsedYear
+
+      const nextMonth = startOfMonth(new Date(yearNumber, monthNumber, 1))
+      setCurrentMonth(nextMonth)
+      prefetchMonth(nextMonth)
     },
-    [currentYearNumber, goToMonth]
+    [currentMonth, prefetchMonth, yearValue]
   )
 
   const commitYearChange = useCallback(() => {
-    const parsedYear = Number(yearValue)
-    if (!Number.isFinite(parsedYear)) {
-      setYearValue(String(currentYearNumber))
+    const parsedYear = Number.parseInt(yearValue, 10)
+
+    if (Number.isNaN(parsedYear)) {
+      setYearValue(String(getYear(currentMonth)))
       return
     }
 
-    goToMonth(currentMonthNumber, parsedYear, { behavior: 'smooth' })
-  }, [currentMonthNumber, currentYearNumber, goToMonth, yearValue])
+    const nextMonth = startOfMonth(
+      new Date(parsedYear, getMonth(currentMonth), 1)
+    )
+    setCurrentMonth(nextMonth)
+    prefetchMonth(nextMonth)
+  }, [currentMonth, prefetchMonth, yearValue])
 
   const handlePrevMonth = useCallback(() => {
-    const current = months[activeMonthIndex]
-    if (!current) {
-      return
-    }
-
-    const previousMonthStart = addMonths(current.monthStart, -1)
-    goToMonth(getMonth(previousMonthStart), getYear(previousMonthStart), {
-      behavior: 'smooth',
-    })
-  }, [activeMonthIndex, goToMonth, months])
+    const nextMonth = startOfMonth(addMonths(currentMonth, -1))
+    setCurrentMonth(nextMonth)
+    prefetchMonth(nextMonth)
+  }, [currentMonth, prefetchMonth])
 
   const handleNextMonth = useCallback(() => {
-    const current = months[activeMonthIndex]
-    if (!current) {
-      return
-    }
+    const nextMonth = startOfMonth(addMonths(currentMonth, 1))
+    setCurrentMonth(nextMonth)
+    prefetchMonth(nextMonth)
+  }, [currentMonth, prefetchMonth])
 
-    const nextMonthStart = addMonths(current.monthStart, 1)
-    goToMonth(getMonth(nextMonthStart), getYear(nextMonthStart), {
-      behavior: 'smooth',
+  const handleGoToToday = useCallback(() => {
+    setCurrentMonth(baseMonth)
+    prefetchMonth(baseMonth)
+    requestAnimationFrame(() => {
+      scrollTodayIntoView()
     })
-  }, [activeMonthIndex, goToMonth, months])
+  }, [baseMonth, prefetchMonth, scrollTodayIntoView])
 
-  const totalMonthHeight = monthVirtualizer.getTotalSize()
-
-  const loadingVisible = isPending && !scrimLocked
+  const queryInFlight = calendarQuery.isPending || calendarQuery.isFetching
+  const loadingVisible = !scrimLocked && (isPending || queryInFlight)
   const disabledReason = canManageTasks
     ? null
     : 'You need manage permissions to add tasks.'
+
+  const handleInternalDragEnd = useCallback<
+    NonNullable<DndContextProps['onDragEnd']>
+  >(
+    event => {
+      onDragEnd?.(event)
+
+      if (!projectId) {
+        return
+      }
+
+      const overId = typeof event.over?.id === 'string' ? event.over.id : null
+      if (!overId) {
+        return
+      }
+
+      const taskId = String(event.active.id)
+      queryClient.setQueryData<TaskWithRelations[] | undefined>(
+        calendarTasksQueryKey(projectId, rangeStartIso, rangeEndIso),
+        previous => {
+          if (!previous) {
+            return previous
+          }
+
+          const next = previous.map(task =>
+            task.id === taskId ? { ...task, due_on: overId } : task
+          )
+
+          return next.filter(task => {
+            const dueOn = task.due_on
+            if (!dueOn) {
+              return false
+            }
+            return dueOn >= rangeStartIso && dueOn <= rangeEndIso
+          })
+        }
+      )
+
+      queryClient.invalidateQueries({
+        queryKey: calendarTasksQueryRoot(projectId),
+      })
+    },
+    [onDragEnd, projectId, queryClient, rangeEndIso, rangeStartIso]
+  )
 
   if (!isActive) {
     return null
@@ -615,7 +416,7 @@ export function CalendarTabContent({
         <DndContext
           sensors={sensors}
           onDragStart={onDragStart}
-          onDragEnd={onDragEnd}
+          onDragEnd={handleInternalDragEnd}
         >
           <div className='relative min-h-0 flex-1'>
             <div
@@ -634,7 +435,6 @@ export function CalendarTabContent({
                       variant='ghost'
                       onClick={handlePrevMonth}
                       aria-label='View previous month'
-                      disabled={activeMonthIndex === 0}
                     >
                       <ChevronLeft className='h-4 w-4' />
                     </Button>
@@ -644,7 +444,6 @@ export function CalendarTabContent({
                       variant='ghost'
                       onClick={handleNextMonth}
                       aria-label='View next month'
-                      disabled={activeMonthIndex === months.length - 1}
                     >
                       <ChevronRight className='h-4 w-4' />
                     </Button>
@@ -683,92 +482,44 @@ export function CalendarTabContent({
                   <Button
                     type='button'
                     variant='outline'
-                    onClick={() => {
-                      goToMonth(getMonth(baseMonth), getYear(baseMonth), {
-                        behavior: 'smooth',
-                      })
-                      requestAnimationFrame(() => {
-                        todayCellRef.current?.scrollIntoView({
-                          block: 'center',
-                          behavior: 'smooth',
-                        })
-                      })
-                    }}
+                    onClick={handleGoToToday}
                   >
                     Today
                   </Button>
                 </div>
                 <div className='bg-card relative flex min-h-0 flex-1 overflow-hidden'>
-                  <div className='flex-1'>
-                    <div
-                      style={{
-                        height: totalMonthHeight,
-                        position: 'relative',
-                        width: '100%',
-                      }}
-                    >
-                      {virtualMonths.map(virtualMonth => {
-                        const month = months[virtualMonth.index]
-                        if (!month) {
-                          return null
-                        }
-
-                        const days = buildCalendarDays(month, todayKey)
-
-                        return (
-                          <div
-                            key={virtualMonth.key}
-                            ref={measureMonthElement}
-                            data-index={`${virtualMonth.index}`}
-                            data-offset={month.offset}
-                            className={cn(
-                              'border-border/60 border-b px-4 py-6',
-                              virtualMonth.index === months.length - 1 &&
-                                'border-none'
-                            )}
-                            style={{
-                              position: 'absolute',
-                              top: 0,
-                              left: 0,
-                              width: '100%',
-                              transform: `translate3d(0, ${virtualMonth.start}px, 0)`,
-                            }}
-                          >
-                            <div className='mb-4 flex items-baseline justify-between'>
-                              <div>
-                                <p className='text-lg font-semibold'>
-                                  {month.label} {month.year}
-                                </p>
-                                <p className='text-muted-foreground text-xs'>
-                                  Weeks begin on Sunday and include weekends.
-                                </p>
-                              </div>
-                            </div>
-                            <div className='grid grid-cols-7 gap-2'>
-                              {days.map((day, dayIndex) => (
-                                <CalendarDayCell
-                                  key={day.key}
-                                  day={day}
-                                  canManageTasks={canManageTasks}
-                                  onCreateTask={onCreateTask}
-                                  disabledReason={disabledReason}
-                                  tasks={tasksByDate.get(day.key) ?? []}
-                                  onEditTask={onEditTask}
-                                  renderAssignees={renderAssignees}
-                                  todayCellRef={
-                                    day.isToday ? todayCellRef : undefined
-                                  }
-                                  gridColumnStart={
-                                    dayIndex === 0
-                                      ? month.firstWeekdayIndex + 1
-                                      : undefined
-                                  }
-                                />
-                              ))}
-                            </div>
-                          </div>
-                        )
-                      })}
+                  <div className='flex-1 px-4 py-6'>
+                    <div className='mb-4 flex items-baseline justify-between'>
+                      <div>
+                        <p className='text-lg font-semibold'>
+                          {format(currentMonth, 'MMMM yyyy')}
+                        </p>
+                        <p className='text-muted-foreground text-xs'>
+                          Weeks begin on Sunday and include weekends.
+                        </p>
+                      </div>
+                    </div>
+                    <div className='text-muted-foreground grid grid-cols-7 gap-2 text-center text-xs font-semibold tracking-wide uppercase'>
+                      {weekdayHeaders.map(label => (
+                        <span key={label} className='rounded-md px-2 py-1'>
+                          {label}
+                        </span>
+                      ))}
+                    </div>
+                    <div className='mt-2 grid grid-cols-7 gap-2'>
+                      {days.map(day => (
+                        <CalendarDayCell
+                          key={day.key}
+                          day={day}
+                          canManageTasks={canManageTasks}
+                          onCreateTask={onCreateTask}
+                          disabledReason={disabledReason}
+                          tasks={tasksByDate.get(day.key) ?? []}
+                          onEditTask={onEditTask}
+                          renderAssignees={renderAssignees}
+                          todayCellRef={day.isToday ? todayCellRef : undefined}
+                        />
+                      ))}
                     </div>
                   </div>
                 </div>
@@ -795,7 +546,6 @@ type CalendarDayCellProps = {
   onEditTask: (task: TaskWithRelations) => void
   renderAssignees: RenderAssigneeFn
   todayCellRef?: RefObject<HTMLDivElement | null>
-  gridColumnStart?: number
 }
 
 function CalendarDayCell({
@@ -807,7 +557,6 @@ function CalendarDayCell({
   onEditTask,
   renderAssignees,
   todayCellRef,
-  gridColumnStart,
 }: CalendarDayCellProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: day.key,
@@ -838,7 +587,6 @@ function CalendarDayCell({
           todayCellRef.current = element
         }
       }}
-      style={gridColumnStart ? { gridColumnStart } : undefined}
       className={cn(
         'bg-background/80 flex h-full min-h-[140px] flex-col gap-2 rounded-lg border p-2 text-xs transition-shadow',
         !day.isCurrentMonth && 'bg-muted/20 text-muted-foreground',

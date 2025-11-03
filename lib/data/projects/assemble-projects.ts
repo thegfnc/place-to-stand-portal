@@ -17,6 +17,7 @@ import type {
   TimeLogSummary,
 } from './types'
 import type { ProjectRelationsFetchResult } from './fetch-project-relations'
+import { normalizeRawTask } from './normalize-task'
 
 export type AssembleProjectsArgs = {
   projects: DbProject[]
@@ -198,31 +199,7 @@ function groupTasksByProject(tasks: RawTaskWithRelations[]): {
       return
     }
 
-    const {
-      assignees: rawAssignees,
-      comments,
-      attachments,
-      ...taskFields
-    } = task
-
-    const safeAssignees = (rawAssignees ?? [])
-      .filter(assignee => !assignee.deleted_at)
-      .map(assignee => ({ user_id: assignee.user_id }))
-
-    const commentCount = (comments ?? []).filter(
-      comment => comment && !comment.deleted_at
-    ).length
-
-    const safeAttachments = (attachments ?? []).filter(
-      attachment => attachment && !attachment.deleted_at
-    )
-
-    const normalizedTask: TaskWithRelations = {
-      ...taskFields,
-      assignees: safeAssignees,
-      commentCount,
-      attachments: safeAttachments,
-    }
+    const normalizedTask = normalizeRawTask(task)
 
     const targetMap = task.deleted_at
       ? archivedTasksByProject
