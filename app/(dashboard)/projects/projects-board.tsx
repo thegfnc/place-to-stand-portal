@@ -1,15 +1,7 @@
 'use client'
 
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  useTransition,
-} from 'react'
+import { useCallback, useMemo } from 'react'
 import { PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
-import { useQueryClient } from '@tanstack/react-query'
 
 import { AppShellHeader } from '@/components/layout/app-shell'
 import { ProjectsBoardEmpty } from './_components/projects-board-empty'
@@ -20,32 +12,20 @@ import { ProjectTimeLogHistoryDialog } from './_components/project-time-log-hist
 import { ProjectsBoardTabs } from './_components/projects-board/projects-board-tabs'
 import { TaskSheet } from './task-sheet'
 
-import { BACKLOG_SECTIONS } from '@/lib/projects/board/board-constants'
 import { createRenderAssignees } from '@/lib/projects/board/board-selectors'
-import { filterTasksByAssignee } from '@/lib/projects/board/board-filters'
 import { useBoardAssignedFilter } from '@/lib/projects/board/state/use-board-assigned-filter'
 import { useBoardScrollPersistence } from '@/lib/projects/board/state/use-board-scroll-persistence'
 import { useBoardTimeLogDialogs } from '@/lib/projects/board/state/use-board-time-log-dialogs'
-import { groupTasksByColumn } from '@/lib/projects/board/board-utils'
 import { useProjectsBoardState } from '@/lib/projects/board/use-projects-board-state'
 import { useToast } from '@/components/ui/use-toast'
-import {
-  acceptDoneTasks,
-  acceptTask,
-  destroyTask,
-  restoreTask,
-  unacceptTask,
-} from './actions'
-import type { ActionResult } from './actions/action-types'
-import { calendarTasksQueryRoot } from '@/lib/projects/calendar/use-calendar-month-tasks'
+import { useProjectsBoardDerivedState } from '@/lib/projects/board/state/use-projects-board-derived-state'
+import { useProjectCalendarSync } from '@/lib/projects/calendar/use-project-calendar-sync'
+import { useProjectsBoardReviewActions } from './_hooks/use-projects-board-review-actions'
 
 type Props = Omit<Parameters<typeof useProjectsBoardState>[0], 'currentView'>
 type ProjectsBoardProps = Props & {
   initialTab?: 'board' | 'calendar' | 'activity' | 'refine' | 'review'
 }
-
-type ReviewActionKind = 'accept' | 'unaccept' | 'restore' | 'destroy'
-type ReviewActionState = { type: ReviewActionKind; taskId: string }
 
 const NO_PROJECTS_TITLE = 'No projects assigned yet'
 const NO_PROJECTS_DESCRIPTION =
@@ -63,7 +43,6 @@ export function ProjectsBoard({
     })
   )
   const { toast } = useToast()
-  const queryClient = useQueryClient()
 
   const {
     isPending,
@@ -109,10 +88,7 @@ export function ProjectsBoard({
   const storageNamespace = props.currentUserId
     ? `projects-board-assigned-filter:${props.currentUserId}`
     : null
-  const [isAcceptingDone, startAcceptingDone] = useTransition()
-  const [isReviewActionPending, startReviewAction] = useTransition()
-  const [pendingReviewAction, setPendingReviewAction] =
-    useState<ReviewActionState | null>(null)
+  const canAcceptTasks = props.currentUserRole === 'ADMIN'
 
   const { onlyAssignedToMe, handleAssignedFilterChange } =
     useBoardAssignedFilter({
@@ -161,259 +137,51 @@ export function ProjectsBoard({
     () => createRenderAssignees(memberDirectory),
     [memberDirectory]
   )
+  useProjectCalendarSync({
+    activeProjectId,
+    tasks: activeProjectTasks,
+  })
 
-  const calendarTaskSignature = useMemo(() => {
-    if (!activeProject) {
-      return null
-    }
+  const {
+    onDeckTasks,
+    backlogTasks,
+    tasksByColumnToRender,
+    acceptedTasks,
+    archivedTasks,
+    doneColumnTasks,
+    acceptAllDisabled,
+    acceptAllDisabledReason,
+  } = useProjectsBoardDerivedState({
+    activeProjectTasks,
+    activeProjectArchivedTasks,
+    tasksByColumn,
+    onlyAssignedToMe,
+    currentUserId: props.currentUserId ?? null,
+    canAcceptTasks,
+  })
 
-    const relevantTasks = activeProjectTasks
-      .filter(
-        task => task.due_on && !(task.status === 'DONE' && task.accepted_at)
-      )
-      .map(task =>
-        [
-          task.id,
-          task.due_on ?? '',
-          task.updated_at ?? '',
-          task.status ?? '',
-          task.accepted_at ?? '',
-        ].join(':')
-      )
+  const {
+    handleAcceptAllDone,
+    handleAcceptTask,
+    handleUnacceptTask,
+    handleRestoreTask,
+    handleDestroyTask,
+    isAcceptingDone,
+    isReviewActionPending,
+    pendingReviewAction,
+  } = useProjectsBoardReviewActions({
+    canAcceptTasks,
+    activeProjectId,
+    toast,
+  })
 
-    if (!relevantTasks.length) {
-      return '__empty__'
-    }
-
-    relevantTasks.sort()
-    return relevantTasks.join('|')
-  }, [activeProject, activeProjectTasks])
-
-  const previousCalendarSignatureRef = useRef<string | null>(null)
-
-  useEffect(() => {
-    if (!activeProject?.id) {
-      previousCalendarSignatureRef.current = null
-      return
-    }
-
-    if (calendarTaskSignature === null) {
-      return
-    }
-
-    if (previousCalendarSignatureRef.current === calendarTaskSignature) {
-      return
-    }
-
-    previousCalendarSignatureRef.current = calendarTaskSignature
-    queryClient.invalidateQueries({
-      queryKey: calendarTasksQueryRoot(activeProject.id),
-    })
-  }, [activeProject?.id, calendarTaskSignature, queryClient])
-
-  const backlogGroups = useMemo(
-    () => groupTasksByColumn(activeProjectTasks, BACKLOG_SECTIONS),
-    [activeProjectTasks]
-  )
-
-  const onDeckTasks = backlogGroups.get('ON_DECK') ?? []
-  const backlogTasks = backlogGroups.get('BACKLOG') ?? []
   const activeSheetTaskId = sheetTask?.id ?? null
-  const tasksByColumnToRender = useMemo(() => {
-    if (!onlyAssignedToMe || !props.currentUserId) {
-      return tasksByColumn
-    }
-
-    return filterTasksByAssignee(tasksByColumn, props.currentUserId)
-  }, [onlyAssignedToMe, props.currentUserId, tasksByColumn])
-
-  const canAcceptTasks = props.currentUserRole === 'ADMIN'
-
-  const acceptedTasks = useMemo(
-    () =>
-      activeProjectTasks.filter(
-        task => task.status === 'DONE' && Boolean(task.accepted_at)
-      ),
-    [activeProjectTasks]
-  )
-
-  const archivedTasks = useMemo(
-    () => activeProjectArchivedTasks,
-    [activeProjectArchivedTasks]
-  )
-
-  const doneColumnTasks = tasksByColumnToRender.get('DONE') ?? []
-  const hasAcceptableTasks = doneColumnTasks.length > 0
-  const acceptAllDisabled = !canAcceptTasks || !hasAcceptableTasks
-  const acceptAllDisabledReason = !canAcceptTasks
-    ? 'Only administrators can accept tasks.'
-    : !hasAcceptableTasks
-      ? 'No tasks are ready for acceptance.'
-      : null
 
   const reviewActionTaskId = pendingReviewAction?.taskId ?? null
   const reviewActionType = pendingReviewAction?.type ?? null
   const reviewActionDisabledReason = canAcceptTasks
     ? null
     : 'Only administrators can manage review tasks.'
-
-  const handleAcceptAllDone = useCallback(() => {
-    if (!activeProject) {
-      return
-    }
-
-    if (!canAcceptTasks) {
-      toast({
-        variant: 'destructive',
-        title: 'Action not allowed',
-        description: 'Only administrators can accept tasks.',
-      })
-      return
-    }
-
-    startAcceptingDone(async () => {
-      const result = await acceptDoneTasks({ projectId: activeProject.id })
-
-      if (result.error) {
-        toast({
-          variant: 'destructive',
-          title: 'Unable to accept tasks',
-          description: result.error,
-        })
-        return
-      }
-
-      if (result.acceptedCount > 0) {
-        const plural = result.acceptedCount === 1 ? '' : 's'
-        toast({
-          title: 'Tasks accepted',
-          description: `${result.acceptedCount} task${plural} moved out of Done.`,
-        })
-        return
-      }
-
-      toast({
-        title: 'No tasks to accept',
-        description: 'All tasks in Done are already accepted.',
-      })
-    })
-  }, [activeProject, canAcceptTasks, startAcceptingDone, toast])
-
-  const performReviewAction = useCallback(
-    (
-      type: ReviewActionKind,
-      taskId: string,
-      action: () => Promise<ActionResult>,
-      success: { title: string; description?: string },
-      errorTitle: string
-    ) => {
-      if (!canAcceptTasks) {
-        toast({
-          variant: 'destructive',
-          title: 'Action not allowed',
-          description: 'Only administrators can manage review tasks.',
-        })
-        return
-      }
-
-      if (
-        pendingReviewAction &&
-        pendingReviewAction.taskId === taskId &&
-        pendingReviewAction.type === type
-      ) {
-        return
-      }
-
-      setPendingReviewAction({ type, taskId })
-      startReviewAction(async () => {
-        try {
-          const result = await action()
-
-          if (result.error) {
-            toast({
-              variant: 'destructive',
-              title: errorTitle,
-              description: result.error,
-            })
-            return
-          }
-
-          toast({
-            title: success.title,
-            description: success.description,
-          })
-        } catch (error) {
-          console.error('Review action failed', error)
-          toast({
-            variant: 'destructive',
-            title: errorTitle,
-            description: 'An unexpected error occurred.',
-          })
-        } finally {
-          setPendingReviewAction(null)
-        }
-      })
-    },
-    [canAcceptTasks, pendingReviewAction, startReviewAction, toast]
-  )
-
-  const handleAcceptTask = useCallback(
-    (taskId: string) => {
-      performReviewAction(
-        'accept',
-        taskId,
-        () => acceptTask({ taskId }),
-        {
-          title: 'Task accepted',
-          description: 'The task has been moved out of Done.',
-        },
-        'Unable to accept task'
-      )
-    },
-    [performReviewAction]
-  )
-
-  const handleUnacceptTask = useCallback(
-    (taskId: string) => {
-      performReviewAction(
-        'unaccept',
-        taskId,
-        () => unacceptTask({ taskId }),
-        { title: 'Task reopened for client review.' },
-        'Unable to unaccept task'
-      )
-    },
-    [performReviewAction]
-  )
-
-  const handleRestoreTask = useCallback(
-    (taskId: string) => {
-      performReviewAction(
-        'restore',
-        taskId,
-        () => restoreTask({ taskId }),
-        {
-          title: 'Task restored',
-          description: 'The task has been returned to the project board.',
-        },
-        'Unable to restore task'
-      )
-    },
-    [performReviewAction]
-  )
-
-  const handleDestroyTask = useCallback(
-    (taskId: string) => {
-      performReviewAction(
-        'destroy',
-        taskId,
-        () => destroyTask({ taskId }),
-        { title: 'Task permanently deleted' },
-        'Unable to delete task'
-      )
-    },
-    [performReviewAction]
-  )
 
   const handleCreateTaskForDate = useCallback(
     (dueOn: string) => {
