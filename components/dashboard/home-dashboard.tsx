@@ -29,6 +29,7 @@ export function HomeDashboard({ user, tasks }: HomeDashboardProps) {
         <MyTasksWidget
           tasks={tasks}
           role={user.role}
+          userId={user.id}
           className='md:col-span-2 xl:col-span-5'
         />
         <RecentActivityOverviewWidget className='md:col-span-2 xl:col-span-7' />
