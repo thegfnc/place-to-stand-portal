@@ -78,6 +78,54 @@ export type Database = {
           },
         ]
       }
+      activity_overview_cache: {
+        Row: {
+          cached_at: string
+          created_at: string
+          expires_at: string
+          id: string
+          summary: string
+          timeframe_days: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          cached_at?: string
+          created_at?: string
+          expires_at: string
+          id?: string
+          summary: string
+          timeframe_days: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          cached_at?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          summary?: string
+          timeframe_days?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'activity_overview_cache_user_id_fkey'
+            columns: ['user_id']
+            isOneToOne: false
+            referencedRelation: 'current_user_with_role'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'activity_overview_cache_user_id_fkey'
+            columns: ['user_id']
+            isOneToOne: false
+            referencedRelation: 'users'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       client_members: {
         Row: {
           client_id: string

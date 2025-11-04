@@ -98,3 +98,71 @@ export async function fetchActivityLogs(
     nextCursor,
   }
 }
+
+const DEFAULT_RECENT_ACTIVITY_LIMIT = 200
+
+export async function fetchActivityLogsSince({
+  since,
+  until,
+  limit,
+  includeDeleted,
+}: {
+  since: string
+  until?: string
+  limit?: number
+  includeDeleted?: boolean
+}): Promise<ActivityLogWithActor[]> {
+  const supabase = getSupabaseServerClient()
+  const effectiveLimit = Math.min(
+    Math.max(limit ?? DEFAULT_RECENT_ACTIVITY_LIMIT, 1),
+    DEFAULT_RECENT_ACTIVITY_LIMIT
+  )
+
+  let query = supabase
+    .from('activity_logs')
+    .select(
+      `
+        id,
+        actor_id,
+        actor_role,
+        verb,
+        summary,
+        target_type,
+        target_id,
+        target_client_id,
+        target_project_id,
+        context_route,
+        metadata,
+        created_at,
+        updated_at,
+        deleted_at,
+        restored_at,
+        actor:users (
+          id,
+          full_name,
+          email,
+          avatar_url
+        )
+      `
+    )
+    .gte('created_at', since)
+    .order('created_at', { ascending: true })
+    .limit(effectiveLimit)
+
+  if (!includeDeleted) {
+    query = query.is('deleted_at', null)
+  }
+
+  if (until) {
+    query = query.lte('created_at', until)
+  }
+
+  const { data, error } = await query
+
+  if (error) {
+    console.error('Failed to fetch activity logs by timeframe', error)
+    throw error
+  }
+
+  return (data ?? []) as ActivityLogWithActor[]
+}

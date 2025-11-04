@@ -1,6 +1,6 @@
-import "server-only";
+import 'server-only'
 
-import { z } from "zod";
+import { z } from 'zod'
 
 const schema = z.object({
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
@@ -9,11 +9,9 @@ const schema = z.object({
   RESEND_API_KEY: z.string().min(1),
   RESEND_FROM_EMAIL: z.string().email(),
   RESEND_REPLY_TO_EMAIL: z.string().email(),
-  APP_BASE_URL: z
-    .string()
-    .url()
-    .optional(),
-});
+  AI_GATEWAY_API_KEY: z.string().min(1),
+  APP_BASE_URL: z.string().url().optional(),
+})
 
 export const serverEnv = schema.parse({
   SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
@@ -22,5 +20,6 @@ export const serverEnv = schema.parse({
   RESEND_API_KEY: process.env.RESEND_API_KEY,
   RESEND_FROM_EMAIL: process.env.RESEND_FROM_EMAIL,
   RESEND_REPLY_TO_EMAIL: process.env.RESEND_REPLY_TO_EMAIL,
+  AI_GATEWAY_API_KEY: process.env.AI_GATEWAY_API_KEY,
   APP_BASE_URL: process.env.APP_BASE_URL,
-});
+})

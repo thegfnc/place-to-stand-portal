@@ -5,6 +5,7 @@ import type { AppUser } from '@/lib/auth/session'
 import type { AssignedTaskSummary } from '@/lib/data/tasks'
 
 import { MyTasksWidget } from './my-tasks-widget'
+import { RecentActivityOverviewWidget } from './recent-activity-overview-widget'
 
 type HomeDashboardProps = {
   user: AppUser
@@ -30,6 +31,7 @@ export function HomeDashboard({ user, tasks }: HomeDashboardProps) {
           role={user.role}
           className='md:col-span-2 xl:col-span-5'
         />
+        <RecentActivityOverviewWidget className='md:col-span-2 xl:col-span-7' />
       </div>
     </div>
   )
