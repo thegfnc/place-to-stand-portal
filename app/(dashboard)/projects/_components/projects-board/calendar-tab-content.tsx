@@ -294,19 +294,18 @@ export function CalendarTabContent({
               className='bg-card absolute inset-0 overflow-y-auto rounded-xl border'
             >
               <div className='flex min-h-0 flex-1 flex-col'>
-                <div ref={headerRef}>
-                  <CalendarHeader
-                    currentMonth={currentMonth}
-                    monthValue={monthValue}
-                    yearValue={yearValue}
-                    onSelectMonth={selectMonth}
-                    onYearChange={setYearValue}
-                    onYearCommit={commitYearChange}
-                    onPrevMonth={goToPrevMonth}
-                    onNextMonth={goToNextMonth}
-                    onGoToToday={handleGoToToday}
-                  />
-                </div>
+                <CalendarHeader
+                  headerRef={headerRef}
+                  currentMonth={currentMonth}
+                  monthValue={monthValue}
+                  yearValue={yearValue}
+                  onSelectMonth={selectMonth}
+                  onYearChange={setYearValue}
+                  onYearCommit={commitYearChange}
+                  onPrevMonth={goToPrevMonth}
+                  onNextMonth={goToNextMonth}
+                  onGoToToday={handleGoToToday}
+                />
                 <div className='bg-card relative flex min-h-0 flex-1 overflow-hidden'>
                   <CalendarGrid
                     days={days}

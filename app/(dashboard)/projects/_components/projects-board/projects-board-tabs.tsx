@@ -10,7 +10,7 @@ import { CalendarTabContent } from './calendar-tab-content'
 import { RefineTabContent } from './refine-tab-content'
 import { ActivityTabContent } from './activity-tab-content'
 import { ReviewTabContent } from './review-tab-content'
-import type { ReviewActionKind } from './review-tab-content'
+import type { ReviewActionKind } from './review-tab/review-tab.types'
 import { ProjectsBoardTabsHeader } from './projects-board-tabs-header'
 import type { ProjectsBoardActiveProject } from './board-tab-content'
 

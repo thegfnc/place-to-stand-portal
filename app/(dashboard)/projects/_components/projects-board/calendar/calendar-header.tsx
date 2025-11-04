@@ -14,6 +14,7 @@ import {
 import { Input } from '@/components/ui/input'
 
 type CalendarHeaderProps = {
+  headerRef: React.Ref<HTMLDivElement | null>
   currentMonth: Date
   monthValue: string
   yearValue: string
@@ -34,6 +35,7 @@ const monthLabels = Array.from({ length: 12 }, (_, index) => {
 })
 
 export function CalendarHeader({
+  headerRef,
   currentMonth,
   monthValue,
   yearValue,
@@ -45,7 +47,10 @@ export function CalendarHeader({
   onGoToToday,
 }: CalendarHeaderProps) {
   return (
-    <div className='bg-card sticky top-0 z-20 flex flex-wrap items-center justify-between gap-3 rounded-t-xl px-4 py-3 shadow-sm'>
+    <div
+      ref={headerRef}
+      className='bg-card sticky top-0 z-20 flex flex-wrap items-center justify-between gap-3 rounded-t-xl px-4 py-3 shadow-sm'
+    >
       <div className='flex items-center justify-between'>
         <div>
           <p className='text-lg font-semibold'>
