@@ -1,14 +1,21 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import type { Dispatch, SetStateAction, TransitionStartFunction } from 'react'
 import type { DragEndEvent, DragOverEvent, DragStartEvent } from '@dnd-kit/core'
-import { arrayMove } from '@dnd-kit/sortable'
 
 import type { ProjectWithRelations, TaskWithRelations } from '@/lib/types'
 
 import { type BoardColumnId } from '../board-constants'
-import { compareTasksByRank } from '../board-utils'
-import { getRankBetween } from '@/lib/rank'
+import {
+  deriveReorderPlan,
+  DropPreview,
+  extractSortableMeta,
+  prepareReorderOutcome,
+  type DragComputeEvent,
+  type ReorderOutcome,
+  type ReorderPlan,
+} from './dnd-helpers'
 import type { TaskLookup } from './types'
+import { useRecentlyMovedTask } from './use-recently-moved-task'
 
 type UseBoardDnDArgs = {
   canManageTasks: boolean
@@ -18,88 +25,6 @@ type UseBoardDnDArgs = {
   activeProjectTasks: TaskWithRelations[]
   startTransition: TransitionStartFunction
   setFeedback: Dispatch<SetStateAction<string | null>>
-}
-
-type TaskDragData = {
-  type: 'task'
-  taskId: string
-  projectId: string
-  columnId?: BoardColumnId
-}
-
-type ColumnDropData = {
-  type: 'column'
-  columnId: BoardColumnId
-}
-
-type SortableMeta = {
-  containerId: string
-  index: number
-}
-
-type DropPreview = {
-  columnId: BoardColumnId
-  index: number
-}
-
-const extractSortableMeta = (payload: unknown): SortableMeta | null => {
-  if (!payload || typeof payload !== 'object') {
-    return null
-  }
-
-  const sortable = (payload as { sortable?: SortableMeta | null }).sortable
-  if (!sortable) {
-    return null
-  }
-
-  return {
-    containerId: String(sortable.containerId),
-    index: sortable.index,
-  }
-}
-
-const getColumnTasks = (
-  projectTasks: TaskWithRelations[],
-  columnId: BoardColumnId
-) =>
-  projectTasks.filter(task => task.status === columnId).sort(compareTasksByRank)
-
-const resolveDestinationColumnId = (
-  over: DragEndEvent['over'],
-  fallback: BoardColumnId
-): BoardColumnId | null => {
-  if (!over) {
-    return null
-  }
-
-  const overData = over.data?.current as
-    | TaskDragData
-    | ColumnDropData
-    | undefined
-
-  const sortable = extractSortableMeta(over.data?.current)
-
-  if (overData?.type === 'task') {
-    if (sortable) {
-      return sortable.containerId as BoardColumnId
-    }
-
-    if (overData.columnId) {
-      return overData.columnId
-    }
-
-    return fallback
-  }
-
-  if (overData?.type === 'column') {
-    return overData.columnId
-  }
-
-  if (typeof over.id === 'string') {
-    return over.id as BoardColumnId
-  }
-
-  return null
 }
 
 export const useBoardDnDState = ({
@@ -115,123 +40,16 @@ export const useBoardDnDState = ({
   const [activeDropColumnId, setActiveDropColumnId] =
     useState<BoardColumnId | null>(null)
   const [dropPreview, setDropPreview] = useState<DropPreview | null>(null)
-  const [recentlyMovedTaskId, setRecentlyMovedTaskId] = useState<string | null>(
-    null
-  )
-  const recentlyMovedTimerRef = useRef<number | null>(null)
+  const {
+    recentlyMovedTaskId,
+    setRecentlyMovedTaskId,
+    scheduleReset: scheduleRecentlyMovedReset,
+    clearTimer: clearRecentlyMovedTimer,
+  } = useRecentlyMovedTask()
 
-  const clearRecentlyMovedTimer = useCallback(() => {
-    if (recentlyMovedTimerRef.current !== null) {
-      window.clearTimeout(recentlyMovedTimerRef.current)
-      recentlyMovedTimerRef.current = null
-    }
-  }, [])
-
-  const scheduleRecentlyMovedReset = useCallback(() => {
-    clearRecentlyMovedTimer()
-
-    recentlyMovedTimerRef.current = window.setTimeout(() => {
-      setRecentlyMovedTaskId(null)
-      recentlyMovedTimerRef.current = null
-    }, 150)
-  }, [clearRecentlyMovedTimer])
-
-  useEffect(() => {
-    return () => {
-      clearRecentlyMovedTimer()
-    }
-  }, [clearRecentlyMovedTimer])
-
-  type DragComputeEvent = DragOverEvent | DragEndEvent
-
-  type ReorderPlan = {
-    projectId: string
-    taskId: string
-    projectTasks: TaskWithRelations[]
-    currentTask: TaskWithRelations
-    sourceColumnId: BoardColumnId
-    destinationColumnId: BoardColumnId
-    destinationTasks: TaskWithRelations[]
-    activeIndex: number
-    targetIndex: number
-  }
-
-  const buildReorderPlan = useCallback(
+  const getReorderPlan = useCallback(
     (event: DragComputeEvent): ReorderPlan | null => {
-      const activeData = event.active.data.current as TaskDragData | undefined
-
-      if (!activeData || activeData.type !== 'task') {
-        return null
-      }
-
-      const activeSortable = extractSortableMeta(event.active.data.current)
-
-      if (!activeSortable) {
-        return null
-      }
-
-      const projectId = activeData.projectId
-      const taskId = activeData.taskId
-      const projectTasks = tasksByProject.get(projectId)
-
-      if (!projectTasks) {
-        return null
-      }
-
-      const currentTask = projectTasks.find(task => task.id === taskId) ?? null
-
-      if (!currentTask) {
-        return null
-      }
-
-      const sourceColumnId = activeSortable.containerId as BoardColumnId
-      const destinationColumnId = resolveDestinationColumnId(
-        event.over,
-        sourceColumnId
-      )
-
-      if (!destinationColumnId) {
-        return null
-      }
-
-      const destinationTasks =
-        sourceColumnId === destinationColumnId
-          ? getColumnTasks(projectTasks, sourceColumnId)
-          : getColumnTasks(projectTasks, destinationColumnId)
-
-      const overSortable = extractSortableMeta(event.over?.data?.current)
-
-      let targetIndex = overSortable
-        ? overSortable.index
-        : destinationTasks.length
-
-      if (sourceColumnId === destinationColumnId) {
-        if (destinationTasks.length === 0) {
-          targetIndex = 0
-        } else {
-          targetIndex = Math.max(
-            0,
-            Math.min(targetIndex, destinationTasks.length - 1)
-          )
-        }
-      } else {
-        targetIndex = Math.max(
-          0,
-          Math.min(targetIndex, destinationTasks.length)
-        )
-      }
-
-      return {
-        projectId,
-        taskId,
-        projectTasks,
-        currentTask,
-        sourceColumnId,
-        destinationColumnId,
-        destinationTasks,
-        activeIndex: activeSortable.index,
-        targetIndex,
-      }
+      return deriveReorderPlan(event, tasksByProject)
     },
     [tasksByProject]
   )
@@ -250,12 +68,12 @@ export const useBoardDnDState = ({
         setActiveDropColumnId(activeSortable.containerId as BoardColumnId)
       }
     },
-    [clearRecentlyMovedTimer]
+    [clearRecentlyMovedTimer, setRecentlyMovedTaskId]
   )
 
   const handleDragOver = useCallback(
     (event: DragOverEvent) => {
-      const plan = buildReorderPlan(event)
+      const plan = getReorderPlan(event)
 
       if (!plan) {
         setActiveDropColumnId(null)
@@ -279,7 +97,7 @@ export const useBoardDnDState = ({
         index: plan.targetIndex,
       })
     },
-    [buildReorderPlan]
+    [getReorderPlan]
   )
 
   const handleDragEnd = useCallback(
@@ -305,61 +123,19 @@ export const useBoardDnDState = ({
         return
       }
 
-      const plan = buildReorderPlan(event)
+      const plan = getReorderPlan(event)
 
       if (!plan) {
         finishDrag()
         return
       }
 
-      const {
-        projectId,
-        projectTasks,
-        currentTask,
-        destinationColumnId,
-        sourceColumnId,
-        destinationTasks,
-        targetIndex,
-        activeIndex,
-        taskId,
-      } = plan
+      const { projectId, projectTasks, taskId } = plan
 
-      if (sourceColumnId === destinationColumnId) {
-        if (destinationTasks.length === 0 || targetIndex === activeIndex) {
-          finishDrag()
-          return
-        }
-      }
-
-      let orderedTasks: TaskWithRelations[]
-
-      if (sourceColumnId === destinationColumnId) {
-        orderedTasks = arrayMove(destinationTasks, activeIndex, targetIndex)
-      } else {
-        orderedTasks = [
-          ...destinationTasks.slice(0, targetIndex),
-          currentTask,
-          ...destinationTasks.slice(targetIndex),
-        ]
-      }
-
-      const nextIndex = orderedTasks.findIndex(task => task.id === taskId)
-
-      if (nextIndex === -1) {
-        finishDrag()
-        return
-      }
-
-      const previousNeighbor = orderedTasks[nextIndex - 1] ?? null
-      const nextNeighbor = orderedTasks[nextIndex + 1] ?? null
-
-      let nextRank: string
+      let outcome: ReorderOutcome
 
       try {
-        nextRank = getRankBetween(
-          previousNeighbor ? previousNeighbor.rank : null,
-          nextNeighbor ? nextNeighbor.rank : null
-        )
+        outcome = prepareReorderOutcome(plan)
       } catch (error) {
         console.error('Failed to compute rank for reordered task', error)
         setFeedback('Unable to reorder task.')
@@ -367,17 +143,14 @@ export const useBoardDnDState = ({
         return
       }
 
-      const destinationStatus = destinationColumnId
-
-      if (
-        destinationStatus === currentTask.status &&
-        nextRank === currentTask.rank
-      ) {
+      if (outcome.status === 'noop') {
         finishDrag()
         return
       }
 
-      if (destinationStatus !== currentTask.status) {
+      const { destinationStatus, nextRank, recentlyMoved } = outcome
+
+      if (recentlyMoved) {
         setRecentlyMovedTaskId(taskId)
       } else {
         setRecentlyMovedTaskId(null)
@@ -416,7 +189,7 @@ export const useBoardDnDState = ({
         rank: nextRank,
       }
 
-      if (destinationStatus !== currentTask.status) {
+      if (recentlyMoved) {
         payload.status = destinationStatus
       }
 
@@ -476,11 +249,12 @@ export const useBoardDnDState = ({
     },
     [
       activeProject,
-      buildReorderPlan,
+      getReorderPlan,
       canManageTasks,
       setFeedback,
       setTasksByProject,
       scheduleRecentlyMovedReset,
+      setRecentlyMovedTaskId,
       startTransition,
     ]
   )
