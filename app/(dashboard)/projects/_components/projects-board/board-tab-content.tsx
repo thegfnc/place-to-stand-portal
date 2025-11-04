@@ -57,6 +57,7 @@ export type BoardTabContentProps = {
   onBoardScroll: UIEventHandler<HTMLDivElement>
   activeSheetTaskId: string | null
   activeDropColumnId: BoardColumnId | null
+  dropPreview: { columnId: BoardColumnId; index: number } | null
 }
 
 export function BoardTabContent(props: BoardTabContentProps) {
@@ -80,31 +81,123 @@ export function BoardTabContent(props: BoardTabContentProps) {
     onBoardScroll,
     activeSheetTaskId,
     activeDropColumnId,
+    dropPreview,
   } = props
 
-  const lastOverId = useRef<UniqueIdentifier | null>(null)
+  const lastTaskOverId = useRef<UniqueIdentifier | null>(null)
 
-  const collisionDetection = useCallback<CollisionDetection>(args => {
-    const pointerCollisions = pointerWithin(args)
+  type CollisionArgs = Parameters<CollisionDetection>[0]
 
-    if (pointerCollisions.length > 0) {
-      lastOverId.current = pointerCollisions[0].id
-      return pointerCollisions
-    }
+  const findDroppable = useCallback(
+    (
+      id: UniqueIdentifier,
+      droppableContainers: CollisionArgs['droppableContainers']
+    ) => droppableContainers.find(container => container.id === id),
+    []
+  )
 
-    const intersections = rectIntersection(args)
+  const prioritizeCollisions = useCallback(
+    (
+      collisions: ReturnType<typeof pointerWithin>,
+      droppableContainers: CollisionArgs['droppableContainers']
+    ) => {
+      if (collisions.length < 2) {
+        return collisions
+      }
 
-    if (intersections.length > 0) {
-      lastOverId.current = intersections[0].id
-      return intersections
-    }
+      const taskCollisions = collisions.filter(collision => {
+        const container = findDroppable(collision.id, droppableContainers)
+        return container?.data?.current?.type === 'task'
+      })
 
-    if (lastOverId.current) {
-      return [{ id: lastOverId.current }]
-    }
+      if (taskCollisions.length > 0) {
+        return taskCollisions
+      }
 
-    return closestCenter(args)
-  }, [])
+      return collisions
+    },
+    [findDroppable]
+  )
+
+  const rememberTaskCollision = useCallback(
+    (
+      collisions: ReturnType<typeof pointerWithin>,
+      droppableContainers: CollisionArgs['droppableContainers']
+    ) => {
+      const first = collisions[0]
+
+      if (!first) {
+        return
+      }
+
+      const container = findDroppable(first.id, droppableContainers)
+
+      if (container?.data?.current?.type === 'task') {
+        lastTaskOverId.current = first.id
+      }
+    },
+    [findDroppable]
+  )
+
+  const fallbackToLastTask = useCallback(
+    (droppableContainers: CollisionArgs['droppableContainers']) => {
+      if (!lastTaskOverId.current) {
+        return null
+      }
+
+      const container = findDroppable(
+        lastTaskOverId.current,
+        droppableContainers
+      )
+
+      if (!container) {
+        lastTaskOverId.current = null
+        return null
+      }
+
+      return [{ id: lastTaskOverId.current }]
+    },
+    [findDroppable]
+  )
+
+  const collisionDetection = useCallback<CollisionDetection>(
+    args => {
+      const pointerCollisions = pointerWithin(args)
+
+      if (pointerCollisions.length > 0) {
+        const prioritized = prioritizeCollisions(
+          pointerCollisions,
+          args.droppableContainers
+        )
+
+        rememberTaskCollision(prioritized, args.droppableContainers)
+
+        return prioritized
+      }
+
+      const intersections = rectIntersection(args)
+
+      if (intersections.length > 0) {
+        const prioritized = prioritizeCollisions(
+          intersections,
+          args.droppableContainers
+        )
+
+        rememberTaskCollision(prioritized, args.droppableContainers)
+
+        return prioritized
+      }
+
+      const fallback = fallbackToLastTask(args.droppableContainers)
+
+      if (fallback) {
+        return fallback
+      }
+
+      return closestCenter(args)
+    },
+    [fallbackToLastTask, prioritizeCollisions, rememberTaskCollision]
+  )
 
   if (!isActive) {
     return null
@@ -136,7 +229,7 @@ export function BoardTabContent(props: BoardTabContentProps) {
                 onDragStart={onDragStart}
                 onDragOver={onDragOver}
                 onDragEnd={event => {
-                  lastOverId.current = null
+                  lastTaskOverId.current = null
                   onDragEnd?.(event)
                 }}
                 collisionDetection={collisionDetection}
@@ -154,6 +247,12 @@ export function BoardTabContent(props: BoardTabContentProps) {
                       activeTaskId={activeSheetTaskId}
                       onCreateTask={onCreateTask}
                       isDropTarget={activeDropColumnId === column.id}
+                      dropIndicatorIndex={
+                        dropPreview?.columnId === column.id
+                          ? dropPreview.index
+                          : null
+                      }
+                      draggingTask={draggingTask}
                     />
                   ))}
                 </div>

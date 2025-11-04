@@ -85,6 +85,7 @@ type ProjectsBoardState = {
   defaultTaskDueOn: string | null
   navigateToProject: ReturnType<typeof useBoardNavigation>
   activeDropColumnId: ReturnType<typeof useBoardDnDState>['activeDropColumnId']
+  dropPreview: ReturnType<typeof useBoardDnDState>['dropPreview']
 }
 
 export const useProjectsBoardState = ({
@@ -428,6 +429,7 @@ export const useProjectsBoardState = ({
     handleDragEnd,
     draggingTask,
     activeDropColumnId,
+    dropPreview,
   } = useBoardDnDState({
     canManageTasks,
     activeProject,
@@ -493,5 +495,6 @@ export const useProjectsBoardState = ({
     navigateToProject,
     handleDragOver,
     activeDropColumnId,
+    dropPreview,
   }
 }

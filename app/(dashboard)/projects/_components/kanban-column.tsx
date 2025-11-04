@@ -1,3 +1,4 @@
+import { Fragment } from 'react'
 import { Plus } from 'lucide-react'
 import { useDroppable } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
@@ -26,6 +27,8 @@ type KanbanColumnProps = {
   activeTaskId: string | null
   onCreateTask?: (status: BoardColumnId) => void
   isDropTarget?: boolean
+  dropIndicatorIndex?: number | null
+  draggingTask?: TaskWithRelations | null
 }
 
 export function KanbanColumn({
@@ -38,6 +41,8 @@ export function KanbanColumn({
   activeTaskId,
   onCreateTask,
   isDropTarget = false,
+  dropIndicatorIndex = null,
+  draggingTask = null,
 }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: columnId,
@@ -50,6 +55,12 @@ export function KanbanColumn({
   const statusLabel = getTaskStatusLabel(columnId)
   const displayLabel = label || statusLabel
   const highlight = isOver || isDropTarget
+  const draggingTaskVisibleInColumn =
+    draggingTask !== null && tasks.some(task => task.id === draggingTask.id)
+  const showPlaceholder =
+    dropIndicatorIndex !== null &&
+    draggingTask !== null &&
+    !draggingTaskVisibleInColumn
 
   return (
     <div
@@ -95,18 +106,39 @@ export function KanbanColumn({
           items={tasks.map(task => task.id)}
           strategy={verticalListSortingStrategy}
         >
-          {tasks.map(task => (
-            <TaskCard
-              key={task.id}
-              task={task}
-              assignees={renderAssignees(task)}
-              onEdit={onEditTask}
-              draggable={canManage}
-              isActive={task.id === activeTaskId}
-            />
-          ))}
+          {tasks.map((task, index) => {
+            const shouldShowPlaceholder =
+              showPlaceholder && dropIndicatorIndex === index
+
+            return (
+              <Fragment key={task.id}>
+                {shouldShowPlaceholder ? <TaskDropPlaceholder /> : null}
+                <TaskCard
+                  task={task}
+                  assignees={renderAssignees(task)}
+                  onEdit={onEditTask}
+                  draggable={canManage}
+                  isActive={task.id === activeTaskId}
+                />
+              </Fragment>
+            )
+          })}
+          {showPlaceholder &&
+          dropIndicatorIndex !== null &&
+          dropIndicatorIndex >= tasks.length ? (
+            <TaskDropPlaceholder key={`${columnId}-placeholder`} />
+          ) : null}
         </SortableContext>
       </div>
     </div>
+  )
+}
+
+function TaskDropPlaceholder() {
+  return (
+    <div
+      aria-hidden
+      className='pointer-events-none min-h-24 w-full rounded-lg opacity-0'
+    />
   )
 }
