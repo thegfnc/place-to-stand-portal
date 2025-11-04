@@ -1,5 +1,6 @@
 import { Plus } from 'lucide-react'
 import { useDroppable } from '@dnd-kit/core'
+import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -14,7 +15,7 @@ import {
 import { TaskCard } from '../task-card'
 
 type KanbanColumnProps = {
-  columnId: string
+  columnId: BoardColumnId
   label: string
   tasks: TaskWithRelations[]
   canManage: boolean
@@ -24,6 +25,7 @@ type KanbanColumnProps = {
   onEditTask: (task: TaskWithRelations) => void
   activeTaskId: string | null
   onCreateTask?: (status: BoardColumnId) => void
+  isDropTarget?: boolean
 }
 
 export function KanbanColumn({
@@ -35,18 +37,26 @@ export function KanbanColumn({
   onEditTask,
   activeTaskId,
   onCreateTask,
+  isDropTarget = false,
 }: KanbanColumnProps) {
-  const { setNodeRef, isOver } = useDroppable({ id: columnId })
+  const { setNodeRef, isOver } = useDroppable({
+    id: columnId,
+    data: {
+      type: 'column',
+      columnId,
+    },
+  })
   const statusToken = getTaskStatusToken(columnId)
   const statusLabel = getTaskStatusLabel(columnId)
   const displayLabel = label || statusLabel
+  const highlight = isOver || isDropTarget
 
   return (
     <div
       ref={setNodeRef}
       className={cn(
         'bg-background/80 flex min-h-0 w-80 shrink-0 flex-col gap-4 overflow-hidden rounded-xl border p-4 shadow-sm transition',
-        isOver && 'ring-primary ring-2'
+        highlight && 'ring-primary ring-2'
       )}
     >
       <div className='flex items-center justify-between gap-2'>
@@ -80,16 +90,22 @@ export function KanbanColumn({
         </div>
       </div>
       <div className='flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-1'>
-        {tasks.map(task => (
-          <TaskCard
-            key={task.id}
-            task={task}
-            assignees={renderAssignees(task)}
-            onEdit={onEditTask}
-            draggable={canManage}
-            isActive={task.id === activeTaskId}
-          />
-        ))}
+        <SortableContext
+          id={columnId}
+          items={tasks.map(task => task.id)}
+          strategy={verticalListSortingStrategy}
+        >
+          {tasks.map(task => (
+            <TaskCard
+              key={task.id}
+              task={task}
+              assignees={renderAssignees(task)}
+              onEdit={onEditTask}
+              draggable={canManage}
+              isActive={task.id === activeTaskId}
+            />
+          ))}
+        </SortableContext>
       </div>
     </div>
   )

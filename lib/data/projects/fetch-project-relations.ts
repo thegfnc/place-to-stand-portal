@@ -86,6 +86,7 @@ export async function fetchProjectRelations(
             title,
             description,
             status,
+            rank,
             accepted_at,
             due_on,
             created_by,

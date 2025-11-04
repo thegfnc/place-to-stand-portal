@@ -1,5 +1,13 @@
-import type { RefObject, UIEventHandler } from 'react'
-import { DndContext, type DndContextProps } from '@dnd-kit/core'
+import { useCallback, useRef, type RefObject, type UIEventHandler } from 'react'
+import {
+  DndContext,
+  type CollisionDetection,
+  type DndContextProps,
+  type UniqueIdentifier,
+  closestCenter,
+  pointerWithin,
+  rectIntersection,
+} from '@dnd-kit/core'
 
 import { TabsContent } from '@/components/ui/tabs'
 import { LoadingScrim } from './loading-scrim'
@@ -12,7 +20,10 @@ import {
   NO_SELECTION_DESCRIPTION,
   NO_SELECTION_TITLE,
 } from './projects-board-tabs.constants'
-import { BOARD_COLUMNS } from '@/lib/projects/board/board-constants'
+import {
+  BOARD_COLUMNS,
+  type BoardColumnId,
+} from '@/lib/projects/board/board-constants'
 import type { TaskWithRelations } from '@/lib/types'
 import type { RenderAssigneeFn } from '../../../../../lib/projects/board/board-selectors'
 
@@ -37,6 +48,7 @@ export type BoardTabContentProps = {
   onCreateTask: () => void
   sensors: DndContextProps['sensors']
   onDragStart: DndContextProps['onDragStart']
+  onDragOver: DndContextProps['onDragOver']
   onDragEnd: DndContextProps['onDragEnd']
   draggingTask: TaskWithRelations | null
   scrimLocked: boolean
@@ -44,6 +56,7 @@ export type BoardTabContentProps = {
   boardViewportRef: RefObject<HTMLDivElement | null>
   onBoardScroll: UIEventHandler<HTMLDivElement>
   activeSheetTaskId: string | null
+  activeDropColumnId: BoardColumnId | null
 }
 
 export function BoardTabContent(props: BoardTabContentProps) {
@@ -58,6 +71,7 @@ export function BoardTabContent(props: BoardTabContentProps) {
     onCreateTask,
     sensors,
     onDragStart,
+    onDragOver,
     onDragEnd,
     draggingTask,
     scrimLocked,
@@ -65,7 +79,32 @@ export function BoardTabContent(props: BoardTabContentProps) {
     boardViewportRef,
     onBoardScroll,
     activeSheetTaskId,
+    activeDropColumnId,
   } = props
+
+  const lastOverId = useRef<UniqueIdentifier | null>(null)
+
+  const collisionDetection = useCallback<CollisionDetection>(args => {
+    const pointerCollisions = pointerWithin(args)
+
+    if (pointerCollisions.length > 0) {
+      lastOverId.current = pointerCollisions[0].id
+      return pointerCollisions
+    }
+
+    const intersections = rectIntersection(args)
+
+    if (intersections.length > 0) {
+      lastOverId.current = intersections[0].id
+      return intersections
+    }
+
+    if (lastOverId.current) {
+      return [{ id: lastOverId.current }]
+    }
+
+    return closestCenter(args)
+  }, [])
 
   if (!isActive) {
     return null
@@ -95,7 +134,12 @@ export function BoardTabContent(props: BoardTabContentProps) {
               <DndContext
                 sensors={sensors}
                 onDragStart={onDragStart}
-                onDragEnd={onDragEnd}
+                onDragOver={onDragOver}
+                onDragEnd={event => {
+                  lastOverId.current = null
+                  onDragEnd?.(event)
+                }}
+                collisionDetection={collisionDetection}
               >
                 <div className='flex h-full w-max gap-4 p-1'>
                   {BOARD_COLUMNS.map(column => (
@@ -109,6 +153,7 @@ export function BoardTabContent(props: BoardTabContentProps) {
                       canManage={canManageTasks}
                       activeTaskId={activeSheetTaskId}
                       onCreateTask={onCreateTask}
+                      isDropTarget={activeDropColumnId === column.id}
                     />
                   ))}
                 </div>

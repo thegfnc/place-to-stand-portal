@@ -20,6 +20,7 @@ export type ProjectMemberWithUser = DbProjectMember & {
 }
 
 export type TaskWithRelations = DbTask & {
+  rank: string
   assignees: { user_id: string }[]
   commentCount: number
   attachments: DbTaskAttachment[]

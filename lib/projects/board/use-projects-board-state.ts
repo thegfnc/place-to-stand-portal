@@ -70,6 +70,7 @@ type ProjectsBoardState = {
   handleClientSelect: (clientId: string) => void
   handleProjectSelect: (projectId: string | null) => void
   handleDragStart: ReturnType<typeof useBoardDnDState>['handleDragStart']
+  handleDragOver: ReturnType<typeof useBoardDnDState>['handleDragOver']
   handleDragEnd: ReturnType<typeof useBoardDnDState>['handleDragEnd']
   handleCalendarDragStart: ReturnType<
     typeof useCalendarDnDState
@@ -83,6 +84,7 @@ type ProjectsBoardState = {
   defaultTaskStatus: BoardColumnId
   defaultTaskDueOn: string | null
   navigateToProject: ReturnType<typeof useBoardNavigation>
+  activeDropColumnId: ReturnType<typeof useBoardDnDState>['activeDropColumnId']
 }
 
 export const useProjectsBoardState = ({
@@ -213,6 +215,7 @@ export const useProjectsBoardState = ({
             title,
             description,
             status,
+            rank,
             accepted_at,
             due_on,
             created_by,
@@ -419,7 +422,13 @@ export const useProjectsBoardState = ({
     currentView,
   })
 
-  const { handleDragStart, handleDragEnd, draggingTask } = useBoardDnDState({
+  const {
+    handleDragStart,
+    handleDragOver,
+    handleDragEnd,
+    draggingTask,
+    activeDropColumnId,
+  } = useBoardDnDState({
     canManageTasks,
     activeProject,
     tasksByProject,
@@ -482,5 +491,7 @@ export const useProjectsBoardState = ({
     defaultTaskDueOn,
     calendarDraggingTask,
     navigateToProject,
+    handleDragOver,
+    activeDropColumnId,
   }
 }

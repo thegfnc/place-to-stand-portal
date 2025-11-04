@@ -3,6 +3,7 @@ import { Tabs } from '@/components/ui/tabs'
 import type { TaskWithRelations } from '@/lib/types'
 import type { DndContextProps } from '@dnd-kit/core'
 import type { RenderAssigneeFn } from '../../../../../lib/projects/board/board-selectors'
+import type { BoardColumnId } from '@/lib/projects/board/board-constants'
 
 import { BoardTabContent } from './board-tab-content'
 import { CalendarTabContent } from './calendar-tab-content'
@@ -38,6 +39,7 @@ export type ProjectsBoardTabsProps = {
   onCreateTaskForDate: (dueOn: string) => void
   sensors: DndContextProps['sensors']
   onDragStart: DndContextProps['onDragStart']
+  onDragOver: DndContextProps['onDragOver']
   onDragEnd: DndContextProps['onDragEnd']
   onCalendarDragStart: DndContextProps['onDragStart']
   onCalendarDragEnd: DndContextProps['onDragEnd']
@@ -66,6 +68,7 @@ export type ProjectsBoardTabsProps = {
   reviewActionType: ReviewActionKind | null
   reviewActionDisabledReason: string | null
   isReviewActionPending: boolean
+  activeDropColumnId: BoardColumnId | null
 }
 
 export function ProjectsBoardTabs(props: ProjectsBoardTabsProps) {
@@ -94,6 +97,7 @@ export function ProjectsBoardTabs(props: ProjectsBoardTabsProps) {
     onCreateTaskForDate,
     sensors,
     onDragStart,
+    onDragOver,
     onDragEnd,
     onCalendarDragStart,
     onCalendarDragEnd,
@@ -122,6 +126,7 @@ export function ProjectsBoardTabs(props: ProjectsBoardTabsProps) {
     reviewActionType,
     reviewActionDisabledReason,
     isReviewActionPending,
+    activeDropColumnId,
   } = props
 
   return (
@@ -151,6 +156,7 @@ export function ProjectsBoardTabs(props: ProjectsBoardTabsProps) {
         onCreateTask={onCreateTask}
         sensors={sensors}
         onDragStart={onDragStart}
+        onDragOver={onDragOver}
         onDragEnd={onDragEnd}
         draggingTask={draggingTask}
         scrimLocked={scrimLocked}
@@ -158,6 +164,7 @@ export function ProjectsBoardTabs(props: ProjectsBoardTabsProps) {
         boardViewportRef={boardViewportRef}
         onBoardScroll={onBoardScroll}
         activeSheetTaskId={activeSheetTaskId}
+        activeDropColumnId={activeDropColumnId}
       />
       <CalendarTabContent
         isActive={initialTab === 'calendar'}
@@ -190,11 +197,13 @@ export function ProjectsBoardTabs(props: ProjectsBoardTabsProps) {
         onCreateTask={onCreateTask}
         sensors={sensors}
         onDragStart={onDragStart}
+        onDragOver={onDragOver}
         onDragEnd={onDragEnd}
         draggingTask={draggingTask}
         scrimLocked={scrimLocked}
         isPending={isPending}
         activeSheetTaskId={activeSheetTaskId}
+        activeDropColumnId={activeDropColumnId}
       />
       <ActivityTabContent
         isActive={initialTab === 'activity'}

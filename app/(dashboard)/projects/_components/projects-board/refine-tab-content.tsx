@@ -1,4 +1,13 @@
-import { DndContext, type DndContextProps } from '@dnd-kit/core'
+import { useCallback, useRef } from 'react'
+import {
+  DndContext,
+  type CollisionDetection,
+  type DndContextProps,
+  type UniqueIdentifier,
+  closestCenter,
+  pointerWithin,
+  rectIntersection,
+} from '@dnd-kit/core'
 
 import { TabsContent } from '@/components/ui/tabs'
 import { RefineSection } from '../refine-section'
@@ -10,7 +19,10 @@ import {
   NO_SELECTION_DESCRIPTION,
   NO_SELECTION_TITLE,
 } from './projects-board-tabs.constants'
-import { BACKLOG_SECTIONS } from '@/lib/projects/board/board-constants'
+import {
+  BACKLOG_SECTIONS,
+  type BoardColumnId,
+} from '@/lib/projects/board/board-constants'
 import type { TaskWithRelations } from '@/lib/types'
 import type { RenderAssigneeFn } from '../../../../../lib/projects/board/board-selectors'
 import type { ProjectsBoardActiveProject } from './board-tab-content'
@@ -33,11 +45,13 @@ export type RefineTabContentProps = {
   onCreateTask: () => void
   sensors: DndContextProps['sensors']
   onDragStart: DndContextProps['onDragStart']
+  onDragOver: DndContextProps['onDragOver']
   onDragEnd: DndContextProps['onDragEnd']
   draggingTask: TaskWithRelations | null
   scrimLocked: boolean
   isPending: boolean
   activeSheetTaskId: string | null
+  activeDropColumnId: BoardColumnId | null
 }
 
 export function RefineTabContent(props: RefineTabContentProps) {
@@ -53,12 +67,38 @@ export function RefineTabContent(props: RefineTabContentProps) {
     onCreateTask,
     sensors,
     onDragStart,
+    onDragOver,
     onDragEnd,
     draggingTask,
     scrimLocked,
     isPending,
     activeSheetTaskId,
+    activeDropColumnId,
   } = props
+
+  const lastOverId = useRef<UniqueIdentifier | null>(null)
+
+  const collisionDetection = useCallback<CollisionDetection>(args => {
+    const pointerCollisions = pointerWithin(args)
+
+    if (pointerCollisions.length > 0) {
+      lastOverId.current = pointerCollisions[0].id
+      return pointerCollisions
+    }
+
+    const intersections = rectIntersection(args)
+
+    if (intersections.length > 0) {
+      lastOverId.current = intersections[0].id
+      return intersections
+    }
+
+    if (lastOverId.current) {
+      return [{ id: lastOverId.current }]
+    }
+
+    return closestCenter(args)
+  }, [])
 
   if (!isActive) {
     return null
@@ -82,7 +122,12 @@ export function RefineTabContent(props: RefineTabContentProps) {
           <DndContext
             sensors={sensors}
             onDragStart={onDragStart}
-            onDragEnd={onDragEnd}
+            onDragOver={onDragOver}
+            onDragEnd={event => {
+              lastOverId.current = null
+              onDragEnd?.(event)
+            }}
+            collisionDetection={collisionDetection}
           >
             <div className='flex min-h-0 flex-1 flex-col gap-4'>
               <RefineSection
@@ -95,6 +140,7 @@ export function RefineTabContent(props: RefineTabContentProps) {
                 activeTaskId={activeSheetTaskId}
                 onCreateTask={onCreateTask}
                 description={ON_DECK_SECTION_DESCRIPTION}
+                isDropTarget={activeDropColumnId === BACKLOG_SECTIONS[0].id}
               />
               <RefineSection
                 status={BACKLOG_SECTIONS[1].id}
@@ -106,6 +152,7 @@ export function RefineTabContent(props: RefineTabContentProps) {
                 activeTaskId={activeSheetTaskId}
                 onCreateTask={onCreateTask}
                 description={BACKLOG_SECTION_DESCRIPTION}
+                isDropTarget={activeDropColumnId === BACKLOG_SECTIONS[1].id}
               />
             </div>
             <TaskDragOverlay

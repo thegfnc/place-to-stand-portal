@@ -22,15 +22,45 @@ export const areTaskCollectionsEqual = (
   const snapshot = new Map(
     a.map(task => [
       task.id,
-      `${task.status}-${task.updated_at}-${task.commentCount}`,
+      `${task.status}-${task.rank ?? ''}-${task.updated_at}-${task.commentCount}`,
     ])
   )
 
   return b.every(
     task =>
       snapshot.get(task.id) ===
-      `${task.status}-${task.updated_at}-${task.commentCount}`
+      `${task.status}-${task.rank ?? ''}-${task.updated_at}-${task.commentCount}`
   )
+}
+
+const fallbackTime = (value: string | null) =>
+  value ? new Date(value).getTime() : Number.NEGATIVE_INFINITY
+
+export const compareTasksByRank = (
+  a: TaskWithRelations,
+  b: TaskWithRelations
+) => {
+  const aRank = a.rank ?? null
+  const bRank = b.rank ?? null
+
+  if (aRank && bRank && aRank !== bRank) {
+    return aRank.localeCompare(bRank)
+  }
+
+  if (aRank && !bRank) {
+    return -1
+  }
+
+  if (!aRank && bRank) {
+    return 1
+  }
+
+  const createdAtDiff = fallbackTime(a.created_at) - fallbackTime(b.created_at)
+  if (createdAtDiff !== 0) {
+    return createdAtDiff
+  }
+
+  return a.id.localeCompare(b.id)
 }
 
 export const createProjectLookup = (
@@ -132,10 +162,7 @@ export const groupTasksByColumn = (
 
   tasks
     .slice()
-    .sort(
-      (a, b) =>
-        new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
-    )
+    .sort(compareTasksByRank)
     .forEach(task => {
       const status = task.status
       if (!columnIds.has(status as BoardColumnId)) {

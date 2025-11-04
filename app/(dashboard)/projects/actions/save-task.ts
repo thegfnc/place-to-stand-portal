@@ -6,6 +6,7 @@ import { taskCreatedEvent, taskUpdatedEvent } from '@/lib/activity/events'
 import { getSupabaseServerClient } from '@/lib/supabase/server'
 import { getSupabaseServiceClient } from '@/lib/supabase/service'
 import { ensureTaskAttachmentBucket } from '@/lib/storage/task-attachments'
+import { resolveNextTaskRank } from './task-rank'
 
 import { revalidateProjectTaskViews } from './shared'
 import { baseTaskSchema, type BaseTaskInput } from './shared-schemas'
@@ -54,6 +55,15 @@ export async function saveTask(input: BaseTaskInput): Promise<ActionResult> {
       return { error: 'Selected project is unavailable.' }
     }
 
+    let nextRank: string
+
+    try {
+      nextRank = await resolveNextTaskRank(supabase, projectId, status)
+    } catch (rankError) {
+      console.error('Failed to resolve rank for new task', rankError)
+      return { error: 'Unable to determine ordering for new task.' }
+    }
+
     const { data, error } = await supabase
       .from('tasks')
       .insert({
@@ -64,6 +74,7 @@ export async function saveTask(input: BaseTaskInput): Promise<ActionResult> {
         due_on: dueOn,
         created_by: user.id,
         updated_by: user.id,
+        rank: nextRank,
       })
       .select('id')
       .maybeSingle()
@@ -116,6 +127,7 @@ export async function saveTask(input: BaseTaskInput): Promise<ActionResult> {
           title,
           description,
           status,
+          rank,
           due_on,
           project:projects (
             client_id
@@ -150,6 +162,24 @@ export async function saveTask(input: BaseTaskInput): Promise<ActionResult> {
       assignee => assignee.user_id
     )
 
+    let nextRank = existingTask.rank
+
+    if (existingTask.status !== status) {
+      try {
+        nextRank = await resolveNextTaskRank(
+          supabase,
+          existingTask.project_id,
+          status
+        )
+      } catch (rankError) {
+        console.error(
+          'Failed to resolve rank for task status update',
+          rankError
+        )
+        return { error: 'Unable to update task ordering.' }
+      }
+    }
+
     const { error } = await supabase
       .from('tasks')
       .update({
@@ -158,6 +188,7 @@ export async function saveTask(input: BaseTaskInput): Promise<ActionResult> {
         status,
         due_on: dueOn,
         updated_by: user.id,
+        rank: nextRank,
       })
       .eq('id', id)
 

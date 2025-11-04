@@ -8,7 +8,12 @@ import {
   type CSSProperties,
   type KeyboardEvent,
 } from 'react'
-import { useDraggable, useDroppable } from '@dnd-kit/core'
+import { useDroppable } from '@dnd-kit/core'
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { format, formatDistanceToNow, parseISO } from 'date-fns'
 import { MessageCircle, Paperclip, Plus } from 'lucide-react'
@@ -69,6 +74,7 @@ type RefineTaskRowProps = {
   onEdit: (task: TaskWithRelations) => void
   draggable: boolean
   isActive?: boolean
+  columnId: BoardColumnId
 }
 
 function RefineTaskRow({
@@ -77,17 +83,25 @@ function RefineTaskRow({
   onEdit,
   draggable,
   isActive = false,
+  columnId,
 }: RefineTaskRowProps) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } =
-    useDraggable({
-      id: task.id,
-      disabled: !draggable,
-      data: {
-        type: 'task',
-        taskId: task.id,
-        projectId: task.project_id,
-      },
-    })
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id: task.id,
+    disabled: !draggable,
+    data: {
+      type: 'task',
+      taskId: task.id,
+      projectId: task.project_id,
+      columnId,
+    },
+  })
 
   const [isMounted, setIsMounted] = useState(false)
 
@@ -107,7 +121,8 @@ function RefineTaskRow({
 
   const style: CSSProperties = {
     opacity: isDragging ? 0.4 : 1,
-    transform: transform ? CSS.Translate.toString(transform) : undefined,
+    transform: transform ? CSS.Transform.toString(transform) : undefined,
+    transition: isDragging ? undefined : transition,
   }
 
   const assignedSummary = assignees.length
@@ -197,6 +212,7 @@ type RefineSectionProps = {
   activeTaskId: string | null
   onCreateTask?: (status: BoardColumnId) => void
   description?: string
+  isDropTarget?: boolean
 }
 
 export function RefineSection({
@@ -209,21 +225,29 @@ export function RefineSection({
   activeTaskId,
   onCreateTask,
   description,
+  isDropTarget = false,
 }: RefineSectionProps) {
-  const { setNodeRef, isOver } = useDroppable({ id: status })
+  const { setNodeRef, isOver } = useDroppable({
+    id: status,
+    data: {
+      type: 'column',
+      columnId: status,
+    },
+  })
   const statusToken = getTaskStatusToken(status)
   const statusLabel = getTaskStatusLabel(status)
   const displayLabel = label || statusLabel
   const sectionDescription =
     description ??
     `Tasks currently in the ${displayLabel} column awaiting refinement.`
+  const highlight = isOver || isDropTarget
 
   return (
     <section
       ref={setNodeRef}
       className={cn(
         'bg-background rounded-xl border shadow-sm transition',
-        isOver && 'ring-primary ring-2'
+        highlight && 'ring-primary ring-2'
       )}
     >
       <div className='border-b px-4 py-3'>
@@ -290,16 +314,23 @@ export function RefineSection({
                 </TableCell>
               </TableRow>
             ) : (
-              tasks.map(task => (
-                <RefineTaskRow
-                  key={task.id}
-                  task={task}
-                  assignees={renderAssignees(task)}
-                  onEdit={onEditTask}
-                  draggable={canManage}
-                  isActive={task.id === activeTaskId}
-                />
-              ))
+              <SortableContext
+                id={status}
+                items={tasks.map(task => task.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                {tasks.map(task => (
+                  <RefineTaskRow
+                    key={task.id}
+                    task={task}
+                    assignees={renderAssignees(task)}
+                    onEdit={onEditTask}
+                    draggable={canManage}
+                    isActive={task.id === activeTaskId}
+                    columnId={status}
+                  />
+                ))}
+              </SortableContext>
             )}
           </TableBody>
         </Table>

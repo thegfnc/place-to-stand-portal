@@ -85,6 +85,7 @@ export function ProjectsBoard({
     handleClientSelect,
     handleProjectSelect,
     handleDragStart,
+    handleDragOver,
     handleDragEnd,
     handleCalendarDragStart,
     handleCalendarDragEnd,
@@ -94,6 +95,7 @@ export function ProjectsBoard({
     defaultTaskStatus,
     defaultTaskDueOn,
     calendarDraggingTask,
+    activeDropColumnId,
   } = useProjectsBoardState({ ...props, currentView: initialTab })
 
   const canLogTime = props.currentUserRole !== 'CLIENT'
@@ -515,6 +517,7 @@ export function ProjectsBoard({
           onCreateTaskForDate={handleCreateTaskForDate}
           sensors={sensors}
           onDragStart={handleDragStart}
+          onDragOver={handleDragOver}
           onDragEnd={handleDragEnd}
           onCalendarDragStart={handleCalendarDragStart}
           onCalendarDragEnd={handleCalendarDragEnd}
@@ -543,6 +546,7 @@ export function ProjectsBoard({
           reviewActionType={reviewActionType}
           reviewActionDisabledReason={reviewActionDisabledReason}
           isReviewActionPending={isReviewActionPending}
+          activeDropColumnId={activeDropColumnId}
         />
         {activeProject ? (
           <TaskSheet

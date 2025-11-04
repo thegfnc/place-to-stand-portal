@@ -8,7 +8,7 @@ import {
   type KeyboardEvent,
 } from 'react'
 import { CSS } from '@dnd-kit/utilities'
-import { useDraggable } from '@dnd-kit/core'
+import { useSortable } from '@dnd-kit/sortable'
 import { CalendarDays, MessageCircle, Paperclip, Users2 } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
@@ -123,16 +123,23 @@ export function TaskCard({
   draggable,
   isActive = false,
 }: TaskCardProps) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } =
-    useDraggable({
-      id: task.id,
-      disabled: !draggable,
-      data: {
-        type: 'task',
-        taskId: task.id,
-        projectId: task.project_id,
-      },
-    })
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id: task.id,
+    disabled: !draggable,
+    data: {
+      type: 'task',
+      taskId: task.id,
+      projectId: task.project_id,
+      columnId: task.status,
+    },
+  })
   const listenersMap = listeners ?? {}
   const draggableKeyDown = (
     listenersMap as {
@@ -157,8 +164,8 @@ export function TaskCard({
 
   const style: CSSProperties = {
     opacity: isDragging ? 0 : 1,
-    transform:
-      !isDragging && transform ? CSS.Translate.toString(transform) : undefined,
+    transform: transform ? CSS.Transform.toString(transform) : undefined,
+    transition: isDragging ? undefined : transition,
   }
 
   return (

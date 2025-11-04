@@ -10,6 +10,7 @@ import { getSupabaseServerClient } from '@/lib/supabase/server'
 import { revalidateProjectTaskViews } from './shared'
 import { statusSchema, TASK_STATUSES } from './shared-schemas'
 import type { ActionResult } from './action-types'
+import { resolveNextTaskRank } from './task-rank'
 
 export async function changeTaskStatus(input: {
   taskId: string
@@ -56,9 +57,23 @@ export async function changeTaskStatus(input: {
   }
 
   if (task.status !== status) {
+    let nextRank: string
+
+    try {
+      nextRank = await resolveNextTaskRank(supabase, task.project_id, status)
+    } catch (rankError) {
+      console.error('Failed to resolve rank for task status change', rankError)
+      return { error: 'Unable to update task ordering.' }
+    }
+
     const { error } = await supabase
       .from('tasks')
-      .update({ status })
+      .update({
+        status,
+        rank: nextRank,
+        updated_by: user.id,
+        updated_at: new Date().toISOString(),
+      })
       .eq('id', taskId)
 
     if (error) {
