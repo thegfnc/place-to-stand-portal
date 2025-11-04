@@ -70,6 +70,7 @@ export type ProjectsBoardTabsProps = {
   isReviewActionPending: boolean
   activeDropColumnId: BoardColumnId | null
   dropPreview: { columnId: BoardColumnId; index: number } | null
+  recentlyMovedTaskId: string | null
 }
 
 export function ProjectsBoardTabs(props: ProjectsBoardTabsProps) {
@@ -129,6 +130,7 @@ export function ProjectsBoardTabs(props: ProjectsBoardTabsProps) {
     isReviewActionPending,
     activeDropColumnId,
     dropPreview,
+    recentlyMovedTaskId,
   } = props
 
   return (
@@ -168,6 +170,7 @@ export function ProjectsBoardTabs(props: ProjectsBoardTabsProps) {
         activeSheetTaskId={activeSheetTaskId}
         activeDropColumnId={activeDropColumnId}
         dropPreview={dropPreview}
+        recentlyMovedTaskId={recentlyMovedTaskId}
       />
       <CalendarTabContent
         isActive={initialTab === 'calendar'}

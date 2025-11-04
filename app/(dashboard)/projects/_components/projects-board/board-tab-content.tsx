@@ -58,6 +58,7 @@ export type BoardTabContentProps = {
   activeSheetTaskId: string | null
   activeDropColumnId: BoardColumnId | null
   dropPreview: { columnId: BoardColumnId; index: number } | null
+  recentlyMovedTaskId: string | null
 }
 
 export function BoardTabContent(props: BoardTabContentProps) {
@@ -82,6 +83,7 @@ export function BoardTabContent(props: BoardTabContentProps) {
     activeSheetTaskId,
     activeDropColumnId,
     dropPreview,
+    recentlyMovedTaskId,
   } = props
 
   const lastTaskOverId = useRef<UniqueIdentifier | null>(null)
@@ -253,6 +255,7 @@ export function BoardTabContent(props: BoardTabContentProps) {
                           : null
                       }
                       draggingTask={draggingTask}
+                      recentlyMovedTaskId={recentlyMovedTaskId}
                     />
                   ))}
                 </div>

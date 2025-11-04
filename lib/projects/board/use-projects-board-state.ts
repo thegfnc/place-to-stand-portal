@@ -86,6 +86,9 @@ type ProjectsBoardState = {
   navigateToProject: ReturnType<typeof useBoardNavigation>
   activeDropColumnId: ReturnType<typeof useBoardDnDState>['activeDropColumnId']
   dropPreview: ReturnType<typeof useBoardDnDState>['dropPreview']
+  recentlyMovedTaskId: ReturnType<
+    typeof useBoardDnDState
+  >['recentlyMovedTaskId']
 }
 
 export const useProjectsBoardState = ({
@@ -430,6 +433,7 @@ export const useProjectsBoardState = ({
     draggingTask,
     activeDropColumnId,
     dropPreview,
+    recentlyMovedTaskId,
   } = useBoardDnDState({
     canManageTasks,
     activeProject,
@@ -496,5 +500,6 @@ export const useProjectsBoardState = ({
     handleDragOver,
     activeDropColumnId,
     dropPreview,
+    recentlyMovedTaskId,
   }
 }

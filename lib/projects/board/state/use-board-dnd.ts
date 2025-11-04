@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Dispatch, SetStateAction, TransitionStartFunction } from 'react'
 import type { DragEndEvent, DragOverEvent, DragStartEvent } from '@dnd-kit/core'
 import { arrayMove } from '@dnd-kit/sortable'
@@ -115,6 +115,32 @@ export const useBoardDnDState = ({
   const [activeDropColumnId, setActiveDropColumnId] =
     useState<BoardColumnId | null>(null)
   const [dropPreview, setDropPreview] = useState<DropPreview | null>(null)
+  const [recentlyMovedTaskId, setRecentlyMovedTaskId] = useState<string | null>(
+    null
+  )
+  const recentlyMovedTimerRef = useRef<number | null>(null)
+
+  const clearRecentlyMovedTimer = useCallback(() => {
+    if (recentlyMovedTimerRef.current !== null) {
+      window.clearTimeout(recentlyMovedTimerRef.current)
+      recentlyMovedTimerRef.current = null
+    }
+  }, [])
+
+  const scheduleRecentlyMovedReset = useCallback(() => {
+    clearRecentlyMovedTimer()
+
+    recentlyMovedTimerRef.current = window.setTimeout(() => {
+      setRecentlyMovedTaskId(null)
+      recentlyMovedTimerRef.current = null
+    }, 150)
+  }, [clearRecentlyMovedTimer])
+
+  useEffect(() => {
+    return () => {
+      clearRecentlyMovedTimer()
+    }
+  }, [clearRecentlyMovedTimer])
 
   type DragComputeEvent = DragOverEvent | DragEndEvent
 
@@ -210,17 +236,22 @@ export const useBoardDnDState = ({
     [tasksByProject]
   )
 
-  const handleDragStart = useCallback((event: DragStartEvent) => {
-    const taskId = String(event.active.id)
-    setDragTaskId(taskId)
-    setDropPreview(null)
+  const handleDragStart = useCallback(
+    (event: DragStartEvent) => {
+      const taskId = String(event.active.id)
+      setDragTaskId(taskId)
+      setDropPreview(null)
+      setRecentlyMovedTaskId(null)
+      clearRecentlyMovedTimer()
 
-    const activeSortable = extractSortableMeta(event.active.data.current)
+      const activeSortable = extractSortableMeta(event.active.data.current)
 
-    if (activeSortable) {
-      setActiveDropColumnId(activeSortable.containerId as BoardColumnId)
-    }
-  }, [])
+      if (activeSortable) {
+        setActiveDropColumnId(activeSortable.containerId as BoardColumnId)
+      }
+    },
+    [clearRecentlyMovedTimer]
+  )
 
   const handleDragOver = useCallback(
     (event: DragOverEvent) => {
@@ -256,6 +287,7 @@ export const useBoardDnDState = ({
       const finishDrag = () => {
         setDropPreview(null)
         setDragTaskId(null)
+        scheduleRecentlyMovedReset()
       }
 
       const deferFinishDrag = () => {
@@ -343,6 +375,12 @@ export const useBoardDnDState = ({
       ) {
         finishDrag()
         return
+      }
+
+      if (destinationStatus !== currentTask.status) {
+        setRecentlyMovedTaskId(taskId)
+      } else {
+        setRecentlyMovedTaskId(null)
       }
 
       const rollbackTasks = projectTasks
@@ -442,6 +480,7 @@ export const useBoardDnDState = ({
       canManageTasks,
       setFeedback,
       setTasksByProject,
+      scheduleRecentlyMovedReset,
       startTransition,
     ]
   )
@@ -458,5 +497,6 @@ export const useBoardDnDState = ({
     draggingTask,
     activeDropColumnId,
     dropPreview,
+    recentlyMovedTaskId,
   }
 }

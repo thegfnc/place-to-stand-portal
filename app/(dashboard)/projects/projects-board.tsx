@@ -97,6 +97,7 @@ export function ProjectsBoard({
     calendarDraggingTask,
     activeDropColumnId,
     dropPreview,
+    recentlyMovedTaskId,
   } = useProjectsBoardState({ ...props, currentView: initialTab })
 
   const canLogTime = props.currentUserRole !== 'CLIENT'
@@ -549,6 +550,7 @@ export function ProjectsBoard({
           isReviewActionPending={isReviewActionPending}
           activeDropColumnId={activeDropColumnId}
           dropPreview={dropPreview}
+          recentlyMovedTaskId={recentlyMovedTaskId}
         />
         {activeProject ? (
           <TaskSheet

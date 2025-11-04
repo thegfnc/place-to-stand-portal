@@ -29,6 +29,7 @@ type TaskCardProps = {
   onEdit: (task: TaskWithRelations) => void
   draggable: boolean
   isActive?: boolean
+  disableDropTransition?: boolean
 }
 
 const toPlainText = (value: string | null) => {
@@ -122,6 +123,7 @@ export function TaskCard({
   onEdit,
   draggable,
   isActive = false,
+  disableDropTransition = false,
 }: TaskCardProps) {
   const {
     attributes,
@@ -162,10 +164,15 @@ export function TaskCard({
     return rest
   }, [attributes])
 
+  const shouldDisableTransition = disableDropTransition && !isDragging
   const style: CSSProperties = {
     opacity: isDragging ? 0 : 1,
     transform: transform ? CSS.Transform.toString(transform) : undefined,
-    transition: isDragging ? undefined : transition,
+    transition: shouldDisableTransition
+      ? 'none'
+      : isDragging
+        ? undefined
+        : transition,
   }
 
   return (

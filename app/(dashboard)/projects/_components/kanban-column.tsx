@@ -29,6 +29,7 @@ type KanbanColumnProps = {
   isDropTarget?: boolean
   dropIndicatorIndex?: number | null
   draggingTask?: TaskWithRelations | null
+  recentlyMovedTaskId?: string | null
 }
 
 export function KanbanColumn({
@@ -43,6 +44,7 @@ export function KanbanColumn({
   isDropTarget = false,
   dropIndicatorIndex = null,
   draggingTask = null,
+  recentlyMovedTaskId = null,
 }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: columnId,
@@ -119,6 +121,7 @@ export function KanbanColumn({
                   onEdit={onEditTask}
                   draggable={canManage}
                   isActive={task.id === activeTaskId}
+                  disableDropTransition={task.id === recentlyMovedTaskId}
                 />
               </Fragment>
             )
