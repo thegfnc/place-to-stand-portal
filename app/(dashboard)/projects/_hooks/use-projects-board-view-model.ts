@@ -36,6 +36,10 @@ export type ProjectsBoardHeaderProps = {
   selectedProjectId: string | null
   onClientChange: (clientId: string) => void
   onProjectChange: (projectId: string | null) => void
+  onSelectNextProject: () => void
+  onSelectPreviousProject: () => void
+  canSelectNext: boolean
+  canSelectPrevious: boolean
 }
 
 export type ProjectsBoardBurndownProps = {
@@ -77,6 +81,8 @@ export function useProjectsBoardViewModel({
     selectedProjectId,
     clientItems,
     projectItems,
+    canSelectNextProject,
+    canSelectPreviousProject,
     activeProject,
     activeProjectTasks,
     activeProjectArchivedTasks,
@@ -89,6 +95,8 @@ export function useProjectsBoardViewModel({
     scrimLocked,
     handleClientSelect,
     handleProjectSelect,
+    handleSelectNextProject,
+    handleSelectPreviousProject,
     handleDragStart,
     handleDragOver,
     handleDragEnd,
@@ -334,6 +342,10 @@ export function useProjectsBoardViewModel({
     selectedProjectId,
     onClientChange: handleClientSelect,
     onProjectChange: handleProjectSelect,
+    onSelectNextProject: handleSelectNextProject,
+    onSelectPreviousProject: handleSelectPreviousProject,
+    canSelectNext: canSelectNextProject,
+    canSelectPrevious: canSelectPreviousProject,
   }
 
   return {

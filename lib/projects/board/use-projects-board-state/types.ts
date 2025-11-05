@@ -33,6 +33,8 @@ export type ProjectsBoardState = {
   filteredProjects: ProjectWithRelations[]
   clientItems: Array<{ value: string; label: string; keywords: string[] }>
   projectItems: Array<{ value: string; label: string; keywords: string[] }>
+  canSelectNextProject: boolean
+  canSelectPreviousProject: boolean
   activeProject: ProjectWithRelations | null
   activeProjectTasks: TaskWithRelations[]
   activeProjectArchivedTasks: TaskWithRelations[]
@@ -48,6 +50,8 @@ export type ProjectsBoardState = {
   scrimLocked: boolean
   handleClientSelect: (clientId: string) => void
   handleProjectSelect: (projectId: string | null) => void
+  handleSelectNextProject: () => void
+  handleSelectPreviousProject: () => void
   handleDragStart: ReturnType<typeof useBoardDnDState>['handleDragStart']
   handleDragOver: ReturnType<typeof useBoardDnDState>['handleDragOver']
   handleDragEnd: ReturnType<typeof useBoardDnDState>['handleDragEnd']

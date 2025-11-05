@@ -62,8 +62,18 @@ export const useBoardSelectionState = ({
   setFeedback,
   currentView,
 }: BoardSelectionArgs) => {
+  const sortedClients = useMemo(
+    () => [...clients].sort((a, b) => a.name.localeCompare(b.name)),
+    [clients]
+  )
+
   const [selectedClientId, setSelectedClientId] = useState<string | null>(() =>
-    resolveInitialClientId(projects, clients, activeClientId, activeProjectId)
+    resolveInitialClientId(
+      projects,
+      sortedClients,
+      activeClientId,
+      activeProjectId
+    )
   )
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(
     () => resolveInitialProjectId(projects, activeProjectId)
@@ -73,17 +83,49 @@ export const useBoardSelectionState = ({
     if (!selectedClientId) {
       return [] as ProjectWithRelations[]
     }
-    return projects.filter(project => project.client_id === selectedClientId)
+    return projects
+      .filter(project => project.client_id === selectedClientId)
+      .sort((a, b) => a.name.localeCompare(b.name))
   }, [projects, selectedClientId])
+
+  const projectSequence = useMemo(() => {
+    const sequence: Array<{ clientId: string; projectId: string }> = []
+
+    sortedClients.forEach(client => {
+      const clientProjects = projects
+        .filter(project => project.client_id === client.id)
+        .sort((a, b) => a.name.localeCompare(b.name))
+
+      clientProjects.forEach(project => {
+        sequence.push({ clientId: client.id, projectId: project.id })
+      })
+    })
+
+    return sequence
+  }, [projects, sortedClients])
+
+  const sequenceIndex = useMemo(() => {
+    if (!selectedProjectId) {
+      return -1
+    }
+    return projectSequence.findIndex(
+      entry => entry.projectId === selectedProjectId
+    )
+  }, [projectSequence, selectedProjectId])
+
+  const canSelectNextProject =
+    sequenceIndex !== -1 && sequenceIndex < projectSequence.length - 1
+
+  const canSelectPreviousProject = sequenceIndex > 0
 
   const clientItems = useMemo(
     () =>
-      clients.map(client => ({
+      sortedClients.map(client => ({
         value: client.id,
         label: client.name,
         keywords: [client.name],
       })),
-    [clients]
+    [sortedClients]
   )
 
   const projectItems = useMemo(
@@ -168,7 +210,9 @@ export const useBoardSelectionState = ({
         setSelectedClientId(clientId)
       })
 
-      const clientProjects = projectsByClientId.get(clientId) ?? []
+      const clientProjects = (projectsByClientId.get(clientId) ?? [])
+        .slice()
+        .sort((a, b) => a.name.localeCompare(b.name))
 
       if (clientProjects.length === 0) {
         setFeedback((prev: string | null) =>
@@ -234,6 +278,55 @@ export const useBoardSelectionState = ({
     [currentView, navigateToProject, setFeedback, startTransition]
   )
 
+  const selectAndNavigate = useCallback(
+    (clientId: string, projectId: string) => {
+      startTransition(() => {
+        setSelectedClientId(clientId)
+        setSelectedProjectId(projectId)
+      })
+
+      setFeedback((prev: string | null) =>
+        prev === NO_CLIENT_PROJECTS_MESSAGE ? null : prev
+      )
+
+      navigateToProject(projectId, { view: currentView })
+    },
+    [currentView, navigateToProject, setFeedback, startTransition]
+  )
+
+  const handleSelectNextProject = useCallback(() => {
+    if (!canSelectNextProject) {
+      return
+    }
+
+    const currentIndex = sequenceIndex === -1 ? 0 : sequenceIndex + 1
+    const next = projectSequence[currentIndex]
+    if (!next) {
+      return
+    }
+
+    selectAndNavigate(next.clientId, next.projectId)
+  }, [canSelectNextProject, projectSequence, selectAndNavigate, sequenceIndex])
+
+  const handleSelectPreviousProject = useCallback(() => {
+    if (!canSelectPreviousProject) {
+      return
+    }
+
+    const previousIndex = sequenceIndex - 1
+    const previous = projectSequence[previousIndex]
+    if (!previous) {
+      return
+    }
+
+    selectAndNavigate(previous.clientId, previous.projectId)
+  }, [
+    canSelectPreviousProject,
+    projectSequence,
+    selectAndNavigate,
+    sequenceIndex,
+  ])
+
   return {
     selectedClientId,
     selectedProjectId,
@@ -242,5 +335,9 @@ export const useBoardSelectionState = ({
     projectItems,
     handleClientSelect,
     handleProjectSelect,
+    handleSelectNextProject,
+    handleSelectPreviousProject,
+    canSelectNextProject,
+    canSelectPreviousProject,
   }
 }

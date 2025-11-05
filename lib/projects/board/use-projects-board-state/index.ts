@@ -65,8 +65,12 @@ export const useProjectsBoardState = ({
     filteredProjects,
     clientItems,
     projectItems,
+    canSelectNextProject,
+    canSelectPreviousProject,
     handleClientSelect,
     handleProjectSelect,
+    handleSelectNextProject,
+    handleSelectPreviousProject,
   } = useBoardSelectionState({
     projects,
     clients,
@@ -222,6 +226,8 @@ export const useProjectsBoardState = ({
     filteredProjects,
     clientItems,
     projectItems,
+    canSelectNextProject,
+    canSelectPreviousProject,
     activeProject,
     activeProjectTasks,
     activeProjectArchivedTasks,
@@ -251,5 +257,7 @@ export const useProjectsBoardState = ({
     activeDropColumnId,
     dropPreview,
     recentlyMovedTaskId,
+    handleSelectNextProject,
+    handleSelectPreviousProject,
   }
 }
