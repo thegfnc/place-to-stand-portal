@@ -7,7 +7,7 @@ import type { BoardColumnId } from '@/lib/projects/board/board-constants'
 
 import { BoardTabContent } from './board-tab-content'
 import { CalendarTabContent } from './calendar-tab-content'
-import { RefineTabContent } from './refine-tab-content'
+import { BacklogTabContent } from './backlog-tab-content'
 import { ActivityTabContent } from './activity-tab-content'
 import { ReviewTabContent } from './review-tab-content'
 import type { ReviewActionKind } from './review-tab/review-tab.types'
@@ -15,14 +15,14 @@ import { ProjectsBoardTabsHeader } from './projects-board-tabs-header'
 import type { ProjectsBoardActiveProject } from './board-tab-content'
 
 export type ProjectsBoardTabsProps = {
-  initialTab: 'board' | 'calendar' | 'refine' | 'activity' | 'review'
+  initialTab: 'board' | 'calendar' | 'backlog' | 'activity' | 'review'
   boardHref: string
   calendarHref: string
-  refineHref: string
+  backlogHref: string
   activityHref: string
   reviewHref: string
   calendarDisabled: boolean
-  refineDisabled: boolean
+  backlogDisabled: boolean
   activityDisabled: boolean
   reviewDisabled: boolean
   onlyAssignedToMe: boolean
@@ -78,11 +78,11 @@ export function ProjectsBoardTabs(props: ProjectsBoardTabsProps) {
     initialTab,
     boardHref,
     calendarHref,
-    refineHref,
+    backlogHref,
     activityHref,
     reviewHref,
     calendarDisabled,
-    refineDisabled,
+    backlogDisabled,
     activityDisabled,
     reviewDisabled,
     onlyAssignedToMe,
@@ -139,11 +139,11 @@ export function ProjectsBoardTabs(props: ProjectsBoardTabsProps) {
         initialTab={initialTab}
         boardHref={boardHref}
         calendarHref={calendarHref}
-        refineHref={refineHref}
+        backlogHref={backlogHref}
         activityHref={activityHref}
         reviewHref={reviewHref}
         calendarDisabled={calendarDisabled}
-        refineDisabled={refineDisabled}
+        backlogDisabled={backlogDisabled}
         activityDisabled={activityDisabled}
         reviewDisabled={reviewDisabled}
         onlyAssignedToMe={onlyAssignedToMe}
@@ -191,8 +191,8 @@ export function ProjectsBoardTabs(props: ProjectsBoardTabsProps) {
         isPending={isPending}
         activeSheetTaskId={activeSheetTaskId}
       />
-      <RefineTabContent
-        isActive={initialTab === 'refine'}
+      <BacklogTabContent
+        isActive={initialTab === 'backlog'}
         feedback={feedback}
         activeProject={activeProject}
         onDeckTasks={onDeckTasks}

@@ -7,7 +7,7 @@ export async function revalidateProjectTaskViews() {
     revalidatePath('/projects'),
     revalidatePath('/projects/[clientSlug]/[projectSlug]/board', 'page'),
     revalidatePath('/projects/[clientSlug]/[projectSlug]/calendar', 'page'),
-    revalidatePath('/projects/[clientSlug]/[projectSlug]/refine', 'page'),
+    revalidatePath('/projects/[clientSlug]/[projectSlug]/backlog', 'page'),
     revalidatePath('/projects/[clientSlug]/[projectSlug]/activity', 'page'),
     revalidatePath('/projects/[clientSlug]/[projectSlug]/review', 'page'),
   ])

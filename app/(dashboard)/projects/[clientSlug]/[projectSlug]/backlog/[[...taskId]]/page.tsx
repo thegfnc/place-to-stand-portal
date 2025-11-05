@@ -18,7 +18,7 @@ type PageProps = {
   }>
 }
 
-export default async function ProjectRefineRoute({ params }: PageProps) {
+export default async function ProjectBacklogRoute({ params }: PageProps) {
   const resolvedParams = await params
   const { clientSlug, projectSlug, taskId } = resolvedParams
   const user = await requireUser()
@@ -68,7 +68,9 @@ export default async function ProjectRefineRoute({ params }: PageProps) {
 
   if (canonicalClientSlug !== clientSlug) {
     const suffix = requestedTaskPath ? `/${requestedTaskPath}` : ''
-    redirect(`/projects/${canonicalClientSlug}/${project.slug}/refine${suffix}`)
+    redirect(
+      `/projects/${canonicalClientSlug}/${project.slug}/backlog${suffix}`
+    )
   }
 
   const activeClientId = project.client_id ?? null
@@ -85,7 +87,7 @@ export default async function ProjectRefineRoute({ params }: PageProps) {
       activeClientId={activeClientId}
       activeProjectId={activeProjectId}
       activeTaskId={activeTaskId}
-      initialTab='refine'
+      initialTab='backlog'
     />
   )
 }

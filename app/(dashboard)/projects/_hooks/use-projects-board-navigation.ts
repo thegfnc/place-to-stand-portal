@@ -7,11 +7,11 @@ import type { ProjectWithRelations } from '@/lib/types'
 export type ProjectsBoardNavigation = {
   boardHref: string
   calendarHref: string
-  refineHref: string
+  backlogHref: string
   activityHref: string
   reviewHref: string
   calendarDisabled: boolean
-  refineDisabled: boolean
+  backlogDisabled: boolean
   activityDisabled: boolean
   reviewDisabled: boolean
 }
@@ -46,13 +46,13 @@ export function useProjectsBoardNavigation({
       calendarHref: projectPathBase
         ? `${projectPathBase}/calendar`
         : defaultHref,
-      refineHref: projectPathBase ? `${projectPathBase}/refine` : defaultHref,
+      backlogHref: projectPathBase ? `${projectPathBase}/backlog` : defaultHref,
       activityHref: projectPathBase
         ? `${projectPathBase}/activity`
         : defaultHref,
       reviewHref: projectPathBase ? `${projectPathBase}/review` : defaultHref,
       calendarDisabled: !projectPathBase,
-      refineDisabled: !projectPathBase,
+      backlogDisabled: !projectPathBase,
       activityDisabled: !projectPathBase,
       reviewDisabled: !projectPathBase,
     }

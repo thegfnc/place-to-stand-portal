@@ -20,7 +20,7 @@ export type UseProjectsBoardStateArgs = {
   activeClientId: string | null
   activeProjectId: string | null
   activeTaskId: string | null
-  currentView: 'board' | 'calendar' | 'activity' | 'refine' | 'review'
+  currentView: 'board' | 'calendar' | 'activity' | 'backlog' | 'review'
 }
 
 export type MemberDirectoryEntry = { name: string }

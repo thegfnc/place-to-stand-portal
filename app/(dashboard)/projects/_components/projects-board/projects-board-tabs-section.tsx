@@ -7,11 +7,11 @@ type NavigationProps = Pick<
   ProjectsBoardTabsProps,
   | 'boardHref'
   | 'calendarHref'
-  | 'refineHref'
+  | 'backlogHref'
   | 'activityHref'
   | 'reviewHref'
   | 'calendarDisabled'
-  | 'refineDisabled'
+  | 'backlogDisabled'
   | 'activityDisabled'
   | 'reviewDisabled'
 >

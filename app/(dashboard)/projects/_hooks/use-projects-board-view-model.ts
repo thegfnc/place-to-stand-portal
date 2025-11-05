@@ -26,7 +26,7 @@ type UseProjectsBoardStateArgs = Parameters<typeof useProjectsBoardState>[0]
 type BaseProps = Omit<UseProjectsBoardStateArgs, 'currentView'>
 
 export type ProjectsBoardProps = BaseProps & {
-  initialTab?: 'board' | 'calendar' | 'activity' | 'refine' | 'review'
+  initialTab?: 'board' | 'calendar' | 'activity' | 'backlog' | 'review'
 }
 
 export type ProjectsBoardHeaderProps = {

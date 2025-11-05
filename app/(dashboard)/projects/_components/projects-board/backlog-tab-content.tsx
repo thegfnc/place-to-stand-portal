@@ -33,7 +33,7 @@ const ON_DECK_SECTION_DESCRIPTION =
 const BACKLOG_SECTION_DESCRIPTION =
   'Ideas and requests waiting to be refined for upcoming cycles.'
 
-export type RefineTabContentProps = {
+export type BacklogTabContentProps = {
   isActive: boolean
   feedback: string | null
   activeProject: ProjectsBoardActiveProject
@@ -54,7 +54,7 @@ export type RefineTabContentProps = {
   activeDropColumnId: BoardColumnId | null
 }
 
-export function RefineTabContent(props: RefineTabContentProps) {
+export function BacklogTabContent(props: BacklogTabContentProps) {
   const {
     isActive,
     feedback,
@@ -108,7 +108,7 @@ export function RefineTabContent(props: RefineTabContentProps) {
 
   return (
     <TabsContent
-      value='refine'
+      value='backlog'
       className='flex min-h-0 flex-1 flex-col gap-4 sm:gap-6'
     >
       {feedback ? <p className={FEEDBACK_CLASSES}>{feedback}</p> : null}

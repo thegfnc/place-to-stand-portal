@@ -5,14 +5,14 @@ import { Label } from '@/components/ui/label'
 import { TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 export type ProjectsBoardTabsHeaderProps = {
-  initialTab: 'board' | 'calendar' | 'refine' | 'activity' | 'review'
+  initialTab: 'board' | 'calendar' | 'backlog' | 'activity' | 'review'
   boardHref: string
   calendarHref: string
-  refineHref: string
+  backlogHref: string
   activityHref: string
   reviewHref: string
   calendarDisabled: boolean
-  refineDisabled: boolean
+  backlogDisabled: boolean
   activityDisabled: boolean
   reviewDisabled: boolean
   onlyAssignedToMe: boolean
@@ -24,11 +24,11 @@ export function ProjectsBoardTabsHeader(props: ProjectsBoardTabsHeaderProps) {
     initialTab,
     boardHref,
     calendarHref,
-    refineHref,
+    backlogHref,
     activityHref,
     reviewHref,
     calendarDisabled,
-    refineDisabled,
+    backlogDisabled,
     activityDisabled,
     reviewDisabled,
     onlyAssignedToMe,
@@ -67,26 +67,26 @@ export function ProjectsBoardTabsHeader(props: ProjectsBoardTabsHeaderProps) {
           </Link>
         </TabsTrigger>
         <TabsTrigger
-          value='refine'
+          value='backlog'
           className='px-3 py-1.5 text-sm'
           asChild
-          disabled={refineDisabled}
+          disabled={backlogDisabled}
         >
           <Link
-            href={refineHref}
+            href={backlogHref}
             prefetch={false}
-            aria-disabled={refineDisabled}
-            tabIndex={refineDisabled ? -1 : undefined}
+            aria-disabled={backlogDisabled}
+            tabIndex={backlogDisabled ? -1 : undefined}
             onClick={event => {
-              if (refineDisabled) {
+              if (backlogDisabled) {
                 event.preventDefault()
               }
             }}
             className={
-              refineDisabled ? 'pointer-events-none opacity-50' : undefined
+              backlogDisabled ? 'pointer-events-none opacity-50' : undefined
             }
           >
-            Refine
+            Backlog
           </Link>
         </TabsTrigger>
         <TabsTrigger
