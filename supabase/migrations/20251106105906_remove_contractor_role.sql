@@ -29,7 +29,7 @@ from public.users u
 where u.id = auth.uid() and u.deleted_at is null;
 
 -- Update activity_logs table if it exists and uses user_role
--- Note: activity_logs.actor_role doesn't have a default, so we can just alter the type
+-- First, update any CONTRACTOR values to ADMIN in activity_logs
 do $$
 begin
   if exists (
@@ -39,6 +39,12 @@ begin
       and table_name = 'activity_logs'
       and column_name = 'actor_role'
   ) then
+    -- Update any CONTRACTOR values to ADMIN before altering the column type
+    update public.activity_logs
+    set actor_role = 'ADMIN'::public.user_role
+    where actor_role = 'CONTRACTOR'::public.user_role;
+
+    -- Now alter the column type
     alter table public.activity_logs
       alter column actor_role type public.user_role_new
       using actor_role::text::public.user_role_new;
