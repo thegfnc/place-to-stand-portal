@@ -103,7 +103,7 @@ export function shouldShowListDropdown(params: {
     return false
   }
 
-  if (hideWhenUnavailable && !editor.isActive("code")) {
+  if (hideWhenUnavailable && editor.isEditable && !editor.isActive("code")) {
     return canToggleAny
   }
 

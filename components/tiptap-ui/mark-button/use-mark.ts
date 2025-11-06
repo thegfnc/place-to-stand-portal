@@ -109,10 +109,10 @@ export function shouldShowButton(props: {
 }): boolean {
   const { editor, type, hideWhenUnavailable } = props
 
-  if (!editor || !editor.isEditable) return false
+  if (!editor) return false
   if (!isMarkInSchema(type, editor)) return false
 
-  if (hideWhenUnavailable && !editor.isActive("code")) {
+  if (hideWhenUnavailable && editor.isEditable && !editor.isActive("code")) {
     return canToggleMark(editor, type)
   }
 
@@ -173,22 +173,25 @@ export function useMark(config: UseMarkConfig) {
 
   const { editor } = useTiptapEditor(providedEditor)
   const [isVisible, setIsVisible] = useState<boolean>(true)
+  const [isActive, setIsActive] = useState<boolean>(false)
   const canToggle = canToggleMark(editor, type)
-  const isActive = isMarkActive(editor, type)
 
   useEffect(() => {
     if (!editor) return
 
-    const handleSelectionUpdate = () => {
+    const updateState = () => {
       setIsVisible(shouldShowButton({ editor, type, hideWhenUnavailable }))
+      setIsActive(isMarkActive(editor, type))
     }
 
-    handleSelectionUpdate()
+    updateState()
 
-    editor.on("selectionUpdate", handleSelectionUpdate)
+    editor.on("selectionUpdate", updateState)
+    editor.on("transaction", updateState)
 
     return () => {
-      editor.off("selectionUpdate", handleSelectionUpdate)
+      editor.off("selectionUpdate", updateState)
+      editor.off("transaction", updateState)
     }
   }, [editor, type, hideWhenUnavailable])
 

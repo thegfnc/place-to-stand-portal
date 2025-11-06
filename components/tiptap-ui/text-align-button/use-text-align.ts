@@ -126,10 +126,10 @@ export function shouldShowButton(props: {
 }): boolean {
   const { editor, hideWhenUnavailable, align } = props
 
-  if (!editor || !editor.isEditable) return false
+  if (!editor) return false
   if (!isExtensionAvailable(editor, "textAlign")) return false
 
-  if (hideWhenUnavailable && !editor.isActive("code")) {
+  if (hideWhenUnavailable && editor.isEditable && !editor.isActive("code")) {
     return canSetTextAlign(editor, align)
   }
 
@@ -183,22 +183,25 @@ export function useTextAlign(config: UseTextAlignConfig) {
 
   const { editor } = useTiptapEditor(providedEditor)
   const [isVisible, setIsVisible] = useState<boolean>(true)
+  const [isActive, setIsActive] = useState<boolean>(false)
   const canAlign = canSetTextAlign(editor, align)
-  const isActive = isTextAlignActive(editor, align)
 
   useEffect(() => {
     if (!editor) return
 
-    const handleSelectionUpdate = () => {
+    const updateState = () => {
       setIsVisible(shouldShowButton({ editor, align, hideWhenUnavailable }))
+      setIsActive(isTextAlignActive(editor, align))
     }
 
-    handleSelectionUpdate()
+    updateState()
 
-    editor.on("selectionUpdate", handleSelectionUpdate)
+    editor.on("selectionUpdate", updateState)
+    editor.on("transaction", updateState)
 
     return () => {
-      editor.off("selectionUpdate", handleSelectionUpdate)
+      editor.off("selectionUpdate", updateState)
+      editor.off("transaction", updateState)
     }
   }, [editor, hideWhenUnavailable, align])
 

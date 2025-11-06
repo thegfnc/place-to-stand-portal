@@ -150,10 +150,10 @@ export function shouldShowButton(props: {
 }): boolean {
   const { editor, hideWhenUnavailable } = props
 
-  if (!editor || !editor.isEditable) return false
+  if (!editor) return false
   if (!isNodeInSchema("blockquote", editor)) return false
 
-  if (hideWhenUnavailable && !editor.isActive("code")) {
+  if (hideWhenUnavailable && editor.isEditable && !editor.isActive("code")) {
     return canToggleBlockquote(editor)
   }
 
@@ -205,22 +205,25 @@ export function useBlockquote(config?: UseBlockquoteConfig) {
 
   const { editor } = useTiptapEditor(providedEditor)
   const [isVisible, setIsVisible] = useState<boolean>(true)
+  const [isActive, setIsActive] = useState<boolean>(false)
   const canToggle = canToggleBlockquote(editor)
-  const isActive = editor?.isActive("blockquote") || false
 
   useEffect(() => {
     if (!editor) return
 
-    const handleSelectionUpdate = () => {
+    const updateState = () => {
       setIsVisible(shouldShowButton({ editor, hideWhenUnavailable }))
+      setIsActive(editor.isActive("blockquote") || false)
     }
 
-    handleSelectionUpdate()
+    updateState()
 
-    editor.on("selectionUpdate", handleSelectionUpdate)
+    editor.on("selectionUpdate", updateState)
+    editor.on("transaction", updateState)
 
     return () => {
-      editor.off("selectionUpdate", handleSelectionUpdate)
+      editor.off("selectionUpdate", updateState)
+      editor.off("transaction", updateState)
     }
   }, [editor, hideWhenUnavailable])
 

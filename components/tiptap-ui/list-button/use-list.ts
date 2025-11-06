@@ -228,10 +228,10 @@ export function shouldShowButton(props: {
 }): boolean {
   const { editor, type, hideWhenUnavailable } = props
 
-  if (!editor || !editor.isEditable) return false
+  if (!editor) return false
   if (!isNodeInSchema(type, editor)) return false
 
-  if (hideWhenUnavailable && !editor.isActive("code")) {
+  if (hideWhenUnavailable && editor.isEditable && !editor.isActive("code")) {
     return canToggleList(editor, type)
   }
 
@@ -285,22 +285,25 @@ export function useList(config: UseListConfig) {
 
   const { editor } = useTiptapEditor(providedEditor)
   const [isVisible, setIsVisible] = useState<boolean>(true)
+  const [isActive, setIsActive] = useState<boolean>(false)
   const canToggle = canToggleList(editor, type)
-  const isActive = isListActive(editor, type)
 
   useEffect(() => {
     if (!editor) return
 
-    const handleSelectionUpdate = () => {
+    const updateState = () => {
       setIsVisible(shouldShowButton({ editor, type, hideWhenUnavailable }))
+      setIsActive(isListActive(editor, type))
     }
 
-    handleSelectionUpdate()
+    updateState()
 
-    editor.on("selectionUpdate", handleSelectionUpdate)
+    editor.on("selectionUpdate", updateState)
+    editor.on("transaction", updateState)
 
     return () => {
-      editor.off("selectionUpdate", handleSelectionUpdate)
+      editor.off("selectionUpdate", updateState)
+      editor.off("transaction", updateState)
     }
   }, [editor, type, hideWhenUnavailable])
 

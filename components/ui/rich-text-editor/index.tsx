@@ -242,7 +242,7 @@ export function RichTextEditor({
   const wrapperClasses = useMemo(
     () =>
       cn(
-        'rich-text-editor group flex flex-col overflow-hidden rounded-md border bg-background shadow-xs transition select-text',
+        'rich-text-editor group flex w-full flex-shrink-0 flex-col overflow-hidden rounded-md border bg-background shadow-xs transition select-text',
         !disabled &&
           'focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/40',
         disabled && 'opacity-60',
