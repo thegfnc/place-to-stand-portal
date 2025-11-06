@@ -147,7 +147,12 @@ export function canColorHighlight(
     if (!isExtensionAvailable(editor, ["nodeBackground"])) return false
 
     try {
-      return editor.can().toggleNodeBackgroundColor("test")
+      // Type guard: check if the method exists before calling
+      const canCommands = editor.can() as Record<string, unknown>
+      if (typeof canCommands.toggleNodeBackgroundColor === 'function') {
+        return (canCommands.toggleNodeBackgroundColor as (color: string) => boolean)("test")
+      }
+      return false
     } catch {
       return false
     }
@@ -202,7 +207,15 @@ export function removeHighlight(
   if (mode === "mark") {
     return editor.chain().focus().unsetMark("highlight").run()
   } else {
-    return editor.chain().focus().unsetNodeBackgroundColor().run()
+    // Type guard: check if the method exists before calling
+    const chain = editor.chain().focus() as Record<string, unknown> & { run: () => boolean }
+    if (typeof chain.unsetNodeBackgroundColor === 'function') {
+      const result = (chain.unsetNodeBackgroundColor as () => typeof chain)()
+      return typeof result === 'object' && result !== null && 'run' in result
+        ? (result as { run: () => boolean }).run()
+        : false
+    }
+    return false
   }
 }
 
@@ -291,16 +304,20 @@ export function useColorHighlight(config: UseColorHighlightConfig) {
 
       return true
     } else {
-      const success = editor
-        .chain()
-        .focus()
-        .toggleNodeBackgroundColor(highlightColor)
-        .run()
+      // Type guard: check if the method exists before calling
+      const chain = editor.chain().focus() as Record<string, unknown> & { run: () => boolean }
+      if (typeof chain.toggleNodeBackgroundColor === 'function') {
+        const result = (chain.toggleNodeBackgroundColor as (color: string) => typeof chain)(highlightColor)
+        const success = typeof result === 'object' && result !== null && 'run' in result
+          ? (result as { run: () => boolean }).run()
+          : false
 
-      if (success) {
-        onApplied?.({ color: highlightColor, label, mode })
+        if (success) {
+          onApplied?.({ color: highlightColor, label, mode })
+        }
+        return success
       }
-      return success
+      return false
     }
   }, [canColorHighlightState, highlightColor, editor, label, onApplied, mode])
 
