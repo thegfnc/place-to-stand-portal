@@ -1,6 +1,6 @@
 'use client'
 
-import { forwardRef, useCallback, useEffect, useState } from 'react'
+import { forwardRef, useCallback, useEffect, useRef, useState } from 'react'
 import type { Editor } from '@tiptap/react'
 
 // --- Hooks ---
@@ -221,6 +221,7 @@ export const LinkPopover = forwardRef<HTMLButtonElement, LinkPopoverProps>(
   ) => {
     const { editor } = useTiptapEditor(providedEditor)
     const [isOpen, setIsOpen] = useState(false)
+    const prevIsActiveRef = useRef(false)
 
     const {
       isVisible,
@@ -262,10 +263,18 @@ export const LinkPopover = forwardRef<HTMLButtonElement, LinkPopoverProps>(
     )
 
     useEffect(() => {
-      if (autoOpenOnLinkActive && isActive) {
-        setIsOpen(true)
+      if (
+        autoOpenOnLinkActive &&
+        isActive &&
+        !prevIsActiveRef.current &&
+        !isOpen
+      ) {
+        queueMicrotask(() => {
+          setIsOpen(true)
+        })
       }
-    }, [autoOpenOnLinkActive, isActive])
+      prevIsActiveRef.current = isActive
+    }, [autoOpenOnLinkActive, isActive, isOpen])
 
     // Listen for custom DOM event to open popover (triggered by keyboard shortcut)
     useEffect(() => {
