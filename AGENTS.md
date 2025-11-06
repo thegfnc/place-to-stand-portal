@@ -1,7 +1,3 @@
----
-applyTo: '**'
----
-
 # **Technical Specifications & Requirements**
 
 ## **0. LLM Implementation Workflow**
@@ -74,6 +70,7 @@ applyTo: '**'
 - **Secrets & Config:** Reference environment variables through `process.env` with typed helpers in `src/lib/utils.ts`. Never hardcode secrets.
 - **RBAC Implementation:** Enforce role-based access control both at the Supabase level and within application logic to protect sensitive data and actions.
 - **Form Errors:** Surface field level errors from Zod on the field instead of just a single error state for the form. For every disabled button, add a tooltip hover explaining why it's disabled
+- **Image Optimization:** Use Supabase image transforms to optimize images for the web. Image widths should be 2x the desired display width with height set to auto to maintain aspect ratio. Images should be capped at 2500 width max.
 
 ## **3. Non-Functional Requirements**
 
