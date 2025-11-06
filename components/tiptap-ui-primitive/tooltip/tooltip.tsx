@@ -177,15 +177,16 @@ export const TooltipTrigger = forwardRef<HTMLElement, TooltipTriggerProps>(
         "data-tooltip-state": context.open ? "open" : "closed",
       }
 
-      return cloneElement(
-        children,
-        context.getReferenceProps({
-          ref,
-          ...props,
-          ...(typeof children.props === "object" ? children.props : {}),
-          ...dataAttributes,
-        })
-      )
+      /* eslint-disable react-hooks/refs -- floating-ui's getReferenceProps manages refs externally and doesn't access them during render */
+      const referenceProps = context.getReferenceProps({
+        ref,
+        ...props,
+        ...(typeof children.props === "object" ? children.props : {}),
+        ...dataAttributes,
+      })
+      /* eslint-enable react-hooks/refs */
+
+      return cloneElement(children, referenceProps)
     }
 
     return (

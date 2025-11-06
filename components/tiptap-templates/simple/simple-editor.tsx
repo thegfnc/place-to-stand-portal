@@ -190,6 +190,7 @@ export function SimpleEditor() {
     "main"
   )
   const toolbarRef = useRef<HTMLDivElement>(null)
+  const [toolbarHeight, setToolbarHeight] = useState(0)
 
   const editor = useEditor({
     immediatelyRender: false,
@@ -232,13 +233,34 @@ export function SimpleEditor() {
     content,
   })
 
+  useEffect(() => {
+    if (!toolbarRef.current) return
+
+    const updateToolbarHeight = () => {
+      if (toolbarRef.current) {
+        setToolbarHeight(toolbarRef.current.getBoundingClientRect().height)
+      }
+    }
+
+    updateToolbarHeight()
+
+    const resizeObserver = new ResizeObserver(updateToolbarHeight)
+    resizeObserver.observe(toolbarRef.current)
+
+    return () => {
+      resizeObserver.disconnect()
+    }
+  }, [mobileView])
+
   const rect = useCursorVisibility({
     editor,
-    overlayHeight: toolbarRef.current?.getBoundingClientRect().height ?? 0,
+    overlayHeight: toolbarHeight,
   })
 
   useEffect(() => {
     if (!isMobile && mobileView !== "main") {
+      // Reset mobile view when switching to desktop
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Necessary to reset UI state when screen size changes
       setMobileView("main")
     }
   }, [isMobile, mobileView])

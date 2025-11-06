@@ -62,7 +62,7 @@ export function useMenuNavigation<T>({
   autoSelectFirstItem = true,
 }: MenuNavigationOptions<T>) {
   const [selectedIndex, setSelectedIndex] = useState<number>(
-    autoSelectFirstItem ? 0 : -1
+    autoSelectFirstItem && items.length > 0 ? 0 : -1
   )
 
   useEffect(() => {
@@ -184,10 +184,16 @@ export function useMenuNavigation<T>({
   ])
 
   useEffect(() => {
-    if (query) {
-      setSelectedIndex(autoSelectFirstItem ? 0 : -1)
-    }
-  }, [query, autoSelectFirstItem])
+    if (!query) return
+
+    const newIndex = autoSelectFirstItem && items.length > 0 ? 0 : -1
+    // Reset selected index when query changes - necessary for proper UX
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Required to reset selection when search query changes
+    setSelectedIndex((prevIndex) => {
+      // Only update if the value actually needs to change
+      return prevIndex !== newIndex ? newIndex : prevIndex
+    })
+  }, [query, autoSelectFirstItem, items.length])
 
   return {
     selectedIndex: items.length ? selectedIndex : undefined,

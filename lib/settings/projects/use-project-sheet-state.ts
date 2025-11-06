@@ -70,8 +70,6 @@ export function useProjectSheetState({
   onComplete,
   project,
   clients,
-  contractorDirectory,
-  projectContractors,
 }: UseProjectSheetStateArgs): UseProjectSheetStateReturn {
   const isEditing = Boolean(project)
   const [feedback, setFeedback] = useState<string | null>(null)

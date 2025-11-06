@@ -96,16 +96,25 @@ export function shouldShowLinkButton(props: {
  */
 export function useLinkHandler(props: LinkHandlerProps) {
   const { editor, onSetLink } = props
-  const [url, setUrl] = useState<string | null>(null)
+  const [url, setUrl] = useState<string | null>(() => {
+    if (!editor) return null
+    if (!isLinkActive(editor)) return null
+    const { href } = editor.getAttributes("link")
+    return href || null
+  })
 
   useEffect(() => {
     if (!editor) return
 
-    // Get URL immediately on mount
     const { href } = editor.getAttributes("link")
+    const linkActive = isLinkActive(editor)
 
-    if (isLinkActive(editor) && url === null) {
+    // Sync URL state with editor state when editor or link state changes
+    if (linkActive && url === null) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Necessary to sync external editor state with component state
       setUrl(href || "")
+    } else if (!linkActive && url !== null) {
+      setUrl(null)
     }
   }, [editor, url])
 

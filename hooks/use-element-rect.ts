@@ -56,7 +56,52 @@ export function useElementRect({
   throttleMs = 100,
   useResizeObserver = true,
 }: ElementRectOptions = {}): RectState {
-  const [rect, setRect] = useState<RectState>(initialRect)
+  const getInitialRect = useCallback((): RectState => {
+    if (!enabled || !isClientSide()) return initialRect
+
+    if (!element) {
+      const bodyRect = document.body.getBoundingClientRect()
+      return {
+        x: bodyRect.x,
+        y: bodyRect.y,
+        width: bodyRect.width,
+        height: bodyRect.height,
+        top: bodyRect.top,
+        right: bodyRect.right,
+        bottom: bodyRect.bottom,
+        left: bodyRect.left,
+      }
+    }
+
+    let targetElement: Element | null = null
+
+    if (typeof element === "string") {
+      targetElement = document.querySelector(element)
+    } else if ("current" in element) {
+      targetElement = element.current
+    } else {
+      targetElement = element
+    }
+
+    if (!targetElement) return initialRect
+
+    const targetRect = targetElement.getBoundingClientRect()
+    return {
+      x: targetRect.x,
+      y: targetRect.y,
+      width: targetRect.width,
+      height: targetRect.height,
+      top: targetRect.top,
+      right: targetRect.right,
+      bottom: targetRect.bottom,
+      left: targetRect.left,
+    }
+  }, [element, enabled])
+
+  const [rect, setRect] = useState<RectState>(() => {
+    if (typeof window === "undefined") return initialRect
+    return getInitialRect()
+  })
 
   const getTargetElement = useCallback((): Element | null => {
     if (!enabled || !isClientSide()) return null
@@ -103,14 +148,18 @@ export function useElementRect({
     { leading: true, trailing: true }
   )
 
+  // Update rect when enabled/element changes
   useEffect(() => {
     if (!enabled || !isClientSide()) {
-      setRect(initialRect)
+      updateRect()
       return
     }
 
     const targetElement = getTargetElement()
-    if (!targetElement) return
+    if (!targetElement) {
+      updateRect()
+      return
+    }
 
     updateRect()
 
@@ -136,9 +185,8 @@ export function useElementRect({
 
     return () => {
       cleanup.forEach((fn) => fn())
-      setRect(initialRect)
     }
-  }, [enabled, getTargetElement, updateRect, useResizeObserver])
+  }, [enabled, getTargetElement, updateRect, useResizeObserver, rect, getInitialRect])
 
   return rect
 }

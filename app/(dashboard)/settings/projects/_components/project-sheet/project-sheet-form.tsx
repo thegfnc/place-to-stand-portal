@@ -53,7 +53,6 @@ export function ProjectSheetForm(props: ProjectSheetFormProps) {
     form,
     fieldState,
     isEditing,
-    isPending,
     feedback,
     clientOptions,
     submitButton,
