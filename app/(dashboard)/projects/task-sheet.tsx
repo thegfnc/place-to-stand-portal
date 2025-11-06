@@ -164,7 +164,7 @@ export function TaskSheet(props: TaskSheetProps) {
   return (
     <>
       <Sheet open={props.open} onOpenChange={handleSheetOpenChange}>
-        <SheetContent className='flex w-full flex-col gap-6 overflow-y-auto pb-24 sm:max-w-2xl'>
+        <SheetContent className='flex w-full flex-col gap-6 overflow-y-auto pb-24 sm:max-w-[676px]'>
           <div
             className='flex flex-col gap-6'
             onDragEnter={handleDragEnter}

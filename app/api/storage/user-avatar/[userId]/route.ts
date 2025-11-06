@@ -67,8 +67,6 @@ export async function GET(
     return NextResponse.json({ error: 'Avatar not found.' }, { status: 404 })
   }
 
-  console.log('signedUrlData', signedUrlData)
-
   // Redirect to the transformed image URL
   return NextResponse.redirect(signedUrlData.signedUrl, {
     status: 307,

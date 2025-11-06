@@ -1,13 +1,32 @@
-import { useCallback, useEffect } from 'react'
+import { useEffect } from 'react'
 import type { Editor as TipTapEditor } from '@tiptap/core'
 import { useEditor } from '@tiptap/react'
+import { StarterKit } from '@tiptap/starter-kit'
+import { Image } from '@tiptap/extension-image'
+import { TaskItem, TaskList } from '@tiptap/extension-list'
+import { TextAlign } from '@tiptap/extension-text-align'
+import { Typography } from '@tiptap/extension-typography'
+import { Highlight } from '@tiptap/extension-highlight'
+import { Subscript } from '@tiptap/extension-subscript'
+import { Superscript } from '@tiptap/extension-superscript'
+import { Selection } from '@tiptap/extensions'
 import LinkExtension from '@tiptap/extension-link'
 import Placeholder from '@tiptap/extension-placeholder'
 import Underline from '@tiptap/extension-underline'
-import StarterKit from '@tiptap/starter-kit'
-import type { StarterKitOptions } from '@tiptap/starter-kit'
+import { ImageUploadNode } from '@/components/tiptap-node/image-upload-node/image-upload-node-extension'
+import { HorizontalRule } from '@/components/tiptap-node/horizontal-rule-node/horizontal-rule-node-extension'
+import { handleImageUpload, MAX_FILE_SIZE } from '@/lib/tiptap-utils'
 
-import { ensureUrlProtocol, isContentEmpty } from './utils'
+// Import node styles
+import '@/components/tiptap-node/blockquote-node/blockquote-node.scss'
+import '@/components/tiptap-node/code-block-node/code-block-node.scss'
+import '@/components/tiptap-node/horizontal-rule-node/horizontal-rule-node.scss'
+import '@/components/tiptap-node/list-node/list-node.scss'
+import '@/components/tiptap-node/image-node/image-node.scss'
+import '@/components/tiptap-node/heading-node/heading-node.scss'
+import '@/components/tiptap-node/paragraph-node/paragraph-node.scss'
+
+import { isContentEmpty } from './utils'
 
 type UseRichTextEditorArgs = {
   value: string
@@ -19,28 +38,41 @@ type UseRichTextEditorArgs = {
 
 type UseRichTextEditorReturn = {
   editor: TipTapEditor | null
-  executeCommand: (command: (editor: TipTapEditor) => void) => void
-  toggleLink: () => void
 }
 
 const buildExtensions = (placeholder?: string) => {
-  const starterKitConfig: Partial<StarterKitOptions> & { history?: boolean } = {
-    bulletList: {
-      keepMarks: true,
-    },
-    orderedList: {
-      keepMarks: true,
-    },
-    strike: {
-      HTMLAttributes: {
-        class: 'line-through',
-      },
-    },
-    history: false,
-  }
-
   return [
-    StarterKit.configure(starterKitConfig),
+    StarterKit.configure({
+      horizontalRule: false,
+      // Disable history since form-level undo/redo is used
+      // @ts-expect-error - history is a valid option but not in TypeScript types
+      history: false,
+      link: {
+        openOnClick: false,
+        enableClickSelection: true,
+      },
+      bulletList: {
+        keepMarks: true,
+      },
+      orderedList: {
+        keepMarks: true,
+      },
+      strike: {
+        HTMLAttributes: {
+          class: 'line-through',
+        },
+      },
+    }),
+    HorizontalRule,
+    TextAlign.configure({ types: ['heading', 'paragraph'] }),
+    TaskList,
+    TaskItem.configure({ nested: true }),
+    Highlight.configure({ multicolor: true }),
+    Image,
+    Typography,
+    Superscript,
+    Subscript,
+    Selection,
     Underline,
     LinkExtension.configure({
       openOnClick: false,
@@ -54,6 +86,13 @@ const buildExtensions = (placeholder?: string) => {
     }),
     Placeholder.configure({
       placeholder: placeholder ?? 'Write a description...',
+    }),
+    ImageUploadNode.configure({
+      accept: 'image/*',
+      maxSize: MAX_FILE_SIZE,
+      limit: 3,
+      upload: handleImageUpload,
+      onError: error => console.error('Upload failed:', error),
     }),
   ]
 }
@@ -71,6 +110,15 @@ export function useRichTextEditor({
       content: value || '',
       editable: !disabled,
       immediatelyRender: false,
+      editorProps: {
+        attributes: {
+          autocomplete: 'off',
+          autocorrect: 'off',
+          autocapitalize: 'off',
+          'aria-label': 'Rich text editor',
+          class: 'tiptap ProseMirror',
+        },
+      },
       onUpdate: ({ editor: instance }) => {
         onChange(instance.getHTML())
       },
@@ -111,56 +159,5 @@ export function useRichTextEditor({
     }
   }, [editor, onBlur])
 
-  const executeCommand = useCallback(
-    (command: (instance: TipTapEditor) => void) => {
-      if (!editor || disabled) {
-        return
-      }
-      command(editor)
-    },
-    [disabled, editor]
-  )
-
-  const toggleLink = useCallback(() => {
-    if (!editor || disabled) {
-      return
-    }
-
-    if (editor.isActive('link')) {
-      editor.chain().focus().extendMarkRange('link').unsetLink().run()
-      return
-    }
-
-    if (typeof window === 'undefined') {
-      return
-    }
-
-    const previousUrl = editor.getAttributes('link')?.href ?? ''
-    const userInput = window.prompt('Enter URL', previousUrl)
-
-    if (userInput === null) {
-      return
-    }
-
-    const trimmed = userInput.trim()
-
-    if (trimmed.length === 0) {
-      editor.chain().focus().extendMarkRange('link').unsetLink().run()
-      return
-    }
-
-    const normalizedUrl = ensureUrlProtocol(trimmed)
-    const { from, to } = editor.state.selection
-    const chain = editor.chain().focus()
-
-    if (from === to) {
-      chain
-        .insertContent(trimmed)
-        .setTextSelection({ from, to: from + trimmed.length })
-    }
-
-    chain.extendMarkRange('link').setLink({ href: normalizedUrl }).run()
-  }, [disabled, editor])
-
-  return { editor, executeCommand, toggleLink }
+  return { editor }
 }

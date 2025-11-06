@@ -11,13 +11,27 @@ export const ensureEditorStyles = () => {
     document.head.appendChild(editorStylesElement)
   }
 
-  editorStylesElement.textContent = `
+  const styles = `
+    /* Ensure text selection works in the editor */
+    .rich-text-editor .tiptap.ProseMirror {
+      user-select: text !important;
+      -webkit-user-select: text !important;
+      -moz-user-select: text !important;
+      -ms-user-select: text !important;
+    }
+
+    .rich-text-editor .tiptap.ProseMirror * {
+      user-select: text !important;
+      -webkit-user-select: text !important;
+    }
+
     .rich-text-editor .ProseMirror p.is-editor-empty:first-child::before {
       color: var(--muted-foreground);
       content: attr(data-placeholder);
       float: left;
       height: 0;
       pointer-events: none;
+      user-select: none !important;
     }
 
     .rich-text-editor .ProseMirror ul,
@@ -38,4 +52,35 @@ export const ensureEditorStyles = () => {
       outline: none;
     }
   `
+
+  editorStylesElement.textContent = styles
+
+  // Add required TipTap CSS variables if they don't exist
+  if (typeof document !== 'undefined') {
+    const root = document.documentElement
+
+    // Set TipTap CSS variables with fallbacks
+    root.style.setProperty('--white', '#ffffff')
+    root.style.setProperty('--black', '#000000')
+    root.style.setProperty(
+      '--tt-dropdown-menu-bg-color',
+      'var(--background, #ffffff)'
+    )
+    root.style.setProperty(
+      '--tt-dropdown-menu-border-color',
+      'var(--border, #e5e5e5)'
+    )
+    root.style.setProperty(
+      '--tt-dropdown-menu-text-color',
+      'var(--foreground, #000000)'
+    )
+    root.style.setProperty(
+      '--tiptap-card-bg-color',
+      'var(--background, #ffffff)'
+    )
+    root.style.setProperty(
+      '--tiptap-card-border-color',
+      'var(--border, #e5e5e5)'
+    )
+  }
 }
