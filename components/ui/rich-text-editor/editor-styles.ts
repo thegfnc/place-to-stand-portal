@@ -32,6 +32,7 @@ export const ensureEditorStyles = () => {
       height: 0;
       pointer-events: none;
       user-select: none !important;
+      font-size: inherit;
     }
 
     .rich-text-editor .ProseMirror ul,
@@ -44,8 +45,33 @@ export const ensureEditorStyles = () => {
       margin: 0.25rem 0;
     }
 
+    /* Ensure first child elements (lists, paragraphs, etc.) have consistent font size */
+    .rich-text-editor .ProseMirror > *:first-child {
+      font-size: 1rem !important;
+    }
+
+    .rich-text-editor .ProseMirror > ul:first-child,
+    .rich-text-editor .ProseMirror > ol:first-child {
+      font-size: 1rem !important;
+    }
+
+    .rich-text-editor .ProseMirror > ul:first-child li,
+    .rich-text-editor .ProseMirror > ol:first-child li {
+      font-size: 1rem !important;
+    }
+
     .rich-text-editor .ProseMirror p {
       margin: 0.5rem 0;
+      font-size: 1rem !important;
+      line-height: 1.6 !important;
+      font-weight: normal;
+    }
+
+    /* Ensure first paragraph has same font size as others */
+    .rich-text-editor .ProseMirror p:first-child {
+      font-size: 1rem !important;
+      line-height: 1.6 !important;
+      font-weight: normal;
     }
 
     .rich-text-editor .ProseMirror:focus {
