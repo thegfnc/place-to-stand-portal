@@ -1,9 +1,9 @@
 import type { Metadata } from 'next'
-import { redirect } from 'next/navigation'
 
-import { ProjectsBoard } from './projects-board'
+import { AppShellHeader } from '@/components/layout/app-shell'
+import { ProjectsLanding } from './_components/projects-landing'
+import { ProjectsLandingHeader } from './_components/projects-landing-header'
 import { fetchProjectsWithRelations } from '@/lib/data/projects'
-import { fetchAdminUsers } from '@/lib/data/users'
 import { requireUser } from '@/lib/auth/session'
 
 export const metadata: Metadata = {
@@ -12,13 +12,10 @@ export const metadata: Metadata = {
 
 export default async function ProjectsPage() {
   const user = await requireUser()
-  const [projects, admins] = await Promise.all([
-    fetchProjectsWithRelations({
-      forUserId: user.id,
-      forRole: user.role,
-    }),
-    fetchAdminUsers(),
-  ])
+  const projects = await fetchProjectsWithRelations({
+    forUserId: user.id,
+    forRole: user.role,
+  })
 
   const sortableProjects = [...projects]
 
@@ -36,47 +33,14 @@ export default async function ProjectsPage() {
     )
     .sort((a, b) => a.name.localeCompare(b.name))
 
-  const clientSlugById = new Map<string, string | null>(
-    clients.map(client => [client.id, client.slug ?? null])
-  )
-
-  const defaultProject = sortableProjects.find(project => {
-    if (!project.slug) {
-      return false
-    }
-
-    if (!project.client_id) {
-      return false
-    }
-
-    const clientSlug =
-      project.client?.slug ?? clientSlugById.get(project.client_id) ?? null
-
-    return Boolean(clientSlug)
-  })
-
-  if (defaultProject) {
-    const clientSlug =
-      defaultProject.client?.slug ??
-      (defaultProject.client_id
-        ? (clientSlugById.get(defaultProject.client_id) ?? null)
-        : null)
-
-    if (clientSlug) {
-      redirect(`/projects/${clientSlug}/${defaultProject.slug}/board`)
-    }
-  }
-
   return (
-    <ProjectsBoard
-      projects={sortableProjects}
-      clients={clients}
-      currentUserId={user.id}
-      currentUserRole={user.role}
-      admins={admins}
-      activeClientId={null}
-      activeProjectId={null}
-      activeTaskId={null}
-    />
+    <>
+      <AppShellHeader>
+        <ProjectsLandingHeader projects={sortableProjects} clients={clients} />
+      </AppShellHeader>
+      <div className='space-y-6'>
+        <ProjectsLanding projects={sortableProjects} clients={clients} />
+      </div>
+    </>
   )
 }

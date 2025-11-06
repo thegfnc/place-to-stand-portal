@@ -116,6 +116,7 @@ export async function fetchProjectRelations(
           `
         )
         .in('project_id', projectIds)
+        .is('deleted_at', null)
     : Promise.resolve({ data: [], error: null })
 
   const hourBlocksPromise = clientIds.length
