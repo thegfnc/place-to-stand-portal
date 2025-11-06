@@ -38,8 +38,6 @@ const tidyRole = (role: string | null | undefined) => {
 export const formatRoleLabel = (role: string | null | undefined) =>
   tidyRole(role) ?? 'Unknown role'
 
-export const formatMemberRole = (role: string | null | undefined) =>
-  tidyRole(role)
 
 export const toDateInputValue = (value: string | null | undefined) => {
   if (!value) return ''
@@ -95,11 +93,6 @@ const buildDescription = (
     descriptionParts.push(roleLabel)
   }
 
-  const memberRoleLabel = tidyRole(member?.role)
-  if (memberRoleLabel) {
-    descriptionParts.push(memberRoleLabel)
-  }
-
   const email = member?.user.email ?? admin?.email
   if (email) {
     descriptionParts.push(email)
@@ -151,18 +144,14 @@ export const buildAssigneeItems = ({
     }
 
     const label = user.full_name?.trim() || user.email
-    const memberRoleLabel = tidyRole(member.role)
     const descriptionParts = [tidyRole(user.role)]
-    if (memberRoleLabel) {
-      descriptionParts.push(memberRoleLabel)
-    }
     descriptionParts.push(user.email)
 
     eligibleItems.push({
       value: member.user_id,
       label,
       description: descriptionParts.join(' • '),
-      keywords: [user.email, 'contractor', memberRoleLabel ?? undefined].filter(
+      keywords: [user.email, 'contractor'].filter(
         (keyword): keyword is string => Boolean(keyword)
       ),
     })

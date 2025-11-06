@@ -199,7 +199,6 @@ export async function syncProjectContractors(
   const upsertPayload = uniqueIds.map(userId => ({
     project_id: projectId,
     user_id: userId,
-    role: 'CONTRIBUTOR' as Database['public']['Enums']['member_role'],
     deleted_at: null,
   }))
 

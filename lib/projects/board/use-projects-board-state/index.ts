@@ -129,7 +129,7 @@ export const useProjectsBoardState = ({
     if (currentUserRole === 'ADMIN') return true
 
     return activeProject.members.some(
-      member => member.user_id === currentUserId && member.role !== 'VIEWER'
+      member => member.user_id === currentUserId
     )
   }, [activeProject, currentUserId, currentUserRole])
 
