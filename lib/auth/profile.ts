@@ -8,7 +8,7 @@ import type { Database } from '@/supabase/types/database'
 
 const DEFAULT_ROLE: UserRole = 'CLIENT'
 
-const VALID_ROLES: readonly UserRole[] = ['ADMIN', 'CONTRACTOR', 'CLIENT']
+const VALID_ROLES: readonly UserRole[] = ['ADMIN', 'CLIENT']
 
 function getMetadataRole(user: User): UserRole | null {
   const rawRole = user.user_metadata?.role

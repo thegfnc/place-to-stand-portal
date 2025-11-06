@@ -7,7 +7,6 @@ import {
   generateUniqueProjectSlug,
   projectSchema,
   projectSlugExists,
-  syncProjectContractors,
   toProjectSlug,
   type ProjectActionResult,
   type ProjectInput,
@@ -35,11 +34,9 @@ export async function saveProject(
   }
 
   const supabase = getSupabaseServerClient()
-  const { id, name, clientId, status, startsOn, endsOn, slug, contractorIds } =
-    parsed.data
+  const { id, name, clientId, status, startsOn, endsOn, slug } = parsed.data
 
   const trimmedName = name.trim()
-  const normalizedContractorIds = Array.from(new Set(contractorIds ?? []))
   const providedSlug = slug?.trim() ?? null
   const normalizedProvidedSlug = providedSlug
     ? toProjectSlug(providedSlug)
@@ -106,20 +103,9 @@ export async function saveProject(
       }
     }
 
-    const syncResult = await syncProjectContractors(
-      supabase,
-      insertedId,
-      normalizedContractorIds
-    )
-
-    if (syncResult.error) {
-      return syncResult
-    }
-
     const event = projectCreatedEvent({
       name: trimmedName,
       status,
-      contractorIds: normalizedContractorIds,
     })
 
     await logActivity({
@@ -166,22 +152,6 @@ export async function saveProject(
       return { error: 'Project not found.' }
     }
 
-    const { data: existingContractorRows, error: existingContractorsError } =
-      await supabase
-        .from('project_members')
-        .select('user_id')
-        .eq('project_id', id)
-        .is('deleted_at', null)
-
-    if (existingContractorsError) {
-      console.error('Failed to load project members', existingContractorsError)
-      return { error: 'Unable to update project members.' }
-    }
-
-    const existingContractorIds = (existingContractorRows ?? []).map(
-      member => member.user_id
-    )
-
     const { error } = await supabase
       .from('projects')
       .update({
@@ -197,16 +167,6 @@ export async function saveProject(
     if (error) {
       console.error('Failed to update project', error)
       return { error: error.message }
-    }
-
-    const syncResult = await syncProjectContractors(
-      supabase,
-      id,
-      normalizedContractorIds
-    )
-
-    if (syncResult.error) {
-      return syncResult
     }
 
     const changedFields: string[] = []
@@ -252,21 +212,7 @@ export async function saveProject(
       nextDetails.slug = nextSlug
     }
 
-    const addedContractors = normalizedContractorIds.filter(
-      contractorId => !existingContractorIds.includes(contractorId)
-    )
-    const removedContractors = existingContractorIds.filter(
-      contractorId => !normalizedContractorIds.includes(contractorId)
-    )
-
-    const hasContractorChanges =
-      addedContractors.length > 0 || removedContractors.length > 0
-
-    if (hasContractorChanges) {
-      changedFields.push('contractors')
-    }
-
-    if (changedFields.length > 0 || hasContractorChanges) {
+    if (changedFields.length > 0) {
       const detailsPayload =
         Object.keys(previousDetails).length > 0 ||
         Object.keys(nextDetails).length > 0
@@ -276,9 +222,6 @@ export async function saveProject(
       const event = projectUpdatedEvent({
         name: trimmedName,
         changedFields,
-        contractorChanges: hasContractorChanges
-          ? { added: addedContractors, removed: removedContractors }
-          : undefined,
         details: detailsPayload,
       })
 

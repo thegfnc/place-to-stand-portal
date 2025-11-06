@@ -15,7 +15,6 @@ import type { UserRowState } from '@/lib/settings/users/state/use-users-table-st
 
 const ROLE_LABELS: Record<Database['public']['Enums']['user_role'], string> = {
   ADMIN: 'Admin',
-  CONTRACTOR: 'Contractor',
   CLIENT: 'Client',
 }
 

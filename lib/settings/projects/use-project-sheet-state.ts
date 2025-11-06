@@ -21,7 +21,6 @@ import {
   type ProjectSheetFormValues,
   type ProjectWithClient,
 } from './project-sheet-form'
-import type { ContractorButtonState } from './project-sheet-contractors'
 import {
   buildClientOptions,
   deriveDeleteButtonState,
@@ -30,14 +29,12 @@ import {
   type DeleteButtonState,
   type SubmitButtonState,
 } from './project-sheet-ui-state'
-import { useProjectContractorSelection } from './use-project-contractor-selection'
 
 export type {
   ContractorUserSummary,
   ProjectSheetFormValues,
   ProjectWithClient,
 } from './project-sheet-form'
-export { PROJECT_SHEET_PENDING_REASON } from './project-sheet-contractors'
 export { PROJECT_SHEET_MISSING_CLIENT_REASON } from './project-sheet-ui-state'
 
 export type UseProjectSheetStateArgs = {
@@ -46,8 +43,8 @@ export type UseProjectSheetStateArgs = {
   onComplete: () => void
   project: ProjectWithClient | null
   clients: ClientRow[]
-  contractorDirectory: ContractorUserSummary[]
-  projectContractors: Record<string, ContractorUserSummary[]>
+  contractorDirectory?: ContractorUserSummary[]
+  projectContractors?: Record<string, ContractorUserSummary[]>
 }
 
 export type UseProjectSheetStateReturn = {
@@ -56,28 +53,15 @@ export type UseProjectSheetStateReturn = {
   isEditing: boolean
   isPending: boolean
   clientOptions: ClientOption[]
-  contractorButton: ContractorButtonState
   submitButton: SubmitButtonState
   deleteButton: DeleteButtonState
-  availableContractors: ContractorUserSummary[]
-  selectedContractors: ContractorUserSummary[]
-  contractorRemovalCandidate: ContractorUserSummary | null
-  contractorRemovalName: string | null
-  contractorProjectName: string
-  isContractorPickerOpen: boolean
   isDeleteDialogOpen: boolean
   unsavedChangesDialog: ReturnType<typeof useUnsavedChangesWarning>['dialog']
   handleSheetOpenChange: (open: boolean) => void
   handleSubmit: (values: ProjectSheetFormValues) => void
-  handleAddContractor: (user: ContractorUserSummary) => void
-  handleContractorPickerOpenChange: (open: boolean) => void
-  handleRequestContractorRemoval: (user: ContractorUserSummary) => void
-  handleCancelContractorRemoval: () => void
-  handleConfirmContractorRemoval: () => void
   handleRequestDelete: () => void
   handleCancelDelete: () => void
   handleConfirmDelete: () => void
-  replaceContractors: (contractors: ContractorUserSummary[]) => void
 }
 
 export function useProjectSheetState({
@@ -95,32 +79,6 @@ export function useProjectSheetState({
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const { toast } = useToast()
 
-  const contractorSelection = useProjectContractorSelection({
-    project,
-    projectContractors,
-    contractorDirectory,
-    isPending,
-  })
-
-  const {
-    selectedContractors,
-    availableContractors,
-    contractorButton,
-    isContractorPickerOpen,
-    contractorRemovalCandidate,
-    contractorRemovalName,
-    contractorProjectName,
-    contractorSelectionDirty,
-    handleAddContractor: addContractor,
-    handleContractorPickerOpenChange: changeContractorPickerOpen,
-    handleRequestContractorRemoval: requestContractorRemoval,
-    handleCancelContractorRemoval: cancelContractorRemoval,
-    handleConfirmContractorRemoval: confirmContractorRemoval,
-    resetSelection,
-    markSelectionSaved,
-    replaceContractors,
-  } = contractorSelection
-
   const sortedClients = useMemo(() => sortClientsByName(clients), [clients])
 
   const clientOptions = useMemo<ClientOption[]>(
@@ -137,7 +95,7 @@ export function useProjectSheetState({
     defaultValues: buildProjectFormDefaults(project),
   })
 
-  const hasUnsavedChanges = form.formState.isDirty || contractorSelectionDirty
+  const hasUnsavedChanges = form.formState.isDirty
 
   const { requestConfirmation: confirmDiscard, dialog: unsavedChangesDialog } =
     useUnsavedChangesWarning({ isDirty: hasUnsavedChanges })
@@ -148,8 +106,7 @@ export function useProjectSheetState({
     form.reset(defaults, { keepDefaultValues: false })
     form.clearErrors()
     setFeedback(null)
-    resetSelection()
-  }, [form, project, resetSelection])
+  }, [form, project])
 
   const applyServerFieldErrors = useCallback(
     (fieldErrors?: Record<string, string[]>) => {
@@ -205,7 +162,6 @@ export function useProjectSheetState({
         const payload = createProjectSavePayload({
           values,
           project,
-          selectedContractors,
           isEditing,
         })
 
@@ -235,7 +191,6 @@ export function useProjectSheetState({
             : 'The project is ready to track activity.',
         })
 
-        markSelectionSaved()
         form.reset({
           name: payload.name,
           clientId: payload.clientId,
@@ -256,10 +211,8 @@ export function useProjectSheetState({
       onComplete,
       onOpenChange,
       project,
-      selectedContractors,
       startTransition,
       toast,
-      markSelectionSaved,
     ]
   )
 
@@ -334,27 +287,14 @@ export function useProjectSheetState({
     isEditing,
     isPending,
     clientOptions,
-    contractorButton,
     submitButton,
     deleteButton,
-    availableContractors,
-    selectedContractors,
-    contractorRemovalCandidate,
-    contractorRemovalName,
-    contractorProjectName,
-    isContractorPickerOpen,
     isDeleteDialogOpen,
     unsavedChangesDialog,
     handleSheetOpenChange,
     handleSubmit,
-    handleAddContractor: addContractor,
-    handleContractorPickerOpenChange: changeContractorPickerOpen,
-    handleRequestContractorRemoval: requestContractorRemoval,
-    handleCancelContractorRemoval: cancelContractorRemoval,
-    handleConfirmContractorRemoval: confirmContractorRemoval,
     handleRequestDelete,
     handleCancelDelete,
     handleConfirmDelete,
-    replaceContractors,
   }
 }

@@ -35,10 +35,7 @@ export function assembleProjectsWithRelations({
   relations,
 }: AssembleProjectsArgs): ProjectWithRelations[] {
   const clientLookup = buildClientLookup(relations.clients)
-  const { membersByProject, accessibleProjectIds } = organizeMembers(
-    relations.members,
-    options.forUserId ?? null
-  )
+  const membersByProject = organizeMembers(relations.members)
   const accessibleClientIds = buildAccessibleClientIds(
     relations.clientMemberships
   )
@@ -53,7 +50,7 @@ export function assembleProjectsWithRelations({
 
   const scopedProjects =
     shouldScopeToUser && options.forUserId
-      ? scopeProjects(projects, accessibleProjectIds, accessibleClientIds)
+      ? scopeProjects(projects, accessibleClientIds)
       : projects
 
   return scopedProjects.map(project => ({
@@ -85,14 +82,9 @@ function buildClientLookup(clients: DbClient[]): Map<string, DbClient> {
 }
 
 function organizeMembers(
-  members: MemberWithUser[],
-  userId: string | null
-): {
-  membersByProject: Map<string, ProjectMemberWithUser[]>
-  accessibleProjectIds: Set<string>
-} {
+  members: MemberWithUser[]
+): Map<string, ProjectMemberWithUser[]> {
   const membersByProject = new Map<string, ProjectMemberWithUser[]>()
-  const accessibleProjectIds = new Set<string>()
 
   members.forEach(member => {
     if (
@@ -104,16 +96,12 @@ function organizeMembers(
       return
     }
 
-    if (userId && member.user_id === userId) {
-      accessibleProjectIds.add(member.project_id)
-    }
-
     const memberList = membersByProject.get(member.project_id) ?? []
     memberList.push({ ...member, user: member.user })
     membersByProject.set(member.project_id, memberList)
   })
 
-  return { membersByProject, accessibleProjectIds }
+  return membersByProject
 }
 
 function buildAccessibleClientIds(
@@ -215,14 +203,9 @@ function groupTasksByProject(tasks: RawTaskWithRelations[]): {
 
 function scopeProjects(
   projects: DbProject[],
-  accessibleProjectIds: Set<string>,
   accessibleClientIds: Set<string>
 ): DbProject[] {
   return projects.filter(project => {
-    if (accessibleProjectIds.has(project.id)) {
-      return true
-    }
-
     if (project.client_id && accessibleClientIds.has(project.client_id)) {
       return true
     }

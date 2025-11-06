@@ -1,7 +1,5 @@
-import {
-  PROJECT_SHEET_MISSING_CLIENT_REASON,
-  PROJECT_SHEET_PENDING_REASON,
-} from '@/lib/settings/projects/use-project-sheet-state'
+import { PROJECT_SHEET_PENDING_REASON } from '@/lib/settings/projects/project-sheet-contractors'
+import { PROJECT_SHEET_MISSING_CLIENT_REASON } from '@/lib/settings/projects/project-sheet-ui-state'
 
 export type DisabledFieldState = {
   disabled: boolean

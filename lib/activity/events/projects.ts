@@ -5,7 +5,6 @@ import { joinWithCommas, toMetadata } from './shared'
 export const projectCreatedEvent = (args: {
   name: string
   status: string
-  contractorIds: string[]
 }): ActivityEvent => ({
   verb: ActivityVerbs.PROJECT_CREATED,
   summary: `Created project "${args.name}"`,
@@ -13,16 +12,12 @@ export const projectCreatedEvent = (args: {
     project: {
       status: args.status,
     },
-    contractors: {
-      after: args.contractorIds,
-    },
   }),
 })
 
 export const projectUpdatedEvent = (args: {
   name: string
   changedFields: string[]
-  contractorChanges?: { added: string[]; removed: string[] }
   details?: Record<string, unknown>
 }): ActivityEvent => ({
   verb: ActivityVerbs.PROJECT_UPDATED,
@@ -31,7 +26,6 @@ export const projectUpdatedEvent = (args: {
   }`,
   metadata: toMetadata({
     changedFields: args.changedFields,
-    contractors: args.contractorChanges,
     details: args.details,
   }),
 })

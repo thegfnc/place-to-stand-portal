@@ -97,20 +97,17 @@ export type ProjectSavePayload = {
   startsOn: string | null
   endsOn: string | null
   slug: string | null
-  contractorIds: string[]
 }
 
 type CreatePayloadArgs = {
   values: ProjectSheetFormValues
   project: ProjectWithClient | null
-  selectedContractors: ContractorUserSummary[]
   isEditing: boolean
 }
 
 export const createProjectSavePayload = ({
   values,
   project,
-  selectedContractors,
   isEditing,
 }: CreatePayloadArgs): ProjectSavePayload => ({
   id: project?.id,
@@ -120,7 +117,6 @@ export const createProjectSavePayload = ({
   startsOn: values.startsOn ? values.startsOn : null,
   endsOn: values.endsOn ? values.endsOn : null,
   slug: isEditing ? (values.slug?.trim() ? values.slug.trim() : null) : null,
-  contractorIds: selectedContractors.map(contractor => contractor.id),
 })
 
 export const sortClientsByName = (clients: ClientRow[]): ClientRow[] =>

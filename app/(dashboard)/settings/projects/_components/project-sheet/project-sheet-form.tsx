@@ -24,18 +24,13 @@ import {
 } from '@/components/ui/select'
 import { SearchableCombobox } from '@/components/ui/searchable-combobox'
 import { PROJECT_STATUS_OPTIONS } from '@/lib/constants'
-import type {
-  ContractorUserSummary,
-  ProjectSheetFormValues,
-} from '@/lib/settings/projects/use-project-sheet-state'
-import type { ContractorButtonState } from '@/lib/settings/projects/project-sheet-contractors'
+import type { ProjectSheetFormValues } from '@/lib/settings/projects/use-project-sheet-state'
 import type {
   ClientOption,
   DeleteButtonState,
   SubmitButtonState,
 } from '@/lib/settings/projects/project-sheet-ui-state'
 import { useSheetFormControls } from '@/lib/hooks/use-sheet-form-controls'
-import { ProjectContractorsSection } from './project-contractors-section'
 import type { ProjectSheetFieldState } from './project-sheet-field-state'
 
 export type ProjectSheetFormProps = {
@@ -45,17 +40,10 @@ export type ProjectSheetFormProps = {
   isPending: boolean
   feedback: string | null
   clientOptions: ClientOption[]
-  contractorButton: ContractorButtonState
   submitButton: SubmitButtonState
   deleteButton: DeleteButtonState
-  availableContractors: ContractorUserSummary[]
-  selectedContractors: ContractorUserSummary[]
-  isContractorPickerOpen: boolean
   onSubmit: (values: ProjectSheetFormValues) => void
   onRequestDelete: () => void
-  onAddContractor: (user: ContractorUserSummary) => void
-  onContractorPickerOpenChange: (open: boolean) => void
-  onRequestContractorRemoval: (user: ContractorUserSummary) => void
   isSheetOpen: boolean
   historyKey: string
 }
@@ -68,17 +56,10 @@ export function ProjectSheetForm(props: ProjectSheetFormProps) {
     isPending,
     feedback,
     clientOptions,
-    contractorButton,
     submitButton,
     deleteButton,
-    availableContractors,
-    selectedContractors,
-    isContractorPickerOpen,
     onSubmit,
     onRequestDelete,
-    onAddContractor,
-    onContractorPickerOpenChange,
-    onRequestContractorRemoval,
     isSheetOpen,
     historyKey,
   } = props
@@ -262,16 +243,6 @@ export function ProjectSheetForm(props: ProjectSheetFormProps) {
           />
         </div>
 
-        <ProjectContractorsSection
-          availableContractors={availableContractors}
-          selectedContractors={selectedContractors}
-          contractorButton={contractorButton}
-          isContractorPickerOpen={isContractorPickerOpen}
-          isPending={isPending}
-          onContractorPickerOpenChange={onContractorPickerOpenChange}
-          onAddContractor={onAddContractor}
-          onRequestContractorRemoval={onRequestContractorRemoval}
-        />
 
         {feedback ? (
           <p className='border-destructive/40 bg-destructive/10 text-destructive rounded-md border px-3 py-2 text-sm'>

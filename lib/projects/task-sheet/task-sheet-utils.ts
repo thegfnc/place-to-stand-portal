@@ -139,7 +139,7 @@ export const buildAssigneeItems = ({
     }
 
     const user = member.user
-    if (!user || user.deleted_at || user.role !== 'CONTRACTOR') {
+    if (!user || user.deleted_at || user.role !== 'ADMIN') {
       return
     }
 
@@ -151,7 +151,7 @@ export const buildAssigneeItems = ({
       value: member.user_id,
       label,
       description: descriptionParts.join(' • '),
-      keywords: [user.email, 'contractor'].filter(
+      keywords: [user.email, 'admin'].filter(
         (keyword): keyword is string => Boolean(keyword)
       ),
     })

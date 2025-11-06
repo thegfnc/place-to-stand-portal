@@ -58,7 +58,6 @@ export async function fetchProjectRelations(
             id,
             project_id,
             user_id,
-            role,
             created_at,
             deleted_at,
             user:users (

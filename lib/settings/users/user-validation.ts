@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-export const USER_ROLES = ['ADMIN', 'CONTRACTOR', 'CLIENT'] as const
+export const USER_ROLES = ['ADMIN', 'CLIENT'] as const
 
 export const createUserSchema = z.object({
   email: z.string().email(),

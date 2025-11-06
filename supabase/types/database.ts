@@ -819,7 +819,7 @@ export type Database = {
         | 'BLOCKED'
         | 'DONE'
         | 'ARCHIVED'
-      user_role: 'ADMIN' | 'CONTRACTOR' | 'CLIENT'
+      user_role: 'ADMIN' | 'CLIENT'
     }
     CompositeTypes: {
       [_ in never]: never
@@ -958,7 +958,7 @@ export const Constants = {
         'DONE',
         'ARCHIVED',
       ],
-      user_role: ['ADMIN', 'CONTRACTOR', 'CLIENT'],
+      user_role: ['ADMIN', 'CLIENT'],
     },
   },
 } as const

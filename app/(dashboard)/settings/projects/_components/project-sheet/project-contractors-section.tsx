@@ -17,7 +17,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover'
-import { PROJECT_SHEET_PENDING_REASON } from '@/lib/settings/projects/use-project-sheet-state'
+import { PROJECT_SHEET_PENDING_REASON } from '@/lib/settings/projects/project-sheet-contractors'
 import type { ContractorUserSummary } from '@/lib/settings/projects/use-project-sheet-state'
 import type { ContractorButtonState } from '@/lib/settings/projects/project-sheet-contractors'
 

@@ -68,7 +68,7 @@ export const useUserSheetState = ({
     defaultValues: {
       fullName: user?.full_name ?? '',
       email: user?.email ?? '',
-      role: user?.role ?? 'CONTRACTOR',
+      role: user?.role ?? 'CLIENT',
       password: '',
       avatarPath: user?.avatar_url ?? null,
       avatarRemoved: false,
@@ -88,7 +88,7 @@ export const useUserSheetState = ({
     form.reset({
       fullName: user?.full_name ?? '',
       email: user?.email ?? '',
-      role: user?.role ?? 'CONTRACTOR',
+      role: user?.role ?? 'CLIENT',
       password: '',
       avatarPath: user?.avatar_url ?? null,
       avatarRemoved: false,

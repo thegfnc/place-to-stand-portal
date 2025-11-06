@@ -31,8 +31,8 @@ type Props = {
   onComplete: () => void
   project: ProjectWithClient | null
   clients: ClientRow[]
-  contractorDirectory: ContractorUserSummary[]
-  projectContractors: Record<string, ContractorUserSummary[]>
+  contractorDirectory?: ContractorUserSummary[]
+  projectContractors?: Record<string, ContractorUserSummary[]>
 }
 
 export function ProjectSheet(props: Props) {
@@ -42,24 +42,12 @@ export function ProjectSheet(props: Props) {
     isEditing,
     isPending,
     clientOptions,
-    contractorButton,
     submitButton,
     deleteButton,
-    availableContractors,
-    selectedContractors,
-    contractorRemovalCandidate,
-    contractorRemovalName,
-    contractorProjectName,
-    isContractorPickerOpen,
     isDeleteDialogOpen,
     unsavedChangesDialog,
     handleSheetOpenChange,
     handleSubmit,
-    handleAddContractor,
-    handleContractorPickerOpenChange,
-    handleRequestContractorRemoval,
-    handleCancelContractorRemoval,
-    handleConfirmContractorRemoval,
     handleRequestDelete,
     handleCancelDelete,
     handleConfirmDelete,
@@ -95,17 +83,10 @@ export function ProjectSheet(props: Props) {
             isPending={isPending}
             feedback={feedback}
             clientOptions={clientOptions}
-            contractorButton={contractorButton}
             submitButton={submitButton}
             deleteButton={deleteButton}
-            availableContractors={availableContractors}
-            selectedContractors={selectedContractors}
-            isContractorPickerOpen={isContractorPickerOpen}
             onSubmit={handleSubmit}
             onRequestDelete={handleRequestDelete}
-            onAddContractor={handleAddContractor}
-            onContractorPickerOpenChange={handleContractorPickerOpenChange}
-            onRequestContractorRemoval={handleRequestContractorRemoval}
             isSheetOpen={props.open}
             historyKey={props.project?.id ?? 'project:new'}
           />
@@ -114,14 +95,9 @@ export function ProjectSheet(props: Props) {
       <ProjectSheetDialogs
         isDeleteDialogOpen={isDeleteDialogOpen}
         isPending={isPending}
-        contractorRemovalCandidate={contractorRemovalCandidate}
-        contractorRemovalName={contractorRemovalName}
-        contractorProjectName={contractorProjectName}
         unsavedChangesDialog={unsavedChangesDialog}
         onCancelDelete={handleCancelDelete}
         onConfirmDelete={handleConfirmDelete}
-        onCancelContractorRemoval={handleCancelContractorRemoval}
-        onConfirmContractorRemoval={handleConfirmContractorRemoval}
       />
     </>
   )

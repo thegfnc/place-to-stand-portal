@@ -34,7 +34,7 @@ type NavGroup = {
 const NAV_GROUPS: NavGroup[] = [
   {
     title: 'Portal',
-    roles: ['ADMIN', 'CONTRACTOR', 'CLIENT'],
+    roles: ['ADMIN', 'CLIENT'],
     items: [
       {
         href: '/home',
@@ -45,7 +45,7 @@ const NAV_GROUPS: NavGroup[] = [
   },
   {
     title: 'Work',
-    roles: ['ADMIN', 'CONTRACTOR', 'CLIENT'],
+    roles: ['ADMIN', 'CLIENT'],
     items: [
       {
         href: '/projects',

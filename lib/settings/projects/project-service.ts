@@ -21,7 +21,6 @@ export const projectSchema = z
       .or(z.literal(''))
       .nullish()
       .transform(value => (value ? value : null)),
-    contractorIds: z.array(z.string().uuid()).optional(),
   })
   .superRefine((data, ctx) => {
     if (data.startsOn && data.endsOn) {
@@ -141,11 +140,11 @@ export async function syncProjectContractors(
     }
 
     const invalidUsers = (users ?? []).filter(
-      user => user.deleted_at !== null || user.role !== 'CONTRACTOR'
+      user => user.deleted_at !== null || user.role !== 'ADMIN'
     )
 
     if (invalidUsers.length > 0) {
-      return { error: 'Only active contractor users can be assigned.' }
+      return { error: 'Only active admin users can be assigned.' }
     }
   }
 
@@ -174,7 +173,7 @@ export async function syncProjectContractors(
   const archiveIds = projectMembers
     .filter(
       member =>
-        member.user?.role === 'CONTRACTOR' &&
+        member.user?.role === 'ADMIN' &&
         member.deleted_at === null &&
         !uniqueSet.has(member.user_id)
     )
