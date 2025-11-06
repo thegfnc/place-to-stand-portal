@@ -58,6 +58,7 @@ export async function GET(
       transform: {
         quality: 80,
         width: transformWidth,
+        resize: 'contain',
       },
     })
 
