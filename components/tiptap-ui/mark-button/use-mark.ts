@@ -64,7 +64,7 @@ export const MARK_SHORTCUT_KEYS: Record<Mark, string> = {
   bold: "mod+b",
   italic: "mod+i",
   underline: "mod+u",
-  strike: "mod+shift+s",
+  strike: "mod+shift+x",
   code: "mod+e",
   superscript: "mod+.",
   subscript: "mod+,",

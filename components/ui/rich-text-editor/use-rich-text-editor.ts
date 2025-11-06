@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import type { Editor as TipTapEditor } from '@tiptap/core'
 import { useEditor } from '@tiptap/react'
 import { StarterKit } from '@tiptap/starter-kit'
+import { Strike } from '@tiptap/extension-strike'
 import { Image } from '@tiptap/extension-image'
 import { TaskItem, TaskList } from '@tiptap/extension-list'
 import { TextAlign } from '@tiptap/extension-text-align'
@@ -41,28 +42,91 @@ type UseRichTextEditorReturn = {
 }
 
 const buildExtensions = (placeholder?: string) => {
+  // Extend Strike extension to add Cmd/Ctrl+Shift+X keyboard shortcut
+  const StrikeWithShortcut = Strike.extend({
+    addKeyboardShortcuts() {
+      return {
+        'Mod-Shift-x': () => this.editor.commands.toggleStrike(),
+      }
+    },
+  }).configure({
+    HTMLAttributes: {
+      class: 'line-through',
+    },
+  })
+
+  // Extend Link extension to add Cmd/Ctrl+K keyboard shortcut
+  const LinkWithShortcut = LinkExtension.extend({
+    addKeyboardShortcuts() {
+      return {
+        'Mod-k': () => {
+          const { from, to } = this.editor.state.selection
+          const hasSelection = from !== to
+
+          // If link is already active, extend the mark range to allow editing
+          if (this.editor.isActive('link')) {
+            this.editor.chain().focus().extendMarkRange('link').run()
+            return true
+          }
+
+          // If text is selected, create a link with the selected text
+          if (hasSelection) {
+            const text = this.editor.state.doc.textBetween(from, to)
+            // Set the link and then extend the mark range to ensure it's active
+            this.editor
+              .chain()
+              .focus()
+              .setLink({ href: text || '' })
+              .extendMarkRange('link')
+              .run()
+            // Dispatch custom DOM event to trigger popover opening
+            // Use setTimeout to ensure the link is set before opening
+            setTimeout(() => {
+              const event = new CustomEvent('tiptap:openLinkPopover')
+              this.editor.view.dom.dispatchEvent(event)
+            }, 0)
+            return true
+          }
+
+          // If no selection, insert placeholder text with link mark
+          // This makes the link active and triggers the popover to open
+          this.editor
+            .chain()
+            .focus()
+            .insertContent({
+              type: 'text',
+              text: ' ',
+              marks: [{ type: 'link', attrs: { href: '' } }],
+            })
+            .extendMarkRange('link')
+            .run()
+          // Dispatch custom DOM event to trigger popover opening
+          setTimeout(() => {
+            const event = new CustomEvent('tiptap:openLinkPopover')
+            this.editor.view.dom.dispatchEvent(event)
+          }, 0)
+          return true
+        },
+      }
+    },
+  })
+
   return [
     StarterKit.configure({
       horizontalRule: false,
       // Disable history since form-level undo/redo is used
       // @ts-expect-error - history is a valid option but not in TypeScript types
       history: false,
-      link: {
-        openOnClick: false,
-        enableClickSelection: true,
-      },
+      link: false, // Disable link in StarterKit since we're using LinkWithShortcut
+      strike: false, // Disable strike in StarterKit since we're using StrikeWithShortcut
       bulletList: {
         keepMarks: true,
       },
       orderedList: {
         keepMarks: true,
       },
-      strike: {
-        HTMLAttributes: {
-          class: 'line-through',
-        },
-      },
     }),
+    StrikeWithShortcut,
     HorizontalRule,
     TextAlign.configure({ types: ['heading', 'paragraph'] }),
     TaskList,
@@ -74,7 +138,7 @@ const buildExtensions = (placeholder?: string) => {
     Subscript,
     Selection,
     Underline,
-    LinkExtension.configure({
+    LinkWithShortcut.configure({
       openOnClick: false,
       autolink: true,
       linkOnPaste: true,
