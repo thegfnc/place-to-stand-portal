@@ -1,5 +1,6 @@
 'use client'
 
+import { useMemo } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import type { LucideIcon } from 'lucide-react'
@@ -18,8 +19,10 @@ import type { AppUser, UserRole } from '@/lib/auth/session'
 import { UserMenu } from './user-menu'
 import Image from 'next/image'
 
-import PTSLogoTransparent from '../../public/pts-logo-transparent.png'
+import PTSLogoBlackTransparent from '../../public/pts-logo-black-transparent.png'
+import PTSLogoWhiteTransparent from '../../public/pts-logo-white-transparent.png'
 import { Separator } from '../ui/separator'
+import { useTheme } from '@/components/providers/theme-provider'
 
 type NavGroup = {
   title?: string | null
@@ -89,14 +92,28 @@ type Props = {
 export function Sidebar({ user }: Props) {
   const pathname = usePathname()
   const role = user.role
+  const { theme, mounted: themeMounted } = useTheme()
+
+  // Compute logo source - always start with black to match SSR, then update after mount
+  const logoSrc = useMemo(() => {
+    // During SSR or initial render, always return black to avoid hydration mismatch
+    // The theme provider will update this after mount
+    if (!themeMounted) {
+      return PTSLogoBlackTransparent
+    }
+
+    // After theme provider is mounted, use theme from context
+    return theme === 'dark' ? PTSLogoWhiteTransparent : PTSLogoBlackTransparent
+  }, [theme, themeMounted])
 
   return (
     <aside className='bg-background/90 hidden w-72 shrink-0 border-r md:flex md:flex-col'>
       <div className='flex flex-1 flex-col'>
         <div className='space-y-10 px-6 py-8'>
-          <div>
+          <div suppressHydrationWarning>
             <Image
-              src={PTSLogoTransparent}
+              key={logoSrc.src}
+              src={logoSrc}
               alt='Place To Stand Agency logo'
               className='px-4'
             />

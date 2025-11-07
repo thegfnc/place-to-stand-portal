@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { Loader2, LogOut, UserCog } from 'lucide-react'
+import { Loader2, LogOut, Moon, Sun, UserCog } from 'lucide-react'
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
@@ -16,6 +16,7 @@ import {
 
 import type { AppUser } from '@/lib/auth/session'
 import { signOut } from '@/app/(dashboard)/_actions/sign-out'
+import { useTheme } from '@/components/providers/theme-provider'
 
 import { EditProfileDialog } from './edit-profile-dialog'
 
@@ -28,6 +29,7 @@ export function UserMenu({ user, align = 'end' }: Props) {
   const [isPending, startTransition] = useTransition()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false)
+  const { theme, toggleTheme } = useTheme()
 
   const initials = user.full_name
     ? user.full_name
@@ -90,6 +92,20 @@ export function UserMenu({ user, align = 'end' }: Props) {
             >
               <UserCog className='h-4 w-4' />
               <span>Edit profile</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onSelect={event => {
+                event.preventDefault()
+                toggleTheme()
+              }}
+              className='flex items-center gap-2'
+            >
+              {theme === 'dark' ? (
+                <Sun className='h-4 w-4' />
+              ) : (
+                <Moon className='h-4 w-4' />
+              )}
+              <span>{theme === 'dark' ? 'Light mode' : 'Dark mode'}</span>
             </DropdownMenuItem>
             <DropdownMenuItem
               disabled={isPending}
