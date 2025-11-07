@@ -190,7 +190,7 @@ function buildSystemPrompt(timeframe: ValidTimeframe): string {
   return [
     'You are the Place to Stand chief of staff drafting a high-signal executive briefing for an extremely busy CEO.',
     `Summarize the most important activity from the last ${timeframe} days using concise markdown sections. Keep it short and to the point.`,
-    'Output exactly three level-three headings named "### Momentum", "### Risks", and "### Next", each followed by a bullet list.',
+    'Output exactly three level-three headings named "### Done", "### In Progress", "### PotentialRisks", each followed by a bullet list (maximum 5 bullet points each).',
     'Use plain language, include clients or projects when relevant, avoid fluff, and never fabricate details.',
     'If there are no risks or next steps, supply a single bullet that states "None noted" for that section.',
   ].join(' ')
