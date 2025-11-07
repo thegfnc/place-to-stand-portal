@@ -72,39 +72,28 @@ export async function GET(
   }
 
   if (actor.role !== 'ADMIN') {
-    const projectId = attachment.task.project_id
     const clientId = attachment.task.project?.client_id ?? null
 
-    const { data: projectMember } = await supabase
-      .from('project_members')
+    if (!clientId) {
+      return NextResponse.json(
+        { error: 'You do not have access to this attachment.' },
+        { status: 403 }
+      )
+    }
+
+    const { data: clientMember } = await supabase
+      .from('client_members')
       .select('id')
-      .eq('project_id', projectId)
+      .eq('client_id', clientId)
       .eq('user_id', actor.id)
       .is('deleted_at', null)
       .maybeSingle()
 
-    if (!projectMember) {
-      if (!clientId) {
-        return NextResponse.json(
-          { error: 'You do not have access to this attachment.' },
-          { status: 403 }
-        )
-      }
-
-      const { data: clientMember } = await supabase
-        .from('client_members')
-        .select('id')
-        .eq('client_id', clientId)
-        .eq('user_id', actor.id)
-        .is('deleted_at', null)
-        .maybeSingle()
-
-      if (!clientMember) {
-        return NextResponse.json(
-          { error: 'You do not have access to this attachment.' },
-          { status: 403 }
-        )
-      }
+    if (!clientMember) {
+      return NextResponse.json(
+        { error: 'You do not have access to this attachment.' },
+        { status: 403 }
+      )
     }
   }
 

@@ -29,13 +29,6 @@ export async function destroyPortalUser(
         .eq('user_id', input.id),
     },
     {
-      context: 'project memberships',
-      result: await adminClient
-        .from('project_members')
-        .delete()
-        .eq('user_id', input.id),
-    },
-    {
       context: 'task assignments',
       result: await adminClient
         .from('task_assignees')

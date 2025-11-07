@@ -16,7 +16,6 @@ export default async function UsersSettingsPage() {
   const [
     { data: users, error: usersError },
     { data: clientMemberships, error: clientMembershipsError },
-    { data: projectMemberships, error: projectMembershipsError },
     { data: taskAssignments, error: taskAssignmentsError },
   ] = await Promise.all([
     supabase
@@ -26,7 +25,6 @@ export default async function UsersSettingsPage() {
       )
       .order('created_at', { ascending: false }),
     supabase.from('client_members').select('user_id').is('deleted_at', null),
-    supabase.from('project_members').select('user_id').is('deleted_at', null),
     supabase.from('task_assignees').select('user_id').is('deleted_at', null),
   ])
 
@@ -36,10 +34,6 @@ export default async function UsersSettingsPage() {
 
   if (clientMembershipsError) {
     console.error('Failed to load client memberships', clientMembershipsError)
-  }
-
-  if (projectMembershipsError) {
-    console.error('Failed to load project memberships', projectMembershipsError)
   }
 
   if (taskAssignmentsError) {
@@ -60,10 +54,8 @@ export default async function UsersSettingsPage() {
 
   for (const membership of clientMemberships ?? []) {
     ensureSummary(membership.user_id).clients += 1
-  }
-
-  for (const membership of projectMemberships ?? []) {
-    ensureSummary(membership.user_id).projects += 1
+    // Note: Projects count is now 0 as project_members no longer exists
+    // Client members have access to all projects under their client
   }
 
   for (const assignment of taskAssignments ?? []) {

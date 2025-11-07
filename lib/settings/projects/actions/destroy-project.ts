@@ -99,18 +99,8 @@ export async function destroyProject(
     }
   }
 
-  const { error: memberDeleteError } = await supabase
-    .from('project_members')
-    .delete()
-    .eq('project_id', projectId)
-
-  if (memberDeleteError) {
-    console.error(
-      'Failed to remove project memberships before delete',
-      memberDeleteError
-    )
-    return { error: 'Unable to remove project memberships.' }
-  }
+  // Note: No need to delete project_members as the table no longer exists
+  // Project access is managed through client_members, which are not project-specific
 
   const { error: deleteError } = await supabase
     .from('projects')

@@ -6,8 +6,6 @@ export type DbClientMember =
 export type DbProject = Database['public']['Tables']['projects']['Row']
 export type DbTask = Database['public']['Tables']['tasks']['Row']
 export type DbUser = Database['public']['Tables']['users']['Row']
-export type DbProjectMember =
-  Database['public']['Tables']['project_members']['Row']
 export type DbTaskComment = Database['public']['Tables']['task_comments']['Row']
 export type DbTimeLog = Database['public']['Tables']['time_logs']['Row']
 export type DbTimeLogTask =
@@ -15,7 +13,14 @@ export type DbTimeLogTask =
 export type DbTaskAttachment =
   Database['public']['Tables']['task_attachments']['Row']
 
-export type ProjectMemberWithUser = DbProjectMember & {
+// ProjectMemberWithUser represents a client member who has access to a project
+// The project_id is derived from the client_id for backwards compatibility
+export type ProjectMemberWithUser = {
+  id: number
+  project_id: string
+  user_id: string
+  created_at: string
+  deleted_at: string | null
   user: DbUser
 }
 

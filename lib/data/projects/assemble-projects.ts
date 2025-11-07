@@ -35,7 +35,10 @@ export function assembleProjectsWithRelations({
   relations,
 }: AssembleProjectsArgs): ProjectWithRelations[] {
   const clientLookup = buildClientLookup(relations.clients)
-  const membersByProject = organizeMembers(relations.members)
+  const membersByProject = organizeMembers(
+    relations.members,
+    projectClientLookup
+  )
   const accessibleClientIds = buildAccessibleClientIds(
     relations.clientMemberships
   )
@@ -82,23 +85,45 @@ function buildClientLookup(clients: DbClient[]): Map<string, DbClient> {
 }
 
 function organizeMembers(
-  members: MemberWithUser[]
+  members: MemberWithUser[],
+  projectClientLookup: Map<string, string | null>
 ): Map<string, ProjectMemberWithUser[]> {
   const membersByProject = new Map<string, ProjectMemberWithUser[]>()
+  const membersByClient = new Map<string, MemberWithUser[]>()
 
+  // First, organize members by client
   members.forEach(member => {
     if (
       !member ||
       member.deleted_at ||
       !member.user ||
-      member.user.deleted_at
+      member.user.deleted_at ||
+      !member.client_id
     ) {
       return
     }
 
-    const memberList = membersByProject.get(member.project_id) ?? []
-    memberList.push({ ...member, user: member.user })
-    membersByProject.set(member.project_id, memberList)
+    const memberList = membersByClient.get(member.client_id) ?? []
+    memberList.push(member)
+    membersByClient.set(member.client_id, memberList)
+  })
+
+  // Then, map client members to all projects under that client
+  projectClientLookup.forEach((clientId, projectId) => {
+    if (clientId) {
+      const clientMembers = membersByClient.get(clientId) ?? []
+      const projectMembers: ProjectMemberWithUser[] = clientMembers.map(
+        member => ({
+          id: member.id,
+          project_id: projectId, // Map to project for backwards compatibility
+          user_id: member.user_id,
+          created_at: member.created_at,
+          deleted_at: member.deleted_at,
+          user: member.user!,
+        })
+      )
+      membersByProject.set(projectId, projectMembers)
+    }
   })
 
   return membersByProject

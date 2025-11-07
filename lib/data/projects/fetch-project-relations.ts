@@ -1,4 +1,4 @@
-import type { DbClient, DbProjectMember, DbTimeLog, DbUser } from '@/lib/types'
+import type { DbClient, DbClientMember, DbTimeLog, DbUser } from '@/lib/types'
 
 import type {
   ClientMembership,
@@ -50,13 +50,15 @@ export async function fetchProjectRelations(
         .in('id', clientIds)
     : Promise.resolve({ data: [], error: null })
 
-  const membersPromise = projectIds.length
+  // Fetch client members for all projects' clients instead of project_members
+  // Members are now organized by client, and all members of a client have access to all projects under that client
+  const membersPromise = clientIds.length
     ? supabase
-        .from('project_members')
+        .from('client_members')
         .select(
           `
             id,
-            project_id,
+            client_id,
             user_id,
             created_at,
             deleted_at,
@@ -72,7 +74,7 @@ export async function fetchProjectRelations(
             )
           `
         )
-        .in('project_id', projectIds)
+        .in('client_id', clientIds)
     : Promise.resolve({ data: [], error: null })
 
   const tasksPromise = projectIds.length
@@ -208,7 +210,7 @@ export async function fetchProjectRelations(
   return {
     clients: (clientsData ?? []) as DbClient[],
     members: (
-      (membersData ?? []) as Array<DbProjectMember & { user: DbUser | null }>
+      (membersData ?? []) as Array<DbClientMember & { user: DbUser | null }>
     ).filter(Boolean) as MemberWithUser[],
     tasks: (tasksData ?? []) as RawTaskWithRelations[],
     hourBlocks: (hourBlocksData ?? []) as RawHourBlock[],

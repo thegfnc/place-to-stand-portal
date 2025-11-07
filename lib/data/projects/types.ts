@@ -1,11 +1,11 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 
-import type { DbProjectMember, DbTask, DbUser } from '@/lib/types'
+import type { DbClientMember, DbTask, DbUser } from '@/lib/types'
 import type { Database } from '@/supabase/types/database'
 
 export type SupabaseServiceClient = SupabaseClient<Database>
 
-export type MemberWithUser = DbProjectMember & { user: DbUser | null }
+export type MemberWithUser = DbClientMember & { user: DbUser | null }
 
 export type RawTaskRelation = {
   id: string

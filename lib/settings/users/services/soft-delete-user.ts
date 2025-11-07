@@ -29,14 +29,6 @@ export async function softDeletePortalUser(
         .is('deleted_at', null),
     },
     {
-      context: 'project assignments',
-      promise: adminClient
-        .from('project_members')
-        .update({ deleted_at: deletionTimestamp })
-        .eq('user_id', input.id)
-        .is('deleted_at', null),
-    },
-    {
       context: 'task assignments',
       promise: adminClient
         .from('task_assignees')
