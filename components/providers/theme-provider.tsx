@@ -1,6 +1,12 @@
 'use client'
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  type ReactNode,
+} from 'react'
 
 type Theme = 'light' | 'dark'
 
@@ -29,7 +35,9 @@ function getInitialTheme(): Theme {
   }
 
   // Fall back to system preference (same logic as blocking script)
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+  return window.matchMedia('(prefers-color-scheme: dark)').matches
+    ? 'dark'
+    : 'light'
 }
 
 type Props = {
@@ -41,24 +49,29 @@ export function ThemeProvider({ children }: Props) {
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
-    setMounted(true)
-    // Sync with DOM first (what blocking script set), then localStorage
-    const root = document.documentElement
-    if (root.classList.contains('dark')) {
-      setThemeState('dark')
-      return
-    }
+    // Defer all setState calls to avoid synchronous state updates in effect
+    queueMicrotask(() => {
+      setMounted(true)
+      // Sync with DOM first (what blocking script set), then localStorage
+      const root = document.documentElement
+      if (root.classList.contains('dark')) {
+        setThemeState('dark')
+        return
+      }
 
-    // Check localStorage
-    const stored = localStorage.getItem(THEME_STORAGE_KEY) as Theme | null
-    if (stored === 'light' || stored === 'dark') {
-      setThemeState(stored)
-    } else {
-      // If no stored value, check system preference
-      const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-      const systemTheme: Theme = systemPrefersDark ? 'dark' : 'light'
-      setThemeState(systemTheme)
-    }
+      // Check localStorage
+      const stored = localStorage.getItem(THEME_STORAGE_KEY) as Theme | null
+      if (stored === 'light' || stored === 'dark') {
+        setThemeState(stored)
+      } else {
+        // If no stored value, check system preference
+        const systemPrefersDark = window.matchMedia(
+          '(prefers-color-scheme: dark)'
+        ).matches
+        const systemTheme: Theme = systemPrefersDark ? 'dark' : 'light'
+        setThemeState(systemTheme)
+      }
+    })
   }, [])
 
   useEffect(() => {
@@ -92,4 +105,3 @@ export function useTheme() {
   }
   return context
 }
-

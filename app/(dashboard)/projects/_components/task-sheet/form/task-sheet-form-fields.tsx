@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import type React from 'react'
 import {
   FormField,
   FormItem,
@@ -106,11 +107,11 @@ export function TaskSheetFormFields(props: TaskSheetFormFieldsProps) {
                     {...field}
                     ref={(node) => {
                       firstFieldRef.current = node
-                      const { ref } = field
-                      if (typeof ref === 'function') {
-                        ref(node)
-                      } else if (ref) {
-                        ref.current = node
+                      if (typeof field.ref === 'function') {
+                        field.ref(node)
+                      } else if (field.ref) {
+                        ;(field.ref as React.MutableRefObject<HTMLInputElement | null>).current =
+                          node
                       }
                     }}
                     disabled={disabled}

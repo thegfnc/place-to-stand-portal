@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef } from 'react'
+import type React from 'react'
 import { Redo2, Trash2, Undo2 } from 'lucide-react'
 import type { UseFormReturn } from 'react-hook-form'
 
@@ -109,11 +110,11 @@ export function ProjectSheetForm(props: ProjectSheetFormProps) {
                     {...field}
                     ref={(node) => {
                       firstFieldRef.current = node
-                      const { ref } = field
-                      if (typeof ref === 'function') {
-                        ref(node)
-                      } else if (ref) {
-                        ref.current = node
+                      if (typeof field.ref === 'function') {
+                        field.ref(node)
+                      } else if (field.ref) {
+                        ;(field.ref as React.MutableRefObject<HTMLInputElement | null>).current =
+                          node
                       }
                     }}
                     placeholder='Website redesign'
