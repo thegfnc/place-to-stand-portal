@@ -66,7 +66,7 @@
 - **Type Safety:** Avoid `any`; model domain data with shared TypeScript types and Zod schemas to keep server-client parity.
 - **Dependency Management:** Install new packages via `npm install <package>@latest` and record rationale in PRs. Remove unused deps promptly.
 - **Component Strategy:** Use `npx shadcn@latest add <component>` before building custom UI. Extend via composition rather than heavy overrides.
-- **Database Workflow:** Manage schema updates via Supabase CLI migrations. Describe migration intent and run diff checks when applicable.
+- **Database Workflow:** Manage schema updates via Supabase CLI migrations. Describe migration intent and run diff checks when applicable. Old migrations should NEVER be edited. Only new migrations should be added.
 - **Secrets & Config:** Reference environment variables through `process.env` with typed helpers in `src/lib/utils.ts`. Never hardcode secrets.
 - **RBAC Implementation:** Enforce role-based access control both at the Supabase level and within application logic to protect sensitive data and actions.
 - **Form Errors:** Surface field level errors from Zod on the field instead of just a single error state for the form. For every disabled button, add a tooltip hover explaining why it's disabled
