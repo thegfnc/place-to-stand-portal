@@ -784,10 +784,6 @@ export type Database = {
     }
     Functions: {
       is_admin: { Args: never; Returns: boolean }
-      is_project_member: {
-        Args: { target_project_id: string }
-        Returns: boolean
-      }
       log_activity: {
         Args: {
           p_actor_id: string
