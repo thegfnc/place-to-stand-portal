@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { Redo2, Trash2, Undo2 } from 'lucide-react'
 import type { UseFormReturn } from 'react-hook-form'
 
@@ -76,6 +76,18 @@ export function ProjectSheetForm(props: ProjectSheetFormProps) {
     historyKey,
   })
 
+  const firstFieldRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (isSheetOpen && firstFieldRef.current) {
+      // Small delay to ensure sheet animation completes
+      const timeoutId = setTimeout(() => {
+        firstFieldRef.current?.focus()
+      }, 100)
+      return () => clearTimeout(timeoutId)
+    }
+  }, [isSheetOpen])
+
   return (
     <Form {...form}>
       <form
@@ -95,7 +107,15 @@ export function ProjectSheetForm(props: ProjectSheetFormProps) {
                 >
                   <Input
                     {...field}
-                    value={field.value ?? ''}
+                    ref={(node) => {
+                      firstFieldRef.current = node
+                      const { ref } = field
+                      if (typeof ref === 'function') {
+                        ref(node)
+                      } else if (ref) {
+                        ref.current = node
+                      }
+                    }}
                     placeholder='Website redesign'
                     disabled={fieldState.name.disabled}
                   />

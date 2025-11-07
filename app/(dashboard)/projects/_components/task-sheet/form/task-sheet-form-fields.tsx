@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import {
   FormField,
   FormItem,
@@ -49,6 +50,7 @@ export type TaskSheetFormFieldsProps = {
   acceptedAttachmentTypes: readonly string[]
   maxAttachmentSize: number
   feedback: string | null
+  isSheetOpen: boolean
 }
 
 export function TaskSheetFormFields(props: TaskSheetFormFieldsProps) {
@@ -71,7 +73,20 @@ export function TaskSheetFormFields(props: TaskSheetFormFieldsProps) {
     acceptedAttachmentTypes,
     maxAttachmentSize,
     feedback,
+    isSheetOpen,
   } = props
+
+  const firstFieldRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (isSheetOpen && firstFieldRef.current) {
+      // Small delay to ensure sheet animation completes
+      const timeoutId = setTimeout(() => {
+        firstFieldRef.current?.focus()
+      }, 100)
+      return () => clearTimeout(timeoutId)
+    }
+  }, [isSheetOpen])
 
   return (
     <>
@@ -89,7 +104,15 @@ export function TaskSheetFormFields(props: TaskSheetFormFieldsProps) {
                 <DisabledFieldTooltip disabled={disabled} reason={reason}>
                   <Input
                     {...field}
-                    value={field.value ?? ''}
+                    ref={(node) => {
+                      firstFieldRef.current = node
+                      const { ref } = field
+                      if (typeof ref === 'function') {
+                        ref(node)
+                      } else if (ref) {
+                        ref.current = node
+                      }
+                    }}
                     disabled={disabled}
                     placeholder='Give the task a clear name'
                   />

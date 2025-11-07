@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useMemo } from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { Redo2, Trash2, Undo2 } from 'lucide-react'
 import type { UseFormReturn } from 'react-hook-form'
 
@@ -97,6 +97,18 @@ export function ClientSheetForm({
     return isEditing ? 'Save changes' : 'Create client'
   }, [isEditing, isPending])
 
+  const firstFieldRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (isSheetOpen && firstFieldRef.current) {
+      // Small delay to ensure sheet animation completes
+      const timeoutId = setTimeout(() => {
+        firstFieldRef.current?.focus()
+      }, 100)
+      return () => clearTimeout(timeoutId)
+    }
+  }, [isSheetOpen])
+
   return (
     <Form {...form}>
       <form
@@ -116,7 +128,15 @@ export function ClientSheetForm({
                 >
                   <Input
                     {...field}
-                    value={field.value ?? ''}
+                    ref={(node) => {
+                      firstFieldRef.current = node
+                      const { ref } = field
+                      if (typeof ref === 'function') {
+                        ref(node)
+                      } else if (ref) {
+                        ref.current = node
+                      }
+                    }}
                     placeholder='Acme Corp'
                     disabled={isPending}
                   />

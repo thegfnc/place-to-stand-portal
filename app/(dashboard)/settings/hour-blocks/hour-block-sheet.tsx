@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { Redo2, Trash2, Undo2 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -95,6 +95,18 @@ export function HourBlockSheet({
     historyKey: hourBlock?.id ?? 'hour-block:new',
   })
 
+  const firstFieldRef = useRef<HTMLButtonElement>(null)
+
+  useEffect(() => {
+    if (open && firstFieldRef.current) {
+      // Small delay to ensure sheet animation completes
+      const timeoutId = setTimeout(() => {
+        firstFieldRef.current?.focus()
+      }, 100)
+      return () => clearTimeout(timeoutId)
+    }
+  }, [open])
+
   return (
     <>
       <Sheet open={open} onOpenChange={handleSheetOpenChange}>
@@ -129,6 +141,7 @@ export function HourBlockSheet({
                           reason={clientField.reason}
                         >
                           <SearchableCombobox
+                            ref={firstFieldRef}
                             name={field.name}
                             value={field.value ?? ''}
                             onChange={field.onChange}

@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import type { UseFormReturn } from 'react-hook-form'
 
 import { AvatarUploadField } from '@/components/forms/avatar-upload-field'
@@ -35,6 +36,7 @@ type UserSheetFormFieldsProps = {
   avatarDisplayName: string | null
   targetUserId: string | null
   isEditing: boolean
+  isSheetOpen: boolean
 }
 
 export function UserSheetFormFields({
@@ -50,7 +52,20 @@ export function UserSheetFormFields({
   avatarDisplayName,
   targetUserId,
   isEditing,
+  isSheetOpen,
 }: UserSheetFormFieldsProps) {
+  const firstFieldRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (isSheetOpen && firstFieldRef.current) {
+      // Small delay to ensure sheet animation completes
+      const timeoutId = setTimeout(() => {
+        firstFieldRef.current?.focus()
+      }, 100)
+      return () => clearTimeout(timeoutId)
+    }
+  }, [isSheetOpen])
+
   return (
     <>
       <FormField
@@ -99,7 +114,15 @@ export function UserSheetFormFields({
               >
                 <Input
                   {...field}
-                  value={field.value ?? ''}
+                  ref={(node) => {
+                    firstFieldRef.current = node
+                    const { ref } = field
+                    if (typeof ref === 'function') {
+                      ref(node)
+                    } else if (ref) {
+                      ref.current = node
+                    }
+                  }}
                   placeholder='Ada Lovelace'
                   disabled={isPending}
                   aria-required

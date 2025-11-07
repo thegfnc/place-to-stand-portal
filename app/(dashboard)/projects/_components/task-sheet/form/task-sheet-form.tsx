@@ -138,6 +138,7 @@ export function TaskSheetForm(props: TaskSheetFormProps) {
           acceptedAttachmentTypes={acceptedAttachmentTypes}
           maxAttachmentSize={maxAttachmentSize}
           feedback={feedback}
+          isSheetOpen={isSheetOpen}
         />
         <TaskSheetFormFooter
           saveLabel={saveLabel}

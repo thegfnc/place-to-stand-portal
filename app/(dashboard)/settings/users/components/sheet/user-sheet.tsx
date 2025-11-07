@@ -90,6 +90,7 @@ export function UserSheet(props: UserSheetProps) {
                 avatarDisplayName={avatarDisplayName}
                 targetUserId={props.user?.id ?? null}
                 isEditing={isEditing}
+                isSheetOpen={props.open}
               />
               {feedback ? (
                 <p className='text-destructive text-sm'>{feedback}</p>
