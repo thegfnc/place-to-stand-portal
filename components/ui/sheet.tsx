@@ -52,92 +52,11 @@ const SheetContent = React.forwardRef<
     side?: 'top' | 'right' | 'bottom' | 'left'
   }
 >(({ className, children, side = 'right', ...props }, ref) => {
-  const contentRef = React.useRef<HTMLDivElement>(null)
-  const combinedRef = React.useCallback(
-    (node: HTMLDivElement | null) => {
-      contentRef.current = node
-      if (typeof ref === 'function') {
-        ref(node)
-      } else if (ref) {
-        ref.current = node
-      }
-    },
-    [ref]
-  )
-
-  React.useEffect(() => {
-    const content = contentRef.current
-    if (!content) return
-
-    // Find the scrollable element (SheetContent itself or first scrollable child)
-    const findScrollableElement = (): HTMLElement | null => {
-      // Check if SheetContent itself is scrollable
-      const style = window.getComputedStyle(content)
-      if (
-        style.overflowY === 'auto' ||
-        style.overflowY === 'scroll' ||
-        style.overflow === 'auto' ||
-        style.overflow === 'scroll'
-      ) {
-        return content
-      }
-
-      // Otherwise, find the first scrollable child
-      const children = Array.from(content.children) as HTMLElement[]
-      for (const child of children) {
-        const childStyle = window.getComputedStyle(child)
-        if (
-          childStyle.overflowY === 'auto' ||
-          childStyle.overflowY === 'scroll' ||
-          childStyle.overflow === 'auto' ||
-          childStyle.overflow === 'scroll'
-        ) {
-          return child
-        }
-      }
-
-      return null
-    }
-
-    const scrollToTop = () => {
-      // Use multiple requestAnimationFrame calls to ensure DOM is fully rendered
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          const scrollableElement = findScrollableElement()
-          if (scrollableElement) {
-            scrollableElement.scrollTop = 0
-          }
-        })
-      })
-    }
-
-    // Scroll to top when sheet opens
-    const observer = new MutationObserver(() => {
-      if (content.getAttribute('data-state') === 'open') {
-        scrollToTop()
-      }
-    })
-
-    observer.observe(content, {
-      attributes: true,
-      attributeFilter: ['data-state'],
-    })
-
-    // Initial check if already open
-    if (content.getAttribute('data-state') === 'open') {
-      scrollToTop()
-    }
-
-    return () => {
-      observer.disconnect()
-    }
-  }, [])
-
   return (
     <SheetPortal>
       <SheetOverlay />
       <SheetPrimitive.Content
-        ref={combinedRef}
+        ref={ref}
         data-slot='sheet-content'
         className={cn(
           'bg-background data-[state=open]:animate-in data-[state=closed]:animate-out fixed z-50 flex flex-col gap-4 shadow-lg transition ease-in-out data-[state=closed]:duration-300 data-[state=open]:duration-500',
