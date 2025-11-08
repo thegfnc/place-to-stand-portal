@@ -20,6 +20,9 @@
 - Migrated Settings → Projects to the Drizzle layer:
   - `app/(dashboard)/settings/projects/page.tsx` reads project and client data via `getProjectsSettingsSnapshot`.
   - Project mutations reuse Drizzle-based slug helpers, dependency counters, and continue logging activity (`save`, `softDelete`, `restore`, `destroy`) without Supabase clients.
+- Completed the Tasks domain migration:
+  - Server actions (`save-task`, `change-task-status`, `change-task-due-date`, `accept-task`, `accept-done-tasks`, `unaccept-task`, `remove-task`, `destroy-task`, `restore-task`) now authorize via `ensureClientAccessByTaskId`, use Drizzle for persistence, and continue logging activity.
+  - Shared helpers (`resolveNextTaskRank`, `syncAssignees`, `syncAttachments`) and the reorder API (`app/api/v1/tasks/[taskId]/reorder/route.ts`) read/write solely through Drizzle.
 
 ---
 
@@ -35,14 +38,12 @@
 - Create, update (including slug/member changes), archive, restore, and permanently delete a test client to validate activity logging and dependency checks.
 - Load `/settings/projects` as an admin to verify project listings and client associations.
 - Create a project (with slug), update fields/dates/client, archive, restore, and attempt a destroy when tasks/time logs exist to confirm dependency guards.
+- Exercise task flows: create tasks (with attachments and assignees), change status, reorder, archive/restore, accept/unaccept, and permanently delete to confirm Drizzle paths and activity logging.
 
 ---
 
 ## Follow Up (Next Domains)
 
-- Port projects- and tasks-related settings/actions to the Drizzle query layer.
 - Replace Supabase access in activity feeds once shared query utilities are ready.
 - Add Vitest coverage around `lib/auth/permissions.ts` and the users query functions to guard RBAC behavior.
-- Backfill automated coverage for client slug/membership utilities and destructive action dependency guards.
-- Backfill automated coverage for client slug/membership utilities and destructive action dependency guards.
-
+- Backfill automated coverage for client slug/membership utilities, task dependency guards, and destructive actions.

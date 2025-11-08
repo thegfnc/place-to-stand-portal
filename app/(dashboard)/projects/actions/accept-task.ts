@@ -1,11 +1,15 @@
 'use server'
 
+import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { logActivity } from '@/lib/activity/logger'
 import { taskAcceptedEvent } from '@/lib/activity/events'
 import { requireUser } from '@/lib/auth/session'
-import { getSupabaseServerClient } from '@/lib/supabase/server'
+import { ensureClientAccessByTaskId } from '@/lib/auth/permissions'
+import { db } from '@/lib/db'
+import { projects, tasks } from '@/lib/db/schema'
+import { NotFoundError, ForbiddenError } from '@/lib/errors/http'
 
 import { revalidateProjectTaskViews } from './shared'
 import type { ActionResult } from './action-types'
@@ -29,37 +33,45 @@ export async function acceptTask(input: {
     return { error: 'Invalid acceptance payload.' }
   }
 
-  const supabase = getSupabaseServerClient()
   const { taskId } = parsed.data
 
-  const { data: task, error } = await supabase
-    .from('tasks')
-    .select(
-      `
-        id,
-        title,
-        status,
-        accepted_at,
-        deleted_at,
-        project_id,
-        project:projects (
-          client_id
-        )
-      `
-    )
-    .eq('id', taskId)
-    .maybeSingle()
+  try {
+    await ensureClientAccessByTaskId(user, taskId)
+  } catch (error) {
+    if (error instanceof NotFoundError) {
+      return { error: 'Task not found.' }
+    }
 
-  if (error) {
-    console.error('Failed to load task for acceptance', error)
+    if (error instanceof ForbiddenError) {
+      return { error: 'You do not have permission to accept this task.' }
+    }
+
+    console.error('Failed to authorize task acceptance', error)
     return { error: 'Unable to accept task.' }
   }
+
+  const taskRecords = await db
+    .select({
+      id: tasks.id,
+      title: tasks.title,
+      status: tasks.status,
+      acceptedAt: tasks.acceptedAt,
+      deletedAt: tasks.deletedAt,
+      projectId: tasks.projectId,
+      clientId: projects.clientId,
+    })
+    .from(tasks)
+    .leftJoin(projects, eq(projects.id, tasks.projectId))
+    .where(eq(tasks.id, taskId))
+    .limit(1)
+
+  const task = taskRecords[0]
 
   if (!task) {
     return { error: 'Task not found.' }
   }
 
-  if (task.deleted_at) {
+  if (task.deletedAt) {
     return { error: 'Archived tasks cannot be accepted.' }
   }
 
@@ -67,23 +79,18 @@ export async function acceptTask(input: {
     return { error: 'Only tasks marked as Done can be accepted.' }
   }
 
-  if (task.accepted_at) {
+  if (task.acceptedAt) {
     return {}
   }
 
   const timestamp = new Date().toISOString()
 
-  const { error: updateError } = await supabase
-    .from('tasks')
-    .update({ accepted_at: timestamp })
-    .eq('id', taskId)
+  await db
+    .update(tasks)
+    .set({ acceptedAt: timestamp })
+    .where(eq(tasks.id, taskId))
 
-  if (updateError) {
-    console.error('Failed to accept task', updateError)
-    return { error: updateError.message }
-  }
-
-  const event = taskAcceptedEvent({ title: task.title })
+  const event = taskAcceptedEvent({ title: task.title ?? 'Task' })
 
   await logActivity({
     actorId: user.id,
@@ -92,12 +99,12 @@ export async function acceptTask(input: {
     summary: event.summary,
     targetType: 'TASK',
     targetId: taskId,
-    targetProjectId: task.project_id,
-    targetClientId: task.project?.client_id ?? null,
+    targetProjectId: task.projectId,
+    targetClientId: task.clientId ?? null,
     metadata: event.metadata,
   })
 
-  revalidateProjectTaskViews()
+  await revalidateProjectTaskViews()
 
   return {}
 }

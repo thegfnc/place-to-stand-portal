@@ -1,11 +1,15 @@
 'use server'
 
+import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { logActivity } from '@/lib/activity/logger'
 import { taskStatusChangedEvent } from '@/lib/activity/events'
 import { requireUser } from '@/lib/auth/session'
-import { getSupabaseServerClient } from '@/lib/supabase/server'
+import { ensureClientAccessByTaskId } from '@/lib/auth/permissions'
+import { db } from '@/lib/db'
+import { projects, tasks } from '@/lib/db/schema'
+import { NotFoundError, ForbiddenError } from '@/lib/errors/http'
 
 import { revalidateProjectTaskViews } from './shared'
 import { statusSchema, TASK_STATUSES } from './shared-schemas'
@@ -28,61 +32,69 @@ export async function changeTaskStatus(input: {
     return { error: 'Invalid status update payload.' }
   }
 
-  const supabase = getSupabaseServerClient()
   const { taskId, status } = parsed.data
 
-  const { data: task, error: taskError } = await supabase
-    .from('tasks')
-    .select(
-      `
-        id,
-        title,
-        status,
-        project_id,
-        project:projects (
-          client_id
-        )
-      `
-    )
-    .eq('id', taskId)
-    .maybeSingle()
+  try {
+    await ensureClientAccessByTaskId(user, taskId)
+  } catch (error) {
+    if (error instanceof NotFoundError) {
+      return { error: 'Task not found.' }
+    }
 
-  if (taskError) {
-    console.error('Failed to load task for status change', taskError)
+    if (error instanceof ForbiddenError) {
+      return { error: 'You do not have permission to update this task.' }
+    }
+
+    console.error('Failed to authorize task for status change', error)
     return { error: 'Unable to update task status.' }
   }
 
+  const taskRecord = await db
+    .select({
+      id: tasks.id,
+      title: tasks.title,
+      status: tasks.status,
+      projectId: tasks.projectId,
+      clientId: projects.clientId,
+      deletedAt: tasks.deletedAt,
+    })
+    .from(tasks)
+    .leftJoin(projects, eq(projects.id, tasks.projectId))
+    .where(eq(tasks.id, taskId))
+    .limit(1)
+
+  const task = taskRecord[0]
+
   if (!task) {
     return { error: 'Task not found.' }
+  }
+
+  if (task.deletedAt) {
+    return { error: 'Archived tasks cannot be updated.' }
   }
 
   if (task.status !== status) {
     let nextRank: string
 
     try {
-      nextRank = await resolveNextTaskRank(supabase, task.project_id, status)
+      nextRank = await resolveNextTaskRank(task.projectId, status)
     } catch (rankError) {
       console.error('Failed to resolve rank for task status change', rankError)
       return { error: 'Unable to update task ordering.' }
     }
 
-    const { error } = await supabase
-      .from('tasks')
-      .update({
+    await db
+      .update(tasks)
+      .set({
         status,
         rank: nextRank,
-        updated_by: user.id,
-        updated_at: new Date().toISOString(),
+        updatedBy: user.id,
+        updatedAt: new Date().toISOString(),
       })
-      .eq('id', taskId)
-
-    if (error) {
-      console.error('Failed to update task status', error)
-      return { error: error.message }
-    }
+      .where(eq(tasks.id, taskId))
 
     const event = taskStatusChangedEvent({
-      title: task.title,
+      title: task.title ?? 'Task',
       fromStatus: task.status,
       toStatus: status,
     })
@@ -94,13 +106,13 @@ export async function changeTaskStatus(input: {
       summary: event.summary,
       targetType: 'TASK',
       targetId: taskId,
-      targetProjectId: task.project_id,
-      targetClientId: task.project?.client_id ?? null,
+      targetProjectId: task.projectId,
+      targetClientId: task.clientId ?? null,
       metadata: event.metadata,
     })
   }
 
-  revalidateProjectTaskViews()
+  await revalidateProjectTaskViews()
 
   return {}
 }

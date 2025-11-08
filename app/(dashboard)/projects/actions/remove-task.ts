@@ -1,10 +1,15 @@
 'use server'
+
+import { and, eq, isNull } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { logActivity } from '@/lib/activity/logger'
 import { taskArchivedEvent } from '@/lib/activity/events'
 import { requireUser } from '@/lib/auth/session'
-import { getSupabaseServerClient } from '@/lib/supabase/server'
+import { ensureClientAccessByTaskId } from '@/lib/auth/permissions'
+import { db } from '@/lib/db'
+import { projects, taskAttachments, tasks } from '@/lib/db/schema'
+import { NotFoundError, ForbiddenError } from '@/lib/errors/http'
 import { getSupabaseServiceClient } from '@/lib/supabase/service'
 import { deleteAttachmentObject } from '@/lib/storage/task-attachments'
 import type { Json } from '@/supabase/types/database'
@@ -26,69 +31,80 @@ export async function removeTask(input: {
     return { error: 'Invalid delete payload.' }
   }
 
-  const supabase = getSupabaseServerClient()
-  const storage = getSupabaseServiceClient()
   const { taskId } = parsed.data
 
-  const { data: existingTask, error: existingTaskError } = await supabase
-    .from('tasks')
-    .select(
-      `
-        id,
-        title,
-        project_id,
-        project:projects (
-          client_id
-        )
-      `
-    )
-    .eq('id', taskId)
-    .maybeSingle()
+  try {
+    await ensureClientAccessByTaskId(user, taskId)
+  } catch (error) {
+    if (error instanceof NotFoundError) {
+      return { error: 'Task not found.' }
+    }
 
-  if (existingTaskError) {
-    console.error('Failed to load task for deletion', existingTaskError)
+    if (error instanceof ForbiddenError) {
+      return { error: 'You do not have permission to archive this task.' }
+    }
+
+    console.error('Failed to authorize task for deletion', error)
     return { error: 'Unable to archive task.' }
   }
+
+  const taskRecord = await db
+    .select({
+      id: tasks.id,
+      title: tasks.title,
+      projectId: tasks.projectId,
+      clientId: projects.clientId,
+    })
+    .from(tasks)
+    .leftJoin(projects, eq(projects.id, tasks.projectId))
+    .where(eq(tasks.id, taskId))
+    .limit(1)
+
+  const existingTask = taskRecord[0]
 
   if (!existingTask) {
     return { error: 'Task not found.' }
   }
 
-  const { error } = await supabase
-    .from('tasks')
-    .update({ deleted_at: new Date().toISOString() })
-    .eq('id', taskId)
+  const timestamp = new Date().toISOString()
 
-  if (error) {
-    console.error('Failed to soft delete task', error)
-    return { error: error.message }
-  }
+  await db
+    .update(tasks)
+    .set({ deletedAt: timestamp })
+    .where(eq(tasks.id, taskId))
 
-  const { data: attachmentRows, error: attachmentsError } = await supabase
-    .from('task_attachments')
-    .select('id, storage_path')
-    .eq('task_id', taskId)
-    .is('deleted_at', null)
+  const attachmentRows = await db
+    .select({
+      id: taskAttachments.id,
+      storagePath: taskAttachments.storagePath,
+    })
+    .from(taskAttachments)
+    .where(
+      and(
+        eq(taskAttachments.taskId, taskId),
+        isNull(taskAttachments.deletedAt)
+      )
+    )
 
-  if (!attachmentsError && attachmentRows?.length) {
-    const timestamp = new Date().toISOString()
+  if (attachmentRows.length) {
+    await db
+      .update(taskAttachments)
+      .set({ deletedAt: timestamp })
+      .where(
+        and(
+          eq(taskAttachments.taskId, taskId),
+          isNull(taskAttachments.deletedAt)
+        )
+      )
 
-    const { error: markDeletedError } = await supabase
-      .from('task_attachments')
-      .update({ deleted_at: timestamp })
-      .eq('task_id', taskId)
-      .is('deleted_at', null)
-
-    if (markDeletedError) {
-      console.error('Failed to mark attachments deleted', markDeletedError)
-    }
+    const storage = getSupabaseServiceClient()
 
     await Promise.all(
       attachmentRows.map(async attachment => {
         try {
           await deleteAttachmentObject({
             client: storage,
-            path: attachment.storage_path,
+            path: attachment.storagePath,
           })
         } catch (storageError) {
           console.error('Failed to delete attachment object', storageError)
@@ -97,11 +113,9 @@ export async function removeTask(input: {
     )
   }
 
-  const event = taskArchivedEvent({ title: existingTask.title })
+  const event = taskArchivedEvent({ title: existingTask.title ?? 'Task' })
 
-  const attachmentsRemoved = (attachmentRows ?? []).map(
-    attachment => attachment.id
-  )
+  const attachmentsRemoved = attachmentRows.map(attachment => attachment.id)
 
   const archiveMetadata: Json =
     event.metadata &&
@@ -123,12 +137,12 @@ export async function removeTask(input: {
     summary: event.summary,
     targetType: 'TASK',
     targetId: taskId,
-    targetProjectId: existingTask.project_id,
-    targetClientId: existingTask.project?.client_id ?? null,
+    targetProjectId: existingTask.projectId,
+    targetClientId: existingTask.clientId ?? null,
     metadata: archiveMetadata,
   })
 
-  revalidateProjectTaskViews()
+  await revalidateProjectTaskViews()
 
   return {}
 }
