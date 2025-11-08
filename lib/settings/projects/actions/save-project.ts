@@ -1,8 +1,12 @@
 'use server'
 
-import { requireUser } from '@/lib/auth/session'
+import { eq } from 'drizzle-orm'
+
+import { requireRole } from '@/lib/auth/session'
 import { logActivity } from '@/lib/activity/logger'
 import { projectCreatedEvent, projectUpdatedEvent } from '@/lib/activity/events'
+import { db } from '@/lib/db'
+import { projects } from '@/lib/db/schema'
 import {
   generateUniqueProjectSlug,
   projectSchema,
@@ -11,7 +15,6 @@ import {
   type ProjectActionResult,
   type ProjectInput,
 } from '@/lib/settings/projects/project-service'
-import { getSupabaseServerClient } from '@/lib/supabase/server'
 
 import {
   revalidateProjectDetailRoutes,
@@ -23,7 +26,7 @@ const INSERT_RETRY_LIMIT = 3
 export async function saveProject(
   input: ProjectInput
 ): Promise<ProjectActionResult> {
-  const user = await requireUser()
+  const user = await requireRole('ADMIN')
   const parsed = projectSchema.safeParse(input)
 
   if (!parsed.success) {
@@ -33,7 +36,6 @@ export async function saveProject(
     return { error: message, fieldErrors }
   }
 
-  const supabase = getSupabaseServerClient()
   const { id, name, clientId, status, startsOn, endsOn, slug } = parsed.data
 
   const trimmedName = name.trim()
@@ -52,49 +54,45 @@ export async function saveProject(
 
   if (!id) {
     const baseSlug = normalizedProvidedSlug ?? toProjectSlug(trimmedName)
-    const initialSlug = await generateUniqueProjectSlug(supabase, baseSlug)
-
-    if (typeof initialSlug !== 'string') {
-      return { error: 'Unable to generate project slug.' }
-    }
-
-    let slugCandidate = initialSlug
+    let slugCandidate = await generateUniqueProjectSlug(baseSlug)
     let insertedId: string | null = null
     let attempt = 0
 
     while (attempt < INSERT_RETRY_LIMIT) {
-      const { data: inserted, error } = await supabase
-        .from('projects')
-        .insert({
-          name: trimmedName,
-          client_id: clientId,
-          status,
-          starts_on: startsOn ?? null,
-          ends_on: endsOn ?? null,
-          created_by: user.id,
-          slug: slugCandidate,
-        })
-        .select('id')
-        .maybeSingle()
+      try {
+        const inserted = await db
+          .insert(projects)
+          .values({
+            name: trimmedName,
+            clientId,
+            status,
+            startsOn: startsOn ?? null,
+            endsOn: endsOn ?? null,
+            createdBy: user.id,
+            slug: slugCandidate,
+          })
+          .returning({ id: projects.id })
 
-      if (!error && inserted?.id) {
-        insertedId = inserted.id
-        break
+        insertedId = inserted[0]?.id ?? null
+
+        if (insertedId) {
+          break
+        }
+      } catch (error) {
+        if (!isUniqueViolation(error)) {
+          console.error('Failed to create project', error)
+          return {
+            error:
+              error instanceof Error
+                ? error.message
+                : 'Unable to create project.',
+          }
+        }
+
+        slugCandidate = await generateUniqueProjectSlug(baseSlug)
+        attempt += 1
+        continue
       }
-
-      if (error?.code !== '23505') {
-        console.error('Failed to create project', error)
-        return { error: error?.message ?? 'Unable to create project.' }
-      }
-
-      const nextSlug = await generateUniqueProjectSlug(supabase, baseSlug)
-
-      if (typeof nextSlug !== 'string') {
-        return { error: 'Unable to generate project slug.' }
-      }
-
-      slugCandidate = nextSlug
-      attempt += 1
     }
 
     if (!insertedId) {
@@ -123,28 +121,45 @@ export async function saveProject(
     const slugToUpdate = normalizedProvidedSlug
 
     if (slugToUpdate) {
-      const exists = await projectSlugExists(supabase, slugToUpdate, {
+      const exists = await projectSlugExists(slugToUpdate, {
         excludeId: id,
       })
-
-      if (typeof exists !== 'boolean') {
-        return { error: 'Unable to validate slug availability.' }
-      }
 
       if (exists) {
         return { error: 'Another project already uses this slug.' }
       }
     }
 
-    const { data: existingProject, error: existingProjectError } =
-      await supabase
-        .from('projects')
-        .select('id, name, status, starts_on, ends_on, slug, client_id')
-        .eq('id', id)
-        .maybeSingle()
+    let existingProject:
+      | {
+          id: string
+          name: string
+          status: string
+          startsOn: string | null
+          endsOn: string | null
+          slug: string | null
+          clientId: string
+        }
+      | undefined
 
-    if (existingProjectError) {
-      console.error('Failed to load project for update', existingProjectError)
+    try {
+      const rows = await db
+        .select({
+          id: projects.id,
+          name: projects.name,
+          status: projects.status,
+          startsOn: projects.startsOn,
+          endsOn: projects.endsOn,
+          slug: projects.slug,
+          clientId: projects.clientId,
+        })
+        .from(projects)
+        .where(eq(projects.id, id))
+        .limit(1)
+
+      existingProject = rows[0]
+    } catch (error) {
+      console.error('Failed to load project for update', error)
       return { error: 'Unable to update project.' }
     }
 
@@ -152,21 +167,24 @@ export async function saveProject(
       return { error: 'Project not found.' }
     }
 
-    const { error } = await supabase
-      .from('projects')
-      .update({
-        name: trimmedName,
-        client_id: clientId,
-        status,
-        starts_on: startsOn ?? null,
-        ends_on: endsOn ?? null,
-        slug: slugToUpdate,
-      })
-      .eq('id', id)
-
-    if (error) {
+    try {
+      await db
+        .update(projects)
+        .set({
+          name: trimmedName,
+          clientId,
+          status,
+          startsOn: startsOn ?? null,
+          endsOn: endsOn ?? null,
+          slug: slugToUpdate,
+        })
+        .where(eq(projects.id, id))
+    } catch (error) {
       console.error('Failed to update project', error)
-      return { error: error.message }
+      return {
+        error:
+          error instanceof Error ? error.message : 'Unable to update project.',
+      }
     }
 
     const changedFields: string[] = []
@@ -185,7 +203,7 @@ export async function saveProject(
       nextDetails.status = status
     }
 
-    const previousStartsOn = existingProject.starts_on ?? null
+    const previousStartsOn = existingProject.startsOn ?? null
     const nextStartsOn = startsOn ?? null
 
     if (previousStartsOn !== nextStartsOn) {
@@ -194,7 +212,7 @@ export async function saveProject(
       nextDetails.startsOn = nextStartsOn
     }
 
-    const previousEndsOn = existingProject.ends_on ?? null
+    const previousEndsOn = existingProject.endsOn ?? null
     const nextEndsOn = endsOn ?? null
 
     if (previousEndsOn !== nextEndsOn) {
@@ -233,7 +251,7 @@ export async function saveProject(
         targetType: 'PROJECT',
         targetId: id,
         targetProjectId: id,
-        targetClientId: existingProject.client_id,
+        targetClientId: existingProject.clientId,
         metadata: event.metadata,
       })
     }
@@ -243,4 +261,13 @@ export async function saveProject(
   await revalidateProjectDetailRoutes()
 
   return {}
+}
+
+function isUniqueViolation(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    (error as { code?: string }).code === '23505'
+  )
 }

@@ -1,8 +1,12 @@
 import { z } from 'zod'
-import type { PostgrestError, SupabaseClient } from '@supabase/supabase-js'
 
 import { PROJECT_STATUS_ENUM_VALUES } from '@/lib/constants'
-import type { Database } from '@/supabase/types/database'
+import {
+  generateUniqueProjectSlugDrizzle,
+  projectSlugExistsDrizzle,
+} from '@/lib/queries/projects'
+
+const DEFAULT_SLUG = 'project'
 
 export const projectSchema = z
   .object({
@@ -59,9 +63,6 @@ export type ProjectActionResult = {
   fieldErrors?: Record<string, string[]>
 }
 
-const DEFAULT_SLUG = 'project'
-const UNIQUE_RETRY_LIMIT = 3
-
 export function toProjectSlug(input: string): string {
   const base = input
     .toLowerCase()
@@ -73,54 +74,13 @@ export function toProjectSlug(input: string): string {
 }
 
 export async function projectSlugExists(
-  supabase: SupabaseClient<Database>,
   slug: string,
   options: { excludeId?: string } = {}
-): Promise<boolean | PostgrestError> {
-  let query = supabase.from('projects').select('id').eq('slug', slug).limit(1)
-
-  if (options.excludeId) {
-    query = query.neq('id', options.excludeId)
-  }
-
-  const { data, error } = await query.maybeSingle()
-
-  if (error) {
-    console.error('Failed to check project slug availability', error)
-    return error
-  }
-
-  return Boolean(data)
+): Promise<boolean> {
+  return projectSlugExistsDrizzle(slug, options)
 }
 
-export async function generateUniqueProjectSlug(
-  supabase: SupabaseClient<Database>,
-  base: string
-): Promise<string | PostgrestError> {
-  const normalizedBase = base || DEFAULT_SLUG
-  let candidate = normalizedBase
-  let suffix = 2
-
-  while (true) {
-    const exists = await projectSlugExists(supabase, candidate)
-
-    if (typeof exists !== 'boolean') {
-      return exists
-    }
-
-    if (!exists) {
-      return candidate
-    }
-
-    candidate = `${normalizedBase}-${suffix}`
-    suffix += 1
-
-    if (suffix > UNIQUE_RETRY_LIMIT + 1) {
-      return `${normalizedBase}-${Date.now()}`
-    }
-  }
+export async function generateUniqueProjectSlug(base: string): Promise<string> {
+  return generateUniqueProjectSlugDrizzle(base)
 }
 
-// Note: syncProjectContractors has been removed
-// Project access is now managed through client_members instead of project_members
-// To add users to a project, add them as client members of the project's client

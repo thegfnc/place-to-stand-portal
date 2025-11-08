@@ -12,7 +12,7 @@ applyTo: '**'
 - **Reuse > Rebuild:** Prefer existing modules, utilities, and shadcn components. Flag gaps before introducing new abstractions.
 - **Guardrails:** Do not edit `package.json`, lockfiles, or Supabase migrations directly. Use the prescribed CLIs when dependencies or schema changes are required.
 - **Verification:** Always run build, linting, type-checking, and targeted tests for any touched surface. Share command results or blockers with the user.
-- **Documentation:** Update or create README snippets, inline comments, and changelog notes whenever behavior or interfaces shift.
+- **Documentation:** Update or create README snippets, inline comments, and changelog notes whenever behavior or interfaces shift. The PRD for the Drizzle migration is located in `docs/prds/004-migrate-to-drizzle-orm/` and is split into multiple documents for clarity.
 
 ## **1. Technical Stack**
 
@@ -29,6 +29,7 @@ applyTo: '**'
 - **Form Management:** React Hook Form
 - **Schema Validation:** Zod
 - **State Management & Data Fetching:** React Query
+- **ORM:** Drizzle
 - **Charting Library:** Recharts
 - **Rich Text Editor:** TipTap
 - **Drag-and-Drop:** dnd-kit
@@ -70,10 +71,13 @@ applyTo: '**'
 - **Type Safety:** Avoid `any`; model domain data with shared TypeScript types and Zod schemas to keep server-client parity.
 - **Dependency Management:** Install new packages via `npm install <package>@latest` and record rationale in PRs. Remove unused deps promptly.
 - **Component Strategy:** Use `npx shadcn@latest add <component>` before building custom UI. Extend via composition rather than heavy overrides.
-- **Database Workflow:** Manage schema updates via Supabase CLI migrations. Describe migration intent and run diff checks when applicable. Old migrations should NEVER be edited. Only new migrations should be added.
+- **Database Workflow:** Manage schema updates via `drizzle-kit` migrations. Describe migration intent and run diff checks when applicable. Old migrations should NEVER be edited. Only new migrations should be added.
+- **Drizzle Client Usage:** Import the shared instance from `lib/db/index.ts` and schema from `lib/db/schema`. Temporary verification code (`app/api/test-drizzle`) exists for Phase 1 only and should be removed once production paths are migrated.
+- **Authorization Guards:** Use the helpers in `lib/auth/permissions.ts` before executing any Drizzle query. Shared query functions live under `lib/queries/` and already compose these guards.
 - **Secrets & Config:** Reference environment variables through `process.env` with typed helpers in `src/lib/utils.ts`. Never hardcode secrets.
-- **RBAC Implementation:** Enforce role-based access control both at the Supabase level and within application logic to protect sensitive data and actions.
+- **RBAC Implementation:** Enforce role-based access control (RBAC) within the application logic. Since RLS is disabled, all data access must be guarded by explicit, user-aware checks in server-side code to protect sensitive data and actions.
 - **Form Errors:** Surface field level errors from Zod on the field instead of just a single error state for the form. For every disabled button, add a tooltip hover explaining why it's disabled
+- **Image Optimization:** Use Supabase image transforms to optimize images for the web. Image widths should be 2x the desired display width with height set to auto to maintain aspect ratio. Images should be capped at 2500 width max.
 
 ## **3. Non-Functional Requirements**
 

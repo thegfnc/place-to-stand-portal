@@ -17,6 +17,9 @@
 - Converted Settings → Clients page and server actions to use new Drizzle queries (`getClientsSettingsSnapshot`, slug uniqueness helpers, dependency counters) and guard helpers:
   - `app/(dashboard)/settings/clients/page.tsx` now pulls clients, memberships, and client directory data through `lib/queries/clients.ts`.
   - Client mutations (`save`, `softDelete`, `restore`, `destroy`) operate via Drizzle, leveraging shared membership sync utilities and activity logging without Supabase context objects.
+- Migrated Settings → Projects to the Drizzle layer:
+  - `app/(dashboard)/settings/projects/page.tsx` reads project and client data via `getProjectsSettingsSnapshot`.
+  - Project mutations reuse Drizzle-based slug helpers, dependency counters, and continue logging activity (`save`, `softDelete`, `restore`, `destroy`) without Supabase clients.
 
 ---
 
@@ -30,6 +33,8 @@
 - Update a user’s profile (name, role, avatar, password) and verify change tracking still logs the correct fields.
 - Load `/settings/clients` as an admin and confirm client lists, members, and directory data render correctly.
 - Create, update (including slug/member changes), archive, restore, and permanently delete a test client to validate activity logging and dependency checks.
+- Load `/settings/projects` as an admin to verify project listings and client associations.
+- Create a project (with slug), update fields/dates/client, archive, restore, and attempt a destroy when tasks/time logs exist to confirm dependency guards.
 
 ---
 
@@ -38,5 +43,6 @@
 - Port projects- and tasks-related settings/actions to the Drizzle query layer.
 - Replace Supabase access in activity feeds once shared query utilities are ready.
 - Add Vitest coverage around `lib/auth/permissions.ts` and the users query functions to guard RBAC behavior.
+- Backfill automated coverage for client slug/membership utilities and destructive action dependency guards.
 - Backfill automated coverage for client slug/membership utilities and destructive action dependency guards.
 

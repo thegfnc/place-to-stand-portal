@@ -1,14 +1,17 @@
 'use server'
 
-import { requireUser } from '@/lib/auth/session'
+import { eq } from 'drizzle-orm'
+
+import { requireRole } from '@/lib/auth/session'
 import { logActivity } from '@/lib/activity/logger'
 import { projectRestoredEvent } from '@/lib/activity/events'
+import { db } from '@/lib/db'
+import { projects } from '@/lib/db/schema'
 import {
   restoreProjectSchema,
   type ProjectActionResult,
   type RestoreProjectInput,
 } from '@/lib/settings/projects/project-service'
-import { getSupabaseServerClient } from '@/lib/supabase/server'
 
 import {
   revalidateProjectDetailRoutes,
@@ -18,24 +21,39 @@ import {
 export async function restoreProject(
   input: RestoreProjectInput
 ): Promise<ProjectActionResult> {
-  const user = await requireUser()
+  const user = await requireRole('ADMIN')
   const parsed = restoreProjectSchema.safeParse(input)
 
   if (!parsed.success) {
     return { error: 'Invalid restore request.' }
   }
 
-  const supabase = getSupabaseServerClient()
   const projectId = parsed.data.id
 
-  const { data: existingProject, error: loadError } = await supabase
-    .from('projects')
-    .select('id, name, client_id, deleted_at')
-    .eq('id', projectId)
-    .maybeSingle()
+  let existingProject:
+    | {
+        id: string
+        name: string
+        clientId: string
+        deletedAt: string | null
+      }
+    | undefined
 
-  if (loadError) {
-    console.error('Failed to load project for restore', loadError)
+  try {
+    const rows = await db
+      .select({
+        id: projects.id,
+        name: projects.name,
+        clientId: projects.clientId,
+        deletedAt: projects.deletedAt,
+      })
+      .from(projects)
+      .where(eq(projects.id, projectId))
+      .limit(1)
+
+    existingProject = rows[0]
+  } catch (error) {
+    console.error('Failed to load project for restore', error)
     return { error: 'Unable to restore project.' }
   }
 
@@ -43,18 +61,21 @@ export async function restoreProject(
     return { error: 'Project not found.' }
   }
 
-  if (!existingProject.deleted_at) {
+  if (!existingProject.deletedAt) {
     return { error: 'Project is already active.' }
   }
 
-  const { error: restoreError } = await supabase
-    .from('projects')
-    .update({ deleted_at: null })
-    .eq('id', projectId)
-
-  if (restoreError) {
-    console.error('Failed to restore project', restoreError)
-    return { error: restoreError.message }
+  try {
+    await db
+      .update(projects)
+      .set({ deletedAt: null })
+      .where(eq(projects.id, projectId))
+  } catch (error) {
+    console.error('Failed to restore project', error)
+    return {
+      error:
+        error instanceof Error ? error.message : 'Unable to restore project.',
+    }
   }
 
   const event = projectRestoredEvent({ name: existingProject.name })
@@ -67,7 +88,7 @@ export async function restoreProject(
     targetType: 'PROJECT',
     targetId: existingProject.id,
     targetProjectId: existingProject.id,
-    targetClientId: existingProject.client_id,
+    targetClientId: existingProject.clientId,
     metadata: event.metadata,
   })
 
