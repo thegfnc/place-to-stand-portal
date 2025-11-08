@@ -17,24 +17,14 @@ const globalForDrizzle = globalThis as unknown as {
 }
 
 function createPostgresClient(): PostgresClient {
-  const url = new URL(serverEnv.DATABASE_URL)
-
-  if (process.env.NODE_ENV !== 'production') {
-    console.log(
-      '[db] connecting to',
-      `${url.hostname}:${url.port}${url.search}`
-    )
-  }
-
   const shouldUseSSL =
-    !url.hostname.includes('localhost') && !url.hostname.includes('127.0.0.1')
+    !serverEnv.DATABASE_URL.includes('localhost') &&
+    !serverEnv.DATABASE_URL.includes('127.0.0.1')
 
-  return postgres(url.toString(), {
+  return postgres(serverEnv.DATABASE_URL, {
     max: 1,
     ssl: shouldUseSSL ? { rejectUnauthorized: false } : undefined,
     prepare: false,
-    connect_timeout: 5_000, // 5s; tweak as needed
-    idle_timeout: 5, // drop the socket quickly on serverless
   })
 }
 
