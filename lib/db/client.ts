@@ -33,7 +33,7 @@ function createPostgresClient(): PostgresClient {
     max: 1,
     ssl: shouldUseSSL ? { rejectUnauthorized: false } : undefined,
     prepare: false,
-    connect_timeout: 5_000, // 5s; tweak as needed
+    connect_timeout: 5, // 5s; tweak as needed
     idle_timeout: 5, // drop the socket quickly on serverless
   })
 }
