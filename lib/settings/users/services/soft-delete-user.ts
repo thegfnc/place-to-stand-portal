@@ -1,9 +1,4 @@
 import { getSupabaseServiceClient } from '@/lib/supabase/service'
-import {
-  archiveClientMemberships,
-  archiveTaskAssignments,
-  updateUserProfile,
-} from '@/lib/db/settings/users'
 
 import type { DeleteUserInput } from '../user-validation'
 import type { UserServiceResult } from '../types'
@@ -14,27 +9,41 @@ export async function softDeletePortalUser(
   const adminClient = getSupabaseServiceClient()
   const deletionTimestamp = new Date().toISOString()
 
-  try {
-    await updateUserProfile(input.id, { deleted_at: deletionTimestamp })
-  } catch (error) {
-    console.error('Failed to soft delete user profile', error)
-    const message =
-      error instanceof Error ? error.message : 'Unable to delete user profile.'
-    return { error: message }
+  const { error: profileError } = await adminClient
+    .from('users')
+    .update({ deleted_at: deletionTimestamp })
+    .eq('id', input.id)
+
+  if (profileError) {
+    console.error('Failed to soft delete user profile', profileError)
+    return { error: profileError.message }
   }
 
-  try {
-    await archiveClientMemberships(input.id, deletionTimestamp)
-  } catch (error) {
-    console.error('Failed to remove user client assignments', error)
-    return { error: 'Unable to remove user client assignments.' }
-  }
+  const associationUpdates = [
+    {
+      context: 'client assignments',
+      promise: adminClient
+        .from('client_members')
+        .update({ deleted_at: deletionTimestamp })
+        .eq('user_id', input.id)
+        .is('deleted_at', null),
+    },
+    {
+      context: 'task assignments',
+      promise: adminClient
+        .from('task_assignees')
+        .update({ deleted_at: deletionTimestamp })
+        .eq('user_id', input.id)
+        .is('deleted_at', null),
+    },
+  ] as const
 
-  try {
-    await archiveTaskAssignments(input.id, deletionTimestamp)
-  } catch (error) {
-    console.error('Failed to remove user task assignments', error)
-    return { error: 'Unable to remove user task assignments.' }
+  for (const { promise, context } of associationUpdates) {
+    const { error } = await promise
+    if (error) {
+      console.error(`Failed to remove user ${context}`, error)
+      return { error: `Unable to remove user ${context}.` }
+    }
   }
 
   const adminUpdate = await adminClient.auth.admin.updateUserById(input.id, {

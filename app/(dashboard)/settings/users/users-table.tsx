@@ -24,7 +24,10 @@ import {
 } from '@/lib/settings/users/state/use-users-table-state'
 
 import { UsersTableRow } from './components/table/users-table-row'
-import type { UserRow } from '@/lib/db/schema'
+
+import type { Database } from '@/supabase/types/database'
+
+type UserRow = Database['public']['Tables']['users']['Row']
 
 const UsersActivityFeed = dynamic(
   () =>

@@ -1,6 +1,6 @@
-import type { UserRow as DrizzleUserRow } from '@/lib/db/schema'
+import type { Database } from '@/supabase/types/database'
 
-export type UserRow = DrizzleUserRow
+export type UserRow = Database['public']['Tables']['users']['Row']
 
 export type UserSheetProps = {
   open: boolean
