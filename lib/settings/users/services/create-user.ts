@@ -1,4 +1,8 @@
 import { getSupabaseServiceClient } from '@/lib/supabase/service'
+import {
+  deleteUserProfile,
+  insertUserProfile,
+} from '@/lib/db/settings/users'
 
 import {
   cleanupAvatar,
@@ -47,19 +51,21 @@ export async function createPortalUser(
     normalizedAvatarPath = avatarResult.normalizedPath
   }
 
-  const { error: insertError } = await adminClient.from('users').insert({
-    id: userId,
-    email: input.email,
-    full_name: input.fullName,
-    role: input.role,
-    avatar_url: normalizedAvatarPath,
-  })
-
-  if (insertError) {
-    console.error('Failed to insert user profile', insertError)
+  try {
+    await insertUserProfile({
+      id: userId,
+      email: input.email,
+      full_name: input.fullName,
+      role: input.role,
+      avatar_url: normalizedAvatarPath,
+    })
+  } catch (error) {
+    console.error('Failed to insert user profile', error)
     await adminClient.auth.admin.deleteUser(userId)
     await cleanupAvatar(adminClient, normalizedAvatarPath ?? input.avatarPath)
-    return { error: insertError.message }
+    const message =
+      error instanceof Error ? error.message : 'Unable to create user profile.'
+    return { error: message }
   }
 
   if (normalizedAvatarPath) {
@@ -81,7 +87,14 @@ export async function createPortalUser(
         'Failed to sync avatar metadata for new user',
         metadataResult.error
       )
-      await adminClient.from('users').delete().eq('id', userId)
+      try {
+        await deleteUserProfile(userId)
+      } catch (profileCleanupError) {
+        console.error(
+          'Failed to clean up user profile after metadata sync failure',
+          profileCleanupError
+        )
+      }
       await adminClient.auth.admin.deleteUser(userId)
       await cleanupAvatar(adminClient, normalizedAvatarPath)
       return { error: metadataResult.error.message }
@@ -96,7 +109,11 @@ export async function createPortalUser(
     })
   } catch (error) {
     console.error('Failed to dispatch portal invite', error)
-    await adminClient.from('users').delete().eq('id', userId)
+    try {
+      await deleteUserProfile(userId)
+    } catch (profileCleanupError) {
+      console.error('Failed to clean up user profile after invite failure', profileCleanupError)
+    }
     await adminClient.auth.admin.deleteUser(userId)
     await cleanupAvatar(adminClient, normalizedAvatarPath)
     return { error: 'Unable to send invite email. Please try again.' }

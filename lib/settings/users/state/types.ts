@@ -1,6 +1,6 @@
-import type { Database } from '@/supabase/types/database'
+import type { UserRow as DrizzleUserRow } from '@/lib/db/schema'
 
-export type UserRow = Database['public']['Tables']['users']['Row']
+export type UserRow = DrizzleUserRow
 
 export type UserAssignments = Record<
   string,

@@ -1,4 +1,8 @@
 import { getSupabaseServiceClient } from '@/lib/supabase/service'
+import {
+  findUserById,
+  updateUserProfile,
+} from '@/lib/db/settings/users'
 
 import { resolveAvatarUpdate } from '../user-service'
 import type { UpdateUserInput } from '../user-validation'
@@ -9,22 +13,22 @@ export async function updatePortalUser(
 ): Promise<UserServiceResult> {
   const adminClient = getSupabaseServiceClient()
 
-  const { data: existingProfile, error: existingProfileError } =
-    await adminClient
-      .from('users')
-      .select('avatar_url')
-      .eq('id', input.id)
-      .maybeSingle()
+  let existingProfile: { avatar_url: string | null } | undefined
 
-  if (existingProfileError) {
-    console.error(
-      'Failed to load user profile for avatar update',
-      existingProfileError
-    )
-    return { error: existingProfileError.message }
+  try {
+    existingProfile = await findUserById(input.id)
+  } catch (error) {
+    console.error('Failed to load user profile for avatar update', error)
+    const message =
+      error instanceof Error ? error.message : 'Unable to load user profile.'
+    return { error: message }
   }
 
-  const currentAvatarPath = existingProfile?.avatar_url ?? null
+  if (!existingProfile) {
+    return { error: 'User not found.' }
+  }
+
+  const currentAvatarPath = existingProfile.avatar_url ?? null
 
   const avatarResolution = await resolveAvatarUpdate({
     client: adminClient,
@@ -40,19 +44,18 @@ export async function updatePortalUser(
 
   const nextAvatarPath = avatarResolution.nextAvatarPath
 
-  const { error: profileError } = await adminClient
-    .from('users')
-    .update({
+  try {
+    await updateUserProfile(input.id, {
       full_name: input.fullName,
       role: input.role,
       deleted_at: null,
       avatar_url: nextAvatarPath,
     })
-    .eq('id', input.id)
-
-  if (profileError) {
-    console.error('Failed to update user profile', profileError)
-    return { error: profileError.message }
+  } catch (error) {
+    console.error('Failed to update user profile', error)
+    const message =
+      error instanceof Error ? error.message : 'Unable to update user profile.'
+    return { error: message }
   }
 
   const authLookup = await adminClient.auth.admin.getUserById(input.id)
