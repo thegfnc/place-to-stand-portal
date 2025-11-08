@@ -20,8 +20,6 @@ import type {
   ClientMutationContext,
   ClientMutationResult,
 } from '@/lib/settings/clients/actions'
-import { getSupabaseServerClient } from '@/lib/supabase/server'
-
 const CLIENT_SETTINGS_PATH = '/settings/clients'
 
 export async function saveClient(
@@ -56,9 +54,8 @@ async function runClientMutation<TInput>(
   ) => Promise<ClientMutationResult>
 ): Promise<ClientActionResult> {
   const user = await requireUser()
-  const supabase = getSupabaseServerClient()
 
-  const { didMutate, ...result } = await mutate({ supabase, user }, input)
+  const { didMutate, ...result } = await mutate({ user }, input)
 
   if (didMutate) {
     revalidatePath(CLIENT_SETTINGS_PATH)

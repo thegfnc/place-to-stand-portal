@@ -1,7 +1,15 @@
+import { and, eq, inArray, isNull } from 'drizzle-orm'
 import { z } from 'zod'
-import type { PostgrestError, SupabaseClient } from '@supabase/supabase-js'
 
-import type { Database } from '@/supabase/types/database'
+import { db } from '@/lib/db'
+import {
+  clientMembers,
+  users,
+} from '@/lib/db/schema'
+import {
+  clientSlugExistsDrizzle,
+  generateUniqueClientSlugDrizzle,
+} from '@/lib/queries/clients'
 
 export const clientSchema = z.object({
   id: z.string().uuid().optional(),
@@ -57,41 +65,22 @@ export function toClientSlug(input: string): string {
 }
 
 export async function clientSlugExists(
-  supabase: SupabaseClient<Database>,
   slug: string,
   options: ClientSlugOptions = {}
-): Promise<boolean | PostgrestError> {
-  let query = supabase.from('clients').select('id').eq('slug', slug).limit(1)
-
-  if (options.excludeId) {
-    query = query.neq('id', options.excludeId)
-  }
-
-  const { data, error } = await query.maybeSingle()
-
-  if (error) {
-    console.error('Failed to check slug availability', error)
-    return error
-  }
-
-  return Boolean(data)
+): Promise<boolean> {
+  return clientSlugExistsDrizzle(slug, options)
 }
 
 export async function generateUniqueClientSlug(
-  supabase: SupabaseClient<Database>,
   base: string
-): Promise<string | PostgrestError> {
+): Promise<string> {
   const normalizedBase = base || DEFAULT_SLUG
   let candidate = normalizedBase
   let suffix = 2
   let attempt = 0
 
   while (attempt < UNIQUE_RETRY_LIMIT) {
-    const exists = await clientSlugExists(supabase, candidate)
-
-    if (typeof exists !== 'boolean') {
-      return exists
-    }
+    const exists = await clientSlugExistsDrizzle(candidate)
 
     if (!exists) {
       return candidate
@@ -102,46 +91,53 @@ export async function generateUniqueClientSlug(
     attempt += 1
   }
 
-  return `${normalizedBase}-${Date.now()}`
+  return generateUniqueClientSlugDrizzle(normalizedBase)
 }
 
 export async function syncClientMembers(
-  supabase: SupabaseClient<Database>,
   clientId: string,
   memberIds: string[]
 ): Promise<ClientActionResult> {
   const uniqueMemberIds = Array.from(new Set(memberIds))
 
   if (uniqueMemberIds.length) {
-    const { data: users, error: usersError } = await supabase
-      .from('users')
-      .select('id, role, deleted_at')
-      .in('id', uniqueMemberIds)
+    try {
+      const memberUsers = await db
+        .select({
+          id: users.id,
+          role: users.role,
+          deletedAt: users.deletedAt,
+        })
+        .from(users)
+        .where(inArray(users.id, uniqueMemberIds))
 
-    if (usersError) {
-      console.error('Failed to validate client members', usersError)
+      const invalidUsers = memberUsers.filter(
+        user => user.deletedAt !== null || user.role !== 'CLIENT'
+      )
+
+      if (invalidUsers.length > 0) {
+        return { error: 'Only active client users can be assigned.' }
+      }
+    } catch (error) {
+      console.error('Failed to validate client members', error)
       return { error: 'Unable to validate selected client users.' }
-    }
-
-    const invalidUsers = (users ?? []).filter(
-      user => user.deleted_at !== null || user.role !== 'CLIENT'
-    )
-
-    if (invalidUsers.length > 0) {
-      return { error: 'Only active client users can be assigned.' }
     }
   }
 
   const archiveTimestamp = new Date().toISOString()
 
-  const { error: archiveError } = await supabase
-    .from('client_members')
-    .update({ deleted_at: archiveTimestamp })
-    .eq('client_id', clientId)
-    .is('deleted_at', null)
-
-  if (archiveError) {
-    console.error('Failed to archive prior client members', archiveError)
+  try {
+    await db
+      .update(clientMembers)
+      .set({ deletedAt: archiveTimestamp })
+      .where(
+        and(
+          eq(clientMembers.clientId, clientId),
+          isNull(clientMembers.deletedAt),
+        ),
+    )
+  } catch (error) {
+    console.error('Failed to archive prior client members', error)
     return { error: 'Unable to update client members.' }
   }
 
@@ -149,17 +145,22 @@ export async function syncClientMembers(
     return {}
   }
 
-  const { error: upsertError } = await supabase.from('client_members').upsert(
-    uniqueMemberIds.map(userId => ({
-      client_id: clientId,
-      user_id: userId,
-      deleted_at: null,
-    })),
-    { onConflict: 'client_id,user_id' }
-  )
-
-  if (upsertError) {
-    console.error('Failed to upsert client members', upsertError)
+  try {
+    await db
+      .insert(clientMembers)
+      .values(
+        uniqueMemberIds.map(userId => ({
+          clientId,
+          userId,
+          deletedAt: null,
+        })),
+      )
+      .onConflictDoUpdate({
+        target: [clientMembers.clientId, clientMembers.userId],
+        set: { deletedAt: null },
+      })
+  } catch (error) {
+    console.error('Failed to upsert client members', error)
     return { error: 'Unable to update client members.' }
   }
 

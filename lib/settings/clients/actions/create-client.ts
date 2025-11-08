@@ -1,5 +1,8 @@
 import { logActivity } from '@/lib/activity/logger'
 import { clientCreatedEvent } from '@/lib/activity/events'
+import { assertAdmin } from '@/lib/auth/permissions'
+import { db } from '@/lib/db'
+import { clients } from '@/lib/db/schema'
 import {
   generateUniqueClientSlug,
   syncClientMembers,
@@ -25,46 +28,39 @@ export async function createClient(
   context: ClientMutationContext,
   payload: CreateClientPayload
 ): Promise<ClientMutationResult> {
-  const { supabase, user } = context
+  const { user } = context
+  assertAdmin(user)
   const { name, providedSlug, notes, memberIds } = payload
 
   const baseSlug = providedSlug
     ? toClientSlug(providedSlug)
     : toClientSlug(name)
-  const initialSlug = await generateUniqueClientSlug(supabase, baseSlug)
-
-  if (typeof initialSlug !== 'string') {
-    return buildMutationResult({ error: 'Unable to generate client slug.' })
-  }
-
-  let slugCandidate = initialSlug
+  let slugCandidate = await generateUniqueClientSlug(baseSlug)
   let attempt = 0
 
   while (attempt < INSERT_RETRY_LIMIT) {
-    const { data: inserted, error } = await supabase
-      .from('clients')
-      .insert({
-        name,
-        slug: slugCandidate,
-        notes,
-        created_by: user.id,
-      })
-      .select('id')
-      .maybeSingle()
+    try {
+      const inserted = await db
+        .insert(clients)
+        .values({
+          name,
+          slug: slugCandidate,
+          notes,
+          createdBy: user.id,
+        })
+        .returning({ id: clients.id })
 
-    if (!error) {
-      if (!inserted?.id) {
+      const clientId = inserted[0]?.id
+
+      if (!clientId) {
         console.error('Client created without returning identifier')
         return buildMutationResult({ error: 'Unable to create client.' })
       }
 
-      const syncResult = await syncClientMembers(
-        supabase,
-        inserted.id,
-        memberIds
-      )
+      const syncResult = await syncClientMembers(clientId, memberIds)
 
       if (syncResult.error) {
+        console.error('Failed to sync client members after create', syncResult)
         return buildMutationResult(syncResult)
       }
 
@@ -79,32 +75,39 @@ export async function createClient(
         verb: event.verb,
         summary: event.summary,
         targetType: 'CLIENT',
-        targetId: inserted.id,
-        targetClientId: inserted.id,
+        targetId: clientId,
+        targetClientId: clientId,
         metadata: event.metadata,
       })
 
       return buildMutationResult({})
+    } catch (error) {
+      if (!isUniqueViolation(error)) {
+        console.error('Failed to create client', error)
+        return buildMutationResult({
+          error:
+            error instanceof Error
+              ? error.message
+              : 'Unable to create client.',
+        })
+      }
+
+      slugCandidate = await generateUniqueClientSlug(baseSlug)
+      attempt += 1
+      continue
     }
-
-    if (error?.code !== '23505') {
-      console.error('Failed to create client', error)
-      return buildMutationResult({
-        error: error?.message ?? 'Unable to create client.',
-      })
-    }
-
-    const nextSlug = await generateUniqueClientSlug(supabase, baseSlug)
-
-    if (typeof nextSlug !== 'string') {
-      return buildMutationResult({ error: 'Unable to generate client slug.' })
-    }
-
-    slugCandidate = nextSlug
-    attempt += 1
   }
 
   return buildMutationResult({
     error: 'Could not generate a unique slug. Please try again.',
   })
+}
+
+function isUniqueViolation(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    (error as { code?: string }).code === '23505'
+  )
 }

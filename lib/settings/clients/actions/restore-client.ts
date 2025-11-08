@@ -1,5 +1,10 @@
+import { eq } from 'drizzle-orm'
+
 import { logActivity } from '@/lib/activity/logger'
 import { clientRestoredEvent } from '@/lib/activity/events'
+import { assertAdmin } from '@/lib/auth/permissions'
+import { db } from '@/lib/db'
+import { clients } from '@/lib/db/schema'
 import {
   restoreClientSchema,
   type RestoreClientInput,
@@ -21,15 +26,31 @@ export async function restoreClientMutation(
     return buildMutationResult({ error: 'Invalid restore request.' })
   }
 
-  const { supabase, user } = context
-  const { data: existingClient, error: loadError } = await supabase
-    .from('clients')
-    .select('id, name, deleted_at')
-    .eq('id', parsed.data.id)
-    .maybeSingle()
+  const { user } = context
+  assertAdmin(user)
 
-  if (loadError) {
-    console.error('Failed to load client for restore', loadError)
+  let existingClient:
+    | {
+        id: string
+        name: string
+        deletedAt: string | null
+      }
+    | undefined
+
+  try {
+    const rows = await db
+      .select({
+        id: clients.id,
+        name: clients.name,
+        deletedAt: clients.deletedAt,
+      })
+      .from(clients)
+      .where(eq(clients.id, parsed.data.id))
+      .limit(1)
+
+    existingClient = rows[0]
+  } catch (error) {
+    console.error('Failed to load client for restore', error)
     return buildMutationResult({ error: 'Unable to restore client.' })
   }
 
@@ -37,18 +58,21 @@ export async function restoreClientMutation(
     return buildMutationResult({ error: 'Client not found.' })
   }
 
-  if (!existingClient.deleted_at) {
+  if (!existingClient.deletedAt) {
     return buildMutationResult({ error: 'Client is already active.' })
   }
 
-  const { error: restoreError } = await supabase
-    .from('clients')
-    .update({ deleted_at: null })
-    .eq('id', parsed.data.id)
-
-  if (restoreError) {
-    console.error('Failed to restore client', restoreError)
-    return buildMutationResult({ error: restoreError.message })
+  try {
+    await db
+      .update(clients)
+      .set({ deletedAt: null })
+      .where(eq(clients.id, parsed.data.id))
+  } catch (error) {
+    console.error('Failed to restore client', error)
+    return buildMutationResult({
+      error:
+        error instanceof Error ? error.message : 'Unable to restore client.',
+    })
   }
 
   const event = clientRestoredEvent({ name: existingClient.name })

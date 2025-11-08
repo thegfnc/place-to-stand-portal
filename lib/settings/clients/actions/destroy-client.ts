@@ -1,5 +1,17 @@
+import { eq } from 'drizzle-orm'
+
 import { logActivity } from '@/lib/activity/logger'
 import { clientDeletedEvent } from '@/lib/activity/events'
+import { assertAdmin } from '@/lib/auth/permissions'
+import { db } from '@/lib/db'
+import {
+  clientMembers,
+  clients,
+} from '@/lib/db/schema'
+import {
+  countHourBlocksForClient,
+  countProjectsForClient,
+} from '@/lib/queries/clients'
 import {
   destroyClientSchema,
   type DestroyClientInput,
@@ -21,15 +33,31 @@ export async function destroyClientMutation(
     return buildMutationResult({ error: 'Invalid permanent delete request.' })
   }
 
-  const { supabase, user } = context
-  const { data: existingClient, error: loadError } = await supabase
-    .from('clients')
-    .select('id, name, deleted_at')
-    .eq('id', parsed.data.id)
-    .maybeSingle()
+  const { user } = context
+  assertAdmin(user)
 
-  if (loadError) {
-    console.error('Failed to load client for permanent delete', loadError)
+  let existingClient:
+    | {
+        id: string
+        name: string
+        deletedAt: string | null
+      }
+    | undefined
+
+  try {
+    const rows = await db
+      .select({
+        id: clients.id,
+        name: clients.name,
+        deletedAt: clients.deletedAt,
+      })
+      .from(clients)
+      .where(eq(clients.id, parsed.data.id))
+      .limit(1)
+
+    existingClient = rows[0]
+  } catch (error) {
+    console.error('Failed to load client for permanent delete', error)
     return buildMutationResult({
       error: 'Unable to permanently delete client.',
     })
@@ -39,50 +67,34 @@ export async function destroyClientMutation(
     return buildMutationResult({ error: 'Client not found.' })
   }
 
-  if (!existingClient.deleted_at) {
+  if (!existingClient.deletedAt) {
     return buildMutationResult({
       error: 'Archive the client before permanently deleting.',
     })
   }
 
-  const [
-    { count: projectCount, error: projectError },
-    { count: hourBlockCount, error: hourBlockError },
-  ] = await Promise.all([
-    supabase
-      .from('projects')
-      .select('id', { count: 'exact', head: true })
-      .eq('client_id', parsed.data.id),
-    supabase
-      .from('hour_blocks')
-      .select('id', { count: 'exact', head: true })
-      .eq('client_id', parsed.data.id),
-  ])
+  let projectCount = 0
+  let hourBlockCount = 0
 
-  if (projectError) {
-    console.error('Failed to check client projects before delete', projectError)
+  try {
+    ;[projectCount, hourBlockCount] = await Promise.all([
+      countProjectsForClient(parsed.data.id),
+      countHourBlocksForClient(parsed.data.id),
+    ])
+  } catch (error) {
+    console.error('Failed to check client dependencies before delete', error)
     return buildMutationResult({
-      error: 'Unable to verify project dependencies.',
-    })
-  }
-
-  if (hourBlockError) {
-    console.error(
-      'Failed to check client hour blocks before delete',
-      hourBlockError
-    )
-    return buildMutationResult({
-      error: 'Unable to verify hour block dependencies.',
+      error: 'Unable to verify client dependencies.',
     })
   }
 
   const blockingResources: string[] = []
 
-  if ((projectCount ?? 0) > 0) {
+  if (projectCount > 0) {
     blockingResources.push('projects')
   }
 
-  if ((hourBlockCount ?? 0) > 0) {
+  if (hourBlockCount > 0) {
     blockingResources.push('hour blocks')
   }
 
@@ -99,29 +111,30 @@ export async function destroyClientMutation(
     })
   }
 
-  const { error: memberDeleteError } = await supabase
-    .from('client_members')
-    .delete()
-    .eq('client_id', parsed.data.id)
-
-  if (memberDeleteError) {
+  try {
+    await db
+      .delete(clientMembers)
+      .where(eq(clientMembers.clientId, parsed.data.id))
+  } catch (error) {
     console.error(
       'Failed to remove client memberships before delete',
-      memberDeleteError
+      error
     )
     return buildMutationResult({
       error: 'Unable to remove client memberships.',
     })
   }
 
-  const { error: deleteError } = await supabase
-    .from('clients')
-    .delete()
-    .eq('id', parsed.data.id)
-
-  if (deleteError) {
-    console.error('Failed to permanently delete client', deleteError)
-    return buildMutationResult({ error: deleteError.message })
+  try {
+    await db.delete(clients).where(eq(clients.id, parsed.data.id))
+  } catch (error) {
+    console.error('Failed to permanently delete client', error)
+    return buildMutationResult({
+      error:
+        error instanceof Error
+          ? error.message
+          : 'Unable to permanently delete client.',
+    })
   }
 
   const event = clientDeletedEvent({ name: existingClient.name })

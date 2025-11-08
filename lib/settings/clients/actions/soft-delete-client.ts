@@ -1,5 +1,10 @@
+import { eq } from 'drizzle-orm'
+
 import { logActivity } from '@/lib/activity/logger'
 import { clientArchivedEvent } from '@/lib/activity/events'
+import { assertAdmin } from '@/lib/auth/permissions'
+import { db } from '@/lib/db'
+import { clients } from '@/lib/db/schema'
 import {
   deleteClientSchema,
   type DeleteClientInput,
@@ -21,15 +26,29 @@ export async function softDeleteClientMutation(
     return buildMutationResult({ error: 'Invalid delete request.' })
   }
 
-  const { supabase, user } = context
-  const { data: existingClient, error: loadError } = await supabase
-    .from('clients')
-    .select('id, name')
-    .eq('id', parsed.data.id)
-    .maybeSingle()
+  const { user } = context
+  assertAdmin(user)
 
-  if (loadError) {
-    console.error('Failed to load client for archive', loadError)
+  let existingClient:
+    | {
+        id: string
+        name: string
+      }
+    | undefined
+
+  try {
+    const rows = await db
+      .select({
+        id: clients.id,
+        name: clients.name,
+      })
+      .from(clients)
+      .where(eq(clients.id, parsed.data.id))
+      .limit(1)
+
+    existingClient = rows[0]
+  } catch (error) {
+    console.error('Failed to load client for archive', error)
     return buildMutationResult({ error: 'Unable to archive client.' })
   }
 
@@ -37,14 +56,17 @@ export async function softDeleteClientMutation(
     return buildMutationResult({ error: 'Client not found.' })
   }
 
-  const { error } = await supabase
-    .from('clients')
-    .update({ deleted_at: new Date().toISOString() })
-    .eq('id', parsed.data.id)
-
-  if (error) {
+  try {
+    await db
+      .update(clients)
+      .set({ deletedAt: new Date().toISOString() })
+      .where(eq(clients.id, parsed.data.id))
+  } catch (error) {
     console.error('Failed to archive client', error)
-    return buildMutationResult({ error: error.message })
+    return buildMutationResult({
+      error:
+        error instanceof Error ? error.message : 'Unable to archive client.',
+    })
   }
 
   const event = clientArchivedEvent({ name: existingClient.name })
