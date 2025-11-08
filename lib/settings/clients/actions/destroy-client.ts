@@ -80,7 +80,7 @@ export async function destroyClientMutation(
     ;[projectCount, hourBlockCount] = await Promise.all([
       countProjectsForClient(parsed.data.id),
       countHourBlocksForClient(parsed.data.id),
-    ])
+  ])
   } catch (error) {
     console.error('Failed to check client dependencies before delete', error)
     return buildMutationResult({

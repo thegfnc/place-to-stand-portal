@@ -43,11 +43,11 @@ export async function createClient(
       const inserted = await db
         .insert(clients)
         .values({
-          name,
-          slug: slugCandidate,
-          notes,
+        name,
+        slug: slugCandidate,
+        notes,
           createdBy: user.id,
-        })
+      })
         .returning({ id: clients.id })
 
       const clientId = inserted[0]?.id
@@ -83,14 +83,14 @@ export async function createClient(
       return buildMutationResult({})
     } catch (error) {
       if (!isUniqueViolation(error)) {
-        console.error('Failed to create client', error)
-        return buildMutationResult({
+      console.error('Failed to create client', error)
+      return buildMutationResult({
           error:
             error instanceof Error
               ? error.message
               : 'Unable to create client.',
-        })
-      }
+      })
+    }
 
       slugCandidate = await generateUniqueClientSlug(baseSlug)
       attempt += 1

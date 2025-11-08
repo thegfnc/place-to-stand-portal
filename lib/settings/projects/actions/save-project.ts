@@ -63,31 +63,31 @@ export async function saveProject(
         const inserted = await db
           .insert(projects)
           .values({
-            name: trimmedName,
+          name: trimmedName,
             clientId,
-            status,
+          status,
             startsOn: startsOn ?? null,
             endsOn: endsOn ?? null,
             createdBy: user.id,
-            slug: slugCandidate,
-          })
+          slug: slugCandidate,
+        })
           .returning({ id: projects.id })
 
         insertedId = inserted[0]?.id ?? null
 
         if (insertedId) {
-          break
-        }
+        break
+      }
       } catch (error) {
         if (!isUniqueViolation(error)) {
-          console.error('Failed to create project', error)
+        console.error('Failed to create project', error)
           return {
             error:
               error instanceof Error
                 ? error.message
                 : 'Unable to create project.',
           }
-        }
+      }
 
         slugCandidate = await generateUniqueProjectSlug(baseSlug)
         attempt += 1
@@ -171,13 +171,13 @@ export async function saveProject(
       await db
         .update(projects)
         .set({
-          name: trimmedName,
+        name: trimmedName,
           clientId,
-          status,
+        status,
           startsOn: startsOn ?? null,
           endsOn: endsOn ?? null,
-          slug: slugToUpdate,
-        })
+        slug: slugToUpdate,
+      })
         .where(eq(projects.id, id))
     } catch (error) {
       console.error('Failed to update project', error)

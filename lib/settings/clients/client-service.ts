@@ -113,10 +113,10 @@ export async function syncClientMembers(
 
       const invalidUsers = memberUsers.filter(
         user => user.deletedAt !== null || user.role !== 'CLIENT'
-      )
+    )
 
-      if (invalidUsers.length > 0) {
-        return { error: 'Only active client users can be assigned.' }
+    if (invalidUsers.length > 0) {
+      return { error: 'Only active client users can be assigned.' }
       }
     } catch (error) {
       console.error('Failed to validate client members', error)
@@ -149,11 +149,11 @@ export async function syncClientMembers(
     await db
       .insert(clientMembers)
       .values(
-        uniqueMemberIds.map(userId => ({
+    uniqueMemberIds.map(userId => ({
           clientId,
           userId,
           deletedAt: null,
-        })),
+    })),
       )
       .onConflictDoUpdate({
         target: [clientMembers.clientId, clientMembers.userId],

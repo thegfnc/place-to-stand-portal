@@ -57,10 +57,10 @@ export default async function ClientsSettingsPage() {
   }, {})
 
   const clientDirectory = clientUsers.map(user => ({
-    id: user.id,
-    email: user.email,
+      id: user.id,
+      email: user.email,
     fullName: user.fullName,
-  }))
+    }))
 
   return (
     <>

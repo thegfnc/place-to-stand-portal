@@ -78,7 +78,7 @@ export async function destroyProject(
     ;[taskCount, timeLogCount] = await Promise.all([
       countTasksForProject(projectId),
       countTimeLogsForProject(projectId),
-    ])
+  ])
   } catch (error) {
     console.error('Failed to check project dependencies before delete', error)
     return { error: 'Unable to verify project dependencies.' }
