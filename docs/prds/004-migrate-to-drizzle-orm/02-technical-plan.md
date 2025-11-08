@@ -94,6 +94,8 @@ The migration will be executed in four distinct phases to minimize risk and ensu
     - Each file will contain functions for all CRUD operations on that entity (e.g., `getTaskById`, `createTask`, `updateTask`).
     - **Crucially, every function in this layer must call the appropriate authorization helper before executing a query.** If authorization fails, it should throw a `403 Forbidden` error.
 
+> **Implementation status (2025-11-08):** Phase 2 foundations are in place. Authorization helpers live in `lib/auth/permissions.ts`, standard `HttpError` types in `lib/errors/http.ts`, and query scaffolding under `lib/queries/` now delegates to the guard layer. See `phase-2/README.md` for details.
+
 ---
 
 ### **Phase 3: Incremental Refactoring**
@@ -106,6 +108,8 @@ The migration will be executed in four distinct phases to minimize risk and ensu
         a. Identify all server-side components and API routes that use `supabase-js` for data access.
         b. Replace the calls with the corresponding functions from our new Drizzle data access layer (`lib/queries/*`).
         c. Ensure all data-fetching hooks (e.g., React Query's `useQuery`) and server actions are updated to use the new data layer.
+
+> **Implementation status (2025-11-08):** The Settings → Users domain is fully migrated. Server services, actions, and the settings page now rely on `lib/queries/users.ts` plus shared authorization helpers. Supabase-specific helper utilities (`user-queries.ts`) were removed. See `phase-3/README.md` for the refactor log and verification notes.
 
 2.  **Testing:**
     - After refactoring each module, conduct thorough testing to ensure functional parity. This includes manual testing of the UI and running any relevant automated tests.

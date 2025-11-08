@@ -25,7 +25,7 @@ export async function createUser(
   }
 
   const payload = parsed.data
-  const result = await createPortalUser(payload)
+  const result = await createPortalUser(actor, payload)
 
   if (!result.error) {
     if (result.userId) {

@@ -11,7 +11,7 @@ export const clientsRelations = relations(clients, ({one, many}) => ({
 	projects: many(projects),
 }));
 
-export const usersRelations = relations(users, ({one, many}) => ({
+export const usersRelations = relations(users, ({many}) => ({
 	clients: many(clients),
 	taskAssignees: many(taskAssignees),
 	hourBlocks: many(hourBlocks),

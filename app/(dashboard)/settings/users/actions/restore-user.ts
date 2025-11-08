@@ -9,17 +9,11 @@ import {
   restoreUserSchema,
   type RestoreUserInput,
 } from '@/lib/settings/users/user-validation'
+import { getUserById } from '@/lib/queries/users'
+import { NotFoundError } from '@/lib/errors/http'
 
 import { revalidateUsersAndRelated } from './helpers'
-import { fetchUserById, getSupabase } from './user-queries'
 import type { ActionResult } from './types'
-
-type UserSummary = {
-  id: string
-  email: string | null
-  full_name: string | null
-  role: string
-}
 
 export async function restoreUser(
   input: RestoreUserInput
@@ -33,43 +27,34 @@ export async function restoreUser(
   }
 
   const payload = parsed.data
-  const supabase = getSupabase()
+  let existingUser: Awaited<ReturnType<typeof getUserById>>
 
-  const { data: existingUser, error: existingUserError } =
-    await fetchUserById<UserSummary>(
-      supabase,
-      payload.id,
-      `id, email, full_name, role`
-    )
-
-  if (existingUserError) {
-    console.error('Failed to load user for restore', existingUserError)
+  try {
+    existingUser = await getUserById(actor, payload.id)
+  } catch (error) {
+    console.error('Failed to load user for restore', error)
+    if (error instanceof NotFoundError) {
+      return { error: 'User not found.' }
+    }
     return { error: 'Unable to restore user.' }
   }
 
-  if (!existingUser) {
-    return { error: 'User not found.' }
-  }
-
-  const result = await restorePortalUser(payload)
+  const result = await restorePortalUser(actor, payload)
 
   if (!result.error) {
-    const { data: restoredUser, error: restoredUserError } =
-      await fetchUserById<UserSummary>(
-        supabase,
-        payload.id,
-        `email, full_name, role`
-      )
+    let resolvedUser: Awaited<ReturnType<typeof getUserById>> | null = null
 
-    if (restoredUserError) {
-      console.error('Failed to reload user after restore', restoredUserError)
+    try {
+      resolvedUser = await getUserById(actor, payload.id)
+    } catch (error) {
+      console.error('Failed to reload user after restore', error)
     }
 
-    const resolvedUser = restoredUser ?? existingUser
+    const finalUser = resolvedUser ?? existingUser
     const event = userRestoredEvent({
-      fullName: resolvedUser.full_name ?? resolvedUser.email ?? 'User',
-      email: resolvedUser.email ?? undefined,
-      role: resolvedUser.role,
+      fullName: finalUser.fullName ?? finalUser.email ?? 'User',
+      email: finalUser.email ?? undefined,
+      role: finalUser.role,
     })
 
     await logActivity({

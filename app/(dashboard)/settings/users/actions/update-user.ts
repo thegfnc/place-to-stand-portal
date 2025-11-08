@@ -3,6 +3,8 @@
 import { requireRole } from '@/lib/auth/session'
 import { logActivity } from '@/lib/activity/logger'
 import { userUpdatedEvent } from '@/lib/activity/events'
+import { getUserById } from '@/lib/queries/users'
+import { NotFoundError } from '@/lib/errors/http'
 
 import { updatePortalUser } from '@/lib/settings/users/services'
 import {
@@ -11,22 +13,7 @@ import {
 } from '@/lib/settings/users/user-validation'
 
 import { revalidateUsers } from './helpers'
-import { fetchUserById, getSupabase } from './user-queries'
 import type { ActionResult } from './types'
-
-type ExistingUserRecord = {
-  id: string
-  email: string | null
-  full_name: string | null
-  role: string
-  avatar_url: string | null
-}
-
-type UpdatedUserRecord = {
-  full_name: string | null
-  role: string
-  avatar_url: string | null
-}
 
 export async function updateUser(
   input: UpdateUserInput
@@ -40,51 +27,46 @@ export async function updateUser(
   }
 
   const payload = parsed.data
-  const supabase = getSupabase()
+  let existingUser: Awaited<ReturnType<typeof getUserById>>
 
-  const { data: existingUser, error: existingUserError } =
-    await fetchUserById<ExistingUserRecord>(
-      supabase,
-      payload.id,
-      `id, email, full_name, role, avatar_url`
-    )
-
-  if (existingUserError) {
-    console.error('Failed to load user for update', existingUserError)
+  try {
+    existingUser = await getUserById(actor, payload.id)
+  } catch (error) {
+    console.error('Failed to load user for update', error)
+    if (error instanceof NotFoundError) {
+      return { error: 'User not found.' }
+    }
     return { error: 'Unable to update user.' }
   }
 
-  if (!existingUser) {
-    return { error: 'User not found.' }
-  }
-
-  const result = await updatePortalUser(payload)
+  const result = await updatePortalUser(actor, payload)
 
   if (!result.error) {
-    const { data: updatedUser, error: updatedUserError } =
-      await fetchUserById<UpdatedUserRecord>(
-        supabase,
-        payload.id,
-        `full_name, role, avatar_url`
-      )
+    let updatedUser: Awaited<ReturnType<typeof getUserById>> | null = null
 
-    if (updatedUserError) {
-      console.error('Failed to reload user after update', updatedUserError)
+    try {
+      updatedUser = await getUserById(actor, payload.id)
+    } catch (error) {
+      console.error('Failed to reload user after update', error)
     }
 
     const resolvedFullName =
-      updatedUser?.full_name ?? payload.fullName ?? existingUser.full_name
-    const resolvedRole = updatedUser?.role ?? payload.role ?? existingUser.role
+      updatedUser?.fullName ??
+      payload.fullName ??
+      existingUser.fullName ??
+      null
+    const resolvedRole =
+      updatedUser?.role ?? payload.role ?? existingUser.role
     const resolvedAvatar =
-      updatedUser?.avatar_url ?? existingUser.avatar_url ?? null
+      updatedUser?.avatarUrl ?? existingUser.avatarUrl ?? null
 
     const changedFields: string[] = []
     const previousDetails: Record<string, unknown> = {}
     const nextDetails: Record<string, unknown> = {}
 
-    if (existingUser.full_name !== resolvedFullName) {
+    if (existingUser.fullName !== resolvedFullName) {
       changedFields.push('name')
-      previousDetails.fullName = existingUser.full_name
+      previousDetails.fullName = existingUser.fullName
       nextDetails.fullName = resolvedFullName
     }
 
@@ -94,7 +76,7 @@ export async function updateUser(
       nextDetails.role = resolvedRole
     }
 
-    const previousAvatar = existingUser.avatar_url ?? null
+    const previousAvatar = existingUser.avatarUrl ?? null
     const nextAvatar = resolvedAvatar
 
     if (previousAvatar !== nextAvatar) {
@@ -108,6 +90,9 @@ export async function updateUser(
     }
 
     if (changedFields.length > 0) {
+      const eventFullName =
+        resolvedFullName ?? existingUser.email ?? 'User'
+
       const detailsPayload =
         Object.keys(previousDetails).length > 0 ||
         Object.keys(nextDetails).length > 0
@@ -115,7 +100,7 @@ export async function updateUser(
           : undefined
 
       const event = userUpdatedEvent({
-        fullName: resolvedFullName,
+        fullName: eventFullName,
         changedFields,
         details: detailsPayload,
         passwordChanged: Boolean(payload.password),

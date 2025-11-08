@@ -1,46 +1,60 @@
+import { and, eq, isNull } from 'drizzle-orm'
+
+import type { AppUser } from '@/lib/auth/session'
+import { assertAdmin } from '@/lib/auth/permissions'
+import { db } from '@/lib/db'
+import {
+  clientMembers,
+  taskAssignees,
+} from '@/lib/db/schema'
 import { getSupabaseServiceClient } from '@/lib/supabase/service'
+import { softDeleteUser } from '@/lib/queries/users'
 
 import type { DeleteUserInput } from '../user-validation'
 import type { UserServiceResult } from '../types'
 
 export async function softDeletePortalUser(
+  actor: AppUser,
   input: DeleteUserInput
 ): Promise<UserServiceResult> {
+  assertAdmin(actor)
+
   const adminClient = getSupabaseServiceClient()
-  const deletionTimestamp = new Date().toISOString()
-
-  const { error: profileError } = await adminClient
-    .from('users')
-    .update({ deleted_at: deletionTimestamp })
-    .eq('id', input.id)
-
-  if (profileError) {
-    console.error('Failed to soft delete user profile', profileError)
-    return { error: profileError.message }
-  }
+  const deletionTimestamp = await softDeleteUser(actor, input.id)
 
   const associationUpdates = [
     {
       context: 'client assignments',
-      promise: adminClient
-        .from('client_members')
-        .update({ deleted_at: deletionTimestamp })
-        .eq('user_id', input.id)
-        .is('deleted_at', null),
+      executor: async () =>
+        db
+          .update(clientMembers)
+          .set({ deletedAt: deletionTimestamp })
+          .where(
+            and(
+              eq(clientMembers.userId, input.id),
+              isNull(clientMembers.deletedAt),
+            ),
+          ),
     },
     {
       context: 'task assignments',
-      promise: adminClient
-        .from('task_assignees')
-        .update({ deleted_at: deletionTimestamp })
-        .eq('user_id', input.id)
-        .is('deleted_at', null),
+      executor: async () =>
+        db
+          .update(taskAssignees)
+          .set({ deletedAt: deletionTimestamp })
+          .where(
+            and(
+              eq(taskAssignees.userId, input.id),
+              isNull(taskAssignees.deletedAt),
+            ),
+          ),
     },
   ] as const
 
-  for (const { promise, context } of associationUpdates) {
-    const { error } = await promise
-    if (error) {
+  for (const { executor, context } of associationUpdates) {
+    try {
+      await executor()
+    } catch (error) {
       console.error(`Failed to remove user ${context}`, error)
       return { error: `Unable to remove user ${context}.` }
     }

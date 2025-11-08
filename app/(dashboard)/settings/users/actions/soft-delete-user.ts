@@ -9,17 +9,11 @@ import {
   deleteUserSchema,
   type DeleteUserInput,
 } from '@/lib/settings/users/user-validation'
+import { getUserById } from '@/lib/queries/users'
+import { NotFoundError } from '@/lib/errors/http'
 
 import { revalidateUsersAndRelated } from './helpers'
-import { fetchUserById, getSupabase } from './user-queries'
 import type { ActionResult } from './types'
-
-type UserSummary = {
-  id: string
-  email: string | null
-  full_name: string | null
-  role: string
-}
 
 export async function softDeleteUser(
   input: DeleteUserInput
@@ -33,29 +27,23 @@ export async function softDeleteUser(
   }
 
   const payload = parsed.data
-  const supabase = getSupabase()
+  let existingUser: Awaited<ReturnType<typeof getUserById>>
 
-  const { data: existingUser, error: existingUserError } =
-    await fetchUserById<UserSummary>(
-      supabase,
-      payload.id,
-      `id, email, full_name, role`
-    )
-
-  if (existingUserError) {
-    console.error('Failed to load user for archive', existingUserError)
+  try {
+    existingUser = await getUserById(actor, payload.id)
+  } catch (error) {
+    console.error('Failed to load user for archive', error)
+    if (error instanceof NotFoundError) {
+      return { error: 'User not found.' }
+    }
     return { error: 'Unable to archive user.' }
   }
 
-  if (!existingUser) {
-    return { error: 'User not found.' }
-  }
-
-  const result = await softDeletePortalUser(payload)
+  const result = await softDeletePortalUser(actor, payload)
 
   if (!result.error) {
     const event = userArchivedEvent({
-      fullName: existingUser.full_name ?? existingUser.email ?? 'User',
+      fullName: existingUser.fullName ?? existingUser.email ?? 'User',
       email: existingUser.email ?? undefined,
       role: existingUser.role,
     })
