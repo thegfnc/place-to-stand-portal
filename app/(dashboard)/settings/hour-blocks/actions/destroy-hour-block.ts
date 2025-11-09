@@ -2,35 +2,36 @@
 
 import { revalidatePath } from 'next/cache'
 
+import type { PostgresError } from 'postgres'
+import { eq } from 'drizzle-orm'
+
 import { requireUser } from '@/lib/auth/session'
+import { assertAdmin } from '@/lib/auth/permissions'
 import { logActivity } from '@/lib/activity/logger'
 import { hourBlockDeletedEvent } from '@/lib/activity/events'
-import { getSupabaseServerClient } from '@/lib/supabase/server'
+import { db } from '@/lib/db'
+import { hourBlocks } from '@/lib/db/schema'
+import { getHourBlockWithClientById } from '@/lib/queries/hour-blocks'
 
 import { destroySchema } from './schemas'
 import type { ActionResult, DestroyInput } from './types'
-import { HOUR_BLOCKS_SETTINGS_PATH, fetchHourBlockWithClient } from './helpers'
+import { HOUR_BLOCKS_SETTINGS_PATH } from './helpers'
 
 export async function destroyHourBlock(
-  input: DestroyInput
+  input: DestroyInput,
 ): Promise<ActionResult> {
   const user = await requireUser()
+  assertAdmin(user)
+
   const parsed = destroySchema.safeParse(input)
 
   if (!parsed.success) {
     return { error: 'Invalid permanent delete request.' }
   }
 
-  const supabase = getSupabaseServerClient()
   const hourBlockId = parsed.data.id
 
-  const { hourBlock: existingHourBlock, error: loadError } =
-    await fetchHourBlockWithClient(supabase, hourBlockId)
-
-  if (loadError) {
-    console.error('Failed to load hour block for permanent delete', loadError)
-    return { error: 'Unable to permanently delete hour block.' }
-  }
+  const existingHourBlock = await getHourBlockWithClientById(user, hourBlockId)
 
   if (!existingHourBlock) {
     return { error: 'Hour block not found.' }
@@ -42,22 +43,24 @@ export async function destroyHourBlock(
     }
   }
 
-  const { error: deleteError } = await supabase
-    .from('hour_blocks')
-    .delete()
-    .eq('id', hourBlockId)
+  try {
+    await db.delete(hourBlocks).where(eq(hourBlocks.id, hourBlockId))
+  } catch (error) {
+    console.error('Failed to permanently delete hour block', error)
 
-  if (deleteError) {
-    console.error('Failed to permanently delete hour block', deleteError)
-
-    if (deleteError.code === '23503') {
+    if (isPostgresError(error) && error.code === '23503') {
       return {
         error:
           'Cannot permanently delete this hour block while other records reference it.',
       }
     }
 
-    return { error: deleteError.message }
+    return {
+      error:
+        error instanceof Error
+          ? error.message
+          : 'Unable to permanently delete hour block.',
+    }
   }
 
   const event = hourBlockDeletedEvent({
@@ -78,4 +81,13 @@ export async function destroyHourBlock(
   revalidatePath(HOUR_BLOCKS_SETTINGS_PATH)
 
   return {}
+}
+
+function isPostgresError(error: unknown): error is PostgresError {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    typeof (error as { code?: unknown }).code === 'string'
+  )
 }

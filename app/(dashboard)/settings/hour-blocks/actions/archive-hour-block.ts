@@ -1,49 +1,57 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { eq } from 'drizzle-orm'
 
 import { requireUser } from '@/lib/auth/session'
+import { assertAdmin } from '@/lib/auth/permissions'
 import { logActivity } from '@/lib/activity/logger'
 import { hourBlockArchivedEvent } from '@/lib/activity/events'
-import { getSupabaseServerClient } from '@/lib/supabase/server'
+import { db } from '@/lib/db'
+import { hourBlocks } from '@/lib/db/schema'
+import { getHourBlockWithClientById } from '@/lib/queries/hour-blocks'
 
 import { deleteSchema } from './schemas'
 import type { ActionResult, DeleteInput } from './types'
-import { HOUR_BLOCKS_SETTINGS_PATH, fetchHourBlockWithClient } from './helpers'
+import { HOUR_BLOCKS_SETTINGS_PATH } from './helpers'
 
 export async function softDeleteHourBlock(
-  input: DeleteInput
+  input: DeleteInput,
 ): Promise<ActionResult> {
   const user = await requireUser()
+  assertAdmin(user)
+
   const parsed = deleteSchema.safeParse(input)
 
   if (!parsed.success) {
     return { error: 'Invalid delete request.' }
   }
 
-  const supabase = getSupabaseServerClient()
   const hourBlockId = parsed.data.id
 
-  const { hourBlock: existingHourBlock, error: loadError } =
-    await fetchHourBlockWithClient(supabase, hourBlockId)
-
-  if (loadError) {
-    console.error('Failed to load hour block for archive', loadError)
-    return { error: 'Unable to archive hour block.' }
-  }
+  const existingHourBlock = await getHourBlockWithClientById(user, hourBlockId)
 
   if (!existingHourBlock) {
     return { error: 'Hour block not found.' }
   }
 
-  const { error } = await supabase
-    .from('hour_blocks')
-    .update({ deleted_at: new Date().toISOString() })
-    .eq('id', hourBlockId)
-
-  if (error) {
+  try {
+    await db
+      .update(hourBlocks)
+      .set({
+        deletedAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      })
+      .where(eq(hourBlocks.id, hourBlockId))
+  } catch (error) {
     console.error('Failed to archive hour block', error)
-    return { error: error.message }
+
+    return {
+      error:
+        error instanceof Error
+          ? error.message
+          : 'Unable to archive hour block.',
+    }
   }
 
   const event = hourBlockArchivedEvent({

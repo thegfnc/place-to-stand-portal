@@ -23,6 +23,13 @@
 - Completed the Tasks domain migration:
   - Server actions (`save-task`, `change-task-status`, `change-task-due-date`, `accept-task`, `accept-done-tasks`, `unaccept-task`, `remove-task`, `destroy-task`, `restore-task`) now authorize via `ensureClientAccessByTaskId`, use Drizzle for persistence, and continue logging activity.
   - Shared helpers (`resolveNextTaskRank`, `syncAssignees`, `syncAttachments`) and the reorder API (`app/api/v1/tasks/[taskId]/reorder/route.ts`) read/write solely through Drizzle.
+- Completed the Activity domain migration:
+  - Activity feed queries (`lib/activity/queries.ts`) now select via Drizzle and continue powering `/api/activity`.
+  - Activity overview caching and logging use Drizzle (`lib/activity/overview-cache.ts`, `lib/activity/logger.ts`) with a new client logging endpoint at `app/api/activity/log/route.ts`.
+
+- Completed the Hour Blocks domain migration:
+  - Hour block settings data (`app/(dashboard)/settings/hour-blocks/page.tsx`) loads through `lib/queries/hour-blocks.ts` for both active and archived records.
+  - Hour block mutations (save/archive/restore/destroy) now use Drizzle-backed helpers with consistent activity logging and validations.
 
 ---
 
@@ -44,6 +51,6 @@
 
 ## Follow Up (Next Domains)
 
-- Replace Supabase access in activity feeds once shared query utilities are ready.
-- Add Vitest coverage around `lib/auth/permissions.ts` and the users query functions to guard RBAC behavior.
+- Migrate Projects → Time Logs surfaces and supporting helpers off Supabase Postgrest.
+- Add Vitest coverage around `lib/queries/hour-blocks.ts`, `lib/activity/queries.ts`, and `lib/activity/overview-cache.ts` to guard pagination and RBAC behavior.
 - Backfill automated coverage for client slug/membership utilities, task dependency guards, and destructive actions.

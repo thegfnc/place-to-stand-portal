@@ -2,13 +2,36 @@
 
 import 'server-only'
 
-import { getSupabaseServiceClient } from '@/lib/supabase/service'
-import type { Database } from '@/supabase/types/database'
+import { and, eq } from 'drizzle-orm'
 
-const TABLE = 'activity_overview_cache'
+import { db } from '@/lib/db'
+import { activityOverviewCache } from '@/lib/db/schema'
+import type { Database } from '@/supabase/types/database'
 
 export type ActivityOverviewCacheRow =
   Database['public']['Tables']['activity_overview_cache']['Row']
+
+type CacheSelection = {
+  id: string
+  userId: string
+  timeframeDays: number
+  summary: string
+  cachedAt: string
+  expiresAt: string
+  createdAt: string
+  updatedAt: string
+}
+
+const cacheSelection = {
+  id: activityOverviewCache.id,
+  userId: activityOverviewCache.userId,
+  timeframeDays: activityOverviewCache.timeframeDays,
+  summary: activityOverviewCache.summary,
+  cachedAt: activityOverviewCache.cachedAt,
+  expiresAt: activityOverviewCache.expiresAt,
+  createdAt: activityOverviewCache.createdAt,
+  updatedAt: activityOverviewCache.updatedAt,
+} as const
 
 export async function loadActivityOverviewCache({
   userId,
@@ -17,23 +40,27 @@ export async function loadActivityOverviewCache({
   userId: string
   timeframeDays: number
 }): Promise<ActivityOverviewCacheRow | null> {
-  const supabase = getSupabaseServiceClient()
+  try {
+    const rows = (await db
+      .select(cacheSelection)
+      .from(activityOverviewCache)
+      .where(
+        and(
+          eq(activityOverviewCache.userId, userId),
+          eq(activityOverviewCache.timeframeDays, timeframeDays)
+        )
+      )
+      .limit(1)) as CacheSelection[]
 
-  const { data, error } = await supabase
-    .from(TABLE)
-    .select('*')
-    .eq('user_id', userId)
-    .eq('timeframe_days', timeframeDays)
-    .maybeSingle()
-
-  if (error) {
-    if (error.code !== 'PGRST116') {
-      console.error('Failed to load activity overview cache', error)
+    if (!rows.length) {
+      return null
     }
+
+    return toSupabaseRow(rows[0])
+  } catch (error) {
+    console.error('Failed to load activity overview cache', error)
     return null
   }
-
-  return data ?? null
 }
 
 export async function upsertActivityOverviewCache({
@@ -49,23 +76,43 @@ export async function upsertActivityOverviewCache({
   cachedAt: string
   expiresAt: string
 }): Promise<void> {
-  const supabase = getSupabaseServiceClient()
-
-  const { error } = await supabase.from(TABLE).upsert(
-    {
-      user_id: userId,
-      timeframe_days: timeframeDays,
-      summary,
-      cached_at: cachedAt,
-      expires_at: expiresAt,
-    },
-    {
-      onConflict: 'user_id,timeframe_days',
-    }
-  )
-
-  if (error) {
+  try {
+    await db
+      .insert(activityOverviewCache)
+      .values({
+        userId,
+        timeframeDays,
+        summary,
+        cachedAt,
+        expiresAt,
+      })
+      .onConflictDoUpdate({
+        target: [
+          activityOverviewCache.userId,
+          activityOverviewCache.timeframeDays,
+        ],
+        set: {
+          summary,
+          cachedAt,
+          expiresAt,
+          updatedAt: cachedAt,
+        },
+      })
+  } catch (error) {
     console.error('Failed to upsert activity overview cache', error)
     throw error
+  }
+}
+
+function toSupabaseRow(row: CacheSelection): ActivityOverviewCacheRow {
+  return {
+    id: row.id,
+    user_id: row.userId,
+    timeframe_days: row.timeframeDays,
+    summary: row.summary,
+    cached_at: row.cachedAt,
+    expires_at: row.expiresAt,
+    created_at: row.createdAt,
+    updated_at: row.updatedAt,
   }
 }

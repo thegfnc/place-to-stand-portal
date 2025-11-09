@@ -2,7 +2,10 @@
 
 import 'server-only'
 
-import { getSupabaseServerClient } from '@/lib/supabase/server'
+import { eq } from 'drizzle-orm'
+
+import { db } from '@/lib/db'
+import { activityLogs, users } from '@/lib/db/schema'
 import type { Database, Json } from '@/supabase/types/database'
 import type { ActivityTargetType, ActivityVerb } from './types'
 
@@ -19,31 +22,28 @@ export type LogActivityOptions = {
   metadata?: Json
 }
 
-const normalizeMetadata = (metadata?: Json): Json | null => {
-  if (metadata === undefined || metadata === null) {
-    return null
-  }
-
-  return JSON.parse(JSON.stringify(metadata)) as Json
-}
+const DEFAULT_ACTOR_ROLE: Database['public']['Enums']['user_role'] = 'ADMIN'
 
 export async function logActivity(options: LogActivityOptions) {
-  const supabase = getSupabaseServerClient()
+  try {
+    const actorRole = await resolveActorRole(
+      options.actorId,
+      options.actorRole
+    )
 
-  const { error } = await supabase.rpc('log_activity', {
-    p_actor_id: options.actorId,
-    p_actor_role: options.actorRole ?? null,
-    p_verb: options.verb,
-    p_summary: options.summary,
-    p_target_type: options.targetType,
-    p_target_id: options.targetId ?? null,
-    p_target_client_id: options.targetClientId ?? null,
-    p_target_project_id: options.targetProjectId ?? null,
-    p_context_route: options.contextRoute ?? null,
-    p_metadata: normalizeMetadata(options.metadata),
-  })
-
-  if (error) {
+    await db.insert(activityLogs).values({
+      actorId: options.actorId,
+      actorRole,
+      verb: options.verb,
+      summary: options.summary,
+      targetType: options.targetType,
+      targetId: options.targetId ?? null,
+      targetClientId: options.targetClientId ?? null,
+      targetProjectId: options.targetProjectId ?? null,
+      contextRoute: options.contextRoute ?? null,
+      metadata: normalizeMetadata(options.metadata),
+    })
+  } catch (error) {
     console.error('Failed to log activity', {
       verb: options.verb,
       actorId: options.actorId,
@@ -52,4 +52,42 @@ export async function logActivity(options: LogActivityOptions) {
       error,
     })
   }
+}
+
+async function resolveActorRole(
+  actorId: string,
+  providedRole?: Database['public']['Enums']['user_role'] | null
+): Promise<Database['public']['Enums']['user_role']> {
+  if (providedRole) {
+    return providedRole
+  }
+
+  try {
+    const rows = await db
+      .select({ role: users.role })
+      .from(users)
+      .where(eq(users.id, actorId))
+      .limit(1)
+
+    const role = rows[0]?.role
+
+    if (role) {
+      return role
+    }
+  } catch (error) {
+    console.error('Failed to resolve actor role for activity log', {
+      actorId,
+      error,
+    })
+  }
+
+  return DEFAULT_ACTOR_ROLE
+}
+
+function normalizeMetadata(metadata?: Json): Json {
+  if (metadata === undefined || metadata === null) {
+    return {}
+  }
+
+  return JSON.parse(JSON.stringify(metadata)) as Json
 }
