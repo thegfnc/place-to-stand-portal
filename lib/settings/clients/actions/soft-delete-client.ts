@@ -27,7 +27,14 @@ export async function softDeleteClientMutation(
   }
 
   const { user } = context
-  assertAdmin(user)
+  try {
+    assertAdmin(user)
+  } catch (error) {
+    if (error instanceof Error) {
+      return buildMutationResult({ error: error.message })
+    }
+    return buildMutationResult({ error: 'Admin privileges required.' })
+  }
 
   let existingClient:
     | {

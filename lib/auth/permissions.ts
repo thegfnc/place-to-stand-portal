@@ -51,8 +51,8 @@ export async function ensureClientAccess(user: AppUser, clientId: UUID) {
       and(
         eq(clientMembers.clientId, clientId),
         eq(clientMembers.userId, user.id),
-        isNull(clientMembers.deletedAt),
-      ),
+        isNull(clientMembers.deletedAt)
+      )
     )
     .limit(1)
 
@@ -63,7 +63,7 @@ export async function ensureClientAccess(user: AppUser, clientId: UUID) {
 
 export async function ensureClientAccessByProjectId(
   user: AppUser,
-  projectId: UUID,
+  projectId: UUID
 ) {
   const project = await db
     .select({ id: projects.id, clientId: projects.clientId })
@@ -78,10 +78,7 @@ export async function ensureClientAccessByProjectId(
   await ensureClientAccess(user, project[0].clientId)
 }
 
-export async function ensureClientAccessByTaskId(
-  user: AppUser,
-  taskId: UUID,
-) {
+export async function ensureClientAccessByTaskId(user: AppUser, taskId: UUID) {
   const task = await db
     .select({ id: tasks.id, projectId: tasks.projectId })
     .from(tasks)
@@ -97,12 +94,14 @@ export async function ensureClientAccessByTaskId(
 
 export async function ensureClientAccessByTaskCommentId(
   user: AppUser,
-  taskCommentId: UUID,
+  taskCommentId: UUID
 ) {
   const comment = await db
     .select({ id: taskComments.id, taskId: taskComments.taskId })
     .from(taskComments)
-    .where(and(eq(taskComments.id, taskCommentId), isNull(taskComments.deletedAt)))
+    .where(
+      and(eq(taskComments.id, taskCommentId), isNull(taskComments.deletedAt))
+    )
     .limit(1)
 
   if (!comment.length) {
@@ -114,7 +113,7 @@ export async function ensureClientAccessByTaskCommentId(
 
 export async function ensureClientAccessByTimeLogId(
   user: AppUser,
-  timeLogId: UUID,
+  timeLogId: UUID
 ) {
   const timeLog = await db
     .select({
@@ -134,7 +133,7 @@ export async function ensureClientAccessByTimeLogId(
 
 export async function ensureClientAccessByTimeLogTaskId(
   user: AppUser,
-  timeLogTaskId: UUID,
+  timeLogTaskId: UUID
 ) {
   const timeLogTask = await db
     .select({
@@ -142,7 +141,9 @@ export async function ensureClientAccessByTimeLogTaskId(
       timeLogId: timeLogTasks.timeLogId,
     })
     .from(timeLogTasks)
-    .where(eq(timeLogTasks.id, timeLogTaskId))
+    .where(
+      and(eq(timeLogTasks.id, timeLogTaskId), isNull(timeLogTasks.deletedAt))
+    )
     .limit(1)
 
   if (!timeLogTask.length) {
@@ -154,7 +155,7 @@ export async function ensureClientAccessByTimeLogTaskId(
 
 export async function ensureClientAccessByTaskAttachmentId(
   user: AppUser,
-  attachmentId: UUID,
+  attachmentId: UUID
 ) {
   const attachment = await db
     .select({
@@ -162,7 +163,12 @@ export async function ensureClientAccessByTaskAttachmentId(
       taskId: taskAttachments.taskId,
     })
     .from(taskAttachments)
-    .where(and(eq(taskAttachments.id, attachmentId), isNull(taskAttachments.deletedAt)))
+    .where(
+      and(
+        eq(taskAttachments.id, attachmentId),
+        isNull(taskAttachments.deletedAt)
+      )
+    )
     .limit(1)
 
   if (!attachment.length) {
@@ -179,24 +185,21 @@ export async function listAccessibleClientIds(user: AppUser) {
       .from(clients)
       .where(isNull(clients.deletedAt))
 
-    return rows.map((row) => row.id)
+    return rows.map(row => row.id)
   }
 
   const memberships = await db
     .select({ clientId: clientMembers.clientId })
     .from(clientMembers)
     .where(
-      and(
-        eq(clientMembers.userId, user.id),
-        isNull(clientMembers.deletedAt),
-      ),
+      and(eq(clientMembers.userId, user.id), isNull(clientMembers.deletedAt))
     )
 
   if (!memberships.length) {
     return []
   }
 
-  return memberships.map((membership) => membership.clientId)
+  return memberships.map(membership => membership.clientId)
 }
 
 export async function listAccessibleProjectIds(user: AppUser) {
@@ -206,7 +209,7 @@ export async function listAccessibleProjectIds(user: AppUser) {
       .from(projects)
       .where(isNull(projects.deletedAt))
 
-    return rows.map((row) => row.id)
+    return rows.map(row => row.id)
   }
 
   const clientIds = await listAccessibleClientIds(user)
@@ -219,13 +222,10 @@ export async function listAccessibleProjectIds(user: AppUser) {
     .select({ id: projects.id })
     .from(projects)
     .where(
-      and(
-        inArray(projects.clientId, clientIds),
-        isNull(projects.deletedAt),
-      ),
+      and(inArray(projects.clientId, clientIds), isNull(projects.deletedAt))
     )
 
-  return rows.map((row) => row.id)
+  return rows.map(row => row.id)
 }
 
 export async function listAccessibleTaskIds(user: AppUser) {
@@ -235,7 +235,7 @@ export async function listAccessibleTaskIds(user: AppUser) {
       .from(tasks)
       .where(isNull(tasks.deletedAt))
 
-    return rows.map((row) => row.id)
+    return rows.map(row => row.id)
   }
 
   const projectIds = await listAccessibleProjectIds(user)
@@ -247,20 +247,15 @@ export async function listAccessibleTaskIds(user: AppUser) {
   const rows = await db
     .select({ id: tasks.id })
     .from(tasks)
-    .where(
-      and(
-        inArray(tasks.projectId, projectIds),
-        isNull(tasks.deletedAt),
-      ),
-    )
+    .where(and(inArray(tasks.projectId, projectIds), isNull(tasks.deletedAt)))
 
-  return rows.map((row) => row.id)
+  return rows.map(row => row.id)
 }
 
 export async function ensureTaskAssigneeAccess(
   user: AppUser,
   taskId: UUID,
-  assigneeId: UUID,
+  assigneeId: UUID
 ) {
   await ensureClientAccessByTaskId(user, taskId)
 
@@ -270,8 +265,8 @@ export async function ensureTaskAssigneeAccess(
     .where(
       and(
         eq(taskAssignees.taskId, taskId),
-        eq(taskAssignees.userId, assigneeId),
-      ),
+        eq(taskAssignees.userId, assigneeId)
+      )
     )
     .limit(1)
 
@@ -279,4 +274,3 @@ export async function ensureTaskAssigneeAccess(
     throw new NotFoundError('Task assignee not found')
   }
 }
-

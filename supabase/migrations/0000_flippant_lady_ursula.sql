@@ -80,7 +80,7 @@ CREATE TABLE "time_logs" (
 	"project_id" uuid NOT NULL,
 	"user_id" uuid NOT NULL,
 	"hours" numeric(8, 2) NOT NULL,
-	"logged_on" date DEFAULT (timezone('utc' NOT NULL,
+"logged_on" date DEFAULT timezone('utc'::text, now())::date NOT NULL,
 	"note" text,
 	"created_at" timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
@@ -96,7 +96,7 @@ CREATE TABLE "time_log_tasks" (
 	"created_at" timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
 	"deleted_at" timestamp with time zone,
-	CONSTRAINT "time_log_tasks_project_match" CHECK (CHECK (time_log_task_matches_project(time_log_id, task_id)
+CONSTRAINT "time_log_tasks_project_match" CHECK (time_log_task_matches_project(time_log_id, task_id))
 );
 --> statement-breakpoint
 ALTER TABLE "time_log_tasks" ENABLE ROW LEVEL SECURITY;--> statement-breakpoint
@@ -216,7 +216,7 @@ CREATE INDEX "idx_time_log_tasks_task_id" ON "time_log_tasks" USING btree ("task
 CREATE UNIQUE INDEX "idx_time_log_tasks_unique" ON "time_log_tasks" USING btree ("time_log_id" uuid_ops,"task_id" uuid_ops) WHERE (deleted_at IS NULL);--> statement-breakpoint
 CREATE INDEX "idx_task_attachments_task" ON "task_attachments" USING btree ("task_id" uuid_ops) WHERE (deleted_at IS NULL);--> statement-breakpoint
 CREATE INDEX "idx_task_attachments_uploaded_by" ON "task_attachments" USING btree ("uploaded_by" uuid_ops) WHERE (deleted_at IS NULL);--> statement-breakpoint
-CREATE UNIQUE INDEX "activity_overview_cache_user_timeframe_idx" ON "activity_overview_cache" USING btree ("user_id" int2_ops,"timeframe_days" int2_ops);--> statement-breakpoint
+CREATE UNIQUE INDEX "activity_overview_cache_user_timeframe_idx" ON "activity_overview_cache" USING btree ("user_id" uuid_ops,"timeframe_days" int2_ops);--> statement-breakpoint
 CREATE INDEX "idx_tasks_created_by" ON "tasks" USING btree ("created_by" uuid_ops) WHERE (deleted_at IS NULL);--> statement-breakpoint
 CREATE INDEX "idx_tasks_project" ON "tasks" USING btree ("project_id" uuid_ops) WHERE (deleted_at IS NULL);--> statement-breakpoint
 CREATE INDEX "idx_tasks_project_status_rank" ON "tasks" USING btree ("project_id" enum_ops,"status" text_ops,"rank" enum_ops);--> statement-breakpoint

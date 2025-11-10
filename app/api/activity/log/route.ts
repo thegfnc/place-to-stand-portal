@@ -90,8 +90,12 @@ function isJsonValue(value: unknown): value is Json {
     return value.every(isJsonValue)
   }
 
-  if (typeof value === 'object' && value !== null) {
-    return Object.values(value as Record<string, unknown>).every(isJsonValue)
+if (typeof value === 'object' && value !== null) {
+  if (Object.getPrototypeOf(value) !== Object.prototype) {
+    return false
+  }
+
+  return Object.values(value as Record<string, unknown>).every(isJsonValue)
   }
 
   return false
