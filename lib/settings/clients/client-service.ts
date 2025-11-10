@@ -91,7 +91,10 @@ export async function generateUniqueClientSlug(
     attempt += 1
   }
 
-  return generateUniqueClientSlugDrizzle(normalizedBase)
+  return generateUniqueClientSlugDrizzle(normalizedBase, {
+    initialCandidate: candidate,
+    startSuffix: suffix,
+  })
 }
 
 export async function syncClientMembers(

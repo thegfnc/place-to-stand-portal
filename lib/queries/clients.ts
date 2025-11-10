@@ -221,10 +221,16 @@ export async function clientSlugExistsDrizzle(
   return rows.length > 0
 }
 
-export async function generateUniqueClientSlugDrizzle(base: string) {
+export async function generateUniqueClientSlugDrizzle(
+  base: string,
+  options: { initialCandidate?: string; startSuffix?: number } = {},
+) {
   const normalizedBase = base || 'client'
-  let candidate = normalizedBase
-  let suffix = 2
+  let candidate = options.initialCandidate ?? normalizedBase
+  let suffix =
+    options.startSuffix ??
+    (candidate === normalizedBase ? 2 : extractSuffixFromCandidate(candidate, normalizedBase))
+
   let attempt = 0
 
   while (attempt < 3) {
@@ -240,6 +246,16 @@ export async function generateUniqueClientSlugDrizzle(base: string) {
   }
 
   return `${normalizedBase}-${Date.now()}`
+}
+
+function extractSuffixFromCandidate(candidate: string, base: string): number {
+  if (candidate === base) {
+    return 2
+  }
+
+  const suffix = Number(candidate.replace(`${base}-`, ''))
+
+  return Number.isFinite(suffix) && suffix >= 2 ? suffix + 1 : 2
 }
 
 export async function countProjectsForClient(clientId: string) {
