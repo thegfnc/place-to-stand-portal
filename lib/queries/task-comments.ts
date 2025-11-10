@@ -7,7 +7,7 @@ import { ensureClientAccessByTaskId, isAdmin } from '@/lib/auth/permissions'
 import { db } from '@/lib/db'
 import { taskComments, users } from '@/lib/db/schema'
 import { ForbiddenError, NotFoundError } from '@/lib/errors/http'
-import type { DbUser, TaskCommentWithAuthor } from '@/lib/types'
+import type { TaskCommentAuthor, TaskCommentWithAuthor } from '@/lib/types'
 
 type CommentSelection = {
   id: string
@@ -17,23 +17,24 @@ type CommentSelection = {
   createdAt: string
   updatedAt: string
   deletedAt: string | null
-  author: (typeof users.$inferSelect) | null
+  author: {
+    id: string
+    fullName: string | null
+    avatarUrl: string | null
+  } | null
 }
 
-function mapUserToDbUser(user: (typeof users.$inferSelect) | null): DbUser | null {
+function mapUserToCommentAuthor(
+  user: CommentSelection['author']
+): TaskCommentAuthor | null {
   if (!user) {
     return null
   }
 
   return {
     id: user.id,
-    email: user.email,
     full_name: user.fullName ?? null,
-    role: user.role,
     avatar_url: user.avatarUrl ?? null,
-    created_at: user.createdAt,
-    updated_at: user.updatedAt,
-    deleted_at: user.deletedAt ?? null,
   }
 }
 
@@ -48,7 +49,7 @@ function mapCommentSelectionToTaskComment(
     created_at: selection.createdAt,
     updated_at: selection.updatedAt,
     deleted_at: selection.deletedAt,
-    author: mapUserToDbUser(selection.author),
+    author: mapUserToCommentAuthor(selection.author),
   }
 }
 
@@ -64,13 +65,8 @@ async function getCommentSelectionById(commentId: string): Promise<CommentSelect
       deletedAt: taskComments.deletedAt,
       author: {
         id: users.id,
-        email: users.email,
         fullName: users.fullName,
-        role: users.role,
         avatarUrl: users.avatarUrl,
-        createdAt: users.createdAt,
-        updatedAt: users.updatedAt,
-        deletedAt: users.deletedAt,
       },
     })
     .from(taskComments)
@@ -98,13 +94,8 @@ export async function listTaskComments(
       deletedAt: taskComments.deletedAt,
       author: {
         id: users.id,
-        email: users.email,
         fullName: users.fullName,
-        role: users.role,
         avatarUrl: users.avatarUrl,
-        createdAt: users.createdAt,
-        updatedAt: users.updatedAt,
-        deletedAt: users.deletedAt,
       },
     })
     .from(taskComments)

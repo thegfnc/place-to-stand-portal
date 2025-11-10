@@ -31,8 +31,14 @@ export type TaskWithRelations = DbTask & {
   attachments: DbTaskAttachment[]
 }
 
+export type TaskCommentAuthor = {
+  id: string
+  full_name: string | null
+  avatar_url: string | null
+}
+
 export type TaskCommentWithAuthor = DbTaskComment & {
-  author: DbUser | null
+  author: TaskCommentAuthor | null
 }
 
 export type TimeLogWithUser = DbTimeLog & {

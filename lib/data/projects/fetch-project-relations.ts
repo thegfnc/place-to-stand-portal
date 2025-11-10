@@ -11,8 +11,7 @@ import {
   tasks as tasksTable,
   users as usersTable,
 } from '@/lib/db/schema'
-import type { DbClient, DbTask, DbTimeLog, DbUser } from '@/lib/types'
-import { getTimeLogsForProjects } from '@/lib/queries/time-logs'
+import type { DbClient, DbTask, DbUser } from '@/lib/types'
 
 import type {
   ClientMembership,
@@ -119,7 +118,6 @@ export type ProjectRelationsFetchResult = {
   members: MemberWithUser[]
   tasks: RawTaskWithRelations[]
   hourBlocks: RawHourBlock[]
-  timeLogs: DbTimeLog[]
   clientMemberships: ClientMembership[]
 }
 
@@ -191,10 +189,6 @@ export async function fetchProjectRelations({
         })
         .from(clientMembersTable)
         .where(eq(clientMembersTable.userId, userId))
-    : []
-
-  const timeLogs: DbTimeLog[] = projectIds.length
-    ? await getTimeLogsForProjects(projectIds)
     : []
 
   const taskRows: TaskRow[] = projectIds.length
@@ -364,7 +358,6 @@ export async function fetchProjectRelations({
     members,
     tasks,
     hourBlocks,
-    timeLogs,
     clientMemberships,
   }
 }

@@ -2,7 +2,6 @@ import type { UserRole } from '@/lib/auth/session'
 import type {
   DbClient,
   DbProject,
-  DbTimeLog,
   ProjectMemberWithUser,
   ProjectWithRelations,
   TaskWithRelations,
@@ -25,6 +24,7 @@ export type AssembleProjectsArgs = {
   options: { forUserId?: string; forRole?: UserRole }
   shouldScopeToUser: boolean
   relations: ProjectRelationsFetchResult
+  timeLogSummaries: Map<string, TimeLogSummary>
 }
 
 export function assembleProjectsWithRelations({
@@ -33,6 +33,7 @@ export function assembleProjectsWithRelations({
   options,
   shouldScopeToUser,
   relations,
+  timeLogSummaries,
 }: AssembleProjectsArgs): ProjectWithRelations[] {
   const clientLookup = buildClientLookup(relations.clients)
   const membersByProject = organizeMembers(
@@ -43,8 +44,9 @@ export function assembleProjectsWithRelations({
     relations.clientMemberships
   )
   const purchasedHoursByClient = tallyPurchasedHours(relations.hourBlocks)
-  const { timeLogTotalsByProject, timeLogTotalsByClient } = summarizeTimeLogs(
-    relations.timeLogs,
+  const timeLogTotalsByProject = timeLogSummaries
+  const timeLogTotalsByClient = buildClientLogTotals(
+    timeLogSummaries,
     projectClientLookup
   )
   const { activeTasksByProject, archivedTasksByProject } = groupTasksByProject(
@@ -157,49 +159,6 @@ function tallyPurchasedHours(blocks: RawHourBlock[]): Map<string, number> {
   return purchasedHoursByClient
 }
 
-function summarizeTimeLogs(
-  logs: DbTimeLog[],
-  projectClientLookup: Map<string, string | null>
-): {
-  timeLogTotalsByProject: Map<string, TimeLogSummary>
-  timeLogTotalsByClient: Map<string, number>
-} {
-  const timeLogTotalsByProject = new Map<string, TimeLogSummary>()
-  const timeLogTotalsByClient = new Map<string, number>()
-
-  logs.forEach(rawLog => {
-    const log = rawLog
-    if (!log || log.deleted_at || !log.project_id) {
-      return
-    }
-
-    const existing = timeLogTotalsByProject.get(log.project_id) ?? {
-      totalHours: 0,
-      lastLogAt: null as string | null,
-    }
-
-    const nextTotal = existing.totalHours + Number(log.hours ?? 0)
-    const nextLastLogAt = existing.lastLogAt
-      ? existing.lastLogAt >= (log.logged_on ?? '')
-        ? existing.lastLogAt
-        : (log.logged_on ?? null)
-      : (log.logged_on ?? null)
-
-    timeLogTotalsByProject.set(log.project_id, {
-      totalHours: nextTotal,
-      lastLogAt: nextLastLogAt,
-    })
-
-    const clientId = projectClientLookup.get(log.project_id) ?? null
-    if (clientId) {
-      const clientTotal = timeLogTotalsByClient.get(clientId) ?? 0
-      timeLogTotalsByClient.set(clientId, clientTotal + Number(log.hours ?? 0))
-    }
-  })
-
-  return { timeLogTotalsByProject, timeLogTotalsByClient }
-}
-
 function groupTasksByProject(tasks: RawTaskWithRelations[]): {
   activeTasksByProject: Map<string, TaskWithRelations[]>
   archivedTasksByProject: Map<string, TaskWithRelations[]>
@@ -265,4 +224,23 @@ function buildProjectBurndown(
     totalProjectLoggedHours,
     lastLogAt,
   }
+}
+
+function buildClientLogTotals(
+  timeLogSummaries: Map<string, TimeLogSummary>,
+  projectClientLookup: Map<string, string | null>
+): Map<string, number> {
+  const totals = new Map<string, number>()
+
+  timeLogSummaries.forEach((summary, projectId) => {
+    const clientId = projectClientLookup.get(projectId) ?? null
+    if (!clientId) {
+      return
+    }
+
+    const existingTotal = totals.get(clientId) ?? 0
+    totals.set(clientId, existingTotal + summary.totalHours)
+  })
+
+  return totals
 }

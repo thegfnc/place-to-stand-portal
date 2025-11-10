@@ -1,13 +1,6 @@
 import 'server-only'
 
-import {
-  and,
-  desc,
-  eq,
-  inArray,
-  isNull,
-  sql,
-} from 'drizzle-orm'
+import { and, desc, eq, inArray, isNull, sql } from 'drizzle-orm'
 
 import type { AppUser } from '@/lib/auth/session'
 import {
@@ -25,9 +18,69 @@ import {
 } from '@/lib/db/schema'
 import type { TimeLogEntry } from '@/lib/projects/time-log/types'
 import type { DbTimeLog } from '@/lib/types'
+import type { TimeLogSummary } from '@/lib/data/projects/types'
 import type { Database } from '@/supabase/types/database'
 
 const DEFAULT_HISTORY_LIMIT = 10
+
+type ProjectTimeLogAggregateRow = {
+  projectId: string
+  totalHours: string | null
+  lastLogAt: string | null
+}
+
+type SumOfHoursRow = {
+  totalHours: string | null
+}
+
+export async function getSumOfHoursForProject(
+  projectId: string,
+): Promise<number> {
+  const [row] = await db
+    .select({
+      totalHours: sql<string | null>`COALESCE(SUM(${timeLogs.hours}), '0')`,
+    })
+    .from(timeLogs)
+    .where(and(eq(timeLogs.projectId, projectId), isNull(timeLogs.deletedAt)))
+    .limit(1) as SumOfHoursRow[]
+
+  const total = row?.totalHours ?? '0'
+  const parsed = Number(total)
+
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
+export async function getTimeLogSummariesForProjects(
+  projectIds: readonly string[],
+): Promise<Map<string, TimeLogSummary>> {
+  if (!projectIds.length) {
+    return new Map()
+  }
+
+  const rows = (await db
+    .select({
+      projectId: timeLogs.projectId,
+      totalHours: sql<string | null>`SUM(${timeLogs.hours})`,
+      lastLogAt: sql<string | null>`MAX(${timeLogs.loggedOn})`,
+    })
+    .from(timeLogs)
+    .where(
+      and(inArray(timeLogs.projectId, projectIds), isNull(timeLogs.deletedAt)),
+    )
+    .groupBy(timeLogs.projectId)) as ProjectTimeLogAggregateRow[]
+
+  const summaries = new Map<string, TimeLogSummary>()
+
+  rows.forEach(row => {
+    const total = Number(row.totalHours ?? '0')
+    summaries.set(row.projectId, {
+      totalHours: Number.isFinite(total) ? total : 0,
+      lastLogAt: row.lastLogAt ?? null,
+    })
+  })
+
+  return summaries
+}
 
 export type CreateTimeLogInput = {
   projectId: string
@@ -288,31 +341,6 @@ export async function softDeleteTimeLog(
     .update(timeLogs)
     .set({ deletedAt: new Date().toISOString() })
     .where(eq(timeLogs.id, timeLogId))
-}
-
-export async function getTimeLogsForProjects(
-  projectIds: string[],
-): Promise<DbTimeLog[]> {
-  if (!projectIds.length) {
-    return []
-  }
-
-  const rows = (await db
-    .select({
-      id: timeLogs.id,
-      projectId: timeLogs.projectId,
-      userId: timeLogs.userId,
-      hours: timeLogs.hours,
-      loggedOn: timeLogs.loggedOn,
-      note: timeLogs.note,
-      createdAt: timeLogs.createdAt,
-      updatedAt: timeLogs.updatedAt,
-      deletedAt: timeLogs.deletedAt,
-    })
-    .from(timeLogs)
-    .where(inArray(timeLogs.projectId, projectIds))) as DbTimeLogSelection[]
-
-  return rows.map(mapDbTimeLogSelection)
 }
 
 export async function getTimeLogById(

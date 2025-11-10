@@ -131,8 +131,7 @@ export function TaskCommentItem(props: TaskCommentItemProps) {
     disableActions,
   } = props
 
-  const authorName =
-    comment.author?.full_name ?? comment.author?.email ?? 'Unknown user'
+  const authorName = comment.author?.full_name ?? 'Unknown user'
   const createdAgo = formatDistanceToNow(new Date(comment.created_at), {
     addSuffix: true,
   })

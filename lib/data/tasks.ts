@@ -1,9 +1,17 @@
 import 'server-only'
 
 import { cache } from 'react'
+import { and, eq, inArray, isNull, sql } from 'drizzle-orm'
 
 import type { UserRole } from '@/lib/auth/session'
-import { fetchProjectsWithRelations } from './projects'
+import { db } from '@/lib/db'
+import {
+  clients as clientsTable,
+  clientMembers as clientMembersTable,
+  projects as projectsTable,
+  taskAssignees as taskAssigneesTable,
+  tasks as tasksTable,
+} from '@/lib/db/schema'
 
 export type AssignedTaskSummary = {
   id: string
@@ -25,155 +33,141 @@ export type AssignedTaskSummary = {
 
 const DEFAULT_LIMIT = 12
 
-const STATUS_PRIORITY: Record<string, number> = {
-  BLOCKED: 0,
-  IN_PROGRESS: 1,
-  IN_REVIEW: 2,
-  ON_DECK: 3,
-  BACKLOG: 4,
-  DONE: 5,
-  ARCHIVED: 6,
-}
-
-const ACTIVE_STATUSES = new Set([
+const ACTIVE_STATUS_VALUES = [
   'ON_DECK',
   'IN_PROGRESS',
   'BLOCKED',
   'IN_REVIEW',
-])
+] as const
 
-type FetchAssignedTasksOptions = {
+const STATUS_PRIORITY_SQL = sql`
+  CASE
+    WHEN ${tasksTable.status} = 'BLOCKED' THEN 0
+    WHEN ${tasksTable.status} = 'IN_PROGRESS' THEN 1
+    WHEN ${tasksTable.status} = 'IN_REVIEW' THEN 2
+    WHEN ${tasksTable.status} = 'ON_DECK' THEN 3
+    WHEN ${tasksTable.status} = 'BACKLOG' THEN 4
+    WHEN ${tasksTable.status} = 'DONE' THEN 5
+    WHEN ${tasksTable.status} = 'ARCHIVED' THEN 6
+    ELSE 999
+  END
+`
+
+type FetchAssignedTasksSummaryOptions = {
   userId: string
   role: UserRole
   limit?: number
   includeCompletedStatuses?: boolean
 }
 
-export const fetchAssignedTasks = cache(
+export const fetchAssignedTasksSummary = cache(
   async ({
     userId,
     role,
     limit = DEFAULT_LIMIT,
     includeCompletedStatuses = false,
-  }: FetchAssignedTasksOptions): Promise<AssignedTaskSummary[]> => {
-    const projects = await fetchProjectsWithRelations({
-      forUserId: userId,
-      forRole: role,
-    })
+  }: FetchAssignedTasksSummaryOptions): Promise<AssignedTaskSummary[]> => {
+    const effectiveLimit = Math.max(1, limit)
+    const shouldScopeToUser = role !== 'ADMIN'
 
-    const tasks: AssignedTaskSummary[] = []
-    const seenTaskIds = new Set<string>()
+    let accessibleClientIds: string[] = []
 
-    for (const project of projects) {
-      const projectSummary: AssignedTaskSummary['project'] = {
-        id: project.id,
-        name: project.name,
-        slug: project.slug ?? null,
-      }
-
-      const clientSummary = project.client
-        ? {
-            id: project.client.id,
-            name: project.client.name,
-            slug: project.client.slug ?? null,
-          }
-        : null
-
-      for (const task of project.tasks) {
-        if (seenTaskIds.has(task.id)) {
-          continue
-        }
-
-        const isAssigned = task.assignees.some(
-          assignee => assignee.user_id === userId
+    if (shouldScopeToUser) {
+      const memberships = await db
+        .select({ clientId: clientMembersTable.clientId })
+        .from(clientMembersTable)
+        .where(
+          and(
+            eq(clientMembersTable.userId, userId),
+            isNull(clientMembersTable.deletedAt)
+          )
         )
 
-        if (!isAssigned) {
-          continue
-        }
+      accessibleClientIds = memberships
+        .map(entry => entry.clientId)
+        .filter((value): value is string => Boolean(value))
 
-        if (
-          !includeCompletedStatuses &&
-          !ACTIVE_STATUSES.has(task.status ?? '')
-        ) {
-          continue
-        }
-
-        seenTaskIds.add(task.id)
-        const updatedAt = task.updated_at ?? task.created_at ?? null
-        tasks.push({
-          id: task.id,
-          title: task.title,
-          status: task.status,
-          dueOn: task.due_on ?? null,
-          updatedAt,
-          project: projectSummary,
-          client: clientSummary,
-        })
+      if (accessibleClientIds.length === 0) {
+        return []
       }
     }
 
-    tasks.sort(compareTasksByUrgency)
+    let whereClause = and(
+      eq(taskAssigneesTable.userId, userId),
+      isNull(taskAssigneesTable.deletedAt),
+      isNull(tasksTable.deletedAt),
+      isNull(projectsTable.deletedAt)
+    )
 
-    return tasks.slice(0, Math.max(1, limit))
+    if (!includeCompletedStatuses) {
+      whereClause = and(
+        whereClause,
+        inArray(tasksTable.status, ACTIVE_STATUS_VALUES)
+      )
+    }
+
+    if (shouldScopeToUser) {
+      whereClause = and(
+        whereClause,
+        inArray(projectsTable.clientId, accessibleClientIds)
+      )
+    }
+
+    const rows = await db
+      .select({
+        id: tasksTable.id,
+        title: tasksTable.title,
+        status: tasksTable.status,
+        dueOn: tasksTable.dueOn,
+        updatedAt: tasksTable.updatedAt,
+        createdAt: tasksTable.createdAt,
+        project: {
+          id: projectsTable.id,
+          name: projectsTable.name,
+          slug: projectsTable.slug,
+        },
+        client: {
+          id: clientsTable.id,
+          name: clientsTable.name,
+          slug: clientsTable.slug,
+        },
+      })
+      .from(taskAssigneesTable)
+      .innerJoin(tasksTable, eq(taskAssigneesTable.taskId, tasksTable.id))
+      .innerJoin(projectsTable, eq(tasksTable.projectId, projectsTable.id))
+      .leftJoin(clientsTable, eq(projectsTable.clientId, clientsTable.id))
+      .where(whereClause)
+      .orderBy(
+        sql`CASE WHEN ${tasksTable.dueOn} IS NULL THEN 1 ELSE 0 END`,
+        sql`${tasksTable.dueOn} ASC`,
+        STATUS_PRIORITY_SQL,
+        sql`COALESCE(${tasksTable.updatedAt}, ${tasksTable.createdAt}) DESC`,
+        sql`${tasksTable.title} ASC`
+      )
+      .limit(effectiveLimit)
+
+    return rows.map(row => {
+      const updatedSource = row.updatedAt ?? row.createdAt ?? null
+
+      return {
+        id: row.id,
+        title: row.title,
+        status: row.status,
+        dueOn: row.dueOn ?? null,
+        updatedAt: updatedSource,
+        project: {
+          id: row.project.id,
+          name: row.project.name,
+          slug: row.project.slug ?? null,
+        },
+        client: row.client?.id
+          ? {
+              id: row.client.id,
+              name: row.client.name,
+              slug: row.client.slug ?? null,
+            }
+          : null,
+      }
+    })
   }
 )
-
-function compareTasksByUrgency(a: AssignedTaskSummary, b: AssignedTaskSummary) {
-  const dueA = getDueTimestamp(a.dueOn)
-  const dueB = getDueTimestamp(b.dueOn)
-
-  if (dueA !== null && dueB !== null && dueA !== dueB) {
-    return dueA - dueB
-  }
-
-  if (dueA !== null && dueB === null) {
-    return -1
-  }
-
-  if (dueA === null && dueB !== null) {
-    return 1
-  }
-
-  const priorityA = STATUS_PRIORITY[a.status ?? ''] ?? Number.MAX_SAFE_INTEGER
-  const priorityB = STATUS_PRIORITY[b.status ?? ''] ?? Number.MAX_SAFE_INTEGER
-
-  if (priorityA !== priorityB) {
-    return priorityA - priorityB
-  }
-
-  const updatedA = getTimestamp(a.updatedAt)
-  const updatedB = getTimestamp(b.updatedAt)
-
-  if (updatedA !== null && updatedB !== null && updatedA !== updatedB) {
-    return updatedB - updatedA
-  }
-
-  if (updatedA !== null && updatedB === null) {
-    return -1
-  }
-
-  if (updatedA === null && updatedB !== null) {
-    return 1
-  }
-
-  return a.title.localeCompare(b.title)
-}
-
-function getDueTimestamp(value: string | null): number | null {
-  if (!value) {
-    return null
-  }
-
-  const parsed = Date.parse(value)
-  return Number.isNaN(parsed) ? null : parsed
-}
-
-function getTimestamp(value: string | null): number | null {
-  if (!value) {
-    return null
-  }
-
-  const parsed = Date.parse(value)
-  return Number.isNaN(parsed) ? null : parsed
-}
