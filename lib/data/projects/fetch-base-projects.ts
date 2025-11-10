@@ -1,6 +1,8 @@
-import type { DbProject } from '@/lib/types'
+import { asc, isNull } from 'drizzle-orm'
 
-import type { SupabaseServiceClient } from './types'
+import { db } from '@/lib/db'
+import { projects } from '@/lib/db/schema'
+import type { DbProject } from '@/lib/types'
 
 export type BaseProjectFetchResult = {
   projects: DbProject[]
@@ -9,50 +11,55 @@ export type BaseProjectFetchResult = {
   projectClientLookup: Map<string, string | null>
 }
 
-export async function fetchBaseProjects(
-  supabase: SupabaseServiceClient
-): Promise<BaseProjectFetchResult> {
-  const { data: projectRows, error } = await supabase
-    .from('projects')
-    .select(
-      `
-        id,
-        name,
-        status,
-        client_id,
-        slug,
-        starts_on,
-        ends_on,
-        created_at,
-        updated_at,
-        deleted_at
-      `
-    )
-    .is('deleted_at', null)
-    .order('name', { ascending: true })
+export async function fetchBaseProjects(): Promise<BaseProjectFetchResult> {
+  const rows = await db
+    .select({
+      id: projects.id,
+      name: projects.name,
+      status: projects.status,
+      clientId: projects.clientId,
+      slug: projects.slug,
+      startsOn: projects.startsOn,
+      endsOn: projects.endsOn,
+      createdAt: projects.createdAt,
+      updatedAt: projects.updatedAt,
+      deletedAt: projects.deletedAt,
+      createdBy: projects.createdBy,
+    })
+    .from(projects)
+    .where(isNull(projects.deletedAt))
+    .orderBy(asc(projects.name))
 
-  if (error) {
-    console.error('Failed to load projects', error)
-    throw error
-  }
+  const normalizedProjects: DbProject[] = rows.map(row => ({
+    id: row.id,
+    name: row.name,
+    status: row.status,
+    client_id: row.clientId,
+    slug: row.slug,
+    starts_on: row.startsOn,
+    ends_on: row.endsOn,
+    created_at: row.createdAt,
+    updated_at: row.updatedAt,
+    deleted_at: row.deletedAt,
+    created_by: row.createdBy ?? null,
+  }))
 
-  const projects = (projectRows ?? []) as DbProject[]
-  const projectIds = projects.map(project => project.id)
+  const projectIds = normalizedProjects.map(project => project.id)
   const clientIds = Array.from(
     new Set(
-      projects
+      normalizedProjects
         .map(project => project.client_id)
         .filter((clientId): clientId is string => Boolean(clientId))
     )
   )
 
   const projectClientLookup = new Map<string, string | null>()
-  projects.forEach(project => {
+  normalizedProjects.forEach(project => {
     projectClientLookup.set(project.id, project.client_id ?? null)
   })
 
   return {
-    projects,
+    projects: normalizedProjects,
     projectIds,
     clientIds,
     projectClientLookup,

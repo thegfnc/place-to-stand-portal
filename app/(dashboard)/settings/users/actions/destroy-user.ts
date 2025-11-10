@@ -9,17 +9,11 @@ import {
   destroyUserSchema,
   type DestroyUserInput,
 } from '@/lib/settings/users/user-validation'
+import { getUserById } from '@/lib/queries/users'
+import { NotFoundError } from '@/lib/errors/http'
 
 import { revalidateUsersAndRelated } from './helpers'
-import { fetchUserById, getSupabase } from './user-queries'
 import type { ActionResult } from './types'
-
-type UserSummary = {
-  id: string
-  email: string | null
-  full_name: string | null
-  role: string
-}
 
 export async function destroyUser(
   input: DestroyUserInput
@@ -33,29 +27,23 @@ export async function destroyUser(
   }
 
   const payload = parsed.data
-  const supabase = getSupabase()
+  let existingUser: Awaited<ReturnType<typeof getUserById>>
 
-  const { data: existingUser, error: existingUserError } =
-    await fetchUserById<UserSummary>(
-      supabase,
-      payload.id,
-      `id, email, full_name, role`
-    )
-
-  if (existingUserError) {
-    console.error('Failed to load user for permanent delete', existingUserError)
+  try {
+    existingUser = await getUserById(actor, payload.id)
+  } catch (error) {
+    console.error('Failed to load user for permanent delete', error)
+    if (error instanceof NotFoundError) {
+      return { error: 'User not found.' }
+    }
     return { error: 'Unable to permanently delete user.' }
   }
 
-  if (!existingUser) {
-    return { error: 'User not found.' }
-  }
-
-  const result = await destroyPortalUser(payload)
+  const result = await destroyPortalUser(actor, payload)
 
   if (!result.error) {
     const event = userDeletedEvent({
-      fullName: existingUser.full_name ?? existingUser.email ?? 'User',
+      fullName: existingUser.fullName ?? existingUser.email ?? 'User',
       email: existingUser.email ?? undefined,
       role: existingUser.role,
     })

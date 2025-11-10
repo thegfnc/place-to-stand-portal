@@ -1,6 +1,5 @@
 'use client'
 
-import { getSupabaseBrowserClient } from '@/lib/supabase/client'
 import type { Json } from '@/supabase/types/database'
 
 import type { ActivityEvent, ActivityTargetType, ActivityVerb } from './types'
@@ -53,28 +52,46 @@ export async function logClientActivity(
   event: ActivityEvent,
   context: ClientActivityContext
 ) {
-  const supabase = getSupabaseBrowserClient()
   const mergedMetadata = mergeMetadata(event.metadata, context.metadata)
 
-  const { error } = await supabase.rpc('log_activity', {
-    p_actor_id: context.actorId,
-    p_actor_role: null,
-    p_verb: context.verb ?? event.verb,
-    p_summary: context.summary ?? event.summary,
-    p_target_type: context.targetType,
-    p_target_id: context.targetId ?? null,
-    p_target_client_id: context.targetClientId ?? null,
-    p_target_project_id: context.targetProjectId ?? null,
-    p_context_route: context.contextRoute ?? null,
-    p_metadata: mergedMetadata,
-  })
+  const body: Record<string, unknown> = {
+    actorId: context.actorId,
+    verb: context.verb ?? event.verb,
+    summary: context.summary ?? event.summary,
+    targetType: context.targetType,
+    targetId: context.targetId ?? null,
+    targetClientId: context.targetClientId ?? null,
+    targetProjectId: context.targetProjectId ?? null,
+    contextRoute: context.contextRoute ?? null,
+  }
 
-  if (error) {
+  if (mergedMetadata !== null) {
+    body.metadata = mergedMetadata
+  }
+
+  try {
+    const response = await fetch('/api/activity/log', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    })
+
+    if (!response.ok) {
+      console.error('Failed to log client-side activity', {
+        status: response.status,
+        verb: body.verb,
+        targetType: body.targetType,
+        targetId: body.targetId ?? null,
+      })
+    }
+  } catch (error) {
     console.error('Failed to log client-side activity', {
       error,
-      verb: context.verb ?? event.verb,
-      targetType: context.targetType,
-      targetId: context.targetId ?? null,
+      verb: body.verb,
+      targetType: body.targetType,
+      targetId: body.targetId ?? null,
     })
   }
 }

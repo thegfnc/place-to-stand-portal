@@ -1,11 +1,15 @@
 'use server'
 
+import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { logActivity } from '@/lib/activity/logger'
 import { taskAcceptanceRevertedEvent } from '@/lib/activity/events'
 import { requireUser } from '@/lib/auth/session'
-import { getSupabaseServerClient } from '@/lib/supabase/server'
+import { ensureClientAccessByTaskId } from '@/lib/auth/permissions'
+import { db } from '@/lib/db'
+import { projects, tasks } from '@/lib/db/schema'
+import { NotFoundError, ForbiddenError } from '@/lib/errors/http'
 
 import { revalidateProjectTaskViews } from './shared'
 import type { ActionResult } from './action-types'
@@ -29,36 +33,44 @@ export async function unacceptTask(input: {
     return { error: 'Invalid payload submitted.' }
   }
 
-  const supabase = getSupabaseServerClient()
   const { taskId } = parsed.data
 
-  const { data: task, error } = await supabase
-    .from('tasks')
-    .select(
-      `
-        id,
-        title,
-        status,
-        accepted_at,
-        project_id,
-        project:projects (
-          client_id
-        )
-      `
-    )
-    .eq('id', taskId)
-    .maybeSingle()
+  try {
+    await ensureClientAccessByTaskId(user, taskId)
+  } catch (error) {
+    if (error instanceof NotFoundError) {
+      return { error: 'Task not found.' }
+    }
 
-  if (error) {
-    console.error('Failed to load task for unaccepting', error)
+    if (error instanceof ForbiddenError) {
+      return { error: 'You do not have permission to modify this task.' }
+    }
+
+    console.error('Failed to authorize task for unaccepting', error)
     return { error: 'Unable to update task acceptance.' }
   }
+
+  const taskRecord = await db
+    .select({
+      id: tasks.id,
+      title: tasks.title,
+      status: tasks.status,
+      acceptedAt: tasks.acceptedAt,
+      projectId: tasks.projectId,
+      clientId: projects.clientId,
+    })
+    .from(tasks)
+    .leftJoin(projects, eq(projects.id, tasks.projectId))
+    .where(eq(tasks.id, taskId))
+    .limit(1)
+
+  const task = taskRecord[0]
 
   if (!task) {
     return { error: 'Task not found.' }
   }
 
-  if (!task.accepted_at) {
+  if (!task.acceptedAt) {
     return {}
   }
 
@@ -66,17 +78,12 @@ export async function unacceptTask(input: {
     return { error: 'Only tasks marked as Done can be unaccepted.' }
   }
 
-  const { error: updateError } = await supabase
-    .from('tasks')
-    .update({ accepted_at: null })
-    .eq('id', taskId)
+  await db
+    .update(tasks)
+    .set({ acceptedAt: null })
+    .where(eq(tasks.id, taskId))
 
-  if (updateError) {
-    console.error('Failed to unaccept task', updateError)
-    return { error: updateError.message }
-  }
-
-  const event = taskAcceptanceRevertedEvent({ title: task.title })
+  const event = taskAcceptanceRevertedEvent({ title: task.title ?? 'Task' })
 
   await logActivity({
     actorId: user.id,
@@ -85,12 +92,12 @@ export async function unacceptTask(input: {
     summary: event.summary,
     targetType: 'TASK',
     targetId: taskId,
-    targetProjectId: task.project_id,
-    targetClientId: task.project?.client_id ?? null,
+    targetProjectId: task.projectId,
+    targetClientId: task.clientId ?? null,
     metadata: event.metadata,
   })
 
-  revalidateProjectTaskViews()
+  await revalidateProjectTaskViews()
 
   return {}
 }

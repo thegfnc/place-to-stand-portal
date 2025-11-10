@@ -1,14 +1,13 @@
 'use client'
 
 import { useMutation, type QueryClient } from '@tanstack/react-query'
-import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Dispatch, SetStateAction } from 'react'
 
 import { logClientActivity } from '@/lib/activity/client'
 import { timeLogCreatedEvent } from '@/lib/activity/events'
 import type { ToastOptions } from '@/components/ui/use-toast'
 import type { FieldError, TimeLogFormErrors } from './types'
-import type { Database, Json } from '@/supabase/types/database'
+import type { Json } from '@/supabase/types/database'
 
 const SUCCESS_TOAST: ToastOptions = {
   title: 'Time logged',
@@ -16,7 +15,6 @@ const SUCCESS_TOAST: ToastOptions = {
 }
 
 export type UseProjectTimeLogMutationOptions = {
-  supabase: SupabaseClient<Database>
   queryClient: QueryClient
   router: {
     refresh: () => void
@@ -46,7 +44,6 @@ export function useProjectTimeLogMutation(
   options: UseProjectTimeLogMutationOptions
 ) {
   const {
-    supabase,
     queryClient,
     router,
     toast,
@@ -80,48 +77,47 @@ export function useProjectTimeLogMutation(
         throw makeFieldError('user', 'Select a teammate before logging time.')
       }
 
+      const trimmedNote = formValues.noteInput.trim()
+
       const payload = {
-        project_id: project.id,
-        user_id: logUserId,
+        userId: logUserId,
         hours: parsedHours,
-        logged_on: formValues.loggedOnInput,
-        note: formValues.noteInput.trim() ? formValues.noteInput.trim() : null,
+        loggedOn: formValues.loggedOnInput,
+        note: trimmedNote.length ? trimmedNote : null,
+        taskIds: selectedTaskIds,
       }
 
-      const { data, error } = await supabase
-        .from('time_logs')
-        .insert(payload)
-        .select('id')
-        .single()
+      const response = await fetch(`/api/projects/${project.id}/time-logs`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      })
 
-      if (error) {
-        throw error
+      let result: unknown = null
+      try {
+        result = await response.json()
+      } catch {
+        // ignore JSON parse errors; handled below using status
       }
 
-      const timeLogId = data?.id ?? null
+      if (!response.ok) {
+        const message =
+          typeof result === 'object' && result && 'error' in result
+            ? String((result as { error?: unknown }).error ?? '').trim()
+            : ''
+
+        throw new Error(message || 'Unable to log time.')
+      }
+
+      const timeLogId =
+        typeof result === 'object' && result && 'timeLogId' in result
+          ? String((result as { timeLogId?: unknown }).timeLogId ?? '')
+          : ''
 
       if (!timeLogId) {
         throw new Error('Time log was created without an identifier.')
-      }
-
-      if (selectedTaskIds.length > 0) {
-        const { error: linkError } = await supabase
-          .from('time_log_tasks')
-          .insert(
-            selectedTaskIds.map(taskId => ({
-              time_log_id: timeLogId,
-              task_id: taskId,
-            }))
-          )
-
-        if (linkError) {
-          await supabase
-            .from('time_logs')
-            .update({ deleted_at: new Date().toISOString() })
-            .eq('id', timeLogId)
-
-          throw linkError
-        }
       }
 
       const event = timeLogCreatedEvent({

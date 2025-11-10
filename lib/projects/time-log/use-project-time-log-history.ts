@@ -3,8 +3,8 @@
 import { useCallback, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+
 import { useToast } from '@/components/ui/use-toast'
-import { getSupabaseBrowserClient } from '@/lib/supabase/client'
 
 import {
   TIME_LOGS_QUERY_KEY,
@@ -45,7 +45,6 @@ export function useProjectTimeLogHistory(
 ): ProjectTimeLogHistoryState {
   const { open, onOpenChange, projectId, projectName, clientName } = options
 
-  const supabase = getSupabaseBrowserClient()
   const queryClient = useQueryClient()
   const router = useRouter()
   const { toast } = useToast()
@@ -67,56 +66,35 @@ export function useProjectTimeLogHistory(
     queryKey,
     enabled: open,
     queryFn: async () => {
-      const rangeEnd = Math.max(visibleCount - 1, 0)
-      const {
-        data: rows,
-        error,
-        count,
-      } = await supabase
-        .from('time_logs')
-        .select(
-          `
-          id,
-          project_id,
-          user_id,
-          hours,
-          logged_on,
-          note,
-          created_at,
-          updated_at,
-          deleted_at,
-          user:users (
-            id,
-            full_name,
-            email
-          ),
-          linked_tasks:time_log_tasks (
-            id,
-            deleted_at,
-            task:tasks (
-              id,
-              title,
-              status,
-              deleted_at
-            )
-          )
-        `,
-          { count: 'exact' }
-        )
-        .eq('project_id', projectId)
-        .is('deleted_at', null)
-        .order('logged_on', { ascending: false })
-        .order('created_at', { ascending: false })
-        .range(0, rangeEnd)
+      const params = new URLSearchParams({ limit: visibleCount.toString() })
+      const response = await fetch(
+        `/api/projects/${projectId}/time-logs?${params.toString()}`
+      )
 
-      if (error) {
-        console.error('Failed to load time logs', error)
-        throw error
+      let payload: unknown
+      try {
+        payload = await response.json()
+      } catch {
+        payload = null
+      }
+
+      if (!response.ok) {
+        const message =
+          typeof payload === 'object' && payload && 'error' in payload
+            ? String((payload as { error?: unknown }).error ?? '').trim()
+            : ''
+
+        throw new Error(message || 'Unable to load time logs.')
+      }
+
+      const { logs, totalCount } = (payload ?? {}) as {
+        logs?: TimeLogEntry[]
+        totalCount?: number
       }
 
       return {
-        logs: (rows ?? []) as TimeLogEntry[],
-        totalCount: count ?? rows?.length ?? 0,
+        logs: logs ?? [],
+        totalCount: totalCount ?? logs?.length ?? 0,
       }
     },
   })
@@ -127,13 +105,25 @@ export function useProjectTimeLogHistory(
 
   const deleteLog = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('time_logs')
-        .update({ deleted_at: new Date().toISOString() })
-        .eq('id', id)
+      const response = await fetch(
+        `/api/projects/${projectId}/time-logs/${id}`,
+        { method: 'DELETE' }
+      )
 
-      if (error) {
-        throw error
+      if (!response.ok) {
+        let payload: unknown = null
+        try {
+          payload = await response.json()
+        } catch {
+          payload = null
+        }
+
+        const message =
+          typeof payload === 'object' && payload && 'error' in payload
+            ? String((payload as { error?: unknown }).error ?? '').trim()
+            : ''
+
+        throw new Error(message || 'Unable to delete time log.')
       }
     },
     onSuccess: async () => {

@@ -1,14 +1,21 @@
 'use server'
 
-import { requireUser } from '@/lib/auth/session'
+import { eq } from 'drizzle-orm'
+
+import { requireRole } from '@/lib/auth/session'
 import { logActivity } from '@/lib/activity/logger'
 import { projectDeletedEvent } from '@/lib/activity/events'
+import { db } from '@/lib/db'
+import { projects } from '@/lib/db/schema'
+import {
+  countTasksForProject,
+  countTimeLogsForProject,
+} from '@/lib/queries/projects'
 import {
   destroyProjectSchema,
   type DestroyProjectInput,
   type ProjectActionResult,
 } from '@/lib/settings/projects/project-service'
-import { getSupabaseServerClient } from '@/lib/supabase/server'
 
 import {
   revalidateProjectDetailRoutes,
@@ -18,24 +25,39 @@ import {
 export async function destroyProject(
   input: DestroyProjectInput
 ): Promise<ProjectActionResult> {
-  const user = await requireUser()
+  const user = await requireRole('ADMIN')
   const parsed = destroyProjectSchema.safeParse(input)
 
   if (!parsed.success) {
     return { error: 'Invalid permanent delete request.' }
   }
 
-  const supabase = getSupabaseServerClient()
   const projectId = parsed.data.id
 
-  const { data: existingProject, error: loadError } = await supabase
-    .from('projects')
-    .select('id, name, client_id, deleted_at')
-    .eq('id', projectId)
-    .maybeSingle()
+  let existingProject:
+    | {
+        id: string
+        name: string
+        clientId: string
+        deletedAt: string | null
+      }
+    | undefined
 
-  if (loadError) {
-    console.error('Failed to load project for permanent delete', loadError)
+  try {
+    const rows = await db
+      .select({
+        id: projects.id,
+        name: projects.name,
+        clientId: projects.clientId,
+        deletedAt: projects.deletedAt,
+      })
+      .from(projects)
+      .where(eq(projects.id, projectId))
+      .limit(1)
+
+    existingProject = rows[0]
+  } catch (error) {
+    console.error('Failed to load project for permanent delete', error)
     return { error: 'Unable to permanently delete project.' }
   }
 
@@ -43,46 +65,32 @@ export async function destroyProject(
     return { error: 'Project not found.' }
   }
 
-  if (!existingProject.deleted_at) {
+  if (!existingProject.deletedAt) {
     return {
       error: 'Archive the project before permanently deleting.',
     }
   }
 
-  const [
-    { count: taskCount, error: taskError },
-    { count: timeLogCount, error: timeLogError },
-  ] = await Promise.all([
-    supabase
-      .from('tasks')
-      .select('id', { count: 'exact', head: true })
-      .eq('project_id', projectId),
-    supabase
-      .from('time_logs')
-      .select('id', { count: 'exact', head: true })
-      .eq('project_id', projectId),
+  let taskCount = 0
+  let timeLogCount = 0
+
+  try {
+    ;[taskCount, timeLogCount] = await Promise.all([
+      countTasksForProject(projectId),
+      countTimeLogsForProject(projectId),
   ])
-
-  if (taskError) {
-    console.error('Failed to check project tasks before delete', taskError)
-    return { error: 'Unable to verify task dependencies.' }
-  }
-
-  if (timeLogError) {
-    console.error(
-      'Failed to check project time logs before delete',
-      timeLogError
-    )
-    return { error: 'Unable to verify time log dependencies.' }
+  } catch (error) {
+    console.error('Failed to check project dependencies before delete', error)
+    return { error: 'Unable to verify project dependencies.' }
   }
 
   const blockingResources: string[] = []
 
-  if ((taskCount ?? 0) > 0) {
+  if (taskCount > 0) {
     blockingResources.push('tasks')
   }
 
-  if ((timeLogCount ?? 0) > 0) {
+  if (timeLogCount > 0) {
     blockingResources.push('time logs')
   }
 
@@ -99,17 +107,16 @@ export async function destroyProject(
     }
   }
 
-  // Note: No need to delete project_members as the table no longer exists
-  // Project access is managed through client_members, which are not project-specific
-
-  const { error: deleteError } = await supabase
-    .from('projects')
-    .delete()
-    .eq('id', projectId)
-
-  if (deleteError) {
-    console.error('Failed to permanently delete project', deleteError)
-    return { error: deleteError.message }
+  try {
+    await db.delete(projects).where(eq(projects.id, projectId))
+  } catch (error) {
+    console.error('Failed to permanently delete project', error)
+    return {
+      error:
+        error instanceof Error
+          ? error.message
+          : 'Unable to permanently delete project.',
+    }
   }
 
   const event = projectDeletedEvent({ name: existingProject.name })
@@ -122,7 +129,7 @@ export async function destroyProject(
     targetType: 'PROJECT',
     targetId: existingProject.id,
     targetProjectId: existingProject.id,
-    targetClientId: existingProject.client_id,
+    targetClientId: existingProject.clientId,
     metadata: event.metadata,
   })
 

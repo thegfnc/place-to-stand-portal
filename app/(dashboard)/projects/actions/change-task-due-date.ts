@@ -1,11 +1,15 @@
 'use server'
 
+import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { logActivity } from '@/lib/activity/logger'
 import { taskUpdatedEvent } from '@/lib/activity/events'
 import { requireUser } from '@/lib/auth/session'
-import { getSupabaseServerClient } from '@/lib/supabase/server'
+import { ensureClientAccessByTaskId } from '@/lib/auth/permissions'
+import { db } from '@/lib/db'
+import { projects, tasks } from '@/lib/db/schema'
+import { NotFoundError, ForbiddenError } from '@/lib/errors/http'
 
 import { revalidateProjectTaskViews } from './shared'
 import type { ActionResult } from './action-types'
@@ -33,52 +37,55 @@ export async function changeTaskDueDate(input: {
   }
 
   const { taskId, dueOn } = parsed.data
-  const supabase = getSupabaseServerClient()
 
-  const { data: task, error: taskError } = await supabase
-    .from('tasks')
-    .select(
-      `
-        id,
-        title,
-        due_on,
-        project_id,
-        project:projects (
-          client_id
-        )
-      `
-    )
-    .eq('id', taskId)
-    .maybeSingle()
+  try {
+    await ensureClientAccessByTaskId(user, taskId)
+  } catch (error) {
+    if (error instanceof NotFoundError) {
+      return { error: 'Task not found.' }
+    }
 
-  if (taskError) {
-    console.error('Failed to load task for due date change', taskError)
+    if (error instanceof ForbiddenError) {
+      return { error: 'You do not have permission to update this task.' }
+    }
+
+    console.error('Failed to authorize task for due date change', error)
     return { error: 'Unable to update task due date.' }
   }
+
+  const taskRecords = await db
+    .select({
+      id: tasks.id,
+      title: tasks.title,
+      dueOn: tasks.dueOn,
+      projectId: tasks.projectId,
+      clientId: projects.clientId,
+    })
+    .from(tasks)
+    .leftJoin(projects, eq(tasks.projectId, projects.id))
+    .where(eq(tasks.id, taskId))
+    .limit(1)
+
+  const task = taskRecords[0]
 
   if (!task) {
     return { error: 'Task not found.' }
   }
 
-  const previousDueOn = task.due_on ?? null
+  const previousDueOn = task.dueOn ?? null
   const nextDueOn = dueOn ?? null
 
   if (previousDueOn === nextDueOn) {
     return {}
   }
 
-  const { error: updateError } = await supabase
-    .from('tasks')
-    .update({ due_on: nextDueOn })
-    .eq('id', taskId)
-
-  if (updateError) {
-    console.error('Failed to update task due date', updateError)
-    return { error: updateError.message }
-  }
+  await db
+    .update(tasks)
+    .set({ dueOn: nextDueOn })
+    .where(eq(tasks.id, taskId))
 
   const event = taskUpdatedEvent({
-    title: task.title,
+    title: task.title ?? 'Task',
     changedFields: ['due date'],
     details: {
       dueOn: {
@@ -95,12 +102,12 @@ export async function changeTaskDueDate(input: {
     summary: event.summary,
     targetType: 'TASK',
     targetId: taskId,
-    targetProjectId: task.project_id,
-    targetClientId: task.project?.client_id ?? null,
+    targetProjectId: task.projectId,
+    targetClientId: task.clientId ?? null,
     metadata: event.metadata,
   })
 
-  revalidateProjectTaskViews()
+  await revalidateProjectTaskViews()
 
   return {}
 }

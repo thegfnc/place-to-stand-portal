@@ -3,83 +3,63 @@ import type { Metadata } from 'next'
 import { ClientsSettingsTable } from './clients-table'
 import { AppShellHeader } from '@/components/layout/app-shell'
 import { requireRole } from '@/lib/auth/session'
-import { getSupabaseServiceClient } from '@/lib/supabase/service'
+import { getClientsSettingsSnapshot } from '@/lib/queries/clients'
+import type { Database } from '@/supabase/types/database'
 
 export const metadata: Metadata = {
   title: 'Clients | Settings',
 }
 
 export default async function ClientsSettingsPage() {
-  await requireRole('ADMIN')
-  const supabase = getSupabaseServiceClient()
+  const admin = await requireRole('ADMIN')
+  const { clients, members, clientUsers } = await getClientsSettingsSnapshot(
+    admin
+  )
 
-  const [
-    { data: clients, error: clientsError },
-    { data: clientMembers, error: clientMembersError },
-    { data: clientUsers, error: clientUsersError },
-  ] = await Promise.all([
-    supabase
-      .from('clients')
-      .select(
-        `id, name, slug, notes, created_by, created_at, updated_at, deleted_at, projects:projects ( id, deleted_at, status )`
-      )
-      .order('name'),
-    supabase
-      .from('client_members')
-      .select(
-        `client_id, user:users ( id, email, full_name, role, deleted_at )`
-      )
-      .is('deleted_at', null),
-    supabase
-      .from('users')
-      .select('id, email, full_name, role, deleted_at')
-      .eq('role', 'CLIENT')
-      .is('deleted_at', null)
-      .order('full_name', { ascending: true })
-      .order('email', { ascending: true }),
-  ])
+  const clientsForTable = clients.map(client => ({
+    id: client.id,
+    name: client.name,
+    slug: client.slug,
+    notes: client.notes,
+    created_by: client.createdBy,
+    created_at: client.createdAt,
+    updated_at: client.updatedAt,
+    deleted_at: client.deletedAt,
+    projects: client.projects.map(project => ({
+      id: project.id,
+      deleted_at: project.deletedAt,
+      status: project.status,
+    })),
+  })) as Array<
+    Database['public']['Tables']['clients']['Row'] & {
+      projects: Array<{
+        id: string
+        deleted_at: string | null
+        status: string | null
+      }>
+    }
+  >
 
-  if (clientsError) {
-    console.error('Failed to load clients for settings', clientsError)
-  }
-
-  if (clientMembersError) {
-    console.error('Failed to load client memberships', clientMembersError)
-  }
-
-  if (clientUsersError) {
-    console.error('Failed to load client users', clientUsersError)
-  }
-
-  const membersByClient = (clientMembers ?? []).reduce(
-    (acc, entry) => {
-      const user = entry.user
-
-      if (!user || user.deleted_at) {
-        return acc
-      }
-
-      const list = acc[entry.client_id] ?? []
-      list.push({
-        id: user.id,
-        email: user.email,
-        fullName: user.full_name,
-      })
-      acc[entry.client_id] = list
-      return acc
-    },
-    {} as Record<
+  const membersByClient = members.reduce<
+    Record<
       string,
       Array<{ id: string; email: string; fullName: string | null }>
     >
-  )
+  >((acc, member) => {
+    const list = acc[member.clientId] ?? []
+    list.push({
+      id: member.userId,
+      email: member.email,
+      fullName: member.fullName,
+    })
+    acc[member.clientId] = list
+    return acc
+  }, {})
 
-  const clientDirectory = (clientUsers ?? [])
-    .filter(user => !user.deleted_at)
-    .map(user => ({
+  const clientDirectory = clientUsers.map(user => ({
       id: user.id,
       email: user.email,
-      fullName: user.full_name,
+    fullName: user.fullName,
     }))
 
   return (
@@ -94,11 +74,7 @@ export default async function ClientsSettingsPage() {
         </div>
       </AppShellHeader>
       <ClientsSettingsTable
-        clients={
-          (clients ?? []) as Parameters<
-            typeof ClientsSettingsTable
-          >[0]['clients']
-        }
+        clients={clientsForTable}
         clientUsers={clientDirectory}
         membersByClient={membersByClient}
       />

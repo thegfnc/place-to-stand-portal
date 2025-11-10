@@ -1,38 +1,54 @@
 'use server'
 
-import { requireUser } from '@/lib/auth/session'
+import { eq } from 'drizzle-orm'
+
+import { requireRole } from '@/lib/auth/session'
 import { logActivity } from '@/lib/activity/logger'
 import { projectArchivedEvent } from '@/lib/activity/events'
+import { db } from '@/lib/db'
+import { projects } from '@/lib/db/schema'
 import {
   deleteProjectSchema,
   type DeleteProjectInput,
   type ProjectActionResult,
 } from '@/lib/settings/projects/project-service'
-import { getSupabaseServerClient } from '@/lib/supabase/server'
 
 import { revalidateProjectSettings } from './shared'
 
 export async function softDeleteProject(
   input: DeleteProjectInput
 ): Promise<ProjectActionResult> {
-  const user = await requireUser()
+  const user = await requireRole('ADMIN')
   const parsed = deleteProjectSchema.safeParse(input)
 
   if (!parsed.success) {
     return { error: 'Invalid delete request.' }
   }
 
-  const supabase = getSupabaseServerClient()
   const projectId = parsed.data.id
 
-  const { data: existingProject, error: loadError } = await supabase
-    .from('projects')
-    .select('id, name, client_id')
-    .eq('id', projectId)
-    .maybeSingle()
+  let existingProject:
+    | {
+        id: string
+        name: string
+        clientId: string
+      }
+    | undefined
 
-  if (loadError) {
-    console.error('Failed to load project for archive', loadError)
+  try {
+    const rows = await db
+      .select({
+        id: projects.id,
+        name: projects.name,
+        clientId: projects.clientId,
+      })
+      .from(projects)
+      .where(eq(projects.id, projectId))
+      .limit(1)
+
+    existingProject = rows[0]
+  } catch (error) {
+    console.error('Failed to load project for archive', error)
     return { error: 'Unable to archive project.' }
   }
 
@@ -40,14 +56,17 @@ export async function softDeleteProject(
     return { error: 'Project not found.' }
   }
 
-  const { error } = await supabase
-    .from('projects')
-    .update({ deleted_at: new Date().toISOString() })
-    .eq('id', projectId)
-
-  if (error) {
+  try {
+    await db
+      .update(projects)
+      .set({ deletedAt: new Date().toISOString() })
+      .where(eq(projects.id, projectId))
+  } catch (error) {
     console.error('Failed to archive project', error)
-    return { error: error.message }
+    return {
+      error:
+        error instanceof Error ? error.message : 'Unable to archive project.',
+    }
   }
 
   const event = projectArchivedEvent({ name: existingProject.name })
@@ -60,7 +79,7 @@ export async function softDeleteProject(
     targetType: 'PROJECT',
     targetId: existingProject.id,
     targetProjectId: existingProject.id,
-    targetClientId: existingProject.client_id,
+    targetClientId: existingProject.clientId,
     metadata: event.metadata,
   })
 

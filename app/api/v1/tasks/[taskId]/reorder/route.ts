@@ -3,9 +3,14 @@ import type { NextRequest } from 'next/server'
 import { z } from 'zod'
 
 import { getCurrentUser } from '@/lib/auth/session'
-import { getSupabaseServerClient } from '@/lib/supabase/server'
+import { eq } from 'drizzle-orm'
+
 import { logActivity } from '@/lib/activity/logger'
 import { taskStatusChangedEvent } from '@/lib/activity/events'
+import { ensureClientAccessByTaskId } from '@/lib/auth/permissions'
+import { db } from '@/lib/db'
+import { projects, tasks } from '@/lib/db/schema'
+import { NotFoundError, ForbiddenError } from '@/lib/errors/http'
 import { revalidateProjectTaskViews } from '@/app/(dashboard)/projects/actions/shared'
 import { statusSchema } from '@/app/(dashboard)/projects/actions/shared-schemas'
 
@@ -69,65 +74,72 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     )
   }
 
-  const supabase = getSupabaseServerClient()
   const taskId = parsedParams.data.taskId
 
-  const { data: task, error: taskError } = await supabase
-    .from('tasks')
-    .select(
-      `
-        id,
-        title,
-        rank,
-        status,
-        project_id,
-        project:projects (
-          client_id
-        )
-      `
-    )
-    .eq('id', taskId)
-    .maybeSingle()
+  try {
+    await ensureClientAccessByTaskId(user, taskId)
+  } catch (error) {
+    if (error instanceof NotFoundError) {
+      return NextResponse.json({ error: 'Task not found.' }, { status: 404 })
+    }
 
-  if (taskError) {
-    console.error('Failed to load task for reorder', taskError)
+    if (error instanceof ForbiddenError) {
+      return NextResponse.json(
+        { error: 'You do not have permission to reorder this task.' },
+        { status: 403 }
+      )
+    }
+
+    console.error('Failed to authorize task for reorder', error)
     return NextResponse.json(
       { error: 'Unable to load task for reorder.' },
       { status: 500 }
     )
   }
 
+  const taskRecord = await db
+    .select({
+      id: tasks.id,
+      title: tasks.title,
+      rank: tasks.rank,
+      status: tasks.status,
+      projectId: tasks.projectId,
+      clientId: projects.clientId,
+    })
+    .from(tasks)
+    .leftJoin(projects, eq(projects.id, tasks.projectId))
+    .where(eq(tasks.id, taskId))
+    .limit(1)
+
+  const task = taskRecord[0]
+
   if (!task) {
     return NextResponse.json({ error: 'Task not found.' }, { status: 404 })
-  }
-
-  const updates: Record<string, unknown> = {
-    rank: parsedPayload.rank,
-    updated_by: user.id,
-    updated_at: new Date().toISOString(),
   }
 
   const statusChanged =
     parsedPayload.status && parsedPayload.status !== task.status
 
-  if (statusChanged) {
-    updates.status = parsedPayload.status
-  }
+  const updatedAt = new Date().toISOString()
 
-  const { data: updatedTask, error: updateError } = await supabase
-    .from('tasks')
-    .update(updates)
-    .eq('id', taskId)
-    .select('id, rank, status, project_id, updated_at')
-    .maybeSingle()
+  const updatedTaskRecords = await db
+    .update(tasks)
+    .set({
+      rank: parsedPayload.rank,
+      status: statusChanged ? parsedPayload.status! : task.status,
+      updatedBy: user.id,
+      updatedAt,
+    })
+    .where(eq(tasks.id, taskId))
+    .returning({
+      id: tasks.id,
+      rank: tasks.rank,
+      status: tasks.status,
+      projectId: tasks.projectId,
+      updatedAt: tasks.updatedAt,
+    })
 
-  if (updateError) {
-    console.error('Failed to update task rank', updateError)
-    return NextResponse.json(
-      { error: 'Unable to update task ordering.' },
-      { status: 500 }
-    )
-  }
+  const updatedTask = updatedTaskRecords[0]
 
   if (!updatedTask) {
     return NextResponse.json(
@@ -139,7 +151,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   if (statusChanged) {
     try {
       const event = taskStatusChangedEvent({
-        title: task.title,
+        title: task.title ?? 'Task',
         fromStatus: task.status,
         toStatus: parsedPayload.status!,
       })
@@ -151,8 +163,8 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         summary: event.summary,
         targetType: 'TASK',
         targetId: taskId,
-        targetProjectId: task.project_id,
-        targetClientId: task.project?.client_id ?? null,
+        targetProjectId: task.projectId,
+        targetClientId: task.clientId ?? null,
         metadata: event.metadata,
       })
     } catch (error) {
@@ -162,5 +174,13 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
   await revalidateProjectTaskViews()
 
-  return NextResponse.json({ task: updatedTask })
+  return NextResponse.json({
+    task: {
+      id: updatedTask.id,
+      rank: updatedTask.rank,
+      status: updatedTask.status,
+      project_id: updatedTask.projectId,
+      updated_at: updatedTask.updatedAt,
+    },
+  })
 }

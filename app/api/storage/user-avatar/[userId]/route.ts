@@ -4,6 +4,8 @@ import { z } from 'zod'
 import { requireUser } from '@/lib/auth/session'
 import { getSupabaseServiceClient } from '@/lib/supabase/service'
 import { AVATAR_BUCKET, ensureAvatarBucket } from '@/lib/storage/avatar'
+import { getUserAvatarPath } from '@/lib/queries/users'
+import { HttpError } from '@/lib/errors/http'
 
 const paramsSchema = z.object({
   userId: z.string().uuid(),
@@ -24,23 +26,17 @@ export async function GET(
   const supabase = getSupabaseServiceClient()
   const userId = parsedParams.data.userId
 
-  const { data, error } = await supabase
-    .from('users')
-    .select('avatar_url')
-    .eq('id', userId)
-    .is('deleted_at', null)
-    .maybeSingle()
+  let avatarPath: string
 
-  if (error) {
+  try {
+    avatarPath = await getUserAvatarPath(userId)
+  } catch (error) {
+    if (error instanceof HttpError) {
+      return NextResponse.json({ error: error.message }, { status: error.status })
+    }
+
     console.error('Failed to load avatar metadata', error)
-    return NextResponse.json(
-      { error: 'Unable to load avatar.' },
-      { status: 500 }
-    )
-  }
-
-  if (!data?.avatar_url) {
-    return NextResponse.json({ error: 'Avatar not found.' }, { status: 404 })
+    return NextResponse.json({ error: 'Unable to load avatar.' }, { status: 500 })
   }
 
   await ensureAvatarBucket(supabase)
@@ -53,7 +49,7 @@ export async function GET(
   // Supabase image transforms work by appending query parameters to the storage URL
   const { data: signedUrlData, error: signedUrlError } = await supabase.storage
     .from(AVATAR_BUCKET)
-    .createSignedUrl(data.avatar_url, 3600, {
+    .createSignedUrl(avatarPath, 3600, {
       // 1 hour expiry
       transform: {
         quality: 80,

@@ -1,5 +1,11 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { and, eq, inArray, isNull } from 'drizzle-orm'
 
+import { db } from '@/lib/db'
+import {
+  taskAttachments,
+  taskAssignees,
+} from '@/lib/db/schema'
 import {
   deleteAttachmentObject,
   moveAttachmentToTaskFolder,
@@ -9,51 +15,40 @@ import type { Database } from '@/supabase/types/database'
 
 import type { AttachmentPayload } from './shared-schemas'
 
-export async function syncAssignees(
-  supabase: SupabaseClient<Database>,
-  taskId: string,
-  assigneeIds: string[]
-) {
+export async function syncAssignees(taskId: string, assigneeIds: string[]) {
   const deletionTimestamp = new Date().toISOString()
 
-  const { error: removeError } = await supabase
-    .from('task_assignees')
-    .update({ deleted_at: deletionTimestamp })
-    .eq('task_id', taskId)
-
-  if (removeError) {
-    console.error('Failed to archive existing task assignees', removeError)
-    throw removeError
-  }
+  await db
+    .update(taskAssignees)
+    .set({ deletedAt: deletionTimestamp })
+    .where(eq(taskAssignees.taskId, taskId))
 
   if (!assigneeIds.length) {
     return
   }
 
-  const { error: upsertError } = await supabase.from('task_assignees').upsert(
-    assigneeIds.map(userId => ({
-      task_id: taskId,
-      user_id: userId,
-      deleted_at: null,
-    })),
-    { onConflict: 'task_id,user_id' }
-  )
-
-  if (upsertError) {
-    console.error('Failed to upsert task assignees', upsertError)
-    throw upsertError
-  }
+  await db
+    .insert(taskAssignees)
+    .values(
+      assigneeIds.map(userId => ({
+        taskId,
+        userId,
+        deletedAt: null,
+      }))
+    )
+    .onConflictDoUpdate({
+      target: [taskAssignees.taskId, taskAssignees.userId],
+      set: { deletedAt: null },
+    })
 }
 
 export async function syncAttachments({
-  supabase,
   storage,
   taskId,
   actorId,
   actorRole,
   attachmentsInput,
 }: {
-  supabase: SupabaseClient<Database>
   storage: SupabaseClient<Database>
   taskId: string
   actorId: string
@@ -103,49 +98,50 @@ export async function syncAttachments({
     }
 
     if (rows.length) {
-      const { error } = await supabase.from('task_attachments').insert(rows)
-
-      if (error) {
-        console.error('Failed to attach files to task', error)
-        throw error
-      }
+      await db.insert(taskAttachments).values(
+        rows.map(row => ({
+          taskId: row.task_id,
+          storagePath: row.storage_path,
+          originalName: row.original_name,
+          mimeType: row.mime_type,
+          fileSize: row.file_size,
+          uploadedBy: row.uploaded_by,
+        }))
+      )
     }
   }
 
   if (toRemove.length) {
-    const { data: existing, error } = await supabase
-      .from('task_attachments')
-      .select('id, storage_path')
-      .in('id', toRemove)
-      .eq('task_id', taskId)
-      .is('deleted_at', null)
+    const existing = await db
+      .select({
+        id: taskAttachments.id,
+        storagePath: taskAttachments.storagePath,
+      })
+      .from(taskAttachments)
+      .where(
+        and(
+          eq(taskAttachments.taskId, taskId),
+          inArray(taskAttachments.id, toRemove),
+          isNull(taskAttachments.deletedAt)
+        )
+      )
 
-    if (error) {
-      console.error('Failed to load attachments for removal', error)
-      throw error
-    }
-
-    const idsToRemove = (existing ?? []).map(attachment => attachment.id)
+    const idsToRemove = existing.map(attachment => attachment.id)
 
     if (idsToRemove.length) {
       const timestamp = new Date().toISOString()
 
-      const { error: updateError } = await supabase
-        .from('task_attachments')
-        .update({ deleted_at: timestamp })
-        .in('id', idsToRemove)
-
-      if (updateError) {
-        console.error('Failed to mark attachments as removed', updateError)
-        throw updateError
-      }
+      await db
+        .update(taskAttachments)
+        .set({ deletedAt: timestamp })
+        .where(inArray(taskAttachments.id, idsToRemove))
 
       await Promise.all(
-        (existing ?? []).map(async attachment => {
+        existing.map(async attachment => {
           try {
             await deleteAttachmentObject({
               client: storage,
-              path: attachment.storage_path,
+              path: attachment.storagePath,
             })
           } catch (storageError) {
             console.error('Failed to delete attachment object', storageError)

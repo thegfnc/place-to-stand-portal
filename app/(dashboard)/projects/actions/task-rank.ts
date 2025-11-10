@@ -1,31 +1,30 @@
-import type { SupabaseClient } from '@supabase/supabase-js'
+import { and, desc, eq, isNull } from 'drizzle-orm'
 
 import { getRankAfter } from '@/lib/rank'
-import type { Database } from '@/supabase/types/database'
+import { db } from '@/lib/db'
+import { tasks } from '@/lib/db/schema'
 import { TASK_STATUSES } from './shared-schemas'
 
 type TaskStatus = (typeof TASK_STATUSES)[number]
 
-type Client = SupabaseClient<Database>
-
 export async function resolveNextTaskRank(
-  supabase: Client,
   projectId: string,
   status: TaskStatus
 ) {
-  const { data, error } = await supabase
-    .from('tasks')
-    .select('rank')
-    .eq('project_id', projectId)
-    .eq('status', status)
-    .is('deleted_at', null)
-    .order('rank', { ascending: false })
+  const rows = await db
+    .select({ rank: tasks.rank })
+    .from(tasks)
+    .where(
+      and(
+        eq(tasks.projectId, projectId),
+        eq(tasks.status, status),
+        isNull(tasks.deletedAt)
+      )
+    )
+    .orderBy(desc(tasks.rank))
     .limit(1)
-    .maybeSingle()
 
-  if (error) {
-    throw error
-  }
+  const rank = rows[0]?.rank ?? null
 
-  return getRankAfter(data?.rank ?? null)
+  return getRankAfter(rank)
 }

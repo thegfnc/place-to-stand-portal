@@ -3,7 +3,7 @@ import type { Metadata } from 'next'
 import { ProjectsSettingsTable } from './projects-table'
 import { AppShellHeader } from '@/components/layout/app-shell'
 import { requireRole } from '@/lib/auth/session'
-import { getSupabaseServiceClient } from '@/lib/supabase/service'
+import { getProjectsSettingsSnapshot } from '@/lib/queries/projects'
 import type { Database } from '@/supabase/types/database'
 
 type ProjectRow = Database['public']['Tables']['projects']['Row']
@@ -19,55 +19,33 @@ export const metadata: Metadata = {
 }
 
 export default async function ProjectsSettingsPage() {
-  await requireRole('ADMIN')
+  const admin = await requireRole('ADMIN')
+  const { projects, clients } = await getProjectsSettingsSnapshot(admin)
 
-  const supabase = getSupabaseServiceClient()
-
-  const [
-    { data: projects, error: projectsError },
-    { data: clients, error: clientsError },
-  ] = await Promise.all([
-    supabase
-      .from('projects')
-      .select(
-        `
-          id,
-          name,
-          status,
-          slug,
-          client_id,
-          created_by,
-          starts_on,
-          ends_on,
-          created_at,
-          updated_at,
-          deleted_at
-        `
-      )
-      .order('name', { ascending: true }),
-    supabase.from('clients').select('id, name, deleted_at').order('name'),
-  ])
-
-  if (projectsError) {
-    console.error('Failed to load projects for settings', projectsError)
-  }
-
-  if (clientsError) {
-    console.error('Failed to load clients for project settings', clientsError)
-  }
+  const clientRows: ClientRow[] = clients.map(client => ({
+    id: client.id,
+    name: client.name,
+    deleted_at: client.deletedAt,
+  }))
 
   const clientLookup = new Map(
-    (clients ?? []).map(client => [client.id, client] as const)
+    clientRows.map(client => [client.id, client] as const)
   )
 
-  const hydratedProjects: ProjectWithClient[] = (projects ?? []).map(
-    project => ({
-      ...project,
-      client: project.client_id
-        ? (clientLookup.get(project.client_id) ?? null)
-        : null,
-    })
-  )
+  const hydratedProjects: ProjectWithClient[] = projects.map(project => ({
+    id: project.id,
+    name: project.name,
+    status: project.status,
+    slug: project.slug,
+    client_id: project.clientId,
+    created_by: project.createdBy,
+    starts_on: project.startsOn,
+    ends_on: project.endsOn,
+    created_at: project.createdAt,
+    updated_at: project.updatedAt,
+    deleted_at: project.deletedAt,
+    client: project.clientId ? clientLookup.get(project.clientId) ?? null : null,
+  }))
 
   return (
     <>
@@ -81,7 +59,7 @@ export default async function ProjectsSettingsPage() {
       </AppShellHeader>
       <ProjectsSettingsTable
         projects={hydratedProjects}
-        clients={(clients ?? []) as ClientRow[]}
+        clients={clientRows}
         contractorUsers={[]}
         membersByProject={{}}
       />

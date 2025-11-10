@@ -28,6 +28,24 @@ export function useProjectsTaskRefresh({
 }: UseProjectsTaskRefreshArgs): TaskRefreshState {
   const supabase = useMemo(() => getSupabaseBrowserClient(), [])
 
+  const fetchProjectTasks = useCallback(async (projectId: string) => {
+    const response = await fetch(`/api/projects/${projectId}/tasks`, {
+      method: 'GET',
+      headers: {
+        accept: 'application/json',
+      },
+      cache: 'no-store',
+    })
+
+    if (!response.ok) {
+      const message = await extractErrorMessage(response)
+      throw new Error(message ?? 'Failed to load project tasks.')
+    }
+
+    const data = (await response.json()) as RawTaskWithRelations[]
+    return data ?? []
+  }, [])
+
   const trackedProjectIds = useMemo(() => {
     const ids = projects.map(project => project.id).filter(Boolean)
     ids.sort()
@@ -56,53 +74,7 @@ export function useProjectsTaskRefresh({
       refreshInFlightRef.current.add(projectId)
 
       try {
-        const { data, error } = await supabase
-          .from('tasks')
-          .select(
-            `
-            id,
-            project_id,
-            title,
-            description,
-            status,
-            rank,
-            accepted_at,
-            due_on,
-            created_by,
-            updated_by,
-            created_at,
-            updated_at,
-            deleted_at,
-            assignees:task_assignees (
-              user_id,
-              deleted_at
-            ),
-            comments:task_comments (
-              id,
-              deleted_at
-            ),
-            attachments:task_attachments (
-              id,
-              task_id,
-              storage_path,
-              original_name,
-              mime_type,
-              file_size,
-              uploaded_by,
-              created_at,
-              updated_at,
-              deleted_at
-            )
-          `
-          )
-          .eq('project_id', projectId)
-
-        if (error) {
-          console.error('Failed to refresh project tasks', { projectId, error })
-          return
-        }
-
-        const rows = (data ?? []) as RawTaskWithRelations[]
+        const rows = await fetchProjectTasks(projectId)
         const normalizedTasks = rows.map(normalizeRawTask)
         const nextActive = normalizedTasks.filter(task => !task.deleted_at)
         const nextArchived = normalizedTasks.filter(task =>
@@ -117,15 +89,17 @@ export function useProjectsTaskRefresh({
             updateTaskLookup(prev, projectId, nextArchived)
           )
         })
+      } catch (error) {
+        console.error('Failed to refresh project tasks', { projectId, error })
       } finally {
         refreshInFlightRef.current.delete(projectId)
       }
     },
     [
+      fetchProjectTasks,
       setArchivedTasksByProject,
       setTasksByProject,
       startTransition,
-      supabase,
       trackedProjectIdsSet,
     ]
   )
@@ -227,4 +201,23 @@ function updateTaskLookup(
   const next = new Map(prev)
   next.set(projectId, tasks)
   return next
+}
+
+async function extractErrorMessage(response: Response): Promise<string | null> {
+  try {
+    const payload = await response.json()
+
+    if (
+      payload &&
+      typeof payload === 'object' &&
+      'error' in payload &&
+      typeof (payload as { error?: unknown }).error === 'string'
+    ) {
+      return (payload as { error?: string }).error ?? null
+    }
+  } catch {
+    // Ignore JSON parsing failures – only used for logging.
+  }
+
+  return null
 }

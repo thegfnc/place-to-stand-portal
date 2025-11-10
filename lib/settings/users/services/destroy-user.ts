@@ -1,63 +1,73 @@
+import { eq } from 'drizzle-orm'
+
+import type { AppUser } from '@/lib/auth/session'
+import { assertAdmin } from '@/lib/auth/permissions'
+import { db } from '@/lib/db'
+import {
+  clientMembers,
+  taskAssignees,
+  users,
+} from '@/lib/db/schema'
 import { getSupabaseServiceClient } from '@/lib/supabase/service'
+import { getUserById } from '@/lib/queries/users'
 
 import { cleanupAvatar } from '../user-service'
 import type { DestroyUserInput } from '../user-validation'
 import type { UserServiceResult } from '../types'
 
 export async function destroyPortalUser(
+  actor: AppUser,
   input: DestroyUserInput
 ): Promise<UserServiceResult> {
+  assertAdmin(actor)
+
   const adminClient = getSupabaseServiceClient()
 
-  const { data: userRecord, error: userFetchError } = await adminClient
-    .from('users')
-    .select('avatar_url')
-    .eq('id', input.id)
-    .maybeSingle()
+  let avatarPath: string | null = null
 
-  if (userFetchError) {
-    console.error('Failed to load user profile before destroy', userFetchError)
+  try {
+    const userRecord = await getUserById(actor, input.id)
+    avatarPath = userRecord.avatarUrl ?? null
+  } catch (error) {
+    console.error('Failed to load user profile before destroy', error)
     return { error: 'Unable to permanently delete user.' }
   }
 
   const associationDeletions = [
     {
       context: 'client memberships',
-      result: await adminClient
-        .from('client_members')
-        .delete()
-        .eq('user_id', input.id),
+      executor: async () =>
+        db.delete(clientMembers).where(eq(clientMembers.userId, input.id)),
     },
     {
       context: 'task assignments',
-      result: await adminClient
-        .from('task_assignees')
-        .delete()
-        .eq('user_id', input.id),
+      executor: async () =>
+        db.delete(taskAssignees).where(eq(taskAssignees.userId, input.id)),
     },
   ] as const
 
-  for (const { context, result } of associationDeletions) {
-    if (result.error) {
-      console.error(`Failed to remove user ${context}`, result.error)
+  for (const { context, executor } of associationDeletions) {
+    try {
+      await executor()
+    } catch (error) {
+      console.error(`Failed to remove user ${context}`, error)
       return { error: `Unable to remove user ${context}.` }
     }
   }
 
-  const { error: deleteProfileError } = await adminClient
-    .from('users')
-    .delete()
-    .eq('id', input.id)
-
-  if (deleteProfileError) {
-    console.error(
-      'Failed to delete user profile permanently',
-      deleteProfileError
-    )
-    return { error: deleteProfileError.message }
+  try {
+    await db.delete(users).where(eq(users.id, input.id))
+  } catch (error) {
+    console.error('Failed to delete user profile permanently', error)
+    return {
+      error:
+        error instanceof Error
+          ? error.message
+          : 'Unable to permanently delete user profile.',
+    }
   }
 
-  await cleanupAvatar(adminClient, userRecord?.avatar_url)
+  await cleanupAvatar(adminClient, avatarPath)
 
   const authDelete = await adminClient.auth.admin.deleteUser(input.id)
 

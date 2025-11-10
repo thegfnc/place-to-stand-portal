@@ -7,7 +7,6 @@ import { format } from 'date-fns'
 
 import type { SearchableComboboxItem } from '@/components/ui/searchable-combobox'
 import { useToast } from '@/components/ui/use-toast'
-import { getSupabaseBrowserClient } from '@/lib/supabase/client'
 
 import {
   useProjectTimeLogMutation,
@@ -90,7 +89,6 @@ export function useProjectTimeLogDialog(
   const canSelectUser = currentUserRole === 'ADMIN'
 
   const router = useRouter()
-  const supabase = getSupabaseBrowserClient()
   const queryClient = useQueryClient()
   const { toast } = useToast()
 
@@ -156,7 +154,6 @@ export function useProjectTimeLogDialog(
   }, [onOpenChange])
 
   const mutationOptions: UseProjectTimeLogMutationOptions = {
-    supabase,
     queryClient,
     router,
     toast,

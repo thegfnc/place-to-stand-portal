@@ -1,3 +1,9 @@
+import { eq } from 'drizzle-orm'
+
+import type { AppUser } from '@/lib/auth/session'
+import { assertAdmin } from '@/lib/auth/permissions'
+import { db } from '@/lib/db'
+import { users } from '@/lib/db/schema'
 import { getSupabaseServiceClient } from '@/lib/supabase/service'
 
 import {
@@ -10,8 +16,11 @@ import type { CreateUserInput } from '../user-validation'
 import type { UserServiceResult } from '../types'
 
 export async function createPortalUser(
+  actor: AppUser,
   input: CreateUserInput
 ): Promise<UserServiceResult> {
+  assertAdmin(actor)
+
   const adminClient = getSupabaseServiceClient()
   const temporaryPassword = generateTemporaryPassword()
 
@@ -47,19 +56,24 @@ export async function createPortalUser(
     normalizedAvatarPath = avatarResult.normalizedPath
   }
 
-  const { error: insertError } = await adminClient.from('users').insert({
-    id: userId,
-    email: input.email,
-    full_name: input.fullName,
-    role: input.role,
-    avatar_url: normalizedAvatarPath,
-  })
-
-  if (insertError) {
-    console.error('Failed to insert user profile', insertError)
+  try {
+    await db.insert(users).values({
+      id: userId,
+      email: input.email,
+      fullName: input.fullName,
+      role: input.role,
+      avatarUrl: normalizedAvatarPath,
+    })
+  } catch (error) {
+    console.error('Failed to insert user profile', error)
     await adminClient.auth.admin.deleteUser(userId)
     await cleanupAvatar(adminClient, normalizedAvatarPath ?? input.avatarPath)
-    return { error: insertError.message }
+    return {
+      error:
+        error instanceof Error
+          ? error.message
+          : 'Unable to create Supabase user.',
+    }
   }
 
   if (normalizedAvatarPath) {
@@ -81,7 +95,11 @@ export async function createPortalUser(
         'Failed to sync avatar metadata for new user',
         metadataResult.error
       )
-      await adminClient.from('users').delete().eq('id', userId)
+      try {
+        await db.delete(users).where(eq(users.id, userId))
+      } catch (dbError) {
+        console.error('Failed to rollback user profile after metadata error', dbError)
+      }
       await adminClient.auth.admin.deleteUser(userId)
       await cleanupAvatar(adminClient, normalizedAvatarPath)
       return { error: metadataResult.error.message }
@@ -96,7 +114,11 @@ export async function createPortalUser(
     })
   } catch (error) {
     console.error('Failed to dispatch portal invite', error)
-    await adminClient.from('users').delete().eq('id', userId)
+    try {
+      await db.delete(users).where(eq(users.id, userId))
+    } catch (dbError) {
+      console.error('Failed to rollback user profile after invite error', dbError)
+    }
     await adminClient.auth.admin.deleteUser(userId)
     await cleanupAvatar(adminClient, normalizedAvatarPath)
     return { error: 'Unable to send invite email. Please try again.' }

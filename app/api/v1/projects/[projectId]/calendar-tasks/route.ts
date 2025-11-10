@@ -3,7 +3,8 @@ import type { NextRequest } from 'next/server'
 import { differenceInCalendarDays, isValid, parseISO } from 'date-fns'
 
 import { getCurrentUser } from '@/lib/auth/session'
-import { getSupabaseServerClient } from '@/lib/supabase/server'
+import { ensureClientAccessByProjectId } from '@/lib/auth/permissions'
+import { ForbiddenError, NotFoundError } from '@/lib/errors/http'
 import { fetchProjectCalendarTasks } from '@/lib/data/projects'
 
 const MAX_RANGE_DAYS = 90
@@ -66,30 +67,29 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     )
   }
 
-  const supabase = getSupabaseServerClient()
+  try {
+    await ensureClientAccessByProjectId(user, projectId)
+  } catch (error) {
+    if (error instanceof NotFoundError) {
+      return NextResponse.json({ error: 'Project not found.' }, { status: 404 })
+    }
 
-  const { data: project, error: projectError } = await supabase
-    .from('projects')
-    .select('id')
-    .eq('id', projectId)
-    .is('deleted_at', null)
-    .maybeSingle()
+    if (error instanceof ForbiddenError) {
+      return NextResponse.json(
+        { error: 'You do not have permission to access this project.' },
+        { status: 403 }
+      )
+    }
 
-  if (projectError) {
-    console.error('Failed to load project for calendar tasks', projectError)
+    console.error('Failed to authorize project access for calendar tasks', error)
     return NextResponse.json(
       { error: 'Unable to verify project access.' },
       { status: 500 }
     )
   }
 
-  if (!project) {
-    return NextResponse.json({ error: 'Project not found.' }, { status: 404 })
-  }
-
   try {
     const tasks = await fetchProjectCalendarTasks({
-      supabase,
       projectId,
       start: startParam,
       end: endParam,

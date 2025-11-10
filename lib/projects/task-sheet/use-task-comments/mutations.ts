@@ -12,7 +12,6 @@ import type { useToast } from '@/components/ui/use-toast'
 
 import { serializeCommentMetadata } from './helpers'
 import type { CommentActivityMetadata } from './types'
-import type { SupabaseBrowserClient } from './queries'
 
 type RouterInstance = ReturnType<typeof useRouter>
 type ToastFn = ReturnType<typeof useToast>['toast']
@@ -23,7 +22,6 @@ type BaseMutationArgs = {
   clientId: string | null
   currentUserId: string
   taskTitle?: string | null
-  supabase: SupabaseBrowserClient
   queryKey: readonly [string, string, string | null]
   queryClient: QueryClient
   router: RouterInstance
@@ -71,7 +69,6 @@ export function useCreateTaskCommentMutation({
   clientId,
   currentUserId,
   taskTitle,
-  supabase,
   queryKey,
   queryClient,
   router,
@@ -84,27 +81,31 @@ export function useCreateTaskCommentMutation({
         throw new Error('Task ID is required to post a comment.')
       }
 
-      const { data, error } = await supabase
-        .from('task_comments')
-        .insert({
-          task_id: taskId,
-          author_id: currentUserId,
-          body,
-        })
-        .select('id')
-        .single()
+      const response = await fetch(`/api/tasks/${taskId}/comments`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          accept: 'application/json',
+        },
+        cache: 'no-store',
+        body: JSON.stringify({ body }),
+      })
 
-      if (error || !data) {
-        throw error ?? new Error('Comment was created without an identifier.')
+      await ensureOk(response, 'Failed to add comment.')
+
+      const payload = (await response.json()) as { commentId?: string }
+
+      if (!payload?.commentId) {
+        throw new Error('Comment was created without an identifier.')
       }
 
       await logCommentActivity(
-        { taskId, commentId: data.id, bodyLength: body.length },
+        { taskId, commentId: payload.commentId, bodyLength: body.length },
         { currentUserId, projectId, clientId, taskTitle },
         taskCommentCreatedEvent
       )
 
-      return data.id
+      return payload.commentId
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey })
@@ -135,7 +136,6 @@ export function useUpdateTaskCommentMutation({
   clientId,
   currentUserId,
   taskTitle,
-  supabase,
   queryKey,
   queryClient,
   router,
@@ -144,14 +144,17 @@ export function useUpdateTaskCommentMutation({
 }: UpdateMutationArgs) {
   return useMutation({
     mutationFn: async ({ id, body }: { id: string; body: string }) => {
-      const { error } = await supabase
-        .from('task_comments')
-        .update({ body })
-        .eq('id', id)
+      const response = await fetch(`/api/task-comments/${id}`, {
+        method: 'PATCH',
+        headers: {
+          'content-type': 'application/json',
+          accept: 'application/json',
+        },
+        cache: 'no-store',
+        body: JSON.stringify({ body }),
+      })
 
-      if (error) {
-        throw error
-      }
+      await ensureOk(response, 'Failed to update comment.')
 
       await logCommentActivity(
         { taskId: taskId ?? '', commentId: id, bodyLength: body.length },
@@ -188,7 +191,6 @@ export function useDeleteTaskCommentMutation({
   clientId,
   currentUserId,
   taskTitle,
-  supabase,
   queryKey,
   queryClient,
   router,
@@ -197,14 +199,15 @@ export function useDeleteTaskCommentMutation({
 }: DeleteMutationArgs) {
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('task_comments')
-        .update({ deleted_at: new Date().toISOString() })
-        .eq('id', id)
+      const response = await fetch(`/api/task-comments/${id}`, {
+        method: 'DELETE',
+        headers: {
+          accept: 'application/json',
+        },
+        cache: 'no-store',
+      })
 
-      if (error) {
-        throw error
-      }
+      await ensureOk(response, 'Failed to delete comment.')
 
       await logCommentActivity(
         { taskId: taskId ?? '', commentId: id },
@@ -233,4 +236,34 @@ export function useDeleteTaskCommentMutation({
       })
     },
   })
+}
+
+async function ensureOk(response: Response, fallbackMessage: string): Promise<void> {
+  if (response.ok) {
+    return
+  }
+
+  const message = await extractErrorMessage(response)
+  throw new Error(message ?? fallbackMessage)
+}
+
+async function extractErrorMessage(response: Response): Promise<string | null> {
+  try {
+    if (response.headers.get('content-type')?.includes('application/json')) {
+      const payload = await response.json()
+
+      if (
+        payload &&
+        typeof payload === 'object' &&
+        'error' in payload &&
+        typeof (payload as { error?: unknown }).error === 'string'
+      ) {
+        return (payload as { error?: string }).error ?? null
+      }
+    }
+  } catch {
+    // Ignore JSON parsing issues – we only need this for improved error messaging.
+  }
+
+  return null
 }

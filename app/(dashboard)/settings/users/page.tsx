@@ -2,43 +2,40 @@ import type { Metadata } from 'next'
 
 import { UsersSettingsTable } from './users-table'
 import { AppShellHeader } from '@/components/layout/app-shell'
-import { requireRole, requireUser } from '@/lib/auth/session'
-import { getSupabaseServiceClient } from '@/lib/supabase/service'
+import { requireRole } from '@/lib/auth/session'
+import {
+  getActiveClientMembershipCounts,
+  getActiveTaskAssignmentCounts,
+  listUsers,
+} from '@/lib/queries/users'
+import type { Database } from '@/supabase/types/database'
 
 export const metadata: Metadata = {
   title: 'Users | Settings',
 }
 
 export default async function UsersSettingsPage() {
-  const currentUser = await requireUser()
-  await requireRole('ADMIN')
-  const supabase = getSupabaseServiceClient()
-  const [
-    { data: users, error: usersError },
-    { data: clientMemberships, error: clientMembershipsError },
-    { data: taskAssignments, error: taskAssignmentsError },
-  ] = await Promise.all([
-    supabase
-      .from('users')
-      .select(
-        'id, email, full_name, role, avatar_url, created_at, updated_at, deleted_at'
-      )
-      .order('created_at', { ascending: false }),
-    supabase.from('client_members').select('user_id').is('deleted_at', null),
-    supabase.from('task_assignees').select('user_id').is('deleted_at', null),
-  ])
+  const currentUser = await requireRole('ADMIN')
 
-  if (usersError) {
-    console.error('Failed to load users for settings', usersError)
-  }
+  const [userRecords, clientMembershipCounts, taskAssignmentCounts] =
+    await Promise.all([
+      listUsers(currentUser),
+      getActiveClientMembershipCounts(currentUser),
+      getActiveTaskAssignmentCounts(currentUser),
+    ])
 
-  if (clientMembershipsError) {
-    console.error('Failed to load client memberships', clientMembershipsError)
-  }
-
-  if (taskAssignmentsError) {
-    console.error('Failed to load task assignments', taskAssignmentsError)
-  }
+  const users: Database['public']['Tables']['users']['Row'][] = userRecords.map(
+    user => ({
+      id: user.id,
+      email: user.email,
+      full_name: user.fullName,
+      role: user.role,
+      avatar_url: user.avatarUrl,
+      created_at: user.createdAt,
+      updated_at: user.updatedAt,
+      deleted_at: user.deletedAt,
+    })
+  )
 
   const assignmentCounts: Record<
     string,
@@ -52,14 +49,18 @@ export default async function UsersSettingsPage() {
     return assignmentCounts[userId]
   }
 
-  for (const membership of clientMemberships ?? []) {
-    ensureSummary(membership.user_id).clients += 1
+  for (const user of users) {
+    ensureSummary(user.id)
+  }
+
+  for (const [userId, count] of Object.entries(clientMembershipCounts)) {
+    ensureSummary(userId).clients = count
     // Note: Projects count is now 0 as project_members no longer exists
     // Client members have access to all projects under their client
   }
 
-  for (const assignment of taskAssignments ?? []) {
-    ensureSummary(assignment.user_id).tasks += 1
+  for (const [userId, count] of Object.entries(taskAssignmentCounts)) {
+    ensureSummary(userId).tasks = count
   }
 
   return (
@@ -76,7 +77,7 @@ export default async function UsersSettingsPage() {
         </div>
       </AppShellHeader>
       <UsersSettingsTable
-        users={users ?? []}
+        users={users}
         currentUserId={currentUser.id}
         assignments={assignmentCounts}
       />

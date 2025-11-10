@@ -1,21 +1,15 @@
 import { useQuery } from '@tanstack/react-query'
-import type { SupabaseClient } from '@supabase/supabase-js'
 
 import type { TaskCommentWithAuthor } from '@/lib/types'
-import type { Database } from '@/supabase/types/database'
-
-export type SupabaseBrowserClient = SupabaseClient<Database>
 
 export type TaskCommentsQueryArgs = {
   queryKey: readonly [string, string, string | null]
   taskId: string | null
-  supabase: SupabaseBrowserClient
 }
 
 export function useTaskCommentsQuery({
   queryKey,
   taskId,
-  supabase,
 }: TaskCommentsQueryArgs) {
   return useQuery({
     queryKey,
@@ -25,34 +19,44 @@ export function useTaskCommentsQuery({
         return [] as TaskCommentWithAuthor[]
       }
 
-      const { data, error } = await supabase
-        .from('task_comments')
-        .select(
-          `
-            id,
-            task_id,
-            author_id,
-            body,
-            created_at,
-            updated_at,
-            deleted_at,
-            author:users (
-              id,
-              full_name,
-              email
-            )
-          `
-        )
-        .eq('task_id', taskId)
-        .is('deleted_at', null)
-        .order('created_at', { ascending: true })
+      const response = await fetch(`/api/tasks/${taskId}/comments`, {
+        method: 'GET',
+        headers: {
+          accept: 'application/json',
+        },
+        cache: 'no-store',
+      })
 
-      if (error) {
-        console.error('Failed to load task comments', error)
-        throw error
+      if (!response.ok) {
+        const message = await extractErrorMessage(response)
+        console.error('Failed to load task comments', {
+          status: response.status,
+          message,
+        })
+        throw new Error(message ?? 'Failed to load task comments.')
       }
 
-      return (data ?? []) as TaskCommentWithAuthor[]
+      const data = (await response.json()) as TaskCommentWithAuthor[]
+      return data ?? []
     },
   })
+}
+
+async function extractErrorMessage(response: Response): Promise<string | null> {
+  try {
+    const payload = await response.json()
+
+    if (
+      payload &&
+      typeof payload === 'object' &&
+      'error' in payload &&
+      typeof (payload as { error?: unknown }).error === 'string'
+    ) {
+      return (payload as { error?: string }).error ?? null
+    }
+  } catch {
+    // Ignore JSON parsing errors – only needed for improved logging.
+  }
+
+  return null
 }

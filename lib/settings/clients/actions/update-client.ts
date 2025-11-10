@@ -1,6 +1,11 @@
+import { and, eq, isNull } from 'drizzle-orm'
+
 import { logActivity } from '@/lib/activity/logger'
 import { clientUpdatedEvent } from '@/lib/activity/events'
 import type { UserRole } from '@/lib/auth/session'
+import { assertAdmin } from '@/lib/auth/permissions'
+import { db } from '@/lib/db'
+import { clientMembers, clients } from '@/lib/db/schema'
 import {
   clientSlugExists,
   syncClientMembers,
@@ -32,7 +37,8 @@ export async function updateClient(
   context: ClientMutationContext,
   payload: UpdateClientPayload
 ): Promise<ClientMutationResult> {
-  const { supabase, user } = context
+  const { user } = context
+  assertAdmin(user)
   const { id, name, providedSlug, notes, memberIds } = payload
 
   const slugToUpdate = providedSlug ? toClientSlug(providedSlug) : null
@@ -42,15 +48,9 @@ export async function updateClient(
   }
 
   if (slugToUpdate) {
-    const exists = await clientSlugExists(supabase, slugToUpdate, {
+    const exists = await clientSlugExists(slugToUpdate, {
       excludeId: id,
     })
-
-    if (typeof exists !== 'boolean') {
-      return buildMutationResult({
-        error: 'Unable to validate slug availability.',
-      })
-    }
 
     if (exists) {
       return buildMutationResult({
@@ -59,14 +59,23 @@ export async function updateClient(
     }
   }
 
-  const { data: existingClient, error: existingClientError } = await supabase
-    .from('clients')
-    .select('id, name, slug, notes')
-    .eq('id', id)
-    .maybeSingle()
+  let existingClient: ExistingClientRecord | undefined = undefined
 
-  if (existingClientError) {
-    console.error('Failed to load client for update', existingClientError)
+  try {
+    const rows = await db
+      .select({
+        id: clients.id,
+        name: clients.name,
+        slug: clients.slug,
+        notes: clients.notes,
+      })
+      .from(clients)
+      .where(eq(clients.id, id))
+      .limit(1)
+
+    existingClient = rows[0]
+  } catch (error) {
+    console.error('Failed to load client for update', error)
     return buildMutationResult({ error: 'Unable to update client.' })
   }
 
@@ -74,33 +83,39 @@ export async function updateClient(
     return buildMutationResult({ error: 'Client not found.' })
   }
 
-  const { data: existingMemberRows, error: existingMembersError } =
-    await supabase
-      .from('client_members')
-      .select('user_id')
-      .eq('client_id', id)
-      .is('deleted_at', null)
+  let existingMemberIds: string[] = []
 
-  if (existingMembersError) {
-    console.error('Failed to load client members', existingMembersError)
+  try {
+    const memberRows = await db
+      .select({ userId: clientMembers.userId })
+      .from(clientMembers)
+      .where(
+        and(
+          eq(clientMembers.clientId, id),
+          isNull(clientMembers.deletedAt),
+        ),
+      )
+
+    existingMemberIds = memberRows.map(member => member.userId)
+  } catch (error) {
+    console.error('Failed to load client members', error)
     return buildMutationResult({ error: 'Unable to update client members.' })
   }
 
-  const existingMemberIds = (existingMemberRows ?? []).map(
-    member => member.user_id
-  )
-
-  const { error } = await supabase
-    .from('clients')
-    .update({ name, slug: slugToUpdate, notes })
-    .eq('id', id)
-
-  if (error) {
+  try {
+    await db
+      .update(clients)
+      .set({ name, slug: slugToUpdate, notes })
+      .where(eq(clients.id, id))
+  } catch (error) {
     console.error('Failed to update client', error)
-    return buildMutationResult({ error: error.message })
+    return buildMutationResult({
+      error:
+        error instanceof Error ? error.message : 'Unable to update client.',
+    })
   }
 
-  const syncResult = await syncClientMembers(supabase, id, memberIds)
+  const syncResult = await syncClientMembers(id, memberIds)
 
   if (syncResult.error) {
     return buildMutationResult(syncResult)

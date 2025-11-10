@@ -1,28 +1,35 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { eq } from 'drizzle-orm'
 
 import { requireUser } from '@/lib/auth/session'
+import { assertAdmin } from '@/lib/auth/permissions'
 import { logActivity } from '@/lib/activity/logger'
 import {
   hourBlockCreatedEvent,
   hourBlockUpdatedEvent,
 } from '@/lib/activity/events'
-import { getSupabaseServerClient } from '@/lib/supabase/server'
+import { db } from '@/lib/db'
+import { hourBlocks } from '@/lib/db/schema'
+import {
+  getActiveClientSummary,
+  getHourBlockWithClientById,
+} from '@/lib/queries/hour-blocks'
 
 import { hourBlockSchema } from './schemas'
 import type { ActionResult, HourBlockInput } from './types'
 import {
   HOUR_BLOCKS_SETTINGS_PATH,
-  fetchActiveClient,
-  fetchHourBlockWithClient,
   normalizeInvoiceNumber,
 } from './helpers'
 
 export async function saveHourBlock(
-  input: HourBlockInput
+  input: HourBlockInput,
 ): Promise<ActionResult> {
   const user = await requireUser()
+  assertAdmin(user)
+
   const parsed = hourBlockSchema.safeParse(input)
 
   if (!parsed.success) {
@@ -32,84 +39,87 @@ export async function saveHourBlock(
     return { error: message, fieldErrors }
   }
 
-  const supabase = getSupabaseServerClient()
   const { id, clientId, hoursPurchased, invoiceNumber } = parsed.data
   const normalizedInvoiceNumber = normalizeInvoiceNumber(invoiceNumber)
+  const hoursPurchasedValue = hoursPurchased.toString()
 
-  const { client, error: clientLookupError } = await fetchActiveClient(
-    supabase,
-    clientId
-  )
-
-  if (clientLookupError) {
-    console.error('Failed to load client for hour block', clientLookupError)
-    return { error: 'Unable to load client information.' }
-  }
+  const client = await getActiveClientSummary(user, clientId)
 
   if (!client) {
     return { error: 'Selected client could not be found.' }
   }
 
   const targetClientName = client.name
+  const nowIso = new Date().toISOString()
 
   if (!id) {
-    const { data, error } = await supabase
-      .from('hour_blocks')
-      .insert({
-        client_id: clientId,
-        hours_purchased: hoursPurchased,
-        invoice_number: normalizedInvoiceNumber,
-        created_by: user.id,
+    try {
+      const [inserted] = await db
+        .insert(hourBlocks)
+        .values({
+          clientId,
+          hoursPurchased: hoursPurchasedValue,
+          invoiceNumber: normalizedInvoiceNumber,
+          createdBy: user.id,
+        })
+        .returning({ id: hourBlocks.id })
+
+      if (!inserted) {
+        throw new Error('Unable to create hour block.')
+      }
+
+      const event = hourBlockCreatedEvent({
+        clientName: targetClientName,
+        hoursPurchased,
+        invoiceNumber: normalizedInvoiceNumber,
       })
-      .select('id')
-      .maybeSingle()
 
-    if (error || !data) {
+      await logActivity({
+        actorId: user.id,
+        actorRole: user.role,
+        verb: event.verb,
+        summary: event.summary,
+        targetType: 'HOUR_BLOCK',
+        targetId: inserted.id,
+        targetClientId: clientId,
+        metadata: event.metadata,
+      })
+    } catch (error) {
       console.error('Failed to create hour block', error)
-      return { error: error?.message ?? 'Unable to create hour block.' }
+
+      return {
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Unable to create hour block.',
+      }
     }
-
-    const event = hourBlockCreatedEvent({
-      clientName: targetClientName,
-      hoursPurchased,
-      invoiceNumber: normalizedInvoiceNumber,
-    })
-
-    await logActivity({
-      actorId: user.id,
-      actorRole: user.role,
-      verb: event.verb,
-      summary: event.summary,
-      targetType: 'HOUR_BLOCK',
-      targetId: data.id,
-      targetClientId: clientId,
-      metadata: event.metadata,
-    })
   } else {
-    const { hourBlock: existingHourBlock, error: existingError } =
-      await fetchHourBlockWithClient(supabase, id)
-
-    if (existingError) {
-      console.error('Failed to load hour block for update', existingError)
-      return { error: 'Unable to update hour block.' }
-    }
+    const existingHourBlock = await getHourBlockWithClientById(user, id)
 
     if (!existingHourBlock) {
       return { error: 'Hour block not found.' }
     }
 
-    const { error } = await supabase
-      .from('hour_blocks')
-      .update({
-        client_id: clientId,
-        hours_purchased: hoursPurchased,
-        invoice_number: normalizedInvoiceNumber,
-      })
-      .eq('id', id)
-
-    if (error) {
+    try {
+      await db
+        .update(hourBlocks)
+        .set({
+          clientId,
+          hoursPurchased: hoursPurchasedValue,
+          invoiceNumber: normalizedInvoiceNumber,
+          updatedAt: nowIso,
+        })
+        .where(eq(hourBlocks.id, id))
+    } catch (error) {
       console.error('Failed to update hour block', error)
-      return { error: error.message }
+
+      return {
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Unable to update hour block.',
+      }
     }
 
     const changedFields: string[] = []

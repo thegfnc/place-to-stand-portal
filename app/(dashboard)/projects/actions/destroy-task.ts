@@ -1,11 +1,15 @@
 'use server'
 
+import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { logActivity } from '@/lib/activity/logger'
 import { taskDeletedEvent } from '@/lib/activity/events'
 import { requireUser } from '@/lib/auth/session'
-import { getSupabaseServerClient } from '@/lib/supabase/server'
+import { ensureClientAccessByTaskId } from '@/lib/auth/permissions'
+import { db } from '@/lib/db'
+import { projects, tasks } from '@/lib/db/schema'
+import { NotFoundError, ForbiddenError } from '@/lib/errors/http'
 
 import { revalidateProjectTaskViews } from './shared'
 import type { ActionResult } from './action-types'
@@ -29,51 +33,51 @@ export async function destroyTask(input: {
     return { error: 'Invalid delete payload.' }
   }
 
-  const supabase = getSupabaseServerClient()
   const { taskId } = parsed.data
 
-  const { data: task, error } = await supabase
-    .from('tasks')
-    .select(
-      `
-        id,
-        title,
-        deleted_at,
-        project_id,
-        project:projects (
-          client_id
-        )
-      `
-    )
-    .eq('id', taskId)
-    .maybeSingle()
+  try {
+    await ensureClientAccessByTaskId(user, taskId)
+  } catch (error) {
+    if (error instanceof NotFoundError) {
+      return { error: 'Task not found.' }
+    }
 
-  if (error) {
-    console.error('Failed to load task for permanent delete', error)
+    if (error instanceof ForbiddenError) {
+      return { error: 'You do not have permission to permanently delete this task.' }
+    }
+
+    console.error('Failed to authorize task for permanent delete', error)
     return { error: 'Unable to permanently delete task.' }
   }
+
+  const taskRecord = await db
+    .select({
+      id: tasks.id,
+      title: tasks.title,
+      deletedAt: tasks.deletedAt,
+      projectId: tasks.projectId,
+      clientId: projects.clientId,
+    })
+    .from(tasks)
+    .leftJoin(projects, eq(projects.id, tasks.projectId))
+    .where(eq(tasks.id, taskId))
+    .limit(1)
+
+  const task = taskRecord[0]
 
   if (!task) {
     return { error: 'Task not found.' }
   }
 
-  if (!task.deleted_at) {
+  if (!task.deletedAt) {
     return {
       error: 'Archive the task before permanently deleting.',
     }
   }
 
-  const { error: deleteError } = await supabase
-    .from('tasks')
-    .delete()
-    .eq('id', taskId)
+  await db.delete(tasks).where(eq(tasks.id, taskId))
 
-  if (deleteError) {
-    console.error('Failed to permanently delete task', deleteError)
-    return { error: deleteError.message }
-  }
-
-  const event = taskDeletedEvent({ title: task.title })
+  const event = taskDeletedEvent({ title: task.title ?? 'Task' })
 
   await logActivity({
     actorId: user.id,
@@ -82,12 +86,12 @@ export async function destroyTask(input: {
     summary: event.summary,
     targetType: 'TASK',
     targetId: taskId,
-    targetProjectId: task.project_id,
-    targetClientId: task.project?.client_id ?? null,
+    targetProjectId: task.projectId,
+    targetClientId: task.clientId ?? null,
     metadata: event.metadata,
   })
 
-  revalidateProjectTaskViews()
+  await revalidateProjectTaskViews()
 
   return {}
 }

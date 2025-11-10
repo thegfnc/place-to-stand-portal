@@ -1,9 +1,21 @@
 'use server'
 
+import { and, eq, isNull } from 'drizzle-orm'
+
 import { requireUser } from '@/lib/auth/session'
+import {
+  ensureClientAccessByProjectId,
+  ensureClientAccessByTaskId,
+} from '@/lib/auth/permissions'
 import { logActivity } from '@/lib/activity/logger'
 import { taskCreatedEvent, taskUpdatedEvent } from '@/lib/activity/events'
-import { getSupabaseServerClient } from '@/lib/supabase/server'
+import { db } from '@/lib/db'
+import {
+  projects,
+  taskAssignees,
+  tasks,
+} from '@/lib/db/schema'
+import { NotFoundError, ForbiddenError } from '@/lib/errors/http'
 import { getSupabaseServiceClient } from '@/lib/supabase/service'
 import { ensureTaskAttachmentBucket } from '@/lib/storage/task-attachments'
 import { resolveNextTaskRank } from './task-rank'
@@ -33,63 +45,82 @@ export async function saveTask(input: BaseTaskInput): Promise<ActionResult> {
   } = parsed.data
 
   const normalizedAssigneeIds = Array.from(new Set(assigneeIds))
-  const supabase = getSupabaseServerClient()
   const storage = getSupabaseServiceClient()
 
   await ensureTaskAttachmentBucket(storage)
 
   if (!id) {
-    const { data: projectContext, error: projectError } = await supabase
-      .from('projects')
-      .select('id, client_id, name')
-      .eq('id', projectId)
-      .is('deleted_at', null)
-      .maybeSingle()
-
-    if (projectError) {
-      console.error('Failed to load project for task creation', projectError)
+    try {
+      await ensureClientAccessByProjectId(user, projectId)
+    } catch (error) {
+      if (error instanceof NotFoundError) {
+        return { error: 'Selected project is unavailable.' }
+      }
+      if (error instanceof ForbiddenError) {
+        return { error: 'You do not have permission to update this project.' }
+      }
+      console.error('Failed to authorize project access', error)
       return { error: 'Unable to resolve project for new task.' }
     }
 
-    if (!projectContext) {
+    const projectContext = await db
+      .select({
+        id: projects.id,
+        clientId: projects.clientId,
+        name: projects.name,
+      })
+      .from(projects)
+      .where(and(eq(projects.id, projectId), isNull(projects.deletedAt)))
+      .limit(1)
+
+    if (!projectContext.length) {
       return { error: 'Selected project is unavailable.' }
     }
 
     let nextRank: string
 
     try {
-      nextRank = await resolveNextTaskRank(supabase, projectId, status)
+      nextRank = await resolveNextTaskRank(projectId, status)
     } catch (rankError) {
       console.error('Failed to resolve rank for new task', rankError)
       return { error: 'Unable to determine ordering for new task.' }
     }
 
-    const { data, error } = await supabase
-      .from('tasks')
-      .insert({
-        project_id: projectId,
-        title,
-        description,
-        status,
-        due_on: dueOn,
-        created_by: user.id,
-        updated_by: user.id,
-        rank: nextRank,
-      })
-      .select('id')
-      .maybeSingle()
+    let insertedId: string | null = null
 
-    if (error || !data) {
+    try {
+      const inserted = await db
+        .insert(tasks)
+        .values({
+          projectId,
+          title,
+          description,
+          status,
+          dueOn,
+          createdBy: user.id,
+          updatedBy: user.id,
+          rank: nextRank,
+        })
+        .returning({ id: tasks.id })
+
+      insertedId = inserted[0]?.id ?? null
+    } catch (error) {
       console.error('Failed to create task', error)
-      return { error: error?.message ?? 'Unable to create task.' }
+      return {
+        error:
+          error instanceof Error ? error.message : 'Unable to create task.',
+      }
+    }
+
+    if (!insertedId) {
+      return { error: 'Unable to create task.' }
     }
 
     try {
-      await syncAssignees(supabase, data.id, normalizedAssigneeIds)
+      await syncAssignees(insertedId, normalizedAssigneeIds)
       await syncAttachments({
-        supabase,
         storage,
-        taskId: data.id,
+        taskId: insertedId,
         actorId: user.id,
         actorRole: user.role,
         attachmentsInput: attachments,
@@ -112,54 +143,61 @@ export async function saveTask(input: BaseTaskInput): Promise<ActionResult> {
       verb: event.verb,
       summary: event.summary,
       targetType: 'TASK',
-      targetId: data.id,
+      targetId: insertedId,
       targetProjectId: projectId,
-      targetClientId: projectContext.client_id,
+      targetClientId: projectContext[0].clientId,
       metadata: event.metadata,
     })
   } else {
-    const { data: existingTask, error: existingTaskError } = await supabase
-      .from('tasks')
-      .select(
-        `
-          id,
-          project_id,
-          title,
-          description,
-          status,
-          rank,
-          due_on,
-          project:projects (
-            client_id
-          )
-        `
-      )
-      .eq('id', id)
-      .maybeSingle()
-
-    if (existingTaskError) {
-      console.error('Failed to load task for update', existingTaskError)
+    try {
+      await ensureClientAccessByTaskId(user, id)
+    } catch (error) {
+      if (error instanceof NotFoundError) {
+        return { error: 'Task not found.' }
+      }
+      if (error instanceof ForbiddenError) {
+        return { error: 'You do not have permission to update this task.' }
+      }
+      console.error('Failed to authorize task access', error)
       return { error: 'Unable to update task.' }
     }
+
+    const existingTaskResult = await db
+      .select({
+        id: tasks.id,
+        projectId: tasks.projectId,
+        title: tasks.title,
+        description: tasks.description,
+        status: tasks.status,
+        rank: tasks.rank,
+        dueOn: tasks.dueOn,
+        clientId: projects.clientId,
+      })
+      .from(tasks)
+      .leftJoin(projects, eq(projects.id, tasks.projectId))
+      .where(eq(tasks.id, id))
+      .limit(1)
+
+    const existingTask = existingTaskResult[0]
 
     if (!existingTask) {
       return { error: 'Task not found.' }
     }
 
-    const { data: existingAssigneesData, error: existingAssigneesError } =
-      await supabase
-        .from('task_assignees')
-        .select('user_id')
-        .eq('task_id', id)
-        .is('deleted_at', null)
+    const existingAssignees = await db
+      .select({
+        userId: taskAssignees.userId,
+      })
+      .from(taskAssignees)
+      .where(
+        and(
+          eq(taskAssignees.taskId, id),
+          isNull(taskAssignees.deletedAt)
+        )
+      )
 
-    if (existingAssigneesError) {
-      console.error('Failed to load task assignees', existingAssigneesError)
-      return { error: 'Unable to update task.' }
-    }
-
-    const existingAssigneeIds = (existingAssigneesData ?? []).map(
-      assignee => assignee.user_id
+    const existingAssigneeIds = existingAssignees.map(
+      assignee => assignee.userId
     )
 
     let nextRank = existingTask.rank
@@ -167,8 +205,7 @@ export async function saveTask(input: BaseTaskInput): Promise<ActionResult> {
     if (existingTask.status !== status) {
       try {
         nextRank = await resolveNextTaskRank(
-          supabase,
-          existingTask.project_id,
+          existingTask.projectId,
           status
         )
       } catch (rankError) {
@@ -180,27 +217,29 @@ export async function saveTask(input: BaseTaskInput): Promise<ActionResult> {
       }
     }
 
-    const { error } = await supabase
-      .from('tasks')
-      .update({
-        title,
-        description,
-        status,
-        due_on: dueOn,
-        updated_by: user.id,
-        rank: nextRank,
-      })
-      .eq('id', id)
-
-    if (error) {
+    try {
+      await db
+        .update(tasks)
+        .set({
+          title,
+          description,
+          status,
+          dueOn,
+          updatedBy: user.id,
+          rank: nextRank,
+        })
+        .where(eq(tasks.id, id))
+    } catch (error) {
       console.error('Failed to update task', error)
-      return { error: error.message }
+      return {
+        error:
+          error instanceof Error ? error.message : 'Unable to update task.',
+      }
     }
 
     try {
-      await syncAssignees(supabase, id, normalizedAssigneeIds)
+      await syncAssignees(id, normalizedAssigneeIds)
       await syncAttachments({
-        supabase,
         storage,
         taskId: id,
         actorId: user.id,
@@ -237,7 +276,7 @@ export async function saveTask(input: BaseTaskInput): Promise<ActionResult> {
       nextDetails.status = status
     }
 
-    const previousDueOn = existingTask.due_on ?? null
+    const previousDueOn = existingTask.dueOn ?? null
     const nextDueOn = dueOn ?? null
 
     if (previousDueOn !== nextDueOn) {
@@ -286,14 +325,14 @@ export async function saveTask(input: BaseTaskInput): Promise<ActionResult> {
         summary: event.summary,
         targetType: 'TASK',
         targetId: id,
-        targetProjectId: existingTask.project_id,
-        targetClientId: existingTask.project?.client_id ?? null,
+        targetProjectId: existingTask.projectId,
+        targetClientId: existingTask.clientId ?? null,
         metadata: event.metadata,
       })
     }
   }
 
-  revalidateProjectTaskViews()
+  await revalidateProjectTaskViews()
 
   return {}
 }

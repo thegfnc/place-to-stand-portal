@@ -68,6 +68,8 @@ async function analyzeRLSPolicies() {
     `,
   });
 
+  let policiesData = policies;
+
   if (error) {
     // If exec_sql doesn't exist, use direct query
     const { data: directData, error: directError } = await supabase
@@ -97,13 +99,15 @@ async function analyzeRLSPolicies() {
       `);
       process.exit(1);
     }
+
+    policiesData = directData as PolicyInfo[] | null;
   }
 
   // Group policies by table and operation
   const policyGroups = new Map<string, PolicyGroup>();
 
-  if (policies && Array.isArray(policies)) {
-    for (const policy of policies as PolicyInfo[]) {
+  if (policiesData && Array.isArray(policiesData)) {
+    for (const policy of policiesData as PolicyInfo[]) {
       const key = `${policy.tablename}:${policy.cmd}`;
 
       if (!policyGroups.has(key)) {
