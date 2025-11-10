@@ -2,10 +2,7 @@ import { and, eq, inArray, isNull } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { db } from '@/lib/db'
-import {
-  clientMembers,
-  users,
-} from '@/lib/db/schema'
+import { clientMembers, users } from '@/lib/db/schema'
 import {
   clientSlugExistsDrizzle,
   generateUniqueClientSlugDrizzle,
@@ -71,9 +68,7 @@ export async function clientSlugExists(
   return clientSlugExistsDrizzle(slug, options)
 }
 
-export async function generateUniqueClientSlug(
-  base: string
-): Promise<string> {
+export async function generateUniqueClientSlug(base: string): Promise<string> {
   const normalizedBase = base || DEFAULT_SLUG
   let candidate = normalizedBase
   let suffix = 2
@@ -145,9 +140,9 @@ export async function syncClientMembers(
       .where(
         and(
           eq(clientMembers.clientId, clientId),
-          isNull(clientMembers.deletedAt),
-        ),
-    )
+          isNull(clientMembers.deletedAt)
+        )
+      )
   } catch (error) {
     console.error('Failed to archive prior client members', error)
     return { error: 'Unable to update client members.' }
@@ -161,11 +156,11 @@ export async function syncClientMembers(
     await db
       .insert(clientMembers)
       .values(
-    uniqueMemberIds.map(userId => ({
+        uniqueMemberIds.map(userId => ({
           clientId,
           userId,
           deletedAt: null,
-    })),
+        }))
       )
       .onConflictDoUpdate({
         target: [clientMembers.clientId, clientMembers.userId],
