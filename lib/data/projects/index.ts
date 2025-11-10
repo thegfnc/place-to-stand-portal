@@ -3,7 +3,6 @@ import 'server-only'
 import { cache } from 'react'
 
 import type { UserRole } from '@/lib/auth/session'
-import { getSupabaseServiceClient } from '@/lib/supabase/service'
 import type { ProjectWithRelations } from '@/lib/types'
 
 import { assembleProjectsWithRelations } from './assemble-projects'
@@ -20,14 +19,12 @@ export const fetchProjectsWithRelations = cache(
   async (
     options: FetchProjectsWithRelationsOptions = {}
   ): Promise<ProjectWithRelations[]> => {
-    const supabase = getSupabaseServiceClient()
-
-    const baseProjects = await fetchBaseProjects(supabase)
+    const baseProjects = await fetchBaseProjects()
 
     const shouldScopeToUser =
       options.forRole !== 'ADMIN' && Boolean(options.forUserId)
 
-    const relations = await fetchProjectRelations(supabase, {
+    const relations = await fetchProjectRelations({
       projectIds: baseProjects.projectIds,
       clientIds: baseProjects.clientIds,
       shouldScopeToUser,

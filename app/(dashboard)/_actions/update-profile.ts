@@ -6,6 +6,9 @@ import { z } from "zod";
 import { requireUser } from "@/lib/auth/session";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { getSupabaseServiceClient } from "@/lib/supabase/service";
+import { db } from "@/lib/db";
+import { users as usersTable } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
 import {
   deleteAvatarObject,
   ensureAvatarBucket,
@@ -104,14 +107,17 @@ export async function updateProfile(input: UpdateProfileInput): Promise<UpdatePr
     }
   }
 
-  const { error: profileError } = await supabaseAdmin
-    .from("users")
-    .update({ full_name: fullName, avatar_url: nextAvatarPath })
-    .eq("id", user.id);
-
-  if (profileError) {
-    console.error("Failed to update profile row", profileError);
-    return { error: profileError.message };
+  try {
+    await db
+      .update(usersTable)
+      .set({
+        fullName,
+        avatarUrl: nextAvatarPath,
+      })
+      .where(eq(usersTable.id, user.id));
+  } catch (error) {
+    console.error('Failed to update profile row', error);
+    return { error: 'Unable to persist profile changes.' };
   }
 
   const userMetadata = password

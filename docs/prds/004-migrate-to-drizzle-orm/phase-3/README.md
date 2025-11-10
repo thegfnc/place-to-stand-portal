@@ -31,6 +31,15 @@
   - Hour block settings data (`app/(dashboard)/settings/hour-blocks/page.tsx`) loads through `lib/queries/hour-blocks.ts` for both active and archived records.
   - Hour block mutations (save/archive/restore/destroy) now use Drizzle-backed helpers with consistent activity logging and validations.
 
+- Completed the Time Logs domain migration:
+  - Project time log dialog and history now call Drizzle-backed APIs (`app/api/projects/[projectId]/time-logs`) instead of the Supabase browser client.
+  - Time log creation, linking, and deletion run through `lib/queries/time-logs.ts`, replacing Postgrest mutations.
+- Migrated project board & calendar data sources to Drizzle:
+  - `lib/data/projects` no longer depends on the Supabase service client; board snapshots, burndown assembly, and calendar tasks use Drizzle queries behind the existing normalization layer.
+  - The calendar tasks API now authorizes via `ensureClientAccessByProjectId` and returns data from Drizzle-backed helpers.
+- Centralized admin profile reads/writes under Drizzle:
+  - Admin user listings (`lib/data/users`) and `ensureUserProfile` use the shared `db` client, keeping metadata in sync with Supabase Auth while avoiding Postgrest calls.
+
 ---
 
 ## Verification Checklist
@@ -51,6 +60,5 @@
 
 ## Follow Up (Next Domains)
 
-- Migrate Projects → Time Logs surfaces and supporting helpers off Supabase Postgrest.
-- Add Vitest coverage around `lib/queries/hour-blocks.ts`, `lib/activity/queries.ts`, and `lib/activity/overview-cache.ts` to guard pagination and RBAC behavior.
+- Add Vitest coverage around `lib/queries/time-logs.ts` and the project time log API routes.
 - Backfill automated coverage for client slug/membership utilities, task dependency guards, and destructive actions.

@@ -2,9 +2,11 @@ import 'server-only'
 
 import type { User } from '@supabase/supabase-js'
 
-import { getSupabaseServiceClient } from '@/lib/supabase/service'
+import { eq } from 'drizzle-orm'
+
 import type { UserRole } from '@/lib/auth/session'
-import type { Database } from '@/supabase/types/database'
+import { db } from '@/lib/db'
+import { users as usersTable } from '@/lib/db/schema'
 
 const DEFAULT_ROLE: UserRole = 'CLIENT'
 
@@ -23,62 +25,57 @@ function getMetadataRole(user: User): UserRole | null {
 }
 
 export async function ensureUserProfile(user: User) {
-  const supabase = getSupabaseServiceClient()
+  const existingRows = await db
+    .select({
+      id: usersTable.id,
+      email: usersTable.email,
+      role: usersTable.role,
+      fullName: usersTable.fullName,
+      avatarUrl: usersTable.avatarUrl,
+    })
+    .from(usersTable)
+    .where(eq(usersTable.id, user.id))
+    .limit(1)
 
-  const { data: existing, error } = await supabase
-    .from('users')
-    .select('id, email, role')
-    .eq('id', user.id)
-    .maybeSingle()
-
-  if (error) {
-    console.error('Failed to lookup user profile', error)
-    throw error
-  }
+  const existing = existingRows[0]
 
   const metadataRole = getMetadataRole(user)
   const resolvedRole = metadataRole ?? existing?.role ?? DEFAULT_ROLE
 
-  const payload: Database['public']['Tables']['users']['Insert'] = {
-    id: user.id,
-    email: user.email ?? '',
-    full_name: (user.user_metadata?.full_name as string | undefined) ?? null,
-    role: resolvedRole,
-    avatar_url: (user.user_metadata?.avatar_url as string | undefined) ?? null,
-    deleted_at: null,
-  }
+  const nextEmail = user.email ?? ''
+  const nextFullName = (user.user_metadata?.full_name as string | undefined) ?? null
+  const nextAvatar = (user.user_metadata?.avatar_url as string | undefined) ?? null
 
   if (!existing) {
-    const { error: insertError } = await supabase.from('users').insert(payload)
-
-    if (insertError) {
-      console.error('Failed to create user profile', insertError)
-      throw insertError
-    }
-
+    await db.insert(usersTable).values({
+      id: user.id,
+      email: nextEmail,
+      fullName: nextFullName,
+      role: resolvedRole,
+      avatarUrl: nextAvatar,
+      deletedAt: null,
+    })
     return
   }
 
   const shouldUpdate =
-    existing.email !== payload.email || existing.role !== payload.role
+    existing.email !== nextEmail ||
+    existing.role !== resolvedRole ||
+    existing.fullName !== nextFullName ||
+    existing.avatarUrl !== nextAvatar
 
   if (!shouldUpdate) {
     return
   }
 
-  const { error: updateError } = await supabase
-    .from('users')
-    .update({
-      email: payload.email,
-      full_name: payload.full_name,
-      avatar_url: payload.avatar_url,
-      role: payload.role,
-      deleted_at: null,
+  await db
+    .update(usersTable)
+    .set({
+      email: nextEmail,
+      fullName: nextFullName,
+      role: resolvedRole,
+      avatarUrl: nextAvatar,
+      deletedAt: null,
     })
-    .eq('id', user.id)
-
-  if (updateError) {
-    console.error('Failed to update user profile', updateError)
-    throw updateError
-  }
+    .where(eq(usersTable.id, user.id))
 }
