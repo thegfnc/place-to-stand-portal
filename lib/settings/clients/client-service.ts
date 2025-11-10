@@ -114,12 +114,21 @@ export async function syncClientMembers(
         .from(users)
         .where(inArray(users.id, uniqueMemberIds))
 
+      if (memberUsers.length !== uniqueMemberIds.length) {
+        const foundIds = new Set(memberUsers.map(user => user.id))
+        const missingIds = uniqueMemberIds.filter(id => !foundIds.has(id))
+
+        return {
+          error: `Some selected users no longer exist: ${missingIds.join(', ')}`,
+        }
+      }
+
       const invalidUsers = memberUsers.filter(
         user => user.deletedAt !== null || user.role !== 'CLIENT'
-    )
+      )
 
-    if (invalidUsers.length > 0) {
-      return { error: 'Only active client users can be assigned.' }
+      if (invalidUsers.length > 0) {
+        return { error: 'Only active client users can be assigned.' }
       }
     } catch (error) {
       console.error('Failed to validate client members', error)
