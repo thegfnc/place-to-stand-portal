@@ -6,7 +6,6 @@ import { useQueryClient } from '@tanstack/react-query'
 
 import { useToast } from '@/components/ui/use-toast'
 import { sanitizeEditorHtml } from '@/components/ui/rich-text-editor/utils'
-import { getSupabaseBrowserClient } from '@/lib/supabase/client'
 
 import { TASK_COMMENTS_QUERY_KEY, prepareCommentBody } from './helpers'
 import {
@@ -25,7 +24,6 @@ export function useTaskComments(
     options
 
   const router = useRouter()
-  const supabase = getSupabaseBrowserClient()
   const queryClient = useQueryClient()
   const { toast } = useToast()
 
@@ -47,7 +45,6 @@ export function useTaskComments(
   } = useTaskCommentsQuery({
     queryKey: commentsQueryKey,
     taskId,
-    supabase,
   })
 
   const createComment = useCreateTaskCommentMutation({
@@ -56,7 +53,6 @@ export function useTaskComments(
     clientId: clientId ?? null,
     currentUserId,
     taskTitle,
-    supabase,
     queryKey: commentsQueryKey,
     queryClient,
     router,
@@ -72,7 +68,6 @@ export function useTaskComments(
     clientId: clientId ?? null,
     currentUserId,
     taskTitle,
-    supabase,
     queryKey: commentsQueryKey,
     queryClient,
     router,
@@ -89,7 +84,6 @@ export function useTaskComments(
     clientId: clientId ?? null,
     currentUserId,
     taskTitle,
-    supabase,
     queryKey: commentsQueryKey,
     queryClient,
     router,

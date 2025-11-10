@@ -41,7 +41,7 @@ export type ProjectTimeLogHistoryState = {
 }
 
 export function useProjectTimeLogHistory(
-  options: UseProjectTimeLogHistoryOptions,
+  options: UseProjectTimeLogHistoryOptions
 ): ProjectTimeLogHistoryState {
   const { open, onOpenChange, projectId, projectName, clientName } = options
 
@@ -54,12 +54,12 @@ export function useProjectTimeLogHistory(
 
   const baseQueryKey = useMemo(
     () => [TIME_LOGS_QUERY_KEY, projectId] as const,
-    [projectId],
+    [projectId]
   )
 
   const queryKey = useMemo(
     () => [...baseQueryKey, visibleCount] as const,
-    [baseQueryKey, visibleCount],
+    [baseQueryKey, visibleCount]
   )
 
   const { data, isLoading, isError, refetch } = useQuery({
@@ -68,13 +68,13 @@ export function useProjectTimeLogHistory(
     queryFn: async () => {
       const params = new URLSearchParams({ limit: visibleCount.toString() })
       const response = await fetch(
-        `/api/projects/${projectId}/time-logs?${params.toString()}`,
+        `/api/projects/${projectId}/time-logs?${params.toString()}`
       )
 
       let payload: unknown
       try {
         payload = await response.json()
-      } catch (error) {
+      } catch {
         payload = null
       }
 
@@ -107,14 +107,14 @@ export function useProjectTimeLogHistory(
     mutationFn: async (id: string) => {
       const response = await fetch(
         `/api/projects/${projectId}/time-logs/${id}`,
-        { method: 'DELETE' },
+        { method: 'DELETE' }
       )
 
       if (!response.ok) {
         let payload: unknown = null
         try {
           payload = await response.json()
-        } catch (error) {
+        } catch {
           payload = null
         }
 
@@ -155,7 +155,7 @@ export function useProjectTimeLogHistory(
 
       onOpenChange(nextOpen)
     },
-    [onOpenChange],
+    [onOpenChange]
   )
 
   const loadMore = useCallback(() => {

@@ -61,45 +61,28 @@ export function useMyTasksWidgetState({
 
   const loadTaskSummary = useCallback(
     async (taskId: string): Promise<AssignedTaskSummary | null> => {
-      const { data, error } = await supabase
-        .from('tasks')
-        .select(
-          `
-            id,
-            title,
-            status,
-            due_on,
-            updated_at,
-            created_at,
-            deleted_at,
-            project_id,
-            project:projects (
-              id,
-              name,
-              slug,
-              client:clients (
-                id,
-                name,
-                slug
-              )
-            ),
-            assignees:task_assignees (
-              user_id,
-              deleted_at
-            )
-          `
-        )
-        .eq('id', taskId)
-        .maybeSingle()
+      const response = await fetch(`/api/tasks/${taskId}/summary`, {
+        method: 'GET',
+        headers: {
+          accept: 'application/json',
+        },
+        cache: 'no-store',
+      })
 
-      if (error) {
-        console.error('Failed to load task summary', { taskId, error })
+      if (!response.ok) {
+        const message = await extractErrorMessage(response)
+        console.error('Failed to load task summary', {
+          taskId,
+          status: response.status,
+          message,
+        })
         return null
       }
 
-      return toAssignedTaskSummary(data as RawAssignedTaskRow | null, userId)
+      const data = (await response.json()) as RawAssignedTaskRow | null
+      return toAssignedTaskSummary(data, userId)
     },
-    [supabase, userId]
+    [userId]
   )
 
   const refreshTask = useCallback(
@@ -245,4 +228,23 @@ export function useMyTasksWidgetState({
   }, [scheduleRefresh, supabase, trackedTaskIds])
 
   return { items }
+}
+
+async function extractErrorMessage(response: Response): Promise<string | null> {
+  try {
+    const payload = await response.json()
+
+    if (
+      payload &&
+      typeof payload === 'object' &&
+      'error' in payload &&
+      typeof (payload as { error?: unknown }).error === 'string'
+    ) {
+      return (payload as { error?: string }).error ?? null
+    }
+  } catch {
+    // Ignore parse failures; only used for logging context.
+  }
+
+  return null
 }

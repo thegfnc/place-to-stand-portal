@@ -41,7 +41,7 @@ export type UseProjectTimeLogMutationOptions = {
 }
 
 export function useProjectTimeLogMutation(
-  options: UseProjectTimeLogMutationOptions,
+  options: UseProjectTimeLogMutationOptions
 ) {
   const {
     queryClient,
@@ -65,7 +65,7 @@ export function useProjectTimeLogMutation(
       if (!Number.isFinite(parsedHours) || parsedHours <= 0) {
         throw makeFieldError(
           'hours',
-          'Enter a valid number of hours greater than zero.',
+          'Enter a valid number of hours greater than zero.'
         )
       }
 
@@ -87,21 +87,18 @@ export function useProjectTimeLogMutation(
         taskIds: selectedTaskIds,
       }
 
-      const response = await fetch(
-        `/api/projects/${project.id}/time-logs`,
-        {
-          method: 'POST',
-          headers: {
-            'content-type': 'application/json',
-          },
-          body: JSON.stringify(payload),
+      const response = await fetch(`/api/projects/${project.id}/time-logs`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
         },
-      )
+        body: JSON.stringify(payload),
+      })
 
       let result: unknown = null
       try {
         result = await response.json()
-      } catch (error) {
+      } catch {
         // ignore JSON parse errors; handled below using status
       }
 
@@ -169,7 +166,7 @@ export function useProjectTimeLogMutation(
 
 function makeFieldError(
   field: FieldError['field'],
-  message: string,
+  message: string
 ): FieldError {
   const error = new Error(message) as FieldError
   error.field = field
