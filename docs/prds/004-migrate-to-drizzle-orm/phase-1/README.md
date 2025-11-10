@@ -12,7 +12,7 @@
 - Added a shared Drizzle client at `lib/db/index.ts`, along with schema and relations re-exports for application consumption.
 - Introduced `drizzle.config.ts` so CLI commands share a single source of truth for database credentials, schema path, and migration output.
 - Ran `npx drizzle-kit introspect` against Supabase, generating `supabase/migrations/schema.ts`, `supabase/migrations/relations.ts`, and a baseline journal entry under `supabase/migrations/meta/`.
-- Created a temporary verification route at `app/api/test-drizzle/route.ts` that performs a `SELECT` against `clients` to confirm connectivity.
+- Created a temporary verification route at `app/api/test-drizzle/route.ts` that performs a `SELECT` against `clients` to confirm connectivity. *(Removed in Phase 4.)*
 
 ---
 
@@ -26,7 +26,7 @@
 ## Verification Checklist
 
 - `npx drizzle-kit introspect` completes without errors.
-- Hitting `GET /api/test-drizzle` while the Next.js dev server is running returns `{ ok: true, ... }` and includes a sample client when data exists.
+- Hitting `GET /api/test-drizzle` while the Next.js dev server is running returns `{ ok: true, ... }` and includes a sample client when data exists. *(Historical note—endpoint removed in Phase 4.)*
 - ESLint and TypeScript checks pass (`npm run lint`, `npm run type-check`).
 
 ---

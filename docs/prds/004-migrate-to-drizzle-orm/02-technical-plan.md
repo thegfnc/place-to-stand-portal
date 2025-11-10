@@ -1,7 +1,7 @@
 # 02: Technical Plan
 
 - **Title:** Drizzle ORM Migration - Technical Plan
-- **Status:** Proposed
+- **Status:** Completed (2025-11-10)
 - **Author:** Jason Desiderio
 - **Date:** 2025-11-08
 
@@ -133,3 +133,6 @@ The migration will be executed in four distinct phases to minimize risk and ensu
 
 4.  **Documentation Update:**
     - Update the `AGENTS.md` file and any other relevant developer documentation to reflect the new data access patterns with Drizzle ORM and application-level authorization.
+
+
+> **Implementation status (2025-11-10):** All production surfaces now depend exclusively on the Drizzle data layer. The legacy `app/api/test-drizzle` route is removed, `@supabase/supabase-js` remains only for Auth and Storage flows, RLS is disabled via migration `20251110123000_disable_rls.sql`, and docs (including `AGENTS.md` and `docs/prds/004-migrate-to-drizzle-orm/phase-4/README.md`) document the operational playbooks and Drizzle-first architecture.
