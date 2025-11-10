@@ -1,6 +1,14 @@
 import 'server-only'
 
-import { and, asc, desc, eq, isNull } from 'drizzle-orm'
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  isNull,
+  sql,
+  type SQL,
+} from 'drizzle-orm'
 
 import type { AppUser } from '@/lib/auth/session'
 import { assertAdmin } from '@/lib/auth/permissions'
@@ -12,14 +20,19 @@ import type {
   HourBlockWithClient,
 } from '@/lib/settings/hour-blocks/hour-block-form'
 
+import {
+  clampLimit,
+  createSearchPattern,
+  decodeCursor,
+  encodeCursor,
+  resolveDirection,
+  type CursorDirection,
+  type PageInfo,
+} from '@/lib/pagination/cursor'
+
 export type HourBlockClientSummary = {
   id: string
   name: string
-}
-
-export type HourBlockSettingsSnapshot = {
-  hourBlocks: HourBlockWithClient[]
-  clients: ClientRow[]
 }
 
 type HourBlockSelection = {
@@ -63,31 +76,151 @@ const clientSelection = {
   deletedAt: clients.deletedAt,
 } as const
 
-export async function getHourBlocksSettingsSnapshot(
+export type ListHourBlocksForSettingsInput = {
+  status?: 'active' | 'archived'
+  search?: string | null
+  cursor?: string | null
+  direction?: CursorDirection | null
+  limit?: number | null
+}
+
+export type HourBlocksSettingsResult = {
+  items: HourBlockWithClient[]
+  clients: ClientRow[]
+  totalCount: number
+  pageInfo: PageInfo
+}
+
+function buildHourBlocksCursorCondition(
+  direction: CursorDirection,
+  cursor: { updatedAt?: string | null; id?: string | null } | null,
+) {
+  if (!cursor) {
+    return null
+  }
+
+  const updatedAt = cursor.updatedAt ?? null
+  const idValue = typeof cursor.id === 'string' ? cursor.id : ''
+
+  if (!updatedAt || !idValue) {
+    return null
+  }
+
+  if (direction === 'forward') {
+    return sql`${hourBlocks.updatedAt} < ${updatedAt} OR (${hourBlocks.updatedAt} = ${updatedAt} AND ${hourBlocks.id} < ${idValue})`
+  }
+
+  return sql`${hourBlocks.updatedAt} > ${updatedAt} OR (${hourBlocks.updatedAt} = ${updatedAt} AND ${hourBlocks.id} > ${idValue})`
+}
+
+export async function listHourBlocksForSettings(
   user: AppUser,
-): Promise<HourBlockSettingsSnapshot> {
+  input: ListHourBlocksForSettingsInput = {},
+): Promise<HourBlocksSettingsResult> {
   assertAdmin(user)
 
-  const [hourBlockRows, clientRows] = await Promise.all([
+  const direction = resolveDirection(input.direction)
+  const limit = clampLimit(input.limit, { defaultLimit: 20, maxLimit: 100 })
+  const normalizedStatus = input.status === 'archived' ? 'archived' : 'active'
+  const searchQuery = input.search?.trim() ?? ''
+
+  const baseConditions: SQL[] = []
+
+  if (normalizedStatus === 'active') {
+    baseConditions.push(isNull(hourBlocks.deletedAt))
+  } else {
+    baseConditions.push(sql`${hourBlocks.deletedAt} IS NOT NULL`)
+  }
+
+  if (searchQuery) {
+    const pattern = createSearchPattern(searchQuery)
+    baseConditions.push(
+      sql`(${hourBlocks.invoiceNumber} ILIKE ${pattern} OR ${clients.name} ILIKE ${pattern})`,
+    )
+  }
+
+  const cursorPayload = decodeCursor<{ updatedAt?: string; id?: string }>(
+    input.cursor,
+  )
+  const cursorCondition = buildHourBlocksCursorCondition(
+    direction,
+    cursorPayload,
+  )
+
+  const paginatedConditions = cursorCondition
+    ? [...baseConditions, cursorCondition]
+    : baseConditions
+
+  const whereClause =
+    paginatedConditions.length > 0 ? and(...paginatedConditions) : undefined
+
+  const ordering =
+    direction === 'forward'
+      ? [desc(hourBlocks.updatedAt), desc(hourBlocks.id)]
+      : [asc(hourBlocks.updatedAt), asc(hourBlocks.id)]
+
+  const rows = (await db
+    .select({
+      block: hourBlockSelection,
+      client: clientSelection,
+    })
+    .from(hourBlocks)
+    .leftJoin(clients, eq(hourBlocks.clientId, clients.id))
+    .where(whereClause)
+    .orderBy(...ordering)
+    .limit(limit + 1)) as HourBlockSelection[]
+
+  const hasExtraRecord = rows.length > limit
+  const slicedRows = hasExtraRecord ? rows.slice(0, limit) : rows
+  const normalizedRows =
+    direction === 'backward' ? [...slicedRows].reverse() : slicedRows
+
+  const hourBlocksList = normalizedRows.map(mapHourBlockWithClient)
+
+  const [totalResult, clientDirectory] = await Promise.all([
     db
-      .select({
-        block: hourBlockSelection,
-        client: clientSelection,
-      })
+      .select({ count: sql<number>`count(*)` })
       .from(hourBlocks)
-      .leftJoin(clients, eq(hourBlocks.clientId, clients.id))
-      .orderBy(desc(hourBlocks.updatedAt))
-      .then(rows => rows as HourBlockSelection[]),
+      .where(
+        baseConditions.length ? and(...baseConditions) : undefined,
+      ),
     db
       .select(clientSelection)
       .from(clients)
-      .orderBy(asc(clients.name))
-      .then(rows => rows as ClientSelection[]),
+      .orderBy(asc(clients.name)),
   ])
 
+  const totalCount = Number(totalResult[0]?.count ?? 0)
+  const firstItem = hourBlocksList[0] ?? null
+  const lastItem = hourBlocksList[hourBlocksList.length - 1] ?? null
+
+  const hasPreviousPage =
+    direction === 'forward' ? Boolean(cursorPayload) : hasExtraRecord
+  const hasNextPage =
+    direction === 'forward' ? hasExtraRecord : Boolean(cursorPayload)
+
+  const pageInfo: PageInfo = {
+    hasPreviousPage,
+    hasNextPage,
+    startCursor: firstItem
+      ? encodeCursor({
+          updatedAt: firstItem.updated_at,
+          id: firstItem.id,
+        })
+      : null,
+    endCursor: lastItem
+      ? encodeCursor({
+          updatedAt: lastItem.updated_at,
+          id: lastItem.id,
+        })
+      : null,
+  }
+
   return {
-    hourBlocks: hourBlockRows.map(mapHourBlockWithClient),
-    clients: clientRows.map(mapClientRow),
+    items: hourBlocksList,
+    clients: clientDirectory.map(mapClientRow),
+    totalCount,
+    pageInfo,
   }
 }
 

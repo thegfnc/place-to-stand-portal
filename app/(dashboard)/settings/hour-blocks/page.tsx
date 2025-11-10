@@ -4,18 +4,61 @@ import { HourBlocksSettingsTable } from './hour-blocks-table'
 import { AppShellHeader } from '@/components/layout/app-shell'
 import { requireRole } from '@/lib/auth/session'
 import {
-  getHourBlocksSettingsSnapshot,
-  type HourBlockSettingsSnapshot,
+  listHourBlocksForSettings,
 } from '@/lib/queries/hour-blocks'
 
 export const metadata: Metadata = {
   title: 'Hour Blocks | Settings',
 }
 
-export default async function HourBlocksSettingsPage() {
+type HourBlocksSettingsPageProps = {
+  searchParams?: {
+    tab?: string
+    q?: string
+    cursor?: string
+    dir?: string
+    limit?: string
+  }
+}
+
+type HourBlocksTab = 'hour-blocks' | 'archive' | 'activity'
+
+export default async function HourBlocksSettingsPage({
+  searchParams,
+}: HourBlocksSettingsPageProps) {
   const currentUser = await requireRole('ADMIN')
-  const { hourBlocks, clients }: HourBlockSettingsSnapshot =
-    await getHourBlocksSettingsSnapshot(currentUser)
+
+  const tabParam =
+    typeof searchParams?.tab === 'string' ? searchParams.tab : 'hour-blocks'
+  const tab: HourBlocksTab =
+    tabParam === 'archive'
+      ? 'archive'
+      : tabParam === 'activity'
+        ? 'activity'
+        : 'hour-blocks'
+
+  const status = tab === 'archive' ? 'archived' : 'active'
+  const searchQuery =
+    typeof searchParams?.q === 'string' ? searchParams.q : ''
+  const cursor =
+    typeof searchParams?.cursor === 'string' ? searchParams.cursor : null
+  const directionParam =
+    typeof searchParams?.dir === 'string' ? searchParams.dir : null
+  const direction =
+    directionParam === 'backward' ? 'backward' : ('forward' as const)
+  const limitParam = Number.parseInt(
+    typeof searchParams?.limit === 'string' ? searchParams.limit : '',
+    10
+  )
+
+  const { items, clients, totalCount, pageInfo } =
+    await listHourBlocksForSettings(currentUser, {
+      status,
+      search: searchQuery,
+      cursor,
+      direction,
+      limit: Number.isFinite(limitParam) ? limitParam : undefined,
+    })
 
   return (
     <>
@@ -28,7 +71,14 @@ export default async function HourBlocksSettingsPage() {
           </p>
         </div>
       </AppShellHeader>
-      <HourBlocksSettingsTable hourBlocks={hourBlocks} clients={clients} />
+      <HourBlocksSettingsTable
+        hourBlocks={items}
+        clients={clients}
+        tab={tab}
+        searchQuery={searchQuery}
+        pageInfo={pageInfo}
+        totalCount={totalCount}
+      />
     </>
   )
 }

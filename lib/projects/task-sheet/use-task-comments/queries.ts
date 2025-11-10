@@ -1,31 +1,49 @@
-import { useQuery } from '@tanstack/react-query'
+import { useInfiniteQuery } from '@tanstack/react-query'
 
-import type { TaskCommentWithAuthor } from '@/lib/types'
+import type { TaskCommentsPage } from '@/lib/queries/task-comments'
 
 export type TaskCommentsQueryArgs = {
   queryKey: readonly [string, string, string | null]
   taskId: string | null
+  pageSize?: number
 }
 
 export function useTaskCommentsQuery({
   queryKey,
   taskId,
+  pageSize,
 }: TaskCommentsQueryArgs) {
-  return useQuery({
+  return useInfiniteQuery({
     queryKey,
     enabled: Boolean(taskId),
-    queryFn: async () => {
+    initialPageParam: null as string | null,
+    queryFn: async ({ pageParam }) => {
       if (!taskId) {
-        return [] as TaskCommentWithAuthor[]
+        return {
+          items: [],
+          pageInfo: { hasNextPage: false, nextCursor: null },
+        } satisfies TaskCommentsPage
       }
 
-      const response = await fetch(`/api/tasks/${taskId}/comments`, {
-        method: 'GET',
-        headers: {
-          accept: 'application/json',
-        },
-        cache: 'no-store',
-      })
+      const params = new URLSearchParams()
+      if (pageParam) {
+        params.set('cursor', pageParam)
+      }
+
+      if (pageSize) {
+        params.set('limit', String(pageSize))
+      }
+
+      const response = await fetch(
+        `/api/tasks/${taskId}/comments?${params.toString()}`,
+        {
+          method: 'GET',
+          headers: {
+            accept: 'application/json',
+          },
+          cache: 'no-store',
+        }
+      )
 
       if (!response.ok) {
         const message = await extractErrorMessage(response)
@@ -36,9 +54,11 @@ export function useTaskCommentsQuery({
         throw new Error(message ?? 'Failed to load task comments.')
       }
 
-      const data = (await response.json()) as TaskCommentWithAuthor[]
-      return data ?? []
+      const data = (await response.json()) as TaskCommentsPage
+      return data
     },
+    getNextPageParam: lastPage =>
+      lastPage.pageInfo.hasNextPage ? lastPage.pageInfo.nextCursor : undefined,
   })
 }
 

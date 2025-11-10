@@ -6,7 +6,7 @@ import {
   softDeleteProject,
 } from '@/app/(dashboard)/settings/projects/actions'
 
-import type { ProjectWithClient, ProjectsTab } from './types'
+import type { ProjectWithClient } from './types'
 
 type ToastFn = (props: {
   title: string
@@ -27,7 +27,6 @@ type UseProjectsSettingsControllerReturn = {
   pendingDeleteId: string | null
   pendingRestoreId: string | null
   pendingDestroyId: string | null
-  activeTab: ProjectsTab
   isPending: boolean
   openCreate: () => void
   openEdit: (project: ProjectWithClient) => void
@@ -40,7 +39,6 @@ type UseProjectsSettingsControllerReturn = {
   requestDestroy: (project: ProjectWithClient) => void
   cancelDestroy: () => void
   confirmDestroy: () => void
-  setActiveTab: (tab: ProjectsTab) => void
 }
 
 export function useProjectsSettingsController({
@@ -59,7 +57,6 @@ export function useProjectsSettingsController({
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
   const [pendingRestoreId, setPendingRestoreId] = useState<string | null>(null)
   const [pendingDestroyId, setPendingDestroyId] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<ProjectsTab>('projects')
   const [isPending, startTransition] = useTransition()
 
   const openCreate = () => {
@@ -129,7 +126,6 @@ export function useProjectsSettingsController({
           description: `${project.name} is hidden from active views but remains in historical reporting.`,
         })
         onRefresh()
-        setActiveTab('archive')
       } finally {
         setPendingDeleteId(null)
       }
@@ -160,7 +156,6 @@ export function useProjectsSettingsController({
           description: `${project.name} is active again.`,
         })
         onRefresh()
-        setActiveTab('projects')
       } finally {
         setPendingRestoreId(null)
       }
@@ -225,7 +220,6 @@ export function useProjectsSettingsController({
     pendingDeleteId,
     pendingRestoreId,
     pendingDestroyId,
-    activeTab,
     isPending,
     openCreate,
     openEdit,
@@ -238,6 +232,5 @@ export function useProjectsSettingsController({
     requestDestroy,
     cancelDestroy,
     confirmDestroy,
-    setActiveTab,
   }
 }

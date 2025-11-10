@@ -1,12 +1,17 @@
 import 'server-only'
 
-import { and, asc, eq, isNull } from 'drizzle-orm'
+import { and, desc, eq, isNull, sql, type SQL } from 'drizzle-orm'
 
 import type { AppUser } from '@/lib/auth/session'
 import { ensureClientAccessByTaskId, isAdmin } from '@/lib/auth/permissions'
 import { db } from '@/lib/db'
 import { taskComments, users } from '@/lib/db/schema'
 import { ForbiddenError, NotFoundError } from '@/lib/errors/http'
+import {
+  clampLimit,
+  decodeCursor,
+  encodeCursor,
+} from '@/lib/pagination/cursor'
 import type { TaskCommentAuthor, TaskCommentWithAuthor } from '@/lib/types'
 
 type CommentSelection = {
@@ -77,11 +82,58 @@ async function getCommentSelectionById(commentId: string): Promise<CommentSelect
   return rows[0] ?? null
 }
 
+export type ListTaskCommentsInput = {
+  limit?: number | null
+  cursor?: string | null
+}
+
+export type TaskCommentsPage = {
+  items: TaskCommentWithAuthor[]
+  pageInfo: {
+    hasNextPage: boolean
+    nextCursor: string | null
+  }
+}
+
+function buildTaskCommentsCursorCondition(
+  cursor: { createdAt?: string | null; id?: string | null } | null,
+): SQL | null {
+  if (!cursor) {
+    return null
+  }
+
+  const createdAt = cursor.createdAt ?? null
+  const idValue = typeof cursor.id === 'string' ? cursor.id : ''
+
+  if (!createdAt || !idValue) {
+    return null
+  }
+
+  return sql`${taskComments.createdAt} < ${createdAt} OR (${taskComments.createdAt} = ${createdAt} AND ${taskComments.id} < ${idValue})`
+}
+
 export async function listTaskComments(
   user: AppUser,
   taskId: string,
-): Promise<TaskCommentWithAuthor[]> {
+  input: ListTaskCommentsInput = {},
+): Promise<TaskCommentsPage> {
   await ensureClientAccessByTaskId(user, taskId)
+
+  const limit = clampLimit(input.limit, { defaultLimit: 20, maxLimit: 100 })
+  const cursorPayload = decodeCursor<{ createdAt?: string; id?: string }>(
+    input.cursor,
+  )
+  const cursorCondition = buildTaskCommentsCursorCondition(cursorPayload)
+
+  const baseConditions: SQL[] = [
+    eq(taskComments.taskId, taskId),
+    isNull(taskComments.deletedAt),
+  ]
+
+  const whereClause =
+    cursorCondition !== null
+      ? and(...baseConditions, cursorCondition)
+      : and(...baseConditions)
 
   const rows = (await db
     .select({
@@ -100,10 +152,28 @@ export async function listTaskComments(
     })
     .from(taskComments)
     .leftJoin(users, eq(users.id, taskComments.authorId))
-    .where(and(eq(taskComments.taskId, taskId), isNull(taskComments.deletedAt)))
-    .orderBy(asc(taskComments.createdAt))) as CommentSelection[]
+    .where(whereClause)
+    .orderBy(desc(taskComments.createdAt), desc(taskComments.id))
+    .limit(limit + 1)) as CommentSelection[]
 
-  return rows.map(mapCommentSelectionToTaskComment)
+  const hasExtraRecord = rows.length > limit
+  const slicedRows = hasExtraRecord ? rows.slice(0, limit) : rows
+
+  const items = slicedRows.map(mapCommentSelectionToTaskComment)
+  const lastItem = items[items.length - 1] ?? null
+
+  return {
+    items,
+    pageInfo: {
+      hasNextPage: hasExtraRecord,
+      nextCursor: lastItem
+        ? encodeCursor({
+            createdAt: lastItem.created_at,
+            id: lastItem.id,
+          })
+        : null,
+    },
+  }
 }
 
 export async function createTaskComment(

@@ -1,3 +1,4 @@
+import type { PageInfo } from '@/lib/pagination/cursor'
 import type { Database } from '@/supabase/types/database'
 
 type ProjectRow = Database['public']['Tables']['projects']['Row']
@@ -20,6 +21,10 @@ export type ProjectsSettingsTableProps = {
   clients: ClientRow[]
   contractorUsers: ContractorUserSummary[]
   membersByProject: Record<string, ContractorUserSummary[]>
+  tab: ProjectsTab
+  searchQuery: string
+  pageInfo: PageInfo
+  totalCount: number
 }
 
 export type ProjectsTableMode = 'active' | 'archive'

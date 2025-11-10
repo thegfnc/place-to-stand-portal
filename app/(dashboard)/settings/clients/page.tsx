@@ -1,22 +1,38 @@
 import type { Metadata } from 'next'
 
-import { ClientsSettingsTable } from './clients-table'
 import { AppShellHeader } from '@/components/layout/app-shell'
 import { requireRole } from '@/lib/auth/session'
-import { getClientsSettingsSnapshot } from '@/lib/queries/clients'
+import {
+  listClientsForSettings,
+  type ClientsSettingsListItem,
+} from '@/lib/queries/clients'
 import type { Database } from '@/supabase/types/database'
+
+import { ClientsSettingsTable } from './clients-table'
 
 export const metadata: Metadata = {
   title: 'Clients | Settings',
 }
 
-export default async function ClientsSettingsPage() {
-  const admin = await requireRole('ADMIN')
-  const { clients, members, clientUsers } = await getClientsSettingsSnapshot(
-    admin
-  )
+type ClientsSettingsPageProps = {
+  searchParams?: {
+    tab?: string
+    q?: string
+    cursor?: string
+    dir?: string
+    limit?: string
+  }
+}
 
-  const clientsForTable = clients.map(client => ({
+type ClientRow = Database['public']['Tables']['clients']['Row']
+
+function mapClientToTableRow(client: ClientsSettingsListItem): ClientRow & {
+  metrics: {
+    active_projects: number
+    total_projects: number
+  }
+} {
+  return {
     id: client.id,
     name: client.name,
     slug: client.slug,
@@ -25,42 +41,50 @@ export default async function ClientsSettingsPage() {
     created_at: client.createdAt,
     updated_at: client.updatedAt,
     deleted_at: client.deletedAt,
-    projects: client.projects.map(project => ({
-      id: project.id,
-      deleted_at: project.deletedAt,
-      status: project.status,
-    })),
-  })) as Array<
-    Database['public']['Tables']['clients']['Row'] & {
-      projects: Array<{
-        id: string
-        deleted_at: string | null
-        status: string | null
-      }>
-    }
-  >
+    metrics: {
+      active_projects: client.metrics.activeProjects,
+      total_projects: client.metrics.totalProjects,
+    },
+  }
+}
 
-  const membersByClient = members.reduce<
-    Record<
-      string,
-      Array<{ id: string; email: string; fullName: string | null }>
-    >
-  >((acc, member) => {
-    const list = acc[member.clientId] ?? []
-    list.push({
-      id: member.userId,
-      email: member.email,
-      fullName: member.fullName,
+export default async function ClientsSettingsPage({
+  searchParams,
+}: ClientsSettingsPageProps) {
+  const admin = await requireRole('ADMIN')
+  const tabParam =
+    typeof searchParams?.tab === 'string' ? searchParams.tab : 'clients'
+  const tab: ClientsTab =
+    tabParam === 'archive'
+      ? 'archive'
+      : tabParam === 'activity'
+        ? 'activity'
+        : 'clients'
+
+  const status = tab === 'archive' ? 'archived' : 'active'
+  const searchQuery =
+    typeof searchParams?.q === 'string' ? searchParams.q : ''
+  const cursor =
+    typeof searchParams?.cursor === 'string' ? searchParams.cursor : null
+  const directionParam =
+    typeof searchParams?.dir === 'string' ? searchParams.dir : null
+  const direction =
+    directionParam === 'backward' ? 'backward' : ('forward' as const)
+  const limitParam = Number.parseInt(
+    typeof searchParams?.limit === 'string' ? searchParams.limit : '',
+    10
+  )
+
+  const { items, membersByClient, clientUsers, totalCount, pageInfo } =
+    await listClientsForSettings(admin, {
+      status,
+      search: searchQuery,
+      cursor,
+      direction,
+      limit: Number.isFinite(limitParam) ? limitParam : undefined,
     })
-    acc[member.clientId] = list
-    return acc
-  }, {})
 
-  const clientDirectory = clientUsers.map(user => ({
-      id: user.id,
-      email: user.email,
-    fullName: user.fullName,
-    }))
+  const clientsForTable = items.map(mapClientToTableRow)
 
   return (
     <>
@@ -75,9 +99,15 @@ export default async function ClientsSettingsPage() {
       </AppShellHeader>
       <ClientsSettingsTable
         clients={clientsForTable}
-        clientUsers={clientDirectory}
+        clientUsers={clientUsers}
         membersByClient={membersByClient}
+        tab={tab}
+        searchQuery={searchQuery}
+        pageInfo={pageInfo}
+        totalCount={totalCount}
       />
     </>
   )
 }
+
+type ClientsTab = 'clients' | 'archive' | 'activity'

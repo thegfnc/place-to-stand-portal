@@ -2,6 +2,7 @@
 
 import { Loader2 } from 'lucide-react'
 
+import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 
 import { useTaskComments } from '@/lib/projects/task-sheet/use-task-comments'
@@ -58,25 +59,42 @@ export function TaskCommentsPanel(props: TaskCommentsPanelProps) {
           />
           <div className='space-y-4'>
             {state.comments.length > 0 ? (
-              state.comments.map(comment => (
-                <TaskCommentItem
-                  key={comment.id}
-                  comment={comment}
-                  isAuthor={comment.author_id === props.currentUserId}
-                  isEditing={state.editing.commentId === comment.id}
-                  editingDraft={
-                    state.editing.commentId === comment.id
-                      ? state.editing.draft
-                      : ''
-                  }
-                  onChangeEditingDraft={state.editing.setDraft}
-                  onStartEdit={state.editing.start}
-                  onCancelEdit={state.editing.cancel}
-                  onConfirmEdit={state.editing.confirm}
-                  onRequestDelete={state.deletion.request}
-                  disableActions={state.isMutating}
-                />
-              ))
+              <>
+                {state.comments.map(comment => (
+                  <TaskCommentItem
+                    key={comment.id}
+                    comment={comment}
+                    isAuthor={comment.author_id === props.currentUserId}
+                    isEditing={state.editing.commentId === comment.id}
+                    editingDraft={
+                      state.editing.commentId === comment.id
+                        ? state.editing.draft
+                        : ''
+                    }
+                    onChangeEditingDraft={state.editing.setDraft}
+                    onStartEdit={state.editing.start}
+                    onCancelEdit={state.editing.cancel}
+                    onConfirmEdit={state.editing.confirm}
+                    onRequestDelete={state.deletion.request}
+                    disableActions={state.isMutating}
+                  />
+                ))}
+                {state.pagination.hasNextPage ? (
+                  <div className='flex justify-center'>
+                    <Button
+                      type='button'
+                      variant='ghost'
+                      size='sm'
+                      onClick={state.pagination.loadMore}
+                      disabled={state.pagination.isFetchingNextPage}
+                    >
+                      {state.pagination.isFetchingNextPage
+                        ? 'Loading…'
+                        : 'Load older comments'}
+                    </Button>
+                  </div>
+                ) : null}
+              </>
             ) : (
               <TaskCommentsEmptyState message='No comments yet. Be the first to share an update.' />
             )}

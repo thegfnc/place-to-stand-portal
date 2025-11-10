@@ -26,12 +26,15 @@ type RouteContext = {
   }>
 }
 
-export async function GET(_request: NextRequest, context: RouteContext) {
+export async function GET(request: NextRequest, context: RouteContext) {
   const user = await getCurrentUser()
 
   if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
+
+  const url = new URL(request.url)
+  const searchParams = url.searchParams
 
   const parsedParams = paramsSchema.safeParse(await context.params)
 
@@ -39,9 +42,16 @@ export async function GET(_request: NextRequest, context: RouteContext) {
     return NextResponse.json({ error: 'Invalid request.' }, { status: 400 })
   }
 
+  const cursor = searchParams.get('cursor')
+  const limitParam = searchParams.get('limit')
+  const limit = limitParam ? Number.parseInt(limitParam, 10) : undefined
+
   try {
-    const comments = await listTaskComments(user, parsedParams.data.taskId)
-    return NextResponse.json(comments, { status: 200 })
+    const result = await listTaskComments(user, parsedParams.data.taskId, {
+      cursor,
+      limit: Number.isFinite(limit) ? limit : undefined,
+    })
+    return NextResponse.json(result, { status: 200 })
   } catch (error) {
     if (error instanceof HttpError) {
       return NextResponse.json({ error: error.message }, { status: error.status })

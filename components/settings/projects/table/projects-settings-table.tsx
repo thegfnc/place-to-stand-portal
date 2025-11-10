@@ -1,12 +1,13 @@
 'use client'
 
-import { useMemo } from 'react'
+import { FormEvent, useEffect, useMemo, useState } from 'react'
 import dynamic from 'next/dynamic'
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { Plus } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { DisabledFieldTooltip } from '@/components/ui/disabled-field-tooltip'
+import { Input } from '@/components/ui/input'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useToast } from '@/components/ui/use-toast'
 
@@ -16,7 +17,6 @@ import { ProjectLifecycleDialogs } from './project-lifecycle-dialogs'
 import { ProjectsTableSection } from './projects-table-section'
 import { useProjectsSettingsController } from './use-projects-settings-controller'
 import type {
-  ProjectWithClient,
   ProjectsSettingsTableProps,
   ProjectsTab,
 } from './types'
@@ -36,19 +36,6 @@ const ProjectsActivityFeed = dynamic(
   }
 )
 
-function useProjectBuckets(projects: ProjectWithClient[]) {
-  return useMemo(() => {
-    const sorted = [...projects].sort((a, b) =>
-      a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
-    )
-
-    const active = sorted.filter(project => !project.deleted_at)
-    const archived = sorted.filter(project => Boolean(project.deleted_at))
-
-    return { active, archived }
-  }, [projects])
-}
-
 function useSortedClients(
   clients: ProjectsSettingsTableProps['clients']
 ): ProjectsSettingsTableProps['clients'] {
@@ -62,12 +49,22 @@ function useSortedClients(
 }
 
 export function ProjectsSettingsTable(props: ProjectsSettingsTableProps) {
-  const { projects, clients, contractorUsers, membersByProject } = props
+  const {
+    projects,
+    clients,
+    contractorUsers,
+    membersByProject,
+    tab,
+    searchQuery,
+    pageInfo,
+    totalCount,
+  } = props
   const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
   const { toast } = useToast()
+  const [searchValue, setSearchValue] = useState(searchQuery)
 
-  const { active: activeProjects, archived: archivedProjects } =
-    useProjectBuckets(projects)
   const sortedClients = useSortedClients(clients)
 
   const controller = useProjectsSettingsController({
@@ -83,7 +80,6 @@ export function ProjectsSettingsTable(props: ProjectsSettingsTableProps) {
     pendingDeleteId,
     pendingRestoreId,
     pendingDestroyId,
-    activeTab,
     isPending,
     openCreate,
     openEdit,
@@ -96,7 +92,6 @@ export function ProjectsSettingsTable(props: ProjectsSettingsTableProps) {
     requestDestroy,
     cancelDestroy,
     confirmDestroy,
-    setActiveTab,
   } = controller
 
   const createDisabled = sortedClients.length === 0
@@ -104,6 +99,72 @@ export function ProjectsSettingsTable(props: ProjectsSettingsTableProps) {
     ? 'Add a client before creating a project.'
     : null
   const pendingReason = 'Please wait for the current request to finish.'
+
+  useEffect(() => {
+    setSearchValue(searchQuery)
+  }, [searchQuery])
+
+  const showListViews = tab !== 'activity'
+
+  const handleTabChange = (next: ProjectsTab) => {
+    const params = new URLSearchParams(searchParams.toString())
+    if (next === 'projects') {
+      params.delete('tab')
+    } else {
+      params.set('tab', next)
+    }
+    params.delete('cursor')
+    params.delete('dir')
+    const query = params.toString()
+    router.push(query ? `${pathname}?${query}` : pathname)
+  }
+
+  const handleSearchSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    const params = new URLSearchParams(searchParams.toString())
+    const trimmed = searchValue.trim()
+    if (trimmed) {
+      params.set('q', trimmed)
+    } else {
+      params.delete('q')
+    }
+    params.delete('cursor')
+    params.delete('dir')
+    const query = params.toString()
+    router.push(query ? `${pathname}?${query}` : pathname)
+  }
+
+  const handleClearSearch = () => {
+    if (!searchQuery) {
+      return
+    }
+    setSearchValue('')
+    const params = new URLSearchParams(searchParams.toString())
+    params.delete('q')
+    params.delete('cursor')
+    params.delete('dir')
+    const query = params.toString()
+    router.push(query ? `${pathname}?${query}` : pathname)
+  }
+
+  const handlePaginate = (direction: 'forward' | 'backward') => {
+    const cursor =
+      direction === 'forward' ? pageInfo.endCursor : pageInfo.startCursor
+
+    if (!cursor) {
+      return
+    }
+
+    const params = new URLSearchParams(searchParams.toString())
+    params.set('cursor', cursor)
+    params.set('dir', direction)
+    const query = params.toString()
+    router.push(query ? `${pathname}?${query}` : pathname)
+  }
+
+  const paginationDisabled = !showListViews
+  const hasNextPage = pageInfo.hasNextPage && !paginationDisabled
+  const hasPreviousPage = pageInfo.hasPreviousPage && !paginationDisabled
 
   return (
     <div className='space-y-6'>
@@ -117,8 +178,8 @@ export function ProjectsSettingsTable(props: ProjectsSettingsTableProps) {
         onConfirmDestroy={confirmDestroy}
       />
       <Tabs
-        value={activeTab}
-        onValueChange={value => setActiveTab(value as ProjectsTab)}
+        value={tab}
+        onValueChange={value => handleTabChange(value as ProjectsTab)}
         className='space-y-6'
       >
         <div className='flex flex-wrap items-center justify-between gap-4'>
@@ -127,7 +188,7 @@ export function ProjectsSettingsTable(props: ProjectsSettingsTableProps) {
             <TabsTrigger value='archive'>Archive</TabsTrigger>
             <TabsTrigger value='activity'>Activity</TabsTrigger>
           </TabsList>
-          {activeTab === 'projects' ? (
+          {tab === 'projects' ? (
             <DisabledFieldTooltip
               disabled={createDisabled}
               reason={createDisabledReason}
@@ -138,37 +199,87 @@ export function ProjectsSettingsTable(props: ProjectsSettingsTableProps) {
             </DisabledFieldTooltip>
           ) : null}
         </div>
+        {showListViews ? (
+          <form
+            onSubmit={handleSearchSubmit}
+            className='flex w-full flex-wrap items-center gap-2'
+          >
+            <Input
+              value={searchValue}
+              onChange={event => setSearchValue(event.target.value)}
+              placeholder='Search by project name or slug…'
+              className='max-w-xs'
+              aria-label='Search projects'
+            />
+            <Button type='submit'>Search</Button>
+            {searchQuery ? (
+              <Button
+                type='button'
+                variant='ghost'
+                onClick={handleClearSearch}
+                disabled={isPending}
+              >
+                Clear
+              </Button>
+            ) : null}
+            <div className='text-muted-foreground ml-auto text-sm'>
+              Total projects: {totalCount}
+            </div>
+          </form>
+        ) : null}
         <TabsContent value='projects' className='space-y-6'>
-          <ProjectsTableSection
-            projects={activeProjects}
-            mode='active'
-            onEdit={openEdit}
-            onRequestDelete={requestDelete}
-            onRestore={restoreProject}
-            onRequestDestroy={requestDestroy}
-            isPending={isPending}
-            pendingReason={pendingReason}
-            pendingDeleteId={pendingDeleteId}
-            pendingRestoreId={pendingRestoreId}
-            pendingDestroyId={pendingDestroyId}
-            emptyMessage='No projects yet. Create one to begin tracking work.'
-          />
+          {tab === 'projects' ? (
+            <>
+              <ProjectsTableSection
+                projects={projects}
+                mode='active'
+                onEdit={openEdit}
+                onRequestDelete={requestDelete}
+                onRestore={restoreProject}
+                onRequestDestroy={requestDestroy}
+                isPending={isPending}
+                pendingReason={pendingReason}
+                pendingDeleteId={pendingDeleteId}
+                pendingRestoreId={pendingRestoreId}
+                pendingDestroyId={pendingDestroyId}
+                emptyMessage='No projects yet. Create one to begin tracking work.'
+              />
+              <PaginationControls
+                hasNextPage={hasNextPage}
+                hasPreviousPage={hasPreviousPage}
+                onNext={() => handlePaginate('forward')}
+                onPrevious={() => handlePaginate('backward')}
+                disableAll={isPending}
+              />
+            </>
+          ) : null}
         </TabsContent>
         <TabsContent value='archive' className='space-y-6'>
-          <ProjectsTableSection
-            projects={archivedProjects}
-            mode='archive'
-            onEdit={openEdit}
-            onRequestDelete={requestDelete}
-            onRestore={restoreProject}
-            onRequestDestroy={requestDestroy}
-            isPending={isPending}
-            pendingReason={pendingReason}
-            pendingDeleteId={pendingDeleteId}
-            pendingRestoreId={pendingRestoreId}
-            pendingDestroyId={pendingDestroyId}
-            emptyMessage='No archived projects. Archived projects appear here after deletion.'
-          />
+          {tab === 'archive' ? (
+            <>
+              <ProjectsTableSection
+                projects={projects}
+                mode='archive'
+                onEdit={openEdit}
+                onRequestDelete={requestDelete}
+                onRestore={restoreProject}
+                onRequestDestroy={requestDestroy}
+                isPending={isPending}
+                pendingReason={pendingReason}
+                pendingDeleteId={pendingDeleteId}
+                pendingRestoreId={pendingRestoreId}
+                pendingDestroyId={pendingDestroyId}
+                emptyMessage='No archived projects. Archived projects appear here after deletion.'
+              />
+              <PaginationControls
+                hasNextPage={hasNextPage}
+                hasPreviousPage={hasPreviousPage}
+                onNext={() => handlePaginate('forward')}
+                onPrevious={() => handlePaginate('backward')}
+                disableAll={isPending}
+              />
+            </>
+          ) : null}
         </TabsContent>
         <TabsContent value='activity' className='space-y-3'>
           <div className='space-y-3 p-1'>
@@ -197,6 +308,45 @@ export function ProjectsSettingsTable(props: ProjectsSettingsTableProps) {
         contractorDirectory={contractorUsers}
         projectContractors={membersByProject}
       />
+    </div>
+  )
+}
+
+type PaginationControlsProps = {
+  hasNextPage: boolean
+  hasPreviousPage: boolean
+  onNext: () => void
+  onPrevious: () => void
+  disableAll?: boolean
+}
+
+function PaginationControls({
+  hasNextPage,
+  hasPreviousPage,
+  onNext,
+  onPrevious,
+  disableAll = false,
+}: PaginationControlsProps) {
+  const isPrevDisabled = disableAll || !hasPreviousPage
+  const isNextDisabled = disableAll || !hasNextPage
+
+  if (!hasNextPage && !hasPreviousPage) {
+    return null
+  }
+
+  return (
+    <div className='flex justify-end gap-2'>
+      <Button
+        type='button'
+        variant='outline'
+        onClick={onPrevious}
+        disabled={isPrevDisabled}
+      >
+        Previous
+      </Button>
+      <Button type='button' onClick={onNext} disabled={isNextDisabled}>
+        Next
+      </Button>
     </div>
   )
 }

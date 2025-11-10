@@ -38,14 +38,30 @@ export function useTaskComments(
   )
 
   const {
-    data: comments,
+    data,
     isLoading,
     isError,
     refetch,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
   } = useTaskCommentsQuery({
     queryKey: commentsQueryKey,
     taskId,
+    pageSize: 20,
   })
+
+  const flattenedComments = useMemo(
+    () => data?.pages?.flatMap(page => page.items) ?? [],
+    [data?.pages]
+  )
+
+  const loadMore = useCallback(() => {
+    if (!hasNextPage) {
+      return
+    }
+    void fetchNextPage()
+  }, [fetchNextPage, hasNextPage])
 
   const createComment = useCreateTaskCommentMutation({
     taskId,
@@ -149,7 +165,7 @@ export function useTaskComments(
 
   return {
     taskId,
-    comments: comments ?? [],
+    comments: flattenedComments,
     isLoading,
     isError,
     refresh: () => {
@@ -179,6 +195,11 @@ export function useTaskComments(
       isPending: deleteComment.isPending,
     },
     isMutating,
+    pagination: {
+      hasNextPage: Boolean(hasNextPage),
+      isFetchingNextPage,
+      loadMore,
+    },
   }
 }
 

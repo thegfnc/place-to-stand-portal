@@ -14,17 +14,13 @@ import type {
   HourBlockWithClient,
 } from '@/lib/settings/hour-blocks/hour-block-form'
 
-export type HourBlocksTab = 'hour-blocks' | 'archive' | 'activity'
-
 type UseHourBlocksTableStateArgs = {
-  hourBlocks: HourBlockWithClient[]
   clients: ClientRow[]
 }
 
 const pendingReason = 'Please wait for the current request to finish.'
 
 export function useHourBlocksTableState({
-  hourBlocks,
   clients,
 }: UseHourBlocksTableStateArgs) {
   const router = useRouter()
@@ -39,31 +35,8 @@ export function useHourBlocksTableState({
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
   const [pendingRestoreId, setPendingRestoreId] = useState<string | null>(null)
   const [pendingDestroyId, setPendingDestroyId] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<HourBlocksTab>('hour-blocks')
   const [isPending, startTransition] = useTransition()
   const { toast } = useToast()
-
-  const { activeBlocks, archivedBlocks } = useMemo(() => {
-    const sorted = [...hourBlocks].sort((a, b) => {
-      const clientNameA = a.client?.name ?? ''
-      const clientNameB = b.client?.name ?? ''
-
-      if (clientNameA.toLocaleLowerCase() === clientNameB.toLocaleLowerCase()) {
-        return (
-          new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
-        )
-      }
-
-      return clientNameA.localeCompare(clientNameB, undefined, {
-        sensitivity: 'base',
-      })
-    })
-
-    const active = sorted.filter(block => !block.deleted_at)
-    const archived = sorted.filter(block => Boolean(block.deleted_at))
-
-    return { activeBlocks: active, archivedBlocks: archived }
-  }, [hourBlocks])
 
   const sortedClients = useMemo(
     () =>
@@ -146,7 +119,6 @@ export function useHourBlocksTableState({
             'The hour block is hidden from active tracking but remains in history.',
         })
         router.refresh()
-        setActiveTab('archive')
       } finally {
         setPendingDeleteId(null)
       }
@@ -178,7 +150,6 @@ export function useHourBlocksTableState({
           description: 'The hour block is active again.',
         })
         router.refresh()
-        setActiveTab('hour-blocks')
       } finally {
         setPendingRestoreId(null)
       }
@@ -235,15 +206,9 @@ export function useHourBlocksTableState({
     })
   }
 
-  const handleTabChange = (value: HourBlocksTab) => {
-    setActiveTab(value)
-  }
-
   return {
     sheetOpen,
     selectedBlock,
-    activeBlocks,
-    archivedBlocks,
     sortedClients,
     createDisabled,
     createDisabledReason,
@@ -252,8 +217,6 @@ export function useHourBlocksTableState({
     openEdit,
     handleSheetOpenChange,
     handleComplete,
-    activeTab,
-    handleTabChange,
     deleteDialog: {
       open: Boolean(deleteTarget),
       target: deleteTarget,

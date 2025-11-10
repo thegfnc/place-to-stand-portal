@@ -40,6 +40,11 @@ export type UseTaskCommentsState = {
     isPending: boolean
   }
   isMutating: boolean
+  pagination: {
+    hasNextPage: boolean
+    isFetchingNextPage: boolean
+    loadMore: () => void
+  }
 }
 
 export type CommentActivityMetadata = {

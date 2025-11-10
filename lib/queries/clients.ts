@@ -1,6 +1,16 @@
 import 'server-only'
 
-import { and, asc, eq, inArray, isNull, ne, sql } from 'drizzle-orm'
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  inArray,
+  isNull,
+  ne,
+  sql,
+  type SQL,
+} from 'drizzle-orm'
 
 import type { AppUser } from '@/lib/auth/session'
 import {
@@ -18,6 +28,15 @@ import {
   users,
 } from '@/lib/db/schema'
 import { NotFoundError } from '@/lib/errors/http'
+import {
+  clampLimit,
+  createSearchPattern,
+  decodeCursor,
+  encodeCursor,
+  resolveDirection,
+  type CursorDirection,
+  type PageInfo,
+} from '@/lib/pagination/cursor'
 
 type SelectClient = typeof clients.$inferSelect
 
@@ -75,131 +94,292 @@ export async function getClientById(
   return result[0]
 }
 
-type ClientSettingsSnapshot = {
-  clients: Array<
-    SelectClient & {
-      projects: Array<{
-        id: string
-        deletedAt: string | null
-        status: string | null
-      }>
-    }
-  >
-  members: Array<{
-    clientId: string
-    userId: string
+const clientGroupByColumns = [
+  clients.id,
+  clients.name,
+  clients.slug,
+  clients.notes,
+  clients.createdBy,
+  clients.createdAt,
+  clients.updatedAt,
+  clients.deletedAt,
+] as const
+
+type ClientListMetrics = {
+  totalProjects: number
+  activeProjects: number
+}
+
+export type ClientsSettingsListItem = SelectClient & {
+  metrics: ClientListMetrics
+}
+
+export type ClientsSettingsMembersMap = Record<
+  string,
+  Array<{
+    id: string
     email: string
     fullName: string | null
   }>
+>
+
+export type ListClientsForSettingsInput = {
+  status?: 'active' | 'archived'
+  search?: string | null
+  cursor?: string | null
+  direction?: CursorDirection | null
+  limit?: number | null
+}
+
+export type ClientsSettingsResult = {
+  items: ClientsSettingsListItem[]
+  membersByClient: ClientsSettingsMembersMap
   clientUsers: Array<{
     id: string
     email: string
     fullName: string | null
   }>
+  totalCount: number
+  pageInfo: PageInfo
 }
 
-export async function getClientsSettingsSnapshot(
+const ACTIVE_STATUS = 'active'
+
+function buildClientCursorCondition(
+  direction: CursorDirection,
+  cursor: { name?: string | null; id?: string | null } | null,
+) {
+  if (!cursor) {
+    return null
+  }
+
+  const nameValue =
+    typeof cursor.name === 'string' ? cursor.name : (cursor.name ?? '')
+  const idValue = typeof cursor.id === 'string' ? cursor.id : ''
+
+  if (!idValue) {
+    return null
+  }
+
+  const normalizedName = sql`coalesce(${clients.name}, '')`
+
+  if (direction === 'forward') {
+    return sql`${normalizedName} > ${nameValue} OR (${normalizedName} = ${nameValue} AND ${clients.id} > ${idValue})`
+  }
+
+  return sql`${normalizedName} < ${nameValue} OR (${normalizedName} = ${nameValue} AND ${clients.id} < ${idValue})`
+}
+
+export async function listClientsForSettings(
   user: AppUser,
-): Promise<ClientSettingsSnapshot> {
+  input: ListClientsForSettingsInput = {},
+): Promise<ClientsSettingsResult> {
   assertAdmin(user)
 
-  const [clientRows, projectRows, memberRows, clientUserRows] =
-    await Promise.all([
-      db
-        .select({
-          id: clients.id,
-          name: clients.name,
-          slug: clients.slug,
-          notes: clients.notes,
-          createdBy: clients.createdBy,
-          createdAt: clients.createdAt,
-          updatedAt: clients.updatedAt,
-          deletedAt: clients.deletedAt,
-        })
-        .from(clients)
-        .orderBy(asc(clients.name)),
-      db
-        .select({
-          id: projects.id,
-          clientId: projects.clientId,
-          status: projects.status,
-          deletedAt: projects.deletedAt,
-        })
-        .from(projects),
-      db
-        .select({
-          clientId: clientMembers.clientId,
-          userId: clientMembers.userId,
-          email: users.email,
-          fullName: users.fullName,
-          userDeletedAt: users.deletedAt,
-        })
-        .from(clientMembers)
-        .innerJoin(users, eq(users.id, clientMembers.userId))
-        .where(
-          and(
-            isNull(clientMembers.deletedAt),
-            isNull(users.deletedAt),
-            eq(users.role, 'CLIENT'),
-          ),
-        ),
-      db
-        .select({
-          id: users.id,
-          email: users.email,
-          fullName: users.fullName,
-        })
-        .from(users)
-        .where(and(eq(users.role, 'CLIENT'), isNull(users.deletedAt)))
-        .orderBy(asc(users.fullName), asc(users.email)),
-    ])
+  const direction = resolveDirection(input.direction)
+  const limit = clampLimit(input.limit, { defaultLimit: 20, maxLimit: 100 })
+  const normalizedStatus = input.status === 'archived' ? 'archived' : 'active'
+  const searchQuery = input.search?.trim() ?? ''
+  const baseConditions: SQL[] = []
 
-  const projectsByClient = projectRows.reduce<
-    Record<
-      string,
-      Array<{ id: string; deletedAt: string | null; status: string | null }>
-    >
-  >((acc, project) => {
-    const list = acc[project.clientId] ?? []
-    list.push({
-      id: project.id,
-      deletedAt: project.deletedAt,
-      status: project.status,
+  if (normalizedStatus === 'active') {
+    baseConditions.push(isNull(clients.deletedAt))
+  } else {
+    baseConditions.push(sql`${clients.deletedAt} IS NOT NULL`)
+  }
+
+  if (searchQuery) {
+    const pattern = createSearchPattern(searchQuery)
+    baseConditions.push(
+      sql`(${clients.name} ILIKE ${pattern} OR ${clients.slug} ILIKE ${pattern})`,
+    )
+  }
+
+  const cursorPayload = decodeCursor<{ name?: string; id?: string }>(
+    input.cursor,
+  )
+  const cursorCondition = buildClientCursorCondition(direction, cursorPayload)
+
+  const paginatedConditions = cursorCondition
+    ? [...baseConditions, cursorCondition]
+    : baseConditions
+
+  const whereClause =
+    paginatedConditions.length > 0
+      ? and(...paginatedConditions)
+      : undefined
+
+  const ordering =
+    direction === 'forward'
+      ? [asc(clients.name), asc(clients.id)]
+      : [desc(clients.name), desc(clients.id)]
+
+  const rows = (await db
+    .select({
+      id: clients.id,
+      name: clients.name,
+      slug: clients.slug,
+      notes: clients.notes,
+      createdBy: clients.createdBy,
+      createdAt: clients.createdAt,
+      updatedAt: clients.updatedAt,
+      deletedAt: clients.deletedAt,
+      totalProjects: sql<number>`count(${projects.id})`,
+      activeProjects: sql<number>`
+        coalesce(sum(
+          case
+            when ${projects.deletedAt} is null
+              and coalesce(lower(${projects.status}), '') = ${ACTIVE_STATUS}
+            then 1
+            else 0
+          end
+        ), 0)
+      `,
     })
-    acc[project.clientId] = list
-    return acc
-  }, {})
+    .from(clients)
+    .leftJoin(projects, eq(projects.clientId, clients.id))
+    .where(whereClause)
+    .groupBy(...clientGroupByColumns)
+    .orderBy(...ordering)
+    .limit(limit + 1)) as Array<
+    SelectClient & {
+      totalProjects: number | string | null
+      activeProjects: number | string | null
+    }
+  >
 
-  const filteredMembers = memberRows.reduce<
-    Array<{
-      clientId: string
-      userId: string
-      email: string
-      fullName: string | null
-    }>
-  >((acc, member) => {
-    if (member.userDeletedAt) {
+  const hasExtraRecord = rows.length > limit
+  const slicedRows = hasExtraRecord ? rows.slice(0, limit) : rows
+  const normalizedRows =
+    direction === 'backward' ? [...slicedRows].reverse() : slicedRows
+
+  const mappedItems: ClientsSettingsListItem[] = normalizedRows.map(row => ({
+    id: row.id,
+    name: row.name,
+    slug: row.slug,
+    notes: row.notes,
+    createdBy: row.createdBy,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+    deletedAt: row.deletedAt,
+    metrics: {
+      totalProjects: Number(row.totalProjects ?? 0),
+      activeProjects: Number(row.activeProjects ?? 0),
+    },
+  }))
+
+  const totalResult = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(clients)
+    .where(
+      baseConditions.length ? and(...baseConditions) : undefined,
+    )
+
+  const totalCount = Number(totalResult[0]?.count ?? 0)
+  const firstItem = mappedItems[0] ?? null
+  const lastItem = mappedItems[mappedItems.length - 1] ?? null
+
+  const hasPreviousPage =
+    direction === 'forward'
+      ? Boolean(cursorPayload)
+      : hasExtraRecord
+  const hasNextPage =
+    direction === 'forward'
+      ? hasExtraRecord
+      : Boolean(cursorPayload)
+
+  const pageInfo: PageInfo = {
+    hasPreviousPage,
+    hasNextPage,
+    startCursor: firstItem
+      ? encodeCursor({
+          name: firstItem.name ?? '',
+          id: firstItem.id,
+        })
+      : null,
+    endCursor: lastItem
+      ? encodeCursor({
+          name: lastItem.name ?? '',
+          id: lastItem.id,
+        })
+      : null,
+  }
+
+  const clientIds = mappedItems.map(item => item.id)
+
+  const [membersByClient, clientUsersList] = await Promise.all([
+    buildMembersByClient(clientIds),
+    listClientUsers(),
+  ])
+
+  return {
+    items: mappedItems,
+    membersByClient,
+    clientUsers: clientUsersList,
+    totalCount,
+    pageInfo,
+  }
+}
+
+async function buildMembersByClient(
+  clientIds: string[],
+): Promise<ClientsSettingsMembersMap> {
+  if (!clientIds.length) {
+    return {}
+  }
+
+  const rows = await db
+    .select({
+      clientId: clientMembers.clientId,
+      userId: clientMembers.userId,
+      email: users.email,
+      fullName: users.fullName,
+      memberDeletedAt: clientMembers.deletedAt,
+      userDeletedAt: users.deletedAt,
+    })
+    .from(clientMembers)
+    .innerJoin(users, eq(users.id, clientMembers.userId))
+    .where(
+      and(
+        inArray(clientMembers.clientId, clientIds),
+        isNull(clientMembers.deletedAt),
+        eq(users.role, 'CLIENT'),
+        isNull(users.deletedAt),
+      ),
+    )
+
+  return rows.reduce<ClientsSettingsMembersMap>((acc, row) => {
+    if (row.memberDeletedAt || row.userDeletedAt) {
       return acc
     }
 
-    acc.push({
-      clientId: member.clientId,
-      userId: member.userId,
-      email: member.email,
-      fullName: member.fullName,
+    const list = acc[row.clientId] ?? []
+    list.push({
+      id: row.userId,
+      email: row.email,
+      fullName: row.fullName,
     })
-
+    acc[row.clientId] = list
     return acc
-  }, [])
+  }, {})
+}
 
-  return {
-    clients: clientRows.map(client => ({
-      ...client,
-      projects: projectsByClient[client.id] ?? [],
-    })),
-    members: filteredMembers,
-    clientUsers: clientUserRows,
-  }
+async function listClientUsers() {
+  const rows = await db
+    .select({
+      id: users.id,
+      email: users.email,
+      fullName: users.fullName,
+    })
+    .from(users)
+    .where(and(eq(users.role, 'CLIENT'), isNull(users.deletedAt)))
+    .orderBy(asc(users.fullName), asc(users.email))
+
+  return rows.map(row => ({
+    id: row.id,
+    email: row.email,
+    fullName: row.fullName,
+  }))
 }
 
 export async function clientSlugExistsDrizzle(

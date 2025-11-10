@@ -61,14 +61,7 @@ export function ClientsTableSection({
         </TableHeader>
         <TableBody>
           {clients.map(client => {
-            const activeProjects = (client.projects ?? []).filter(project => {
-              if (project.deleted_at) {
-                return false
-              }
-
-              const status = (project.status ?? '').toLowerCase()
-              return status === 'active'
-            }).length
+            const activeProjects = client.metrics?.active_projects ?? 0
 
             const statusLabel = client.deleted_at ? 'Archived' : 'Active'
             const statusTone = client.deleted_at ? 'archived' : 'active'

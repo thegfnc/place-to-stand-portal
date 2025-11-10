@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState, useTransition } from 'react'
+import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 
 import { useToast } from '@/components/ui/use-toast'
@@ -14,19 +14,14 @@ import type { ClientRow } from './client-sheet-utils'
 
 export type ClientsTab = 'clients' | 'archive' | 'activity'
 
-export type UseClientsTableStateArgs = {
-  clients: ClientsTableClient[]
-}
-
 export type ClientsTableClient = ClientRow & {
-  projects?: Array<{
-    id: string
-    deleted_at: string | null
-    status: string | null
-  }> | null
+  metrics: {
+    active_projects: number
+    total_projects: number
+  }
 }
 
-export function useClientsTableState({ clients }: UseClientsTableStateArgs) {
+export function useClientsTableState() {
   const router = useRouter()
   const [sheetOpen, setSheetOpen] = useState(false)
   const [selectedClient, setSelectedClient] =
@@ -40,31 +35,10 @@ export function useClientsTableState({ clients }: UseClientsTableStateArgs) {
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
   const [pendingRestoreId, setPendingRestoreId] = useState<string | null>(null)
   const [pendingDestroyId, setPendingDestroyId] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<ClientsTab>('clients')
   const [isPending, startTransition] = useTransition()
   const { toast } = useToast()
 
   const pendingReason = 'Please wait for the current request to finish.'
-
-  const activeClients = useMemo(
-    () =>
-      clients
-        .filter(client => !client.deleted_at)
-        .sort((a, b) =>
-          a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
-        ),
-    [clients]
-  )
-
-  const archivedClients = useMemo(
-    () =>
-      clients
-        .filter(client => Boolean(client.deleted_at))
-        .sort((a, b) =>
-          a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
-        ),
-    [clients]
-  )
 
   const openCreate = () => {
     setSelectedClient(null)
@@ -220,10 +194,6 @@ export function useClientsTableState({ clients }: UseClientsTableStateArgs) {
   }
 
   return {
-    activeClients,
-    archivedClients,
-    activeTab,
-    setActiveTab,
     sheetOpen,
     selectedClient,
     deleteTarget,

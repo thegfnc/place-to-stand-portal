@@ -58,6 +58,60 @@ export async function getUserById(
   return result[0]
 }
 
+export type UserWithAssignmentCounts = SelectUser & {
+  clientsCount: number
+  tasksCount: number
+}
+
+export async function listUsersWithAssignmentCounts(
+  user: AppUser,
+): Promise<UserWithAssignmentCounts[]> {
+  assertAdmin(user)
+
+  const rows = await db
+    .select({
+      user: userFields,
+      clientsCount: sql<number>`count(distinct ${clientMembers.id})`,
+      tasksCount: sql<number>`count(distinct ${taskAssignees.id})`,
+    })
+    .from(users)
+    .leftJoin(
+      clientMembers,
+      and(
+        eq(clientMembers.userId, users.id),
+        isNull(clientMembers.deletedAt),
+      ),
+    )
+    .leftJoin(
+      taskAssignees,
+      and(eq(taskAssignees.userId, users.id), isNull(taskAssignees.deletedAt)),
+    )
+    .groupBy(
+      users.id,
+      users.email,
+      users.fullName,
+      users.avatarUrl,
+      users.role,
+      users.createdAt,
+      users.updatedAt,
+      users.deletedAt,
+    )
+    .orderBy(desc(users.createdAt))
+
+  return rows.map(row => ({
+    id: row.user.id,
+    email: row.user.email,
+    fullName: row.user.fullName,
+    avatarUrl: row.user.avatarUrl,
+    role: row.user.role,
+    createdAt: row.user.createdAt,
+    updatedAt: row.user.updatedAt,
+    deletedAt: row.user.deletedAt,
+    clientsCount: Number(row.clientsCount ?? 0),
+    tasksCount: Number(row.tasksCount ?? 0),
+  }))
+}
+
 export async function softDeleteUser(
   user: AppUser,
   userId: string,

@@ -4,9 +4,7 @@ import { UsersSettingsTable } from './users-table'
 import { AppShellHeader } from '@/components/layout/app-shell'
 import { requireRole } from '@/lib/auth/session'
 import {
-  getActiveClientMembershipCounts,
-  getActiveTaskAssignmentCounts,
-  listUsers,
+  listUsersWithAssignmentCounts,
 } from '@/lib/queries/users'
 import type { Database } from '@/supabase/types/database'
 
@@ -17,12 +15,7 @@ export const metadata: Metadata = {
 export default async function UsersSettingsPage() {
   const currentUser = await requireRole('ADMIN')
 
-  const [userRecords, clientMembershipCounts, taskAssignmentCounts] =
-    await Promise.all([
-      listUsers(currentUser),
-      getActiveClientMembershipCounts(currentUser),
-      getActiveTaskAssignmentCounts(currentUser),
-    ])
+  const userRecords = await listUsersWithAssignmentCounts(currentUser)
 
   const users: Database['public']['Tables']['users']['Row'][] = userRecords.map(
     user => ({
@@ -53,14 +46,11 @@ export default async function UsersSettingsPage() {
     ensureSummary(user.id)
   }
 
-  for (const [userId, count] of Object.entries(clientMembershipCounts)) {
-    ensureSummary(userId).clients = count
-    // Note: Projects count is now 0 as project_members no longer exists
-    // Client members have access to all projects under their client
-  }
-
-  for (const [userId, count] of Object.entries(taskAssignmentCounts)) {
-    ensureSummary(userId).tasks = count
+  for (const record of userRecords) {
+    const summary = ensureSummary(record.id)
+    summary.clients = record.clientsCount
+    summary.tasks = record.tasksCount
+    // Projects count remains 0 as project_members no longer exists.
   }
 
   return (

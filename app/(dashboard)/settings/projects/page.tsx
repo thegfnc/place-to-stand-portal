@@ -3,7 +3,11 @@ import type { Metadata } from 'next'
 import { ProjectsSettingsTable } from './projects-table'
 import { AppShellHeader } from '@/components/layout/app-shell'
 import { requireRole } from '@/lib/auth/session'
-import { getProjectsSettingsSnapshot } from '@/lib/queries/projects'
+import {
+  listProjectsForSettings,
+  type ProjectsSettingsListItem,
+  type ProjectsSettingsResult,
+} from '@/lib/queries/projects'
 import type { Database } from '@/supabase/types/database'
 
 type ProjectRow = Database['public']['Tables']['projects']['Row']
@@ -18,21 +22,18 @@ export const metadata: Metadata = {
   title: 'Projects | Settings',
 }
 
-export default async function ProjectsSettingsPage() {
-  const admin = await requireRole('ADMIN')
-  const { projects, clients } = await getProjectsSettingsSnapshot(admin)
+type ProjectsSettingsPageProps = {
+  searchParams?: {
+    tab?: string
+    q?: string
+    cursor?: string
+    dir?: string
+    limit?: string
+  }
+}
 
-  const clientRows: ClientRow[] = clients.map(client => ({
-    id: client.id,
-    name: client.name,
-    deleted_at: client.deletedAt,
-  }))
-
-  const clientLookup = new Map(
-    clientRows.map(client => [client.id, client] as const)
-  )
-
-  const hydratedProjects: ProjectWithClient[] = projects.map(project => ({
+function mapProjectToTableRow(project: ProjectsSettingsListItem): ProjectWithClient {
+  return {
     id: project.id,
     name: project.name,
     status: project.status,
@@ -44,8 +45,60 @@ export default async function ProjectsSettingsPage() {
     created_at: project.createdAt,
     updated_at: project.updatedAt,
     deleted_at: project.deletedAt,
-    client: project.clientId ? clientLookup.get(project.clientId) ?? null : null,
+    client: project.client
+      ? {
+          id: project.client.id,
+          name: project.client.name,
+          deleted_at: project.client.deletedAt,
+        }
+      : null,
+  }
+}
+
+export default async function ProjectsSettingsPage({
+  searchParams,
+}: ProjectsSettingsPageProps) {
+  const admin = await requireRole('ADMIN')
+  const tabParam =
+    typeof searchParams?.tab === 'string' ? searchParams.tab : 'projects'
+  const tab: ProjectsTab =
+    tabParam === 'archive'
+      ? 'archive'
+      : tabParam === 'activity'
+        ? 'activity'
+        : 'projects'
+
+  const status = tab === 'archive' ? 'archived' : 'active'
+  const searchQuery =
+    typeof searchParams?.q === 'string' ? searchParams.q : ''
+  const cursor =
+    typeof searchParams?.cursor === 'string' ? searchParams.cursor : null
+  const directionParam =
+    typeof searchParams?.dir === 'string' ? searchParams.dir : null
+  const direction =
+    directionParam === 'backward' ? 'backward' : ('forward' as const)
+  const limitParam = Number.parseInt(
+    typeof searchParams?.limit === 'string' ? searchParams.limit : '',
+    10
+  )
+
+  const result: ProjectsSettingsResult = await listProjectsForSettings(admin, {
+    status,
+    search: searchQuery,
+    cursor,
+    direction,
+    limit: Number.isFinite(limitParam) ? limitParam : undefined,
+  })
+
+  const clientRows: ClientRow[] = result.clients.map(client => ({
+    id: client.id,
+    name: client.name,
+    deleted_at: client.deletedAt,
   }))
+
+  const hydratedProjects: ProjectWithClient[] = result.items.map(
+    mapProjectToTableRow
+  )
 
   return (
     <>
@@ -62,7 +115,13 @@ export default async function ProjectsSettingsPage() {
         clients={clientRows}
         contractorUsers={[]}
         membersByProject={{}}
+        tab={tab}
+        searchQuery={searchQuery}
+        pageInfo={result.pageInfo}
+        totalCount={result.totalCount}
       />
     </>
   )
 }
+
+type ProjectsTab = 'projects' | 'archive' | 'activity'
