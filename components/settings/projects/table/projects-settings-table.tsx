@@ -1,13 +1,12 @@
 'use client'
 
-import { FormEvent, useEffect, useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import dynamic from 'next/dynamic'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { Plus } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { DisabledFieldTooltip } from '@/components/ui/disabled-field-tooltip'
-import { Input } from '@/components/ui/input'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useToast } from '@/components/ui/use-toast'
 
@@ -16,10 +15,7 @@ import { ProjectSheet } from '@/app/(dashboard)/settings/projects/project-sheet'
 import { ProjectLifecycleDialogs } from './project-lifecycle-dialogs'
 import { ProjectsTableSection } from './projects-table-section'
 import { useProjectsSettingsController } from './use-projects-settings-controller'
-import type {
-  ProjectsSettingsTableProps,
-  ProjectsTab,
-} from './types'
+import type { ProjectsSettingsTableProps, ProjectsTab } from './types'
 
 const ProjectsActivityFeed = dynamic(
   () =>
@@ -55,7 +51,6 @@ export function ProjectsSettingsTable(props: ProjectsSettingsTableProps) {
     contractorUsers,
     membersByProject,
     tab,
-    searchQuery,
     pageInfo,
     totalCount,
   } = props
@@ -63,7 +58,6 @@ export function ProjectsSettingsTable(props: ProjectsSettingsTableProps) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const { toast } = useToast()
-  const [searchValue, setSearchValue] = useState(searchQuery)
 
   const sortedClients = useSortedClients(clients)
 
@@ -100,10 +94,6 @@ export function ProjectsSettingsTable(props: ProjectsSettingsTableProps) {
     : null
   const pendingReason = 'Please wait for the current request to finish.'
 
-  useEffect(() => {
-    setSearchValue(searchQuery)
-  }, [searchQuery])
-
   const showListViews = tab !== 'activity'
 
   const handleTabChange = (next: ProjectsTab) => {
@@ -113,34 +103,6 @@ export function ProjectsSettingsTable(props: ProjectsSettingsTableProps) {
     } else {
       params.set('tab', next)
     }
-    params.delete('cursor')
-    params.delete('dir')
-    const query = params.toString()
-    router.push(query ? `${pathname}?${query}` : pathname)
-  }
-
-  const handleSearchSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    const params = new URLSearchParams(searchParams.toString())
-    const trimmed = searchValue.trim()
-    if (trimmed) {
-      params.set('q', trimmed)
-    } else {
-      params.delete('q')
-    }
-    params.delete('cursor')
-    params.delete('dir')
-    const query = params.toString()
-    router.push(query ? `${pathname}?${query}` : pathname)
-  }
-
-  const handleClearSearch = () => {
-    if (!searchQuery) {
-      return
-    }
-    setSearchValue('')
-    const params = new URLSearchParams(searchParams.toString())
-    params.delete('q')
     params.delete('cursor')
     params.delete('dir')
     const query = params.toString()
@@ -182,7 +144,7 @@ export function ProjectsSettingsTable(props: ProjectsSettingsTableProps) {
         onValueChange={value => handleTabChange(value as ProjectsTab)}
         className='space-y-6'
       >
-        <div className='flex flex-wrap items-center justify-between gap-4'>
+        <div className='flex flex-wrap items-center gap-4'>
           <TabsList>
             <TabsTrigger value='projects'>Projects</TabsTrigger>
             <TabsTrigger value='archive'>Archive</TabsTrigger>
@@ -193,40 +155,17 @@ export function ProjectsSettingsTable(props: ProjectsSettingsTableProps) {
               disabled={createDisabled}
               reason={createDisabledReason}
             >
-              <Button onClick={openCreate} disabled={createDisabled}>
+              <Button
+                onClick={openCreate}
+                disabled={createDisabled}
+                className='ml-auto'
+              >
                 <Plus className='h-4 w-4' /> Add project
               </Button>
             </DisabledFieldTooltip>
           ) : null}
         </div>
-        {showListViews ? (
-          <form
-            onSubmit={handleSearchSubmit}
-            className='flex w-full flex-wrap items-center gap-2'
-          >
-            <Input
-              value={searchValue}
-              onChange={event => setSearchValue(event.target.value)}
-              placeholder='Search by project name or slug…'
-              className='max-w-xs'
-              aria-label='Search projects'
-            />
-            <Button type='submit'>Search</Button>
-            {searchQuery ? (
-              <Button
-                type='button'
-                variant='ghost'
-                onClick={handleClearSearch}
-                disabled={isPending}
-              >
-                Clear
-              </Button>
-            ) : null}
-            <div className='text-muted-foreground ml-auto text-sm'>
-              Total projects: {totalCount}
-            </div>
-          </form>
-        ) : null}
+
         <TabsContent value='projects' className='space-y-6'>
           {tab === 'projects' ? (
             <>
@@ -299,6 +238,13 @@ export function ProjectsSettingsTable(props: ProjectsSettingsTableProps) {
           </div>
         </TabsContent>
       </Tabs>
+      {showListViews ? (
+        <div className='flex w-full justify-end'>
+          <span className='text-muted-foreground text-right text-sm'>
+            Total projects: {totalCount}
+          </span>
+        </div>
+      ) : null}
       <ProjectSheet
         open={sheetOpen}
         onOpenChange={handleSheetOpenChange}

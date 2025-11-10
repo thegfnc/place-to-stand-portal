@@ -1,13 +1,12 @@
 'use client'
 
-import { FormEvent, useEffect, useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import dynamic from 'next/dynamic'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { Plus } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
-import { Input } from '@/components/ui/input'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 import type { PageInfo } from '@/lib/pagination/cursor'
@@ -26,7 +25,6 @@ type Props = {
   clientUsers: ClientUserSummary[]
   membersByClient: Record<string, ClientUserSummary[]>
   tab: ClientsTab
-  searchQuery: string
   pageInfo: PageInfo
   totalCount: number
 }
@@ -51,18 +49,12 @@ export function ClientsSettingsTable({
   clientUsers,
   membersByClient,
   tab,
-  searchQuery,
   pageInfo,
   totalCount,
 }: Props) {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
-  const [searchValue, setSearchValue] = useState(searchQuery)
-
-  useEffect(() => {
-    setSearchValue(searchQuery)
-  }, [searchQuery])
 
   const {
     sheetOpen,
@@ -101,34 +93,6 @@ export function ClientsSettingsTable({
     } else {
       params.set('tab', next)
     }
-    params.delete('cursor')
-    params.delete('dir')
-    const query = params.toString()
-    router.push(query ? `${pathname}?${query}` : pathname)
-  }
-
-  const handleSearchSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    const params = new URLSearchParams(searchParams.toString())
-    const trimmed = searchValue.trim()
-    if (trimmed) {
-      params.set('q', trimmed)
-    } else {
-      params.delete('q')
-    }
-    params.delete('cursor')
-    params.delete('dir')
-    const query = params.toString()
-    router.push(query ? `${pathname}?${query}` : pathname)
-  }
-
-  const handleClearSearch = () => {
-    if (!searchQuery) {
-      return
-    }
-    setSearchValue('')
-    const params = new URLSearchParams(searchParams.toString())
-    params.delete('q')
     params.delete('cursor')
     params.delete('dir')
     const query = params.toString()
@@ -202,39 +166,12 @@ export function ClientsSettingsTable({
             <TabsTrigger value='activity'>Activity</TabsTrigger>
           </TabsList>
           {tab === 'clients' ? (
-            <Button onClick={openCreate}>
+            <Button onClick={openCreate} className='ml-auto'>
               <Plus className='h-4 w-4' /> Add client
             </Button>
           ) : null}
         </div>
-        {showListViews ? (
-          <form
-            onSubmit={handleSearchSubmit}
-            className='flex w-full flex-wrap items-center gap-2'
-          >
-            <Input
-              value={searchValue}
-              onChange={event => setSearchValue(event.target.value)}
-              placeholder='Search by client name or slug…'
-              className='max-w-xs'
-              aria-label='Search clients'
-            />
-            <Button type='submit'>Search</Button>
-            {searchQuery ? (
-              <Button
-                type='button'
-                variant='ghost'
-                onClick={handleClearSearch}
-                disabled={isPending}
-              >
-                Clear
-              </Button>
-            ) : null}
-            <div className='text-muted-foreground ml-auto text-sm'>
-              Total clients: {totalCount}
-            </div>
-          </form>
-        ) : null}
+
         <TabsContent value='clients' className='space-y-6'>
           {tab === 'clients' ? (
             <>
@@ -307,6 +244,13 @@ export function ClientsSettingsTable({
           </div>
         </TabsContent>
       </Tabs>
+      {showListViews ? (
+        <div className='flex w-full justify-end'>
+          <span className='text-muted-foreground text-right text-sm'>
+            Total clients: {totalCount}
+          </span>
+        </div>
+      ) : null}
       <ClientSheet
         open={sheetOpen}
         onOpenChange={handleSheetOpenChange}

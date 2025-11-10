@@ -22,7 +22,6 @@ export type ProjectsSettingsTableProps = {
   contractorUsers: ContractorUserSummary[]
   membersByProject: Record<string, ContractorUserSummary[]>
   tab: ProjectsTab
-  searchQuery: string
   pageInfo: PageInfo
   totalCount: number
 }

@@ -12,13 +12,7 @@ export const metadata: Metadata = {
 }
 
 type HourBlocksSettingsPageProps = {
-  searchParams?: {
-    tab?: string
-    q?: string
-    cursor?: string
-    dir?: string
-    limit?: string
-  }
+  searchParams?: Promise<Record<string, string | string[] | undefined>>
 }
 
 type HourBlocksTab = 'hour-blocks' | 'archive' | 'activity'
@@ -27,9 +21,15 @@ export default async function HourBlocksSettingsPage({
   searchParams,
 }: HourBlocksSettingsPageProps) {
   const currentUser = await requireRole('ADMIN')
-
+  const params = searchParams ? await searchParams : {}
+  const tabParamRaw = params.tab
   const tabParam =
-    typeof searchParams?.tab === 'string' ? searchParams.tab : 'hour-blocks'
+    typeof tabParamRaw === 'string'
+      ? tabParamRaw
+      : Array.isArray(tabParamRaw)
+        ? tabParamRaw[0]
+        : 'hour-blocks'
+
   const tab: HourBlocksTab =
     tabParam === 'archive'
       ? 'archive'
@@ -39,17 +39,32 @@ export default async function HourBlocksSettingsPage({
 
   const status = tab === 'archive' ? 'archived' : 'active'
   const searchQuery =
-    typeof searchParams?.q === 'string' ? searchParams.q : ''
+    typeof params.q === 'string'
+      ? params.q
+      : Array.isArray(params.q)
+        ? params.q[0] ?? ''
+        : ''
   const cursor =
-    typeof searchParams?.cursor === 'string' ? searchParams.cursor : null
+    typeof params.cursor === 'string'
+      ? params.cursor
+      : Array.isArray(params.cursor)
+        ? params.cursor[0] ?? null
+        : null
   const directionParam =
-    typeof searchParams?.dir === 'string' ? searchParams.dir : null
+    typeof params.dir === 'string'
+      ? params.dir
+      : Array.isArray(params.dir)
+        ? params.dir[0] ?? null
+        : null
   const direction =
     directionParam === 'backward' ? 'backward' : ('forward' as const)
-  const limitParam = Number.parseInt(
-    typeof searchParams?.limit === 'string' ? searchParams.limit : '',
-    10
-  )
+  const limitParamRaw =
+    typeof params.limit === 'string'
+      ? params.limit
+      : Array.isArray(params.limit)
+        ? params.limit[0]
+        : undefined
+  const limitParam = Number.parseInt(limitParamRaw ?? '', 10)
 
   const { items, clients, totalCount, pageInfo } =
     await listHourBlocksForSettings(currentUser, {
@@ -75,7 +90,6 @@ export default async function HourBlocksSettingsPage({
         hourBlocks={items}
         clients={clients}
         tab={tab}
-        searchQuery={searchQuery}
         pageInfo={pageInfo}
         totalCount={totalCount}
       />

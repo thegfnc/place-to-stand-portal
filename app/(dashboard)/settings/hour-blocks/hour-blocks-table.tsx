@@ -1,6 +1,5 @@
 'use client'
 
-import { FormEvent, useEffect, useState } from 'react'
 import dynamic from 'next/dynamic'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { Plus } from 'lucide-react'
@@ -8,15 +7,12 @@ import { Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { DisabledFieldTooltip } from '@/components/ui/disabled-field-tooltip'
-import { Input } from '@/components/ui/input'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import type {
   ClientRow,
   HourBlockWithClient,
 } from '@/lib/settings/hour-blocks/hour-block-form'
-import {
-  useHourBlocksTableState,
-} from '@/lib/settings/hour-blocks/use-hour-blocks-table-state'
+import { useHourBlocksTableState } from '@/lib/settings/hour-blocks/use-hour-blocks-table-state'
 import type { PageInfo } from '@/lib/pagination/cursor'
 
 import { HourBlocksTableSection } from './_components/hour-blocks-table-section'
@@ -26,7 +22,6 @@ type Props = {
   hourBlocks: HourBlockWithClient[]
   clients: ClientRow[]
   tab: HourBlocksTab
-  searchQuery: string
   pageInfo: PageInfo
   totalCount: number
 }
@@ -50,7 +45,6 @@ export function HourBlocksSettingsTable({
   hourBlocks,
   clients,
   tab,
-  searchQuery,
   pageInfo,
   totalCount,
 }: Props) {
@@ -78,11 +72,6 @@ export function HourBlocksSettingsTable({
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
-  const [searchValue, setSearchValue] = useState(searchQuery)
-
-  useEffect(() => {
-    setSearchValue(searchQuery)
-  }, [searchQuery])
 
   const showListViews = tab !== 'activity'
 
@@ -93,34 +82,6 @@ export function HourBlocksSettingsTable({
     } else {
       params.set('tab', value)
     }
-    params.delete('cursor')
-    params.delete('dir')
-    const query = params.toString()
-    router.push(query ? `${pathname}?${query}` : pathname)
-  }
-
-  const handleSearchSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    const params = new URLSearchParams(searchParams.toString())
-    const trimmed = searchValue.trim()
-    if (trimmed) {
-      params.set('q', trimmed)
-    } else {
-      params.delete('q')
-    }
-    params.delete('cursor')
-    params.delete('dir')
-    const query = params.toString()
-    router.push(query ? `${pathname}?${query}` : pathname)
-  }
-
-  const handleClearSearch = () => {
-    if (!searchQuery) {
-      return
-    }
-    setSearchValue('')
-    const params = new URLSearchParams(searchParams.toString())
-    params.delete('q')
     params.delete('cursor')
     params.delete('dir')
     const query = params.toString()
@@ -173,7 +134,7 @@ export function HourBlocksSettingsTable({
         onValueChange={value => handleTabSelect(value as HourBlocksTab)}
         className='space-y-6'
       >
-        <div className='flex flex-wrap items-center justify-between gap-4'>
+        <div className='flex flex-wrap items-center gap-4'>
           <TabsList>
             <TabsTrigger value='hour-blocks'>Hour Blocks</TabsTrigger>
             <TabsTrigger value='archive'>Archive</TabsTrigger>
@@ -184,40 +145,16 @@ export function HourBlocksSettingsTable({
               disabled={createDisabled}
               reason={createDisabledReason}
             >
-              <Button onClick={openCreate} disabled={createDisabled}>
+              <Button
+                onClick={openCreate}
+                disabled={createDisabled}
+                className='ml-auto'
+              >
                 <Plus className='h-4 w-4' /> Add hour block
               </Button>
             </DisabledFieldTooltip>
           ) : null}
         </div>
-        {showListViews ? (
-          <form
-            onSubmit={handleSearchSubmit}
-            className='flex w-full flex-wrap items-center gap-2'
-          >
-            <Input
-              value={searchValue}
-              onChange={event => setSearchValue(event.target.value)}
-              placeholder='Search hour blocks…'
-              className='max-w-xs'
-              aria-label='Search hour blocks'
-            />
-            <Button type='submit'>Search</Button>
-            {searchQuery ? (
-              <Button
-                type='button'
-                variant='ghost'
-                onClick={handleClearSearch}
-                disabled={isPending}
-              >
-                Clear
-              </Button>
-            ) : null}
-            <div className='text-muted-foreground ml-auto text-sm'>
-              Total hour blocks: {totalCount}
-            </div>
-          </form>
-        ) : null}
         <TabsContent value='hour-blocks' className='space-y-6'>
           {tab === 'hour-blocks' ? (
             <>
@@ -290,6 +227,13 @@ export function HourBlocksSettingsTable({
           </div>
         </TabsContent>
       </Tabs>
+      {showListViews ? (
+        <div className='flex w-full justify-end'>
+          <span className='text-muted-foreground text-right text-sm'>
+            Total hour blocks: {totalCount}
+          </span>
+        </div>
+      ) : null}
       <HourBlockSheet
         open={sheetOpen}
         onOpenChange={handleSheetOpenChange}

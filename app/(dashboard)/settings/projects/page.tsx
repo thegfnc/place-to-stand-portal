@@ -23,13 +23,7 @@ export const metadata: Metadata = {
 }
 
 type ProjectsSettingsPageProps = {
-  searchParams?: {
-    tab?: string
-    q?: string
-    cursor?: string
-    dir?: string
-    limit?: string
-  }
+  searchParams?: Promise<Record<string, string | string[] | undefined>>
 }
 
 function mapProjectToTableRow(project: ProjectsSettingsListItem): ProjectWithClient {
@@ -59,8 +53,14 @@ export default async function ProjectsSettingsPage({
   searchParams,
 }: ProjectsSettingsPageProps) {
   const admin = await requireRole('ADMIN')
+  const params = searchParams ? await searchParams : {}
+  const tabParamRaw = params.tab
   const tabParam =
-    typeof searchParams?.tab === 'string' ? searchParams.tab : 'projects'
+    typeof tabParamRaw === 'string'
+      ? tabParamRaw
+      : Array.isArray(tabParamRaw)
+        ? tabParamRaw[0]
+        : 'projects'
   const tab: ProjectsTab =
     tabParam === 'archive'
       ? 'archive'
@@ -70,17 +70,32 @@ export default async function ProjectsSettingsPage({
 
   const status = tab === 'archive' ? 'archived' : 'active'
   const searchQuery =
-    typeof searchParams?.q === 'string' ? searchParams.q : ''
+    typeof params.q === 'string'
+      ? params.q
+      : Array.isArray(params.q)
+        ? params.q[0] ?? ''
+        : ''
   const cursor =
-    typeof searchParams?.cursor === 'string' ? searchParams.cursor : null
+    typeof params.cursor === 'string'
+      ? params.cursor
+      : Array.isArray(params.cursor)
+        ? params.cursor[0] ?? null
+        : null
   const directionParam =
-    typeof searchParams?.dir === 'string' ? searchParams.dir : null
+    typeof params.dir === 'string'
+      ? params.dir
+      : Array.isArray(params.dir)
+        ? params.dir[0] ?? null
+        : null
   const direction =
     directionParam === 'backward' ? 'backward' : ('forward' as const)
-  const limitParam = Number.parseInt(
-    typeof searchParams?.limit === 'string' ? searchParams.limit : '',
-    10
-  )
+  const limitParamRaw =
+    typeof params.limit === 'string'
+      ? params.limit
+      : Array.isArray(params.limit)
+        ? params.limit[0]
+        : undefined
+  const limitParam = Number.parseInt(limitParamRaw ?? '', 10)
 
   const result: ProjectsSettingsResult = await listProjectsForSettings(admin, {
     status,
@@ -116,7 +131,6 @@ export default async function ProjectsSettingsPage({
         contractorUsers={[]}
         membersByProject={{}}
         tab={tab}
-        searchQuery={searchQuery}
         pageInfo={result.pageInfo}
         totalCount={result.totalCount}
       />
