@@ -69,6 +69,7 @@
 - **Component Strategy:** Use `npx shadcn@latest add <component>` before building custom UI. Extend via composition rather than heavy overrides.
 - **Database Workflow:** Manage schema updates via `drizzle-kit` migrations. Describe migration intent and run diff checks when applicable. Old migrations should NEVER be edited. Only new migrations should be added.
 - **Drizzle Client Usage:** Import the shared instance from `lib/db/index.ts` and schema from `lib/db/schema`.
+- **Supabase Client Scope:** The Supabase client in `lib/supabase/client.ts` is reserved strictly for auth/session handling, storage operations, and realtime subscriptions. All data queries and mutations must route through Drizzle instead.
 - **Authorization Guards:** Use the helpers in `lib/auth/permissions.ts` before executing any Drizzle query. Shared query functions live under `lib/queries/` and already compose these guards.
 - **RLS Status:** Row Level Security is disabled across application tables (see `supabase/migrations/20251110123000_disable_rls.sql`). All data protection must flow through server-side authorization checks.
 - **Secrets & Config:** Reference environment variables through `process.env` with typed helpers in `src/lib/utils.ts`. Never hardcode secrets.
