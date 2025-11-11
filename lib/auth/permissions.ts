@@ -78,11 +78,21 @@ export async function ensureClientAccessByProjectId(
   await ensureClientAccess(user, project[0].clientId)
 }
 
-export async function ensureClientAccessByTaskId(user: AppUser, taskId: UUID) {
+export async function ensureClientAccessByTaskId(
+  user: AppUser,
+  taskId: UUID,
+  options: { includeArchived?: boolean } = {}
+) {
+  const { includeArchived = false } = options
+
+  const whereClause = includeArchived
+    ? eq(tasks.id, taskId)
+    : and(eq(tasks.id, taskId), isNull(tasks.deletedAt))
+
   const task = await db
     .select({ id: tasks.id, projectId: tasks.projectId })
     .from(tasks)
-    .where(and(eq(tasks.id, taskId), isNull(tasks.deletedAt)))
+    .where(whereClause)
     .limit(1)
 
   if (!task.length) {

@@ -36,7 +36,7 @@ export async function restoreTask(input: {
   const { taskId } = parsed.data
 
   try {
-    await ensureClientAccessByTaskId(user, taskId)
+    await ensureClientAccessByTaskId(user, taskId, { includeArchived: true })
   } catch (error) {
     if (error instanceof NotFoundError) {
       return { error: 'Task not found.' }
@@ -73,10 +73,7 @@ export async function restoreTask(input: {
     return {}
   }
 
-  await db
-    .update(tasks)
-    .set({ deletedAt: null })
-    .where(eq(tasks.id, taskId))
+  await db.update(tasks).set({ deletedAt: null }).where(eq(tasks.id, taskId))
 
   const event = taskRestoredEvent({ title: task.title ?? 'Task' })
 

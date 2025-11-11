@@ -36,14 +36,16 @@ export async function destroyTask(input: {
   const { taskId } = parsed.data
 
   try {
-    await ensureClientAccessByTaskId(user, taskId)
+    await ensureClientAccessByTaskId(user, taskId, { includeArchived: true })
   } catch (error) {
     if (error instanceof NotFoundError) {
       return { error: 'Task not found.' }
     }
 
     if (error instanceof ForbiddenError) {
-      return { error: 'You do not have permission to permanently delete this task.' }
+      return {
+        error: 'You do not have permission to permanently delete this task.',
+      }
     }
 
     console.error('Failed to authorize task for permanent delete', error)
