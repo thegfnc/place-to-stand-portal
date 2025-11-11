@@ -17,7 +17,7 @@ import {
 
 import { db } from '@/lib/db'
 import { activityLogs, users } from '@/lib/db/schema'
-import type { Database } from '@/supabase/types/database'
+import type { Database } from '@/lib/supabase/types'
 
 import type {
   ActivityLogWithActor,

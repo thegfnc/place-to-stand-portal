@@ -6,7 +6,7 @@ import {
   listClientsForSettings,
   type ClientsSettingsListItem,
 } from '@/lib/queries/clients'
-import type { Database } from '@/supabase/types/database'
+import type { Database } from '@/lib/supabase/types'
 
 import { ClientsSettingsTable } from './clients-table'
 

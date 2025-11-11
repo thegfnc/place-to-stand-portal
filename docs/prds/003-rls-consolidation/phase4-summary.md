@@ -273,7 +273,7 @@ Each migration includes rollback instructions in comments. If issues arise:
 
 ## Related Files
 
-- Migration files: `supabase/migrations/20251107120011-20251107120014_*.sql`
+- Legacy migration files: `20251107120011-20251107120014_*.sql` (archived Supabase scripts; see repo history if raw SQL is required)
 - Reference: `docs/prds/003-rls-consolidation/debug-log-task-assignees-fix.md`
 - Reference: `docs/prds/003-rls-consolidation/task-assignees-fix-summary.md`
 - Previous phases: `phase1-summary.md`, `phase2-summary.md`, `phase3-summary.md`

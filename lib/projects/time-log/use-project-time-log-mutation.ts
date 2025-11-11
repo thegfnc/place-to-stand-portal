@@ -7,7 +7,7 @@ import { logClientActivity } from '@/lib/activity/client'
 import { timeLogCreatedEvent } from '@/lib/activity/events'
 import type { ToastOptions } from '@/components/ui/use-toast'
 import type { FieldError, TimeLogFormErrors } from './types'
-import type { Json } from '@/supabase/types/database'
+import type { Json } from '@/lib/supabase/types'
 
 const SUCCESS_TOAST: ToastOptions = {
   title: 'Time logged',

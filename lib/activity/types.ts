@@ -1,4 +1,4 @@
-import type { Database, Json } from '@/supabase/types/database'
+import type { Database, Json } from '@/lib/supabase/types'
 
 export type DbActivityLog = Database['public']['Tables']['activity_logs']['Row']
 

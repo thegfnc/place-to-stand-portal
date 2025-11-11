@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button'
 import { DisabledFieldTooltip } from '@/components/ui/disabled-field-tooltip'
 import { cn } from '@/lib/utils'
 import { getStatusBadgeToken } from '@/lib/constants'
-import type { Database } from '@/supabase/types/database'
+import type { Database } from '@/lib/supabase/types'
 
 import type { UserRowState } from '@/lib/settings/users/state/use-users-table-state'
 

@@ -6,7 +6,7 @@ import { eq } from 'drizzle-orm'
 
 import { db } from '@/lib/db'
 import { activityLogs, users } from '@/lib/db/schema'
-import type { Database, Json } from '@/supabase/types/database'
+import type { Database, Json } from '@/lib/supabase/types'
 import type { ActivityTargetType, ActivityVerb } from './types'
 
 export type LogActivityOptions = {

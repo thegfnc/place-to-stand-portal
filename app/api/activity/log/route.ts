@@ -4,7 +4,7 @@ import { z } from 'zod'
 import { logActivity } from '@/lib/activity/logger'
 import { ActivityVerbs, type ActivityVerb } from '@/lib/activity/types'
 import { requireUser } from '@/lib/auth/session'
-import type { Json } from '@/supabase/types/database'
+import type { Json } from '@/lib/supabase/types'
 
 const TARGET_TYPES = [
   'TASK',

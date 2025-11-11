@@ -19,7 +19,7 @@ import {
 import type { TimeLogEntry } from '@/lib/projects/time-log/types'
 import type { DbTimeLog } from '@/lib/types'
 import type { TimeLogSummary } from '@/lib/data/projects/types'
-import type { Database } from '@/supabase/types/database'
+import type { Database } from '@/lib/supabase/types'
 
 const DEFAULT_HISTORY_LIMIT = 10
 

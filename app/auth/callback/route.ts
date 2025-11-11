@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 
-import type { Database } from "@/supabase/types/database";
+import type { Database } from "@/lib/supabase/types";
 
 type SessionTokens = {
   access_token: string;

@@ -3,7 +3,7 @@
 import { createBrowserClient } from "@supabase/ssr";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import type { Database } from "@/supabase/types/database";
+import type { Database } from "@/lib/supabase/types";
 import { env } from "@/lib/env";
 
 let client: SupabaseClient<Database> | null = null;

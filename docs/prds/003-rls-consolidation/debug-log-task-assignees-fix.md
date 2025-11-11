@@ -254,8 +254,8 @@ WHERE pm.user_id = auth.uid()
 ## Files Changed
 
 ### Migrations
-- ✅ `supabase/migrations/20251107120010_fix_task_assignees_permissions.sql` (NEW - consolidated fix)
-- ❌ `supabase/migrations/20251107120003_consolidate_task_assignees_rls.sql` (REVERTED - back to original, no edits)
+- ✅ Legacy Supabase script `20251107120010_fix_task_assignees_permissions.sql` (archived; consolidated fix)
+- ❌ Legacy Supabase script `20251107120003_consolidate_task_assignees_rls.sql` (reverted; no edits retained)
 
 ### Deleted Migrations (Consolidated into 20251107120010)
 - ❌ `20251107120017_fix_task_assignees_function.sql`
@@ -276,6 +276,6 @@ WHERE pm.user_id = auth.uid()
 
 - Original issue: RLS error when saving tasks with assignees
 - Application code: `app/(dashboard)/projects/actions/task-helpers.ts` - `syncAssignees` function
-- Working reference: `supabase/migrations/*_task_attachments*.sql` policies
+- Working reference: legacy Supabase scripts `*_task_attachments*.sql` (see repository history)
 - Related migrations: `20251107120003`, `20251107120008`, `20251107120009`, `20251107120010`
 

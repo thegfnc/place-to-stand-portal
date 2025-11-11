@@ -27,7 +27,7 @@ import type { PageInfo } from '@/lib/pagination/cursor'
 
 import { UsersTableRow } from './components/table/users-table-row'
 
-import type { Database } from '@/supabase/types/database'
+import type { Database } from '@/lib/supabase/types'
 
 type UserRow = Database['public']['Tables']['users']['Row']
 

@@ -1,4 +1,4 @@
-import type { Database } from '@/supabase/types/database'
+import type { Database } from '@/lib/supabase/types'
 
 export type DbClient = Database['public']['Tables']['clients']['Row']
 export type DbClientMember =

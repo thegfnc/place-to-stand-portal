@@ -1,5 +1,5 @@
 import type { PageInfo } from '@/lib/pagination/cursor'
-import type { Database } from '@/supabase/types/database'
+import type { Database } from '@/lib/supabase/types'
 
 type ProjectRow = Database['public']['Tables']['projects']['Row']
 

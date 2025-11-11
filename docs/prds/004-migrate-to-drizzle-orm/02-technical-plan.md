@@ -56,7 +56,7 @@ The migration will be executed in four distinct phases to minimize risk and ensu
 
     export default {
       schema: './lib/db/schema.ts',
-      out: './supabase/migrations',
+      out: './drizzle/migrations',
       dialect: 'postgresql',
       dbCredentials: {
         url: process.env.DATABASE_URL,
@@ -70,7 +70,7 @@ The migration will be executed in four distinct phases to minimize risk and ensu
     - In this route, import the Drizzle client and perform a simple, read-only query (e.g., `SELECT * FROM users LIMIT 1`).
     - Successfully executing this query and returning data will confirm that the connection, configuration, and schema are all working correctly before proceeding with the full migration.
 
-> **Implementation status (2025-11-08):** Complete. The shared client lives in `lib/db/index.ts`, schema exports in `lib/db/schema.ts`, CLI config in `drizzle.config.ts`, and the verification route at `app/api/test-drizzle/route.ts`. Drizzle introspection artifacts are synced under `supabase/migrations/`. See `phase-1/README.md` for detailed notes.
+> **Implementation status (2025-11-08):** Complete. The shared client lives in `lib/db/index.ts`, schema exports in `lib/db/schema.ts`, CLI config in `drizzle.config.ts`, and the verification route at `app/api/test-drizzle/route.ts`. Drizzle introspection artifacts now live under `drizzle/migrations/`. See `phase-1/README.md` for detailed notes.
 
 ---
 

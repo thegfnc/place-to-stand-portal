@@ -1,1981 +1,9 @@
 {
-  "id": "00000000-0000-0000-0000-000000000000",
-  "prevId": "",
+  "id": "339efd49-e6b4-4473-a9f6-800f98adb50d",
+  "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
-    "public.clients": {
-      "name": "clients",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "name": {
-          "name": "name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "slug": {
-          "name": "slug",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "notes": {
-          "name": "notes",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_by": {
-          "name": "created_by",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "timezone('utc'::text, now())"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "timezone('utc'::text, now())"
-        },
-        "deleted_at": {
-          "name": "deleted_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        }
-      },
-      "indexes": {
-        "idx_clients_created_by": {
-          "name": "idx_clients_created_by",
-          "columns": [
-            {
-              "expression": "created_by",
-              "asc": true,
-              "nulls": "last",
-              "opclass": "uuid_ops",
-              "isExpression": false
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "where": "(deleted_at IS NULL)",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "clients_created_by_fkey": {
-          "name": "clients_created_by_fkey",
-          "tableFrom": "clients",
-          "tableTo": "users",
-          "schemaTo": "public",
-          "columnsFrom": [
-            "created_by"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "clients_slug_key": {
-          "columns": [
-            "slug"
-          ],
-          "nullsNotDistinct": false,
-          "name": "clients_slug_key"
-        }
-      },
-      "checkConstraints": {},
-      "policies": {
-        "Admins delete clients": {
-          "name": "Admins delete clients",
-          "as": "PERMISSIVE",
-          "for": "DELETE",
-          "to": [
-            "public"
-          ],
-          "using": "is_admin()"
-        },
-        "Admins insert clients": {
-          "name": "Admins insert clients",
-          "as": "PERMISSIVE",
-          "for": "INSERT",
-          "to": [
-            "public"
-          ]
-        },
-        "Admins update clients": {
-          "name": "Admins update clients",
-          "as": "PERMISSIVE",
-          "for": "UPDATE",
-          "to": [
-            "public"
-          ]
-        },
-        "Users view clients": {
-          "name": "Users view clients",
-          "as": "PERMISSIVE",
-          "for": "SELECT",
-          "to": [
-            "public"
-          ]
-        }
-      },
-      "isRLSEnabled": true
-    },
-    "public.task_assignees": {
-      "name": "task_assignees",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "bigint",
-          "primaryKey": true,
-          "notNull": true,
-          "identity": {
-            "type": "byDefault",
-            "name": "task_assignees_id_seq",
-            "increment": "1",
-            "minValue": "1",
-            "maxValue": "9223372036854775807",
-            "startWith": "1",
-            "cache": "1",
-            "cycle": false,
-            "schema": "public"
-          }
-        },
-        "task_id": {
-          "name": "task_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "user_id": {
-          "name": "user_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "timezone('utc'::text, now())"
-        },
-        "deleted_at": {
-          "name": "deleted_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        }
-      },
-      "indexes": {
-        "idx_task_assignees_user": {
-          "name": "idx_task_assignees_user",
-          "columns": [
-            {
-              "expression": "user_id",
-              "asc": true,
-              "nulls": "last",
-              "opclass": "uuid_ops",
-              "isExpression": false
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "where": "(deleted_at IS NULL)",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "task_assignees_task_id_fkey": {
-          "name": "task_assignees_task_id_fkey",
-          "tableFrom": "task_assignees",
-          "tableTo": "tasks",
-          "schemaTo": "public",
-          "columnsFrom": [
-            "task_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "task_assignees_user_id_fkey": {
-          "name": "task_assignees_user_id_fkey",
-          "tableFrom": "task_assignees",
-          "tableTo": "users",
-          "schemaTo": "public",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "task_assignees_task_id_user_id_key": {
-          "columns": [
-            "task_id",
-            "user_id"
-          ],
-          "nullsNotDistinct": false,
-          "name": "task_assignees_task_id_user_id_key"
-        }
-      },
-      "checkConstraints": {},
-      "policies": {
-        "Admins manage task assignees": {
-          "name": "Admins manage task assignees",
-          "as": "PERMISSIVE",
-          "for": "ALL",
-          "to": [
-            "public"
-          ],
-          "withCheck": "is_admin()",
-          "using": "is_admin()"
-        },
-        "Users view task assignees": {
-          "name": "Users view task assignees",
-          "as": "PERMISSIVE",
-          "for": "SELECT",
-          "to": [
-            "public"
-          ]
-        }
-      },
-      "isRLSEnabled": true
-    },
-    "public.hour_blocks": {
-      "name": "hour_blocks",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "hours_purchased": {
-          "name": "hours_purchased",
-          "type": "numeric(6, 2)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_by": {
-          "name": "created_by",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "timezone('utc'::text, now())"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "timezone('utc'::text, now())"
-        },
-        "deleted_at": {
-          "name": "deleted_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "invoice_number": {
-          "name": "invoice_number",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "client_id": {
-          "name": "client_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        }
-      },
-      "indexes": {
-        "idx_hour_blocks_client_id": {
-          "name": "idx_hour_blocks_client_id",
-          "columns": [
-            {
-              "expression": "client_id",
-              "asc": true,
-              "nulls": "last",
-              "opclass": "uuid_ops",
-              "isExpression": false
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "where": "(deleted_at IS NULL)",
-          "with": {}
-        },
-        "idx_hour_blocks_created_by": {
-          "name": "idx_hour_blocks_created_by",
-          "columns": [
-            {
-              "expression": "created_by",
-              "asc": true,
-              "nulls": "last",
-              "opclass": "uuid_ops",
-              "isExpression": false
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "where": "(deleted_at IS NULL)",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "hour_blocks_created_by_fkey": {
-          "name": "hour_blocks_created_by_fkey",
-          "tableFrom": "hour_blocks",
-          "tableTo": "users",
-          "schemaTo": "public",
-          "columnsFrom": [
-            "created_by"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "hour_blocks_client_id_fkey": {
-          "name": "hour_blocks_client_id_fkey",
-          "tableFrom": "hour_blocks",
-          "tableTo": "clients",
-          "schemaTo": "public",
-          "columnsFrom": [
-            "client_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "checkConstraints": {
-        "hour_blocks_invoice_number_format": {
-          "name": "hour_blocks_invoice_number_format",
-          "value": "(invoice_number IS NULL) OR (invoice_number ~ '^[A-Za-z0-9-]+$'::text)"
-        }
-      },
-      "policies": {
-        "Admins delete hour blocks": {
-          "name": "Admins delete hour blocks",
-          "as": "PERMISSIVE",
-          "for": "DELETE",
-          "to": [
-            "public"
-          ],
-          "using": "is_admin()"
-        },
-        "Admins insert hour blocks": {
-          "name": "Admins insert hour blocks",
-          "as": "PERMISSIVE",
-          "for": "INSERT",
-          "to": [
-            "public"
-          ]
-        },
-        "Admins update hour blocks": {
-          "name": "Admins update hour blocks",
-          "as": "PERMISSIVE",
-          "for": "UPDATE",
-          "to": [
-            "public"
-          ]
-        },
-        "Users view hour blocks": {
-          "name": "Users view hour blocks",
-          "as": "PERMISSIVE",
-          "for": "SELECT",
-          "to": [
-            "public"
-          ]
-        }
-      },
-      "isRLSEnabled": true
-    },
-    "public.client_members": {
-      "name": "client_members",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "bigint",
-          "primaryKey": true,
-          "notNull": true,
-          "identity": {
-            "type": "byDefault",
-            "name": "client_members_id_seq",
-            "increment": "1",
-            "minValue": "1",
-            "maxValue": "9223372036854775807",
-            "startWith": "1",
-            "cache": "1",
-            "cycle": false,
-            "schema": "public"
-          }
-        },
-        "client_id": {
-          "name": "client_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "user_id": {
-          "name": "user_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "timezone('utc'::text, now())"
-        },
-        "deleted_at": {
-          "name": "deleted_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        }
-      },
-      "indexes": {
-        "idx_client_members_client": {
-          "name": "idx_client_members_client",
-          "columns": [
-            {
-              "expression": "client_id",
-              "asc": true,
-              "nulls": "last",
-              "opclass": "uuid_ops",
-              "isExpression": false
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "where": "(deleted_at IS NULL)",
-          "with": {}
-        },
-        "idx_client_members_user": {
-          "name": "idx_client_members_user",
-          "columns": [
-            {
-              "expression": "user_id",
-              "asc": true,
-              "nulls": "last",
-              "opclass": "uuid_ops",
-              "isExpression": false
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "where": "(deleted_at IS NULL)",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "client_members_client_id_fkey": {
-          "name": "client_members_client_id_fkey",
-          "tableFrom": "client_members",
-          "tableTo": "clients",
-          "schemaTo": "public",
-          "columnsFrom": [
-            "client_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "client_members_user_id_fkey": {
-          "name": "client_members_user_id_fkey",
-          "tableFrom": "client_members",
-          "tableTo": "users",
-          "schemaTo": "public",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "client_members_client_id_user_id_key": {
-          "columns": [
-            "client_id",
-            "user_id"
-          ],
-          "nullsNotDistinct": false,
-          "name": "client_members_client_id_user_id_key"
-        }
-      },
-      "checkConstraints": {},
-      "policies": {
-        "Admins delete client members": {
-          "name": "Admins delete client members",
-          "as": "PERMISSIVE",
-          "for": "DELETE",
-          "to": [
-            "public"
-          ],
-          "using": "is_admin()"
-        },
-        "Admins insert client members": {
-          "name": "Admins insert client members",
-          "as": "PERMISSIVE",
-          "for": "INSERT",
-          "to": [
-            "public"
-          ]
-        },
-        "Admins update client members": {
-          "name": "Admins update client members",
-          "as": "PERMISSIVE",
-          "for": "UPDATE",
-          "to": [
-            "public"
-          ]
-        },
-        "Users view client members": {
-          "name": "Users view client members",
-          "as": "PERMISSIVE",
-          "for": "SELECT",
-          "to": [
-            "public"
-          ]
-        }
-      },
-      "isRLSEnabled": true
-    },
-    "public.projects": {
-      "name": "projects",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "client_id": {
-          "name": "client_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "name": {
-          "name": "name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "status": {
-          "name": "status",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'active'"
-        },
-        "starts_on": {
-          "name": "starts_on",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "ends_on": {
-          "name": "ends_on",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_by": {
-          "name": "created_by",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "timezone('utc'::text, now())"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "timezone('utc'::text, now())"
-        },
-        "deleted_at": {
-          "name": "deleted_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "slug": {
-          "name": "slug",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        }
-      },
-      "indexes": {
-        "idx_projects_client": {
-          "name": "idx_projects_client",
-          "columns": [
-            {
-              "expression": "client_id",
-              "asc": true,
-              "nulls": "last",
-              "opclass": "uuid_ops",
-              "isExpression": false
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "where": "(deleted_at IS NULL)",
-          "with": {}
-        },
-        "idx_projects_created_by": {
-          "name": "idx_projects_created_by",
-          "columns": [
-            {
-              "expression": "created_by",
-              "asc": true,
-              "nulls": "last",
-              "opclass": "uuid_ops",
-              "isExpression": false
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "where": "(deleted_at IS NULL)",
-          "with": {}
-        },
-        "idx_projects_slug": {
-          "name": "idx_projects_slug",
-          "columns": [
-            {
-              "expression": "slug",
-              "asc": true,
-              "nulls": "last",
-              "opclass": "text_ops",
-              "isExpression": false
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "where": "(slug IS NOT NULL)",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "projects_client_id_fkey": {
-          "name": "projects_client_id_fkey",
-          "tableFrom": "projects",
-          "tableTo": "clients",
-          "schemaTo": "public",
-          "columnsFrom": [
-            "client_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "projects_created_by_fkey": {
-          "name": "projects_created_by_fkey",
-          "tableFrom": "projects",
-          "tableTo": "users",
-          "schemaTo": "public",
-          "columnsFrom": [
-            "created_by"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "checkConstraints": {},
-      "policies": {
-        "Admins delete projects": {
-          "name": "Admins delete projects",
-          "as": "PERMISSIVE",
-          "for": "DELETE",
-          "to": [
-            "public"
-          ],
-          "using": "is_admin()"
-        },
-        "Users create projects": {
-          "name": "Users create projects",
-          "as": "PERMISSIVE",
-          "for": "INSERT",
-          "to": [
-            "public"
-          ]
-        },
-        "Users update projects": {
-          "name": "Users update projects",
-          "as": "PERMISSIVE",
-          "for": "UPDATE",
-          "to": [
-            "public"
-          ]
-        },
-        "Users view projects": {
-          "name": "Users view projects",
-          "as": "PERMISSIVE",
-          "for": "SELECT",
-          "to": [
-            "public"
-          ]
-        }
-      },
-      "isRLSEnabled": true
-    },
-    "public.task_comments": {
-      "name": "task_comments",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "task_id": {
-          "name": "task_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "author_id": {
-          "name": "author_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "body": {
-          "name": "body",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "timezone('utc'::text, now())"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "timezone('utc'::text, now())"
-        },
-        "deleted_at": {
-          "name": "deleted_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        }
-      },
-      "indexes": {
-        "idx_task_comments_author_id": {
-          "name": "idx_task_comments_author_id",
-          "columns": [
-            {
-              "expression": "author_id",
-              "asc": true,
-              "nulls": "last",
-              "opclass": "uuid_ops",
-              "isExpression": false
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "where": "(deleted_at IS NULL)",
-          "with": {}
-        },
-        "idx_task_comments_task": {
-          "name": "idx_task_comments_task",
-          "columns": [
-            {
-              "expression": "task_id",
-              "asc": true,
-              "nulls": "last",
-              "opclass": "uuid_ops",
-              "isExpression": false
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "where": "(deleted_at IS NULL)",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "task_comments_task_id_fkey": {
-          "name": "task_comments_task_id_fkey",
-          "tableFrom": "task_comments",
-          "tableTo": "tasks",
-          "schemaTo": "public",
-          "columnsFrom": [
-            "task_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "task_comments_author_id_fkey": {
-          "name": "task_comments_author_id_fkey",
-          "tableFrom": "task_comments",
-          "tableTo": "users",
-          "schemaTo": "public",
-          "columnsFrom": [
-            "author_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "checkConstraints": {},
-      "policies": {
-        "Admins manage task comments": {
-          "name": "Admins manage task comments",
-          "as": "PERMISSIVE",
-          "for": "ALL",
-          "to": [
-            "public"
-          ],
-          "withCheck": "is_admin()",
-          "using": "is_admin()"
-        },
-        "Users create task comments": {
-          "name": "Users create task comments",
-          "as": "PERMISSIVE",
-          "for": "INSERT",
-          "to": [
-            "public"
-          ]
-        },
-        "Users update task comments": {
-          "name": "Users update task comments",
-          "as": "PERMISSIVE",
-          "for": "UPDATE",
-          "to": [
-            "public"
-          ]
-        },
-        "Users view task comments": {
-          "name": "Users view task comments",
-          "as": "PERMISSIVE",
-          "for": "SELECT",
-          "to": [
-            "public"
-          ]
-        }
-      },
-      "isRLSEnabled": true
-    },
-    "public.time_logs": {
-      "name": "time_logs",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "project_id": {
-          "name": "project_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "user_id": {
-          "name": "user_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "hours": {
-          "name": "hours",
-          "type": "numeric(8, 2)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "logged_on": {
-          "name": "logged_on",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "(timezone('utc'"
-        },
-        "note": {
-          "name": "note",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "timezone('utc'::text, now())"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "timezone('utc'::text, now())"
-        },
-        "deleted_at": {
-          "name": "deleted_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        }
-      },
-      "indexes": {
-        "idx_time_logs_project": {
-          "name": "idx_time_logs_project",
-          "columns": [
-            {
-              "expression": "project_id",
-              "asc": true,
-              "nulls": "last",
-              "opclass": "uuid_ops",
-              "isExpression": false
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "where": "(deleted_at IS NULL)",
-          "with": {}
-        },
-        "idx_time_logs_user_id": {
-          "name": "idx_time_logs_user_id",
-          "columns": [
-            {
-              "expression": "user_id",
-              "asc": true,
-              "nulls": "last",
-              "opclass": "uuid_ops",
-              "isExpression": false
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "where": "(deleted_at IS NULL)",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "time_logs_project_id_fkey": {
-          "name": "time_logs_project_id_fkey",
-          "tableFrom": "time_logs",
-          "tableTo": "projects",
-          "schemaTo": "public",
-          "columnsFrom": [
-            "project_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "time_logs_user_id_fkey": {
-          "name": "time_logs_user_id_fkey",
-          "tableFrom": "time_logs",
-          "tableTo": "users",
-          "schemaTo": "public",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "checkConstraints": {
-        "time_logs_hours_check": {
-          "name": "time_logs_hours_check",
-          "value": "hours > (0)::numeric"
-        }
-      },
-      "policies": {
-        "Admins manage time logs": {
-          "name": "Admins manage time logs",
-          "as": "PERMISSIVE",
-          "for": "ALL",
-          "to": [
-            "public"
-          ],
-          "withCheck": "is_admin()",
-          "using": "is_admin()"
-        },
-        "Users update time logs": {
-          "name": "Users update time logs",
-          "as": "PERMISSIVE",
-          "for": "UPDATE",
-          "to": [
-            "public"
-          ]
-        },
-        "Users view time logs": {
-          "name": "Users view time logs",
-          "as": "PERMISSIVE",
-          "for": "SELECT",
-          "to": [
-            "public"
-          ]
-        }
-      },
-      "isRLSEnabled": true
-    },
-    "public.time_log_tasks": {
-      "name": "time_log_tasks",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "time_log_id": {
-          "name": "time_log_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "task_id": {
-          "name": "task_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "timezone('utc'::text, now())"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "timezone('utc'::text, now())"
-        },
-        "deleted_at": {
-          "name": "deleted_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        }
-      },
-      "indexes": {
-        "idx_time_log_tasks_task_id": {
-          "name": "idx_time_log_tasks_task_id",
-          "columns": [
-            {
-              "expression": "task_id",
-              "asc": true,
-              "nulls": "last",
-              "opclass": "uuid_ops",
-              "isExpression": false
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "where": "(deleted_at IS NULL)",
-          "with": {}
-        },
-        "idx_time_log_tasks_unique": {
-          "name": "idx_time_log_tasks_unique",
-          "columns": [
-            {
-              "expression": "time_log_id",
-              "asc": true,
-              "nulls": "last",
-              "opclass": "uuid_ops",
-              "isExpression": false
-            },
-            {
-              "expression": "task_id",
-              "asc": true,
-              "nulls": "last",
-              "opclass": "uuid_ops",
-              "isExpression": false
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "where": "(deleted_at IS NULL)",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "time_log_tasks_time_log_id_fkey": {
-          "name": "time_log_tasks_time_log_id_fkey",
-          "tableFrom": "time_log_tasks",
-          "tableTo": "time_logs",
-          "schemaTo": "public",
-          "columnsFrom": [
-            "time_log_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "time_log_tasks_task_id_fkey": {
-          "name": "time_log_tasks_task_id_fkey",
-          "tableFrom": "time_log_tasks",
-          "tableTo": "tasks",
-          "schemaTo": "public",
-          "columnsFrom": [
-            "task_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "checkConstraints": {
-        "time_log_tasks_project_match": {
-          "name": "time_log_tasks_project_match",
-          "value": "CHECK (time_log_task_matches_project(time_log_id, task_id"
-        }
-      },
-      "policies": {
-        "Admins manage time log tasks": {
-          "name": "Admins manage time log tasks",
-          "as": "PERMISSIVE",
-          "for": "ALL",
-          "to": [
-            "public"
-          ],
-          "withCheck": "is_admin()",
-          "using": "is_admin()"
-        },
-        "Users view time log tasks": {
-          "name": "Users view time log tasks",
-          "as": "PERMISSIVE",
-          "for": "SELECT",
-          "to": [
-            "public"
-          ]
-        }
-      },
-      "isRLSEnabled": true
-    },
-    "public.task_attachments": {
-      "name": "task_attachments",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "task_id": {
-          "name": "task_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "storage_path": {
-          "name": "storage_path",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "original_name": {
-          "name": "original_name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "mime_type": {
-          "name": "mime_type",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "file_size": {
-          "name": "file_size",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "uploaded_by": {
-          "name": "uploaded_by",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "timezone('utc'::text, now())"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "timezone('utc'::text, now())"
-        },
-        "deleted_at": {
-          "name": "deleted_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        }
-      },
-      "indexes": {
-        "idx_task_attachments_task": {
-          "name": "idx_task_attachments_task",
-          "columns": [
-            {
-              "expression": "task_id",
-              "asc": true,
-              "nulls": "last",
-              "opclass": "uuid_ops",
-              "isExpression": false
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "where": "(deleted_at IS NULL)",
-          "with": {}
-        },
-        "idx_task_attachments_uploaded_by": {
-          "name": "idx_task_attachments_uploaded_by",
-          "columns": [
-            {
-              "expression": "uploaded_by",
-              "asc": true,
-              "nulls": "last",
-              "opclass": "uuid_ops",
-              "isExpression": false
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "where": "(deleted_at IS NULL)",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "task_attachments_task_id_fkey": {
-          "name": "task_attachments_task_id_fkey",
-          "tableFrom": "task_attachments",
-          "tableTo": "tasks",
-          "schemaTo": "public",
-          "columnsFrom": [
-            "task_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "task_attachments_uploaded_by_fkey": {
-          "name": "task_attachments_uploaded_by_fkey",
-          "tableFrom": "task_attachments",
-          "tableTo": "users",
-          "schemaTo": "public",
-          "columnsFrom": [
-            "uploaded_by"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "checkConstraints": {},
-      "policies": {
-        "Admins manage task attachments": {
-          "name": "Admins manage task attachments",
-          "as": "PERMISSIVE",
-          "for": "ALL",
-          "to": [
-            "public"
-          ],
-          "withCheck": "is_admin()",
-          "using": "is_admin()"
-        },
-        "Users create task attachments": {
-          "name": "Users create task attachments",
-          "as": "PERMISSIVE",
-          "for": "INSERT",
-          "to": [
-            "public"
-          ]
-        },
-        "Users view task attachments": {
-          "name": "Users view task attachments",
-          "as": "PERMISSIVE",
-          "for": "SELECT",
-          "to": [
-            "public"
-          ]
-        }
-      },
-      "isRLSEnabled": true
-    },
-    "public.activity_overview_cache": {
-      "name": "activity_overview_cache",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "user_id": {
-          "name": "user_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "timeframe_days": {
-          "name": "timeframe_days",
-          "type": "smallint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "summary": {
-          "name": "summary",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "cached_at": {
-          "name": "cached_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "timezone('utc'::text, now())"
-        },
-        "expires_at": {
-          "name": "expires_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "timezone('utc'::text, now())"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "timezone('utc'::text, now())"
-        }
-      },
-      "indexes": {
-        "activity_overview_cache_user_timeframe_idx": {
-          "name": "activity_overview_cache_user_timeframe_idx",
-          "columns": [
-            {
-              "expression": "user_id",
-              "asc": true,
-              "nulls": "last",
-              "opclass": "int2_ops",
-              "isExpression": false
-            },
-            {
-              "expression": "timeframe_days",
-              "asc": true,
-              "nulls": "last",
-              "opclass": "int2_ops",
-              "isExpression": false
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "activity_overview_cache_user_id_fkey": {
-          "name": "activity_overview_cache_user_id_fkey",
-          "tableFrom": "activity_overview_cache",
-          "tableTo": "users",
-          "schemaTo": "public",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "checkConstraints": {
-        "activity_overview_cache_timeframe_days_check": {
-          "name": "activity_overview_cache_timeframe_days_check",
-          "value": "timeframe_days = ANY (ARRAY[7, 14, 28])"
-        }
-      },
-      "policies": {
-        "Users can delete their cached activity overview": {
-          "name": "Users can delete their cached activity overview",
-          "as": "PERMISSIVE",
-          "for": "DELETE",
-          "to": [
-            "public"
-          ],
-          "using": "(( SELECT auth.uid() AS uid) = user_id)"
-        },
-        "Users can insert their cached activity overview": {
-          "name": "Users can insert their cached activity overview",
-          "as": "PERMISSIVE",
-          "for": "INSERT",
-          "to": [
-            "public"
-          ]
-        },
-        "Users can update their cached activity overview": {
-          "name": "Users can update their cached activity overview",
-          "as": "PERMISSIVE",
-          "for": "UPDATE",
-          "to": [
-            "public"
-          ]
-        },
-        "Users can view their cached activity overview": {
-          "name": "Users can view their cached activity overview",
-          "as": "PERMISSIVE",
-          "for": "SELECT",
-          "to": [
-            "public"
-          ]
-        }
-      },
-      "isRLSEnabled": true
-    },
-    "public.tasks": {
-      "name": "tasks",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "project_id": {
-          "name": "project_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "title": {
-          "name": "title",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "description": {
-          "name": "description",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "status": {
-          "name": "status",
-          "type": "task_status",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'BACKLOG'"
-        },
-        "due_on": {
-          "name": "due_on",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_by": {
-          "name": "created_by",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "updated_by": {
-          "name": "updated_by",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "timezone('utc'::text, now())"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "timezone('utc'::text, now())"
-        },
-        "deleted_at": {
-          "name": "deleted_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "accepted_at": {
-          "name": "accepted_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "rank": {
-          "name": "rank",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'zzzzzzzz'"
-        }
-      },
-      "indexes": {
-        "idx_tasks_created_by": {
-          "name": "idx_tasks_created_by",
-          "columns": [
-            {
-              "expression": "created_by",
-              "asc": true,
-              "nulls": "last",
-              "opclass": "uuid_ops",
-              "isExpression": false
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "where": "(deleted_at IS NULL)",
-          "with": {}
-        },
-        "idx_tasks_project": {
-          "name": "idx_tasks_project",
-          "columns": [
-            {
-              "expression": "project_id",
-              "asc": true,
-              "nulls": "last",
-              "opclass": "uuid_ops",
-              "isExpression": false
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "where": "(deleted_at IS NULL)",
-          "with": {}
-        },
-        "idx_tasks_project_status_rank": {
-          "name": "idx_tasks_project_status_rank",
-          "columns": [
-            {
-              "expression": "project_id",
-              "asc": true,
-              "nulls": "last",
-              "opclass": "enum_ops",
-              "isExpression": false
-            },
-            {
-              "expression": "status",
-              "asc": true,
-              "nulls": "last",
-              "opclass": "text_ops",
-              "isExpression": false
-            },
-            {
-              "expression": "rank",
-              "asc": true,
-              "nulls": "last",
-              "opclass": "enum_ops",
-              "isExpression": false
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "idx_tasks_status": {
-          "name": "idx_tasks_status",
-          "columns": [
-            {
-              "expression": "status",
-              "asc": true,
-              "nulls": "last",
-              "opclass": "enum_ops",
-              "isExpression": false
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "where": "(deleted_at IS NULL)",
-          "with": {}
-        },
-        "idx_tasks_updated_by": {
-          "name": "idx_tasks_updated_by",
-          "columns": [
-            {
-              "expression": "updated_by",
-              "asc": true,
-              "nulls": "last",
-              "opclass": "uuid_ops",
-              "isExpression": false
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "where": "(deleted_at IS NULL)",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "tasks_project_id_fkey": {
-          "name": "tasks_project_id_fkey",
-          "tableFrom": "tasks",
-          "tableTo": "projects",
-          "schemaTo": "public",
-          "columnsFrom": [
-            "project_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "tasks_created_by_fkey": {
-          "name": "tasks_created_by_fkey",
-          "tableFrom": "tasks",
-          "tableTo": "users",
-          "schemaTo": "public",
-          "columnsFrom": [
-            "created_by"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "tasks_updated_by_fkey": {
-          "name": "tasks_updated_by_fkey",
-          "tableFrom": "tasks",
-          "tableTo": "users",
-          "schemaTo": "public",
-          "columnsFrom": [
-            "updated_by"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "checkConstraints": {},
-      "policies": {
-        "Users create tasks": {
-          "name": "Users create tasks",
-          "as": "PERMISSIVE",
-          "for": "INSERT",
-          "to": [
-            "public"
-          ],
-          "withCheck": "is_admin()"
-        },
-        "Users delete tasks": {
-          "name": "Users delete tasks",
-          "as": "PERMISSIVE",
-          "for": "DELETE",
-          "to": [
-            "public"
-          ]
-        },
-        "Users update tasks": {
-          "name": "Users update tasks",
-          "as": "PERMISSIVE",
-          "for": "UPDATE",
-          "to": [
-            "public"
-          ]
-        },
-        "Users view tasks": {
-          "name": "Users view tasks",
-          "as": "PERMISSIVE",
-          "for": "SELECT",
-          "to": [
-            "public"
-          ]
-        }
-      },
-      "isRLSEnabled": true
-    },
-    "public.users": {
-      "name": "users",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "email": {
-          "name": "email",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "full_name": {
-          "name": "full_name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "role": {
-          "name": "role",
-          "type": "user_role",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'CLIENT'"
-        },
-        "avatar_url": {
-          "name": "avatar_url",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "timezone('utc'::text, now())"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "timezone('utc'::text, now())"
-        },
-        "deleted_at": {
-          "name": "deleted_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "users_id_fkey": {
-          "name": "users_id_fkey",
-          "tableFrom": "users",
-          "tableTo": "users",
-          "schemaTo": "auth",
-          "columnsFrom": [
-            "id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "users_email_key": {
-          "columns": [
-            "email"
-          ],
-          "nullsNotDistinct": false,
-          "name": "users_email_key"
-        }
-      },
-      "checkConstraints": {},
-      "policies": {
-        "Admins delete users": {
-          "name": "Admins delete users",
-          "as": "PERMISSIVE",
-          "for": "DELETE",
-          "to": [
-            "public"
-          ],
-          "using": "is_admin()"
-        },
-        "Admins insert users": {
-          "name": "Admins insert users",
-          "as": "PERMISSIVE",
-          "for": "INSERT",
-          "to": [
-            "public"
-          ]
-        },
-        "Admins update users": {
-          "name": "Admins update users",
-          "as": "PERMISSIVE",
-          "for": "UPDATE",
-          "to": [
-            "public"
-          ]
-        },
-        "Users view accessible users": {
-          "name": "Users view accessible users",
-          "as": "PERMISSIVE",
-          "for": "SELECT",
-          "to": [
-            "public"
-          ]
-        }
-      },
-      "isRLSEnabled": true
-    },
     "public.activity_logs": {
       "name": "activity_logs",
       "schema": "",
@@ -2082,16 +110,16 @@
           "columns": [
             {
               "expression": "actor_id",
+              "isExpression": false,
               "asc": true,
               "nulls": "last",
-              "opclass": "uuid_ops",
-              "isExpression": false
+              "opclass": "uuid_ops"
             }
           ],
           "isUnique": false,
+          "where": "(deleted_at IS NULL)",
           "concurrently": false,
           "method": "btree",
-          "where": "(deleted_at IS NULL)",
           "with": {}
         },
         "idx_activity_logs_client": {
@@ -2099,23 +127,23 @@
           "columns": [
             {
               "expression": "target_client_id",
+              "isExpression": false,
               "asc": true,
               "nulls": "last",
-              "opclass": "timestamptz_ops",
-              "isExpression": false
+              "opclass": "uuid_ops"
             },
             {
               "expression": "created_at",
+              "isExpression": false,
               "asc": false,
               "nulls": "first",
-              "opclass": "timestamptz_ops",
-              "isExpression": false
+              "opclass": "timestamptz_ops"
             }
           ],
           "isUnique": false,
+          "where": "(deleted_at IS NULL)",
           "concurrently": false,
           "method": "btree",
-          "where": "(deleted_at IS NULL)",
           "with": {}
         },
         "idx_activity_logs_created_at": {
@@ -2123,10 +151,10 @@
           "columns": [
             {
               "expression": "created_at",
+              "isExpression": false,
               "asc": false,
               "nulls": "first",
-              "opclass": "timestamptz_ops",
-              "isExpression": false
+              "opclass": "timestamptz_ops"
             }
           ],
           "isUnique": false,
@@ -2139,23 +167,23 @@
           "columns": [
             {
               "expression": "target_project_id",
+              "isExpression": false,
               "asc": true,
               "nulls": "last",
-              "opclass": "timestamptz_ops",
-              "isExpression": false
+              "opclass": "uuid_ops"
             },
             {
               "expression": "created_at",
+              "isExpression": false,
               "asc": false,
               "nulls": "first",
-              "opclass": "timestamptz_ops",
-              "isExpression": false
+              "opclass": "timestamptz_ops"
             }
           ],
           "isUnique": false,
+          "where": "(deleted_at IS NULL)",
           "concurrently": false,
           "method": "btree",
-          "where": "(deleted_at IS NULL)",
           "with": {}
         },
         "idx_activity_logs_target": {
@@ -2163,23 +191,23 @@
           "columns": [
             {
               "expression": "target_type",
+              "isExpression": false,
               "asc": true,
               "nulls": "last",
-              "opclass": "text_ops",
-              "isExpression": false
+              "opclass": "text_ops"
             },
             {
               "expression": "target_id",
+              "isExpression": false,
               "asc": true,
               "nulls": "last",
-              "opclass": "uuid_ops",
-              "isExpression": false
+              "opclass": "uuid_ops"
             }
           ],
           "isUnique": false,
+          "where": "(deleted_at IS NULL)",
           "concurrently": false,
           "method": "btree",
-          "where": "(deleted_at IS NULL)",
           "with": {}
         }
       },
@@ -2188,7 +216,6 @@
           "name": "activity_logs_actor_id_fkey",
           "tableFrom": "activity_logs",
           "tableTo": "users",
-          "schemaTo": "public",
           "columnsFrom": [
             "actor_id"
           ],
@@ -2201,7 +228,6 @@
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
-      "checkConstraints": {},
       "policies": {
         "Admins delete activity logs": {
           "name": "Admins delete activity logs",
@@ -2237,12 +263,1964 @@
           ]
         }
       },
-      "isRLSEnabled": true
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.activity_overview_cache": {
+      "name": "activity_overview_cache",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "timeframe_days": {
+          "name": "timeframe_days",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "summary": {
+          "name": "summary",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "cached_at": {
+          "name": "cached_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "timezone('utc'::text, now())"
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "timezone('utc'::text, now())"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "timezone('utc'::text, now())"
+        }
+      },
+      "indexes": {
+        "activity_overview_cache_user_timeframe_idx": {
+          "name": "activity_overview_cache_user_timeframe_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last",
+              "opclass": "uuid_ops"
+            },
+            {
+              "expression": "timeframe_days",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last",
+              "opclass": "int2_ops"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "activity_overview_cache_user_id_fkey": {
+          "name": "activity_overview_cache_user_id_fkey",
+          "tableFrom": "activity_overview_cache",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {
+        "Users can delete their cached activity overview": {
+          "name": "Users can delete their cached activity overview",
+          "as": "PERMISSIVE",
+          "for": "DELETE",
+          "to": [
+            "public"
+          ],
+          "using": "(( SELECT auth.uid() AS uid) = user_id)"
+        },
+        "Users can insert their cached activity overview": {
+          "name": "Users can insert their cached activity overview",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": [
+            "public"
+          ]
+        },
+        "Users can update their cached activity overview": {
+          "name": "Users can update their cached activity overview",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": [
+            "public"
+          ]
+        },
+        "Users can view their cached activity overview": {
+          "name": "Users can view their cached activity overview",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "public"
+          ]
+        }
+      },
+      "checkConstraints": {
+        "activity_overview_cache_timeframe_days_check": {
+          "name": "activity_overview_cache_timeframe_days_check",
+          "value": "timeframe_days = ANY (ARRAY[7, 14, 28])"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.client_members": {
+      "name": "client_members",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "bigint",
+          "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "type": "byDefault",
+            "name": "client_members_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "9223372036854776000",
+            "cache": "1",
+            "cycle": false
+          }
+        },
+        "client_id": {
+          "name": "client_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "timezone('utc'::text, now())"
+        },
+        "deleted_at": {
+          "name": "deleted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "idx_client_members_client": {
+          "name": "idx_client_members_client",
+          "columns": [
+            {
+              "expression": "client_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last",
+              "opclass": "uuid_ops"
+            }
+          ],
+          "isUnique": false,
+          "where": "(deleted_at IS NULL)",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_client_members_user": {
+          "name": "idx_client_members_user",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last",
+              "opclass": "uuid_ops"
+            }
+          ],
+          "isUnique": false,
+          "where": "(deleted_at IS NULL)",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "client_members_client_id_fkey": {
+          "name": "client_members_client_id_fkey",
+          "tableFrom": "client_members",
+          "tableTo": "clients",
+          "columnsFrom": [
+            "client_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "client_members_user_id_fkey": {
+          "name": "client_members_user_id_fkey",
+          "tableFrom": "client_members",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "client_members_client_id_user_id_key": {
+          "name": "client_members_client_id_user_id_key",
+          "nullsNotDistinct": false,
+          "columns": [
+            "client_id",
+            "user_id"
+          ]
+        }
+      },
+      "policies": {
+        "Admins delete client members": {
+          "name": "Admins delete client members",
+          "as": "PERMISSIVE",
+          "for": "DELETE",
+          "to": [
+            "public"
+          ],
+          "using": "is_admin()"
+        },
+        "Admins insert client members": {
+          "name": "Admins insert client members",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": [
+            "public"
+          ]
+        },
+        "Admins update client members": {
+          "name": "Admins update client members",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": [
+            "public"
+          ]
+        },
+        "Users view client members": {
+          "name": "Users view client members",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "public"
+          ]
+        }
+      },
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.clients": {
+      "name": "clients",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "slug": {
+          "name": "slug",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_by": {
+          "name": "created_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "timezone('utc'::text, now())"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "timezone('utc'::text, now())"
+        },
+        "deleted_at": {
+          "name": "deleted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "idx_clients_created_by": {
+          "name": "idx_clients_created_by",
+          "columns": [
+            {
+              "expression": "created_by",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last",
+              "opclass": "uuid_ops"
+            }
+          ],
+          "isUnique": false,
+          "where": "(deleted_at IS NULL)",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "clients_created_by_fkey": {
+          "name": "clients_created_by_fkey",
+          "tableFrom": "clients",
+          "tableTo": "users",
+          "columnsFrom": [
+            "created_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "clients_slug_key": {
+          "name": "clients_slug_key",
+          "nullsNotDistinct": false,
+          "columns": [
+            "slug"
+          ]
+        }
+      },
+      "policies": {
+        "Admins delete clients": {
+          "name": "Admins delete clients",
+          "as": "PERMISSIVE",
+          "for": "DELETE",
+          "to": [
+            "public"
+          ],
+          "using": "is_admin()"
+        },
+        "Admins insert clients": {
+          "name": "Admins insert clients",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": [
+            "public"
+          ]
+        },
+        "Admins update clients": {
+          "name": "Admins update clients",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": [
+            "public"
+          ]
+        },
+        "Users view clients": {
+          "name": "Users view clients",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "public"
+          ]
+        }
+      },
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.hour_blocks": {
+      "name": "hour_blocks",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "hours_purchased": {
+          "name": "hours_purchased",
+          "type": "numeric(6, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_by": {
+          "name": "created_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "timezone('utc'::text, now())"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "timezone('utc'::text, now())"
+        },
+        "deleted_at": {
+          "name": "deleted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "invoice_number": {
+          "name": "invoice_number",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "client_id": {
+          "name": "client_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "idx_hour_blocks_client_id": {
+          "name": "idx_hour_blocks_client_id",
+          "columns": [
+            {
+              "expression": "client_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last",
+              "opclass": "uuid_ops"
+            }
+          ],
+          "isUnique": false,
+          "where": "(deleted_at IS NULL)",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_hour_blocks_created_by": {
+          "name": "idx_hour_blocks_created_by",
+          "columns": [
+            {
+              "expression": "created_by",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last",
+              "opclass": "uuid_ops"
+            }
+          ],
+          "isUnique": false,
+          "where": "(deleted_at IS NULL)",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "hour_blocks_created_by_fkey": {
+          "name": "hour_blocks_created_by_fkey",
+          "tableFrom": "hour_blocks",
+          "tableTo": "users",
+          "columnsFrom": [
+            "created_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "hour_blocks_client_id_fkey": {
+          "name": "hour_blocks_client_id_fkey",
+          "tableFrom": "hour_blocks",
+          "tableTo": "clients",
+          "columnsFrom": [
+            "client_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {
+        "Admins delete hour blocks": {
+          "name": "Admins delete hour blocks",
+          "as": "PERMISSIVE",
+          "for": "DELETE",
+          "to": [
+            "public"
+          ],
+          "using": "is_admin()"
+        },
+        "Admins insert hour blocks": {
+          "name": "Admins insert hour blocks",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": [
+            "public"
+          ]
+        },
+        "Admins update hour blocks": {
+          "name": "Admins update hour blocks",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": [
+            "public"
+          ]
+        },
+        "Users view hour blocks": {
+          "name": "Users view hour blocks",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "public"
+          ]
+        }
+      },
+      "checkConstraints": {
+        "hour_blocks_invoice_number_format": {
+          "name": "hour_blocks_invoice_number_format",
+          "value": "(invoice_number IS NULL) OR (invoice_number ~ '^[A-Za-z0-9-]+$'::text)"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.projects": {
+      "name": "projects",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "client_id": {
+          "name": "client_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'active'"
+        },
+        "starts_on": {
+          "name": "starts_on",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ends_on": {
+          "name": "ends_on",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_by": {
+          "name": "created_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "timezone('utc'::text, now())"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "timezone('utc'::text, now())"
+        },
+        "deleted_at": {
+          "name": "deleted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "slug": {
+          "name": "slug",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "idx_projects_client": {
+          "name": "idx_projects_client",
+          "columns": [
+            {
+              "expression": "client_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last",
+              "opclass": "uuid_ops"
+            }
+          ],
+          "isUnique": false,
+          "where": "(deleted_at IS NULL)",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_projects_created_by": {
+          "name": "idx_projects_created_by",
+          "columns": [
+            {
+              "expression": "created_by",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last",
+              "opclass": "uuid_ops"
+            }
+          ],
+          "isUnique": false,
+          "where": "(deleted_at IS NULL)",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_projects_slug": {
+          "name": "idx_projects_slug",
+          "columns": [
+            {
+              "expression": "slug",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last",
+              "opclass": "text_ops"
+            }
+          ],
+          "isUnique": true,
+          "where": "(slug IS NOT NULL)",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "projects_client_id_fkey": {
+          "name": "projects_client_id_fkey",
+          "tableFrom": "projects",
+          "tableTo": "clients",
+          "columnsFrom": [
+            "client_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "projects_created_by_fkey": {
+          "name": "projects_created_by_fkey",
+          "tableFrom": "projects",
+          "tableTo": "users",
+          "columnsFrom": [
+            "created_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {
+        "Admins delete projects": {
+          "name": "Admins delete projects",
+          "as": "PERMISSIVE",
+          "for": "DELETE",
+          "to": [
+            "public"
+          ],
+          "using": "is_admin()"
+        },
+        "Users create projects": {
+          "name": "Users create projects",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": [
+            "public"
+          ]
+        },
+        "Users update projects": {
+          "name": "Users update projects",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": [
+            "public"
+          ]
+        },
+        "Users view projects": {
+          "name": "Users view projects",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "public"
+          ]
+        }
+      },
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.task_assignees": {
+      "name": "task_assignees",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "bigint",
+          "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "type": "byDefault",
+            "name": "task_assignees_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "9223372036854776000",
+            "cache": "1",
+            "cycle": false
+          }
+        },
+        "task_id": {
+          "name": "task_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "timezone('utc'::text, now())"
+        },
+        "deleted_at": {
+          "name": "deleted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "idx_task_assignees_user": {
+          "name": "idx_task_assignees_user",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last",
+              "opclass": "uuid_ops"
+            }
+          ],
+          "isUnique": false,
+          "where": "(deleted_at IS NULL)",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "task_assignees_task_id_fkey": {
+          "name": "task_assignees_task_id_fkey",
+          "tableFrom": "task_assignees",
+          "tableTo": "tasks",
+          "columnsFrom": [
+            "task_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "task_assignees_user_id_fkey": {
+          "name": "task_assignees_user_id_fkey",
+          "tableFrom": "task_assignees",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "task_assignees_task_id_user_id_key": {
+          "name": "task_assignees_task_id_user_id_key",
+          "nullsNotDistinct": false,
+          "columns": [
+            "task_id",
+            "user_id"
+          ]
+        }
+      },
+      "policies": {
+        "Admins manage task assignees": {
+          "name": "Admins manage task assignees",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": [
+            "public"
+          ],
+          "using": "is_admin()",
+          "withCheck": "is_admin()"
+        },
+        "Users view task assignees": {
+          "name": "Users view task assignees",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "public"
+          ]
+        }
+      },
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.task_attachments": {
+      "name": "task_attachments",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "task_id": {
+          "name": "task_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "storage_path": {
+          "name": "storage_path",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "original_name": {
+          "name": "original_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "mime_type": {
+          "name": "mime_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "file_size": {
+          "name": "file_size",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "uploaded_by": {
+          "name": "uploaded_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "timezone('utc'::text, now())"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "timezone('utc'::text, now())"
+        },
+        "deleted_at": {
+          "name": "deleted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "idx_task_attachments_task": {
+          "name": "idx_task_attachments_task",
+          "columns": [
+            {
+              "expression": "task_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last",
+              "opclass": "uuid_ops"
+            }
+          ],
+          "isUnique": false,
+          "where": "(deleted_at IS NULL)",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_task_attachments_uploaded_by": {
+          "name": "idx_task_attachments_uploaded_by",
+          "columns": [
+            {
+              "expression": "uploaded_by",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last",
+              "opclass": "uuid_ops"
+            }
+          ],
+          "isUnique": false,
+          "where": "(deleted_at IS NULL)",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "task_attachments_task_id_fkey": {
+          "name": "task_attachments_task_id_fkey",
+          "tableFrom": "task_attachments",
+          "tableTo": "tasks",
+          "columnsFrom": [
+            "task_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "task_attachments_uploaded_by_fkey": {
+          "name": "task_attachments_uploaded_by_fkey",
+          "tableFrom": "task_attachments",
+          "tableTo": "users",
+          "columnsFrom": [
+            "uploaded_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {
+        "Admins manage task attachments": {
+          "name": "Admins manage task attachments",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": [
+            "public"
+          ],
+          "using": "is_admin()",
+          "withCheck": "is_admin()"
+        },
+        "Users create task attachments": {
+          "name": "Users create task attachments",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": [
+            "public"
+          ]
+        },
+        "Users view task attachments": {
+          "name": "Users view task attachments",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "public"
+          ]
+        }
+      },
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.task_comments": {
+      "name": "task_comments",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "task_id": {
+          "name": "task_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "author_id": {
+          "name": "author_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "body": {
+          "name": "body",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "timezone('utc'::text, now())"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "timezone('utc'::text, now())"
+        },
+        "deleted_at": {
+          "name": "deleted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "idx_task_comments_author_id": {
+          "name": "idx_task_comments_author_id",
+          "columns": [
+            {
+              "expression": "author_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last",
+              "opclass": "uuid_ops"
+            }
+          ],
+          "isUnique": false,
+          "where": "(deleted_at IS NULL)",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_task_comments_task": {
+          "name": "idx_task_comments_task",
+          "columns": [
+            {
+              "expression": "task_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last",
+              "opclass": "uuid_ops"
+            }
+          ],
+          "isUnique": false,
+          "where": "(deleted_at IS NULL)",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "task_comments_task_id_fkey": {
+          "name": "task_comments_task_id_fkey",
+          "tableFrom": "task_comments",
+          "tableTo": "tasks",
+          "columnsFrom": [
+            "task_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "task_comments_author_id_fkey": {
+          "name": "task_comments_author_id_fkey",
+          "tableFrom": "task_comments",
+          "tableTo": "users",
+          "columnsFrom": [
+            "author_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {
+        "Admins manage task comments": {
+          "name": "Admins manage task comments",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": [
+            "public"
+          ],
+          "using": "is_admin()",
+          "withCheck": "is_admin()"
+        },
+        "Users create task comments": {
+          "name": "Users create task comments",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": [
+            "public"
+          ]
+        },
+        "Users update task comments": {
+          "name": "Users update task comments",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": [
+            "public"
+          ]
+        },
+        "Users view task comments": {
+          "name": "Users view task comments",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "public"
+          ]
+        }
+      },
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.tasks": {
+      "name": "tasks",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "project_id": {
+          "name": "project_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "task_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'BACKLOG'"
+        },
+        "due_on": {
+          "name": "due_on",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_by": {
+          "name": "created_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "updated_by": {
+          "name": "updated_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "timezone('utc'::text, now())"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "timezone('utc'::text, now())"
+        },
+        "deleted_at": {
+          "name": "deleted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "accepted_at": {
+          "name": "accepted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rank": {
+          "name": "rank",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'zzzzzzzz'"
+        }
+      },
+      "indexes": {
+        "idx_tasks_created_by": {
+          "name": "idx_tasks_created_by",
+          "columns": [
+            {
+              "expression": "created_by",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last",
+              "opclass": "uuid_ops"
+            }
+          ],
+          "isUnique": false,
+          "where": "(deleted_at IS NULL)",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_tasks_project": {
+          "name": "idx_tasks_project",
+          "columns": [
+            {
+              "expression": "project_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last",
+              "opclass": "uuid_ops"
+            }
+          ],
+          "isUnique": false,
+          "where": "(deleted_at IS NULL)",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_tasks_project_status_rank": {
+          "name": "idx_tasks_project_status_rank",
+          "columns": [
+            {
+              "expression": "project_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last",
+              "opclass": "uuid_ops"
+            },
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last",
+              "opclass": "enum_ops"
+            },
+            {
+              "expression": "rank",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last",
+              "opclass": "text_ops"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_tasks_status": {
+          "name": "idx_tasks_status",
+          "columns": [
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last",
+              "opclass": "enum_ops"
+            }
+          ],
+          "isUnique": false,
+          "where": "(deleted_at IS NULL)",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_tasks_updated_by": {
+          "name": "idx_tasks_updated_by",
+          "columns": [
+            {
+              "expression": "updated_by",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last",
+              "opclass": "uuid_ops"
+            }
+          ],
+          "isUnique": false,
+          "where": "(deleted_at IS NULL)",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "tasks_project_id_fkey": {
+          "name": "tasks_project_id_fkey",
+          "tableFrom": "tasks",
+          "tableTo": "projects",
+          "columnsFrom": [
+            "project_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "tasks_created_by_fkey": {
+          "name": "tasks_created_by_fkey",
+          "tableFrom": "tasks",
+          "tableTo": "users",
+          "columnsFrom": [
+            "created_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "tasks_updated_by_fkey": {
+          "name": "tasks_updated_by_fkey",
+          "tableFrom": "tasks",
+          "tableTo": "users",
+          "columnsFrom": [
+            "updated_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {
+        "Users create tasks": {
+          "name": "Users create tasks",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": [
+            "public"
+          ],
+          "withCheck": "is_admin()"
+        },
+        "Users delete tasks": {
+          "name": "Users delete tasks",
+          "as": "PERMISSIVE",
+          "for": "DELETE",
+          "to": [
+            "public"
+          ]
+        },
+        "Users update tasks": {
+          "name": "Users update tasks",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": [
+            "public"
+          ]
+        },
+        "Users view tasks": {
+          "name": "Users view tasks",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "public"
+          ]
+        }
+      },
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.time_log_tasks": {
+      "name": "time_log_tasks",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "time_log_id": {
+          "name": "time_log_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "task_id": {
+          "name": "task_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "timezone('utc'::text, now())"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "timezone('utc'::text, now())"
+        },
+        "deleted_at": {
+          "name": "deleted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "idx_time_log_tasks_task_id": {
+          "name": "idx_time_log_tasks_task_id",
+          "columns": [
+            {
+              "expression": "task_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last",
+              "opclass": "uuid_ops"
+            }
+          ],
+          "isUnique": false,
+          "where": "(deleted_at IS NULL)",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_time_log_tasks_unique": {
+          "name": "idx_time_log_tasks_unique",
+          "columns": [
+            {
+              "expression": "time_log_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last",
+              "opclass": "uuid_ops"
+            },
+            {
+              "expression": "task_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last",
+              "opclass": "uuid_ops"
+            }
+          ],
+          "isUnique": true,
+          "where": "(deleted_at IS NULL)",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "time_log_tasks_time_log_id_fkey": {
+          "name": "time_log_tasks_time_log_id_fkey",
+          "tableFrom": "time_log_tasks",
+          "tableTo": "time_logs",
+          "columnsFrom": [
+            "time_log_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "time_log_tasks_task_id_fkey": {
+          "name": "time_log_tasks_task_id_fkey",
+          "tableFrom": "time_log_tasks",
+          "tableTo": "tasks",
+          "columnsFrom": [
+            "task_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {
+        "Admins manage time log tasks": {
+          "name": "Admins manage time log tasks",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": [
+            "public"
+          ],
+          "using": "is_admin()",
+          "withCheck": "is_admin()"
+        },
+        "Users view time log tasks": {
+          "name": "Users view time log tasks",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "public"
+          ]
+        }
+      },
+      "checkConstraints": {
+        "time_log_tasks_project_match": {
+          "name": "time_log_tasks_project_match",
+          "value": "CHECK (time_log_task_matches_project(time_log_id, task_id))"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.time_logs": {
+      "name": "time_logs",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "project_id": {
+          "name": "project_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "hours": {
+          "name": "hours",
+          "type": "numeric(8, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "logged_on": {
+          "name": "logged_on",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "timezone('utc'::text, now())::date"
+        },
+        "note": {
+          "name": "note",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "timezone('utc'::text, now())"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "timezone('utc'::text, now())"
+        },
+        "deleted_at": {
+          "name": "deleted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "idx_time_logs_project": {
+          "name": "idx_time_logs_project",
+          "columns": [
+            {
+              "expression": "project_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last",
+              "opclass": "uuid_ops"
+            }
+          ],
+          "isUnique": false,
+          "where": "(deleted_at IS NULL)",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_time_logs_user_id": {
+          "name": "idx_time_logs_user_id",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last",
+              "opclass": "uuid_ops"
+            }
+          ],
+          "isUnique": false,
+          "where": "(deleted_at IS NULL)",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "time_logs_project_id_fkey": {
+          "name": "time_logs_project_id_fkey",
+          "tableFrom": "time_logs",
+          "tableTo": "projects",
+          "columnsFrom": [
+            "project_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "time_logs_user_id_fkey": {
+          "name": "time_logs_user_id_fkey",
+          "tableFrom": "time_logs",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {
+        "Admins manage time logs": {
+          "name": "Admins manage time logs",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": [
+            "public"
+          ],
+          "using": "is_admin()",
+          "withCheck": "is_admin()"
+        },
+        "Users update time logs": {
+          "name": "Users update time logs",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": [
+            "public"
+          ]
+        },
+        "Users view time logs": {
+          "name": "Users view time logs",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "public"
+          ]
+        }
+      },
+      "checkConstraints": {
+        "time_logs_hours_check": {
+          "name": "time_logs_hours_check",
+          "value": "hours > (0)::numeric"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.users": {
+      "name": "users",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "full_name": {
+          "name": "full_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "role": {
+          "name": "role",
+          "type": "user_role",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'CLIENT'"
+        },
+        "avatar_url": {
+          "name": "avatar_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "timezone('utc'::text, now())"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "timezone('utc'::text, now())"
+        },
+        "deleted_at": {
+          "name": "deleted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "users_id_fkey": {
+          "name": "users_id_fkey",
+          "tableFrom": "users",
+          "tableTo": "users",
+          "columnsFrom": [
+            "id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "users_email_key": {
+          "name": "users_email_key",
+          "nullsNotDistinct": false,
+          "columns": [
+            "email"
+          ]
+        }
+      },
+      "policies": {
+        "Admins delete users": {
+          "name": "Admins delete users",
+          "as": "PERMISSIVE",
+          "for": "DELETE",
+          "to": [
+            "public"
+          ],
+          "using": "is_admin()"
+        },
+        "Admins insert users": {
+          "name": "Admins insert users",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": [
+            "public"
+          ]
+        },
+        "Admins update users": {
+          "name": "Admins update users",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": [
+            "public"
+          ]
+        },
+        "Users view accessible users": {
+          "name": "Users view accessible users",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "public"
+          ]
+        }
+      },
+      "checkConstraints": {},
+      "isRLSEnabled": false
     }
   },
   "enums": {
     "public.task_status": {
       "name": "task_status",
+      "schema": "public",
       "values": [
         "BACKLOG",
         "ON_DECK",
@@ -2251,16 +2229,15 @@
         "BLOCKED",
         "DONE",
         "ARCHIVED"
-      ],
-      "schema": "public"
+      ]
     },
     "public.user_role": {
       "name": "user_role",
+      "schema": "public",
       "values": [
         "ADMIN",
         "CLIENT"
-      ],
-      "schema": "public"
+      ]
     }
   },
   "schemas": {},
@@ -2269,8 +2246,6 @@
   "policies": {},
   "views": {
     "public.current_user_with_role": {
-      "name": "current_user_with_role",
-      "schema": "public",
       "columns": {
         "id": {
           "name": "id",
@@ -2286,17 +2261,16 @@
           "notNull": false
         }
       },
-      "isExisting": false,
       "definition": "SELECT id, role FROM users u WHERE id = auth.uid() AND deleted_at IS NULL",
+      "name": "current_user_with_role",
+      "schema": "public",
+      "isExisting": false,
       "materialized": false
     }
   },
   "_meta": {
+    "columns": {},
     "schemas": {},
-    "tables": {},
-    "columns": {}
-  },
-  "internal": {
     "tables": {}
   }
 }

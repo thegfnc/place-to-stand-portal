@@ -1,4 +1,4 @@
-import type { Json } from '@/supabase/types/database'
+import type { Json } from '@/lib/supabase/types'
 
 const HOURS_FORMAT = new Intl.NumberFormat('en-US', {
   minimumFractionDigits: 0,

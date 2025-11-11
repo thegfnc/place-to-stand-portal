@@ -6,7 +6,7 @@ import { requireRole } from '@/lib/auth/session'
 import {
   listUsersForSettings,
 } from '@/lib/queries/users'
-import type { Database } from '@/supabase/types/database'
+import type { Database } from '@/lib/supabase/types'
 
 export const metadata: Metadata = {
   title: 'Users | Settings',

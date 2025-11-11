@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-import type { Database } from '@/supabase/types/database'
+import type { Database } from '@/lib/supabase/types'
 
 const invoicePattern = /^[A-Za-z0-9-]+$/
 

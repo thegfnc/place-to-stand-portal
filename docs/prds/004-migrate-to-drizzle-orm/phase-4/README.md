@@ -10,7 +10,7 @@
 
 - Removed the `app/api/test-drizzle` proof-of-concept route now that Drizzle powers all production data paths.
 - Audited Supabase usage and confirmed the SDK is retained exclusively for Auth (SSR/service/browser clients) and Storage operations.
-- Added migration `supabase/migrations/20251110123000_disable_rls.sql` to disable row level security across all application tables.
+- Recorded the RLS disablement (formerly `supabase/migrations/20251110123000_disable_rls.sql`) in the Drizzle baseline so all environments inherit the already-open tables.
 - Documented operational playbooks for running the migration and, if required, applying the SQL manually through Supabase.
 - Updated `AGENTS.md` and the technical plan to signal the completed Drizzle migration and RLS decommission.
 
@@ -19,16 +19,19 @@
 ## Migration & Operational Notes
 
 ### Automated path (preferred)
+
 1. Ensure `DATABASE_URL` is present (matching the Supabase connection pooler URI) in the environment.
 2. Run the Drizzle migration pipeline:
    ```bash
    npx drizzle-kit migrate
    ```
-3. Verify the migration history shows `20251110123000_disable_rls.sql` applied.
+3. Verify the migration history shows `0000_supabase_baseline` applied (it captures the post-RLS schema state).
 4. Confirm `SELECT relrowsecurity FROM pg_class WHERE relname = '<table>'` returns `false` for each public table listed below.
 
 ### Manual path (fallback via Supabase SQL editor)
+
 If migrations cannot be executed from CI, run the following SQL in Supabase (all statements are idempotent):
+
 ```sql
 alter table public.activity_logs disable row level security;
 alter table public.activity_overview_cache disable row level security;

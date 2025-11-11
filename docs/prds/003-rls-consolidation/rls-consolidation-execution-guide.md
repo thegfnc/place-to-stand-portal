@@ -45,7 +45,7 @@ For each table, follow these steps:
 
 1. Generate timestamp: `date +"%Y%m%d%H%M%S"`
 2. Create migration file: `YYYYMMDDHHMMSS_consolidate_TABLE_rls.sql`
-3. Copy from example files in `supabase/migrations/EXAMPLE_*.sql`
+3. Copy from the legacy example scripts `EXAMPLE_*.sql` (see repository history)
 
 #### Step 2: Write Consolidation Logic
 
@@ -260,7 +260,7 @@ If issues arise:
 
 ## Questions or Issues?
 
-- Check example migrations in `supabase/migrations/EXAMPLE_*.sql`
+- Check example migrations from the legacy `EXAMPLE_*.sql` scripts (repository history)
 - Review analysis in `docs/rls-policy-analysis.md`
 - Consult Supabase RLS documentation: https://supabase.com/docs/guides/database/postgres/row-level-security
 

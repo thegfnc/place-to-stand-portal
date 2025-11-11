@@ -4,7 +4,7 @@ import { randomUUID } from "node:crypto";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import type { Database } from "@/supabase/types/database";
+import type { Database } from "@/lib/supabase/types";
 
 type AvatarBucketClient = SupabaseClient<Database>;
 

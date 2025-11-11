@@ -89,7 +89,7 @@ create policy "Users view clients" on clients
 - **Plan**: `docs/rls-consolidation-plan.md`
 - **Analysis**: `docs/rls-policy-analysis.md`
 - **Execution Guide**: `docs/rls-consolidation-execution-guide.md`
-- **Examples**: `supabase/migrations/EXAMPLE_consolidate_*.sql`
+- **Examples**: Legacy Supabase scripts `EXAMPLE_consolidate_*.sql` (see repository history)
 
 ## Success Criteria
 

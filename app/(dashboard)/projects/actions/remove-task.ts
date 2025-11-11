@@ -12,7 +12,7 @@ import { projects, taskAttachments, tasks } from '@/lib/db/schema'
 import { NotFoundError, ForbiddenError } from '@/lib/errors/http'
 import { getSupabaseServiceClient } from '@/lib/supabase/service'
 import { deleteAttachmentObject } from '@/lib/storage/task-attachments'
-import type { Json } from '@/supabase/types/database'
+import type { Json } from '@/lib/supabase/types'
 
 import { revalidateProjectTaskViews } from './shared'
 import type { ActionResult } from './action-types'

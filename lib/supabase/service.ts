@@ -3,7 +3,7 @@ import "server-only";
 import { createClient } from "@supabase/supabase-js";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import type { Database } from "@/supabase/types/database";
+import type { Database } from "@/lib/supabase/types";
 import { serverEnv } from "@/lib/env.server";
 
 let client: SupabaseClient<Database> | null = null;

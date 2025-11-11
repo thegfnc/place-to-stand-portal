@@ -28,7 +28,7 @@ import {
   type HourBlockFormValues,
 } from '@/lib/settings/hour-blocks/use-hour-block-sheet-state'
 import { useSheetFormControls } from '@/lib/hooks/use-sheet-form-controls'
-import type { Database } from '@/supabase/types/database'
+import type { Database } from '@/lib/supabase/types'
 
 type HourBlockRow = Database['public']['Tables']['hour_blocks']['Row']
 type ClientRow = Pick<

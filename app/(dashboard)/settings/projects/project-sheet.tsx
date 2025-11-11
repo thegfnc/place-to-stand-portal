@@ -14,7 +14,7 @@ import {
   type ContractorUserSummary,
   type ProjectWithClient,
 } from '@/lib/settings/projects/use-project-sheet-state'
-import type { Database } from '@/supabase/types/database'
+import type { Database } from '@/lib/supabase/types'
 
 import { ProjectSheetForm } from './_components/project-sheet/project-sheet-form'
 import { ProjectSheetDialogs } from './_components/project-sheet/project-sheet-dialogs'

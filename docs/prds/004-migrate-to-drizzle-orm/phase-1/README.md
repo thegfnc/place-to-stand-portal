@@ -11,7 +11,7 @@
 - Installed the runtime and tooling dependencies required for Drizzle (`drizzle-orm`, `postgres`, `drizzle-kit`, `dotenv`).
 - Added a shared Drizzle client at `lib/db/index.ts`, along with schema and relations re-exports for application consumption.
 - Introduced `drizzle.config.ts` so CLI commands share a single source of truth for database credentials, schema path, and migration output.
-- Ran `npx drizzle-kit introspect` against Supabase, generating `supabase/migrations/schema.ts`, `supabase/migrations/relations.ts`, and a baseline journal entry under `supabase/migrations/meta/`.
+- Ran `npx drizzle-kit introspect` against Supabase, promoting the generated schema and relations into `lib/db/` and seeding a baseline journal entry under `drizzle/migrations/meta/_journal.json`.
 - Created a temporary verification route at `app/api/test-drizzle/route.ts` that performs a `SELECT` against `clients` to confirm connectivity. *(Removed in Phase 4.)*
 
 ---

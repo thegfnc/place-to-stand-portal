@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation'
 import type { Session } from '@supabase/supabase-js'
 import { and, eq, isNull } from 'drizzle-orm'
 
-import type { Database } from '@/supabase/types/database'
+import type { Database } from '@/lib/supabase/types'
 import { db } from '@/lib/db'
 import { users } from '@/lib/db/schema'
 import { getSupabaseServerClient } from '@/lib/supabase/server'

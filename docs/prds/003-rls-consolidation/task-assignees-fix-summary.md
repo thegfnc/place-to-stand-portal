@@ -30,5 +30,5 @@ Save a task with assignees - should work without RLS errors.
 
 ## See Also
 - Full debug log: `debug-log-task-assignees-fix.md`
-- Migration: `supabase/migrations/20251107120010_fix_task_assignees_permissions.sql`
+- Migration: legacy Supabase script `20251107120010_fix_task_assignees_permissions.sql` (see repository history)
 - Application code: `app/(dashboard)/projects/actions/task-helpers.ts` - `syncAssignees`

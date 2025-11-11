@@ -16,7 +16,7 @@ Consolidate multiple permissive policies into single policies using OR logic wit
 
 ## Example Migrations
 
-Example migration files are in `supabase/migrations/EXAMPLE_*.sql`:
+Example migration files (legacy Supabase scripts) were stored as `EXAMPLE_*.sql`—refer to repository history if you need the original SQL:
 
 - `EXAMPLE_consolidate_client_members_rls.sql` - Simplest case
 - `EXAMPLE_consolidate_users_rls.sql` - Simple case

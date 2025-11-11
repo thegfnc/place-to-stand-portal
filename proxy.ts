@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
-import type { Database } from "@/supabase/types/database";
+import type { Database } from "@/lib/supabase/types";
 
 const PUBLIC_PATHS = new Set(["/sign-in", "/unauthorized", "/forgot-password", "/reset-password"]);
 const FORCE_RESET_PATH = "/force-reset-password";

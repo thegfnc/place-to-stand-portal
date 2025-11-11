@@ -11,7 +11,7 @@ import {
   moveAttachmentToTaskFolder,
   isPendingAttachmentPath,
 } from '@/lib/storage/task-attachments'
-import type { Database } from '@/supabase/types/database'
+import type { Database } from '@/lib/supabase/types'
 
 import type { AttachmentPayload } from './shared-schemas'
 

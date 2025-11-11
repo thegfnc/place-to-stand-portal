@@ -6,7 +6,7 @@ import { and, eq } from 'drizzle-orm'
 
 import { db } from '@/lib/db'
 import { activityOverviewCache } from '@/lib/db/schema'
-import type { Database } from '@/supabase/types/database'
+import type { Database } from '@/lib/supabase/types'
 
 export type ActivityOverviewCacheRow =
   Database['public']['Tables']['activity_overview_cache']['Row']

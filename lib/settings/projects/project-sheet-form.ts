@@ -6,7 +6,7 @@ import {
   PROJECT_STATUS_VALUES,
   type ProjectStatusValue,
 } from '@/lib/constants'
-import type { Database } from '@/supabase/types/database'
+import type { Database } from '@/lib/supabase/types'
 
 export type ProjectRow = Database['public']['Tables']['projects']['Row']
 export type ClientRow = Pick<
