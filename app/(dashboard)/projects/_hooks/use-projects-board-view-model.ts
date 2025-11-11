@@ -86,6 +86,7 @@ export function useProjectsBoardViewModel({
     activeProject,
     activeProjectTasks,
     activeProjectArchivedTasks,
+    activeProjectAcceptedTasks,
     canManageTasks,
     memberDirectory,
     tasksByColumn,
@@ -190,6 +191,7 @@ export function useProjectsBoardViewModel({
   } = useProjectsBoardDerivedState({
     activeProjectTasks,
     activeProjectArchivedTasks,
+    activeProjectAcceptedTasks,
     tasksByColumn,
     onlyAssignedToMe,
     currentUserId: props.currentUserId ?? null,

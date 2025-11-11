@@ -13,6 +13,7 @@ type UseProjectsTaskRefreshArgs = {
   projects: { id: string }[]
   setTasksByProject: React.Dispatch<React.SetStateAction<TaskLookup>>
   setArchivedTasksByProject: React.Dispatch<React.SetStateAction<TaskLookup>>
+  setAcceptedTasksByProject: React.Dispatch<React.SetStateAction<TaskLookup>>
   startTransition: TransitionStartFunction
 }
 
@@ -24,6 +25,7 @@ export function useProjectsTaskRefresh({
   projects,
   setTasksByProject,
   setArchivedTasksByProject,
+  setAcceptedTasksByProject,
   startTransition,
 }: UseProjectsTaskRefreshArgs): TaskRefreshState {
   const supabase = useMemo(() => getSupabaseBrowserClient(), [])
@@ -42,8 +44,18 @@ export function useProjectsTaskRefresh({
       throw new Error(message ?? 'Failed to load project tasks.')
     }
 
-    const data = (await response.json()) as RawTaskWithRelations[]
-    return data ?? []
+    const data = (await response.json()) as {
+      active: RawTaskWithRelations[]
+      archived: RawTaskWithRelations[]
+      accepted: RawTaskWithRelations[]
+    } | null
+    return (
+      data ?? {
+        active: [],
+        archived: [],
+        accepted: [],
+      }
+    )
   }, [])
 
   const trackedProjectIds = useMemo(() => {
@@ -74,12 +86,10 @@ export function useProjectsTaskRefresh({
       refreshInFlightRef.current.add(projectId)
 
       try {
-        const rows = await fetchProjectTasks(projectId)
-        const normalizedTasks = rows.map(normalizeRawTask)
-        const nextActive = normalizedTasks.filter(task => !task.deleted_at)
-        const nextArchived = normalizedTasks.filter(task =>
-          Boolean(task.deleted_at)
-        )
+        const collections = await fetchProjectTasks(projectId)
+        const nextActive = collections.active.map(normalizeRawTask)
+        const nextArchived = collections.archived.map(normalizeRawTask)
+        const nextAccepted = collections.accepted.map(normalizeRawTask)
 
         startTransition(() => {
           setTasksByProject(prev =>
@@ -87,6 +97,9 @@ export function useProjectsTaskRefresh({
           )
           setArchivedTasksByProject(prev =>
             updateTaskLookup(prev, projectId, nextArchived)
+          )
+          setAcceptedTasksByProject(prev =>
+            updateTaskLookup(prev, projectId, nextAccepted)
           )
         })
       } catch (error) {
@@ -98,6 +111,7 @@ export function useProjectsTaskRefresh({
     [
       fetchProjectTasks,
       setArchivedTasksByProject,
+      setAcceptedTasksByProject,
       setTasksByProject,
       startTransition,
       trackedProjectIdsSet,

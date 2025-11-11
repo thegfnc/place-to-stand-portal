@@ -33,6 +33,10 @@ export const useBoardTaskCollections = ({
     useState<TaskLookup>(() =>
       createInitialTasksMap(projects, project => project.archivedTasks ?? [])
     )
+  const [acceptedTasksByProject, setAcceptedTasksByProject] =
+    useState<TaskLookup>(() =>
+      createInitialTasksMap(projects, project => project.acceptedTasks ?? [])
+    )
 
   useEffect(() => {
     startTransition(() => {
@@ -84,6 +88,30 @@ export const useBoardTaskCollections = ({
 
         return didChange ? next : prev
       })
+      setAcceptedTasksByProject(prev => {
+        let didChange = false
+        const next = new Map(prev)
+        const incomingProjectIds = new Set<string>()
+
+        projects.forEach(project => {
+          incomingProjectIds.add(project.id)
+          const acceptedTasks = project.acceptedTasks ?? []
+          const existing = next.get(project.id)
+          if (!areTaskCollectionsEqual(existing, acceptedTasks)) {
+            next.set(project.id, acceptedTasks)
+            didChange = true
+          }
+        })
+
+        for (const projectId of next.keys()) {
+          if (!incomingProjectIds.has(projectId)) {
+            next.delete(projectId)
+            didChange = true
+          }
+        }
+
+        return didChange ? next : prev
+      })
     })
   }, [projects, startTransition])
 
@@ -92,5 +120,7 @@ export const useBoardTaskCollections = ({
     setTasksByProject,
     archivedTasksByProject,
     setArchivedTasksByProject,
+    acceptedTasksByProject,
+    setAcceptedTasksByProject,
   }
 }

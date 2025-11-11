@@ -221,6 +221,44 @@ export async function listProjectTasksWithRelations(
   }))
 }
 
+export type ProjectTaskCollections = {
+  active: RawTaskWithRelations[]
+  accepted: RawTaskWithRelations[]
+  archived: RawTaskWithRelations[]
+}
+
+export async function listProjectTaskCollectionsWithRelations(
+  user: AppUser,
+  projectId: string,
+): Promise<ProjectTaskCollections> {
+  const rows = await listProjectTasksWithRelations(user, projectId, {
+    includeArchived: true,
+  })
+
+  const active = rows.filter(task => !task.deleted_at)
+  const archived = rows
+    .filter(task => Boolean(task.deleted_at))
+    .sort((a, b) => {
+      const aTime = a.deleted_at ? Date.parse(a.deleted_at) : 0
+      const bTime = b.deleted_at ? Date.parse(b.deleted_at) : 0
+      return bTime - aTime
+    })
+
+  const accepted = active
+    .filter(task => task.status === 'DONE' && Boolean(task.accepted_at))
+    .sort((a, b) => {
+      const aTime = a.accepted_at ? Date.parse(a.accepted_at) : 0
+      const bTime = b.accepted_at ? Date.parse(b.accepted_at) : 0
+      return bTime - aTime
+    })
+
+  return {
+    active,
+    accepted,
+    archived,
+  }
+}
+
 type TaskSummarySelection = {
   task: {
     id: string

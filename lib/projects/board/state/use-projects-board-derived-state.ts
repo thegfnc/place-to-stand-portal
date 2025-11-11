@@ -8,6 +8,7 @@ import type { TaskWithRelations } from '@/lib/types'
 export type ProjectsBoardDerivedStateArgs = {
   activeProjectTasks: TaskWithRelations[]
   activeProjectArchivedTasks: TaskWithRelations[]
+  activeProjectAcceptedTasks: TaskWithRelations[]
   tasksByColumn: Map<string, TaskWithRelations[]>
   onlyAssignedToMe: boolean
   currentUserId: string | null
@@ -28,6 +29,7 @@ export type ProjectsBoardDerivedState = {
 export function useProjectsBoardDerivedState({
   activeProjectTasks,
   activeProjectArchivedTasks,
+  activeProjectAcceptedTasks,
   tasksByColumn,
   onlyAssignedToMe,
   currentUserId,
@@ -49,14 +51,6 @@ export function useProjectsBoardDerivedState({
     return filterTasksByAssignee(tasksByColumn, currentUserId)
   }, [onlyAssignedToMe, currentUserId, tasksByColumn])
 
-  const acceptedTasks = useMemo(
-    () =>
-      activeProjectTasks.filter(
-        task => task.status === 'DONE' && Boolean(task.accepted_at)
-      ),
-    [activeProjectTasks]
-  )
-
   const doneColumnTasks = useMemo(
     () => tasksByColumnToRender.get('DONE') ?? [],
     [tasksByColumnToRender]
@@ -74,7 +68,7 @@ export function useProjectsBoardDerivedState({
     onDeckTasks: backlogGroups.onDeck,
     backlogTasks: backlogGroups.backlog,
     tasksByColumnToRender,
-    acceptedTasks,
+    acceptedTasks: activeProjectAcceptedTasks,
     archivedTasks: activeProjectArchivedTasks,
     doneColumnTasks,
     acceptAllDisabled,

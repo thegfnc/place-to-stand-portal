@@ -88,6 +88,8 @@ export const useProjectsBoardState = ({
     setTasksByProject,
     archivedTasksByProject,
     setArchivedTasksByProject,
+    acceptedTasksByProject,
+    setAcceptedTasksByProject,
   } = useBoardTaskCollections({
     projects,
     startTransition,
@@ -97,6 +99,7 @@ export const useProjectsBoardState = ({
     projects,
     setTasksByProject,
     setArchivedTasksByProject,
+    setAcceptedTasksByProject,
     startTransition,
   })
 
@@ -123,6 +126,17 @@ export const useProjectsBoardState = ({
       activeProject.archivedTasks
     )
   }, [activeProject, archivedTasksByProject])
+
+  const activeProjectAcceptedTasks = useMemo(() => {
+    if (!activeProject) {
+      return [] as TaskWithRelations[]
+    }
+
+    return (
+      acceptedTasksByProject.get(activeProject.id) ??
+      activeProject.acceptedTasks
+    )
+  }, [acceptedTasksByProject, activeProject])
 
   const canManageTasks = useMemo(() => {
     if (!activeProject) return false
@@ -231,6 +245,7 @@ export const useProjectsBoardState = ({
     activeProject,
     activeProjectTasks,
     activeProjectArchivedTasks,
+    activeProjectAcceptedTasks,
     canManageTasks,
     memberDirectory,
     tasksByColumn,

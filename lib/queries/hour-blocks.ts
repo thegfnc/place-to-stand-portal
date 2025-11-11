@@ -1,14 +1,6 @@
 import 'server-only'
 
-import {
-  and,
-  asc,
-  desc,
-  eq,
-  isNull,
-  sql,
-  type SQL,
-} from 'drizzle-orm'
+import { and, asc, desc, eq, isNull, sql, type SQL } from 'drizzle-orm'
 
 import type { AppUser } from '@/lib/auth/session'
 import { assertAdmin } from '@/lib/auth/permissions'
@@ -93,29 +85,29 @@ export type HourBlocksSettingsResult = {
 
 function buildHourBlocksCursorCondition(
   direction: CursorDirection,
-  cursor: { updatedAt?: string | null; id?: string | null } | null,
+  cursor: { createdAt?: string | null; id?: string | null } | null
 ) {
   if (!cursor) {
     return null
   }
 
-  const updatedAt = cursor.updatedAt ?? null
+  const createdAt = cursor.createdAt ?? null
   const idValue = typeof cursor.id === 'string' ? cursor.id : ''
 
-  if (!updatedAt || !idValue) {
+  if (!createdAt || !idValue) {
     return null
   }
 
   if (direction === 'forward') {
-    return sql`${hourBlocks.updatedAt} < ${updatedAt} OR (${hourBlocks.updatedAt} = ${updatedAt} AND ${hourBlocks.id} < ${idValue})`
+    return sql`${hourBlocks.createdAt} < ${createdAt} OR (${hourBlocks.createdAt} = ${createdAt} AND ${hourBlocks.id} < ${idValue})`
   }
 
-  return sql`${hourBlocks.updatedAt} > ${updatedAt} OR (${hourBlocks.updatedAt} = ${updatedAt} AND ${hourBlocks.id} > ${idValue})`
+  return sql`${hourBlocks.createdAt} > ${createdAt} OR (${hourBlocks.createdAt} = ${createdAt} AND ${hourBlocks.id} > ${idValue})`
 }
 
 export async function listHourBlocksForSettings(
   user: AppUser,
-  input: ListHourBlocksForSettingsInput = {},
+  input: ListHourBlocksForSettingsInput = {}
 ): Promise<HourBlocksSettingsResult> {
   assertAdmin(user)
 
@@ -135,16 +127,16 @@ export async function listHourBlocksForSettings(
   if (searchQuery) {
     const pattern = createSearchPattern(searchQuery)
     baseConditions.push(
-      sql`(${hourBlocks.invoiceNumber} ILIKE ${pattern} OR ${clients.name} ILIKE ${pattern})`,
+      sql`(${hourBlocks.invoiceNumber} ILIKE ${pattern} OR ${clients.name} ILIKE ${pattern})`
     )
   }
 
-  const cursorPayload = decodeCursor<{ updatedAt?: string; id?: string }>(
-    input.cursor,
+  const cursorPayload = decodeCursor<{ createdAt?: string; id?: string }>(
+    input.cursor
   )
   const cursorCondition = buildHourBlocksCursorCondition(
     direction,
-    cursorPayload,
+    cursorPayload
   )
 
   const paginatedConditions = cursorCondition
@@ -156,8 +148,8 @@ export async function listHourBlocksForSettings(
 
   const ordering =
     direction === 'forward'
-      ? [desc(hourBlocks.updatedAt), desc(hourBlocks.id)]
-      : [asc(hourBlocks.updatedAt), asc(hourBlocks.id)]
+      ? [desc(hourBlocks.createdAt), desc(hourBlocks.id)]
+      : [asc(hourBlocks.createdAt), asc(hourBlocks.id)]
 
   const rows = (await db
     .select({
@@ -181,13 +173,8 @@ export async function listHourBlocksForSettings(
     db
       .select({ count: sql<number>`count(*)` })
       .from(hourBlocks)
-      .where(
-        baseConditions.length ? and(...baseConditions) : undefined,
-      ),
-    db
-      .select(clientSelection)
-      .from(clients)
-      .orderBy(asc(clients.name)),
+      .where(baseConditions.length ? and(...baseConditions) : undefined),
+    db.select(clientSelection).from(clients).orderBy(asc(clients.name)),
   ])
 
   const totalCount = Number(totalResult[0]?.count ?? 0)
@@ -204,13 +191,13 @@ export async function listHourBlocksForSettings(
     hasNextPage,
     startCursor: firstItem
       ? encodeCursor({
-          updatedAt: firstItem.updated_at,
+          createdAt: firstItem.created_at,
           id: firstItem.id,
         })
       : null,
     endCursor: lastItem
       ? encodeCursor({
-          updatedAt: lastItem.updated_at,
+          createdAt: lastItem.created_at,
           id: lastItem.id,
         })
       : null,
@@ -226,7 +213,7 @@ export async function listHourBlocksForSettings(
 
 export async function getActiveClientSummary(
   user: AppUser,
-  clientId: string,
+  clientId: string
 ): Promise<HourBlockClientSummary | null> {
   assertAdmin(user)
 
@@ -248,7 +235,7 @@ export async function getActiveClientSummary(
 
 export async function getHourBlockWithClientById(
   user: AppUser,
-  hourBlockId: string,
+  hourBlockId: string
 ): Promise<HourBlockWithClient | null> {
   assertAdmin(user)
 
@@ -270,13 +257,14 @@ export async function getHourBlockWithClientById(
 }
 
 function mapHourBlockWithClient(row: HourBlockSelection): HourBlockWithClient {
-  const client = row.client && row.client.id
-    ? {
-        id: row.client.id,
-        name: row.client.name,
-        deleted_at: row.client.deletedAt,
-      }
-    : null
+  const client =
+    row.client && row.client.id
+      ? {
+          id: row.client.id,
+          name: row.client.name,
+          deleted_at: row.client.deletedAt,
+        }
+      : null
 
   return {
     id: row.block.id,

@@ -3,12 +3,6 @@ import { useMemo } from 'react'
 import { PENDING_REASON } from './constants'
 import type { UserRow, UserRowState } from './types'
 
-const sortUsersByCreatedAt = (users: UserRow[]) =>
-  [...users].sort(
-    (a, b) =>
-      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-  )
-
 type UseUserRowsStateArgs = {
   users: UserRow[]
   currentUserId: string
@@ -36,11 +30,9 @@ export const useUserRowsState = ({
   requestDestroy,
   selfDeleteReason,
 }: UseUserRowsStateArgs): UserRowState[] => {
-  const sortedUsers = useMemo(() => sortUsersByCreatedAt(users), [users])
-
   return useMemo(
     () =>
-      sortedUsers.map(user => {
+      users.map(user => {
         const isDeleting = isPending && pendingDeleteId === user.id
         const isRestoring = isPending && pendingRestoreId === user.id
         const isDestroying = isPending && pendingDestroyId === user.id
@@ -105,7 +97,7 @@ export const useUserRowsState = ({
       requestDestroy,
       restoreUser,
       selfDeleteReason,
-      sortedUsers,
+      users,
     ]
   )
 }

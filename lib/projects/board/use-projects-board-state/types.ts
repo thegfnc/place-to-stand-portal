@@ -38,6 +38,7 @@ export type ProjectsBoardState = {
   activeProject: ProjectWithRelations | null
   activeProjectTasks: TaskWithRelations[]
   activeProjectArchivedTasks: TaskWithRelations[]
+  activeProjectAcceptedTasks: TaskWithRelations[]
   canManageTasks: boolean
   memberDirectory: Map<string, MemberDirectoryEntry>
   tasksByColumn: Map<string, TaskWithRelations[]>

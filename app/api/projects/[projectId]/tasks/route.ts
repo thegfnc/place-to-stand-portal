@@ -3,7 +3,7 @@ import { z } from 'zod'
 
 import { getCurrentUser } from '@/lib/auth/session'
 import { HttpError } from '@/lib/errors/http'
-import { listProjectTasksWithRelations } from '@/lib/queries/tasks'
+import { listProjectTaskCollectionsWithRelations } from '@/lib/queries/tasks'
 
 const paramsSchema = z.object({
   projectId: z.string().uuid(),
@@ -29,10 +29,9 @@ export async function GET(_request: NextRequest, context: RouteContext) {
   }
 
   try {
-    const tasks = await listProjectTasksWithRelations(
+    const tasks = await listProjectTaskCollectionsWithRelations(
       user,
       parsedParams.data.projectId,
-      { includeArchived: true },
     )
 
     return NextResponse.json(tasks, { status: 200 })

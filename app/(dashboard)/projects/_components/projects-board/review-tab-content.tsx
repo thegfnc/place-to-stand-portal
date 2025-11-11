@@ -92,22 +92,6 @@ export function ReviewTabContent(props: ReviewTabContentProps) {
     })
   }, [doneTasks])
 
-  const sortedAccepted = useMemo(() => {
-    return acceptedTasks.slice().sort((a, b) => {
-      const aTime = a.accepted_at ? Date.parse(a.accepted_at) : 0
-      const bTime = b.accepted_at ? Date.parse(b.accepted_at) : 0
-      return bTime - aTime
-    })
-  }, [acceptedTasks])
-
-  const sortedArchived = useMemo(() => {
-    return archivedTasks.slice().sort((a, b) => {
-      const aTime = a.deleted_at ? Date.parse(a.deleted_at) : 0
-      const bTime = b.deleted_at ? Date.parse(b.deleted_at) : 0
-      return bTime - aTime
-    })
-  }, [archivedTasks])
-
   if (!isActive) {
     return null
   }
@@ -160,7 +144,7 @@ export function ReviewTabContent(props: ReviewTabContentProps) {
           />
 
           <ReviewAcceptedSection
-            tasks={sortedAccepted}
+            tasks={acceptedTasks}
             renderAssignees={renderAssignees}
             onEditTask={onEditTask}
             onUnacceptTask={onUnacceptTask}
@@ -172,7 +156,7 @@ export function ReviewTabContent(props: ReviewTabContentProps) {
           />
 
           <ReviewArchivedSection
-            tasks={sortedArchived}
+            tasks={archivedTasks}
             renderAssignees={renderAssignees}
             onEditTask={onEditTask}
             onRestoreTask={onRestoreTask}
