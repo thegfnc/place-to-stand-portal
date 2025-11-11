@@ -40,5 +40,6 @@ export const useUsersTableState = ({
     destroyDialog: mutationState.destroyDialog,
     onOpenCreate: openCreate,
     selfDeleteReason: mutationState.selfDeleteReason,
+    isPending: mutationState.isPending,
   }
 }

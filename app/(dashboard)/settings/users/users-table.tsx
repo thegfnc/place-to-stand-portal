@@ -1,7 +1,8 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import dynamic from 'next/dynamic'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { UserPlus } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -22,6 +23,7 @@ import {
   type UserAssignments,
   type UserRowState,
 } from '@/lib/settings/users/state/use-users-table-state'
+import type { PageInfo } from '@/lib/pagination/cursor'
 
 import { UsersTableRow } from './components/table/users-table-row'
 
@@ -48,6 +50,9 @@ type Props = {
   users: UserRow[]
   currentUserId: string
   assignments: UserAssignments
+  tab: UsersTab
+  pageInfo: PageInfo
+  totalCount: number
 }
 
 type UsersTab = 'users' | 'archive' | 'activity'
@@ -56,6 +61,9 @@ export function UsersSettingsTable({
   users,
   currentUserId,
   assignments,
+  tab,
+  pageInfo,
+  totalCount,
 }: Props) {
   const {
     rows,
@@ -64,8 +72,11 @@ export function UsersSettingsTable({
     destroyDialog,
     onOpenCreate,
     selfDeleteReason,
+    isPending,
   } = useUsersTableState({ users, currentUserId, assignments })
-  const [activeTab, setActiveTab] = useState<UsersTab>('users')
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
 
   const activeRows = useMemo(
     () => rows.filter(row => !row.user.deleted_at),
@@ -75,7 +86,46 @@ export function UsersSettingsTable({
     () => rows.filter(row => Boolean(row.user.deleted_at)),
     [rows]
   )
-  const showAddButton = activeTab === 'users'
+  const showAddButton = tab === 'users'
+  const showListViews = tab !== 'activity'
+
+  const handleTabChange = (next: UsersTab) => {
+    const params = new URLSearchParams(searchParams.toString())
+    if (next === 'users') {
+      params.delete('tab')
+    } else {
+      params.set('tab', next)
+    }
+    params.delete('cursor')
+    params.delete('dir')
+    const query = params.toString()
+    router.push(query ? `${pathname}?${query}` : pathname)
+  }
+
+  const handlePaginate = (direction: 'forward' | 'backward') => {
+    const cursor =
+      direction === 'forward' ? pageInfo.endCursor : pageInfo.startCursor
+
+    if (!cursor) {
+      return
+    }
+
+    const params = new URLSearchParams(searchParams.toString())
+    params.set('cursor', cursor)
+    params.set('dir', direction)
+    const query = params.toString()
+    router.push(query ? `${pathname}?${query}` : pathname)
+  }
+
+  const paginationDisabled = !showListViews
+
+  const paginationState = useMemo(
+    () => ({
+      hasNextPage: pageInfo.hasNextPage && !paginationDisabled,
+      hasPreviousPage: pageInfo.hasPreviousPage && !paginationDisabled,
+    }),
+    [pageInfo.hasNextPage, pageInfo.hasPreviousPage, paginationDisabled]
+  )
 
   return (
     <div className='space-y-6'>
@@ -100,8 +150,8 @@ export function UsersSettingsTable({
         onConfirm={destroyDialog.onConfirm}
       />
       <Tabs
-        value={activeTab}
-        onValueChange={value => setActiveTab(value as UsersTab)}
+        value={tab}
+        onValueChange={value => handleTabChange(value as UsersTab)}
         className='space-y-6'
       >
         <div className='flex flex-wrap items-center justify-between gap-4'>
@@ -111,26 +161,48 @@ export function UsersSettingsTable({
             <TabsTrigger value='activity'>Activity</TabsTrigger>
           </TabsList>
           {showAddButton ? (
-            <Button onClick={onOpenCreate}>
+            <Button onClick={onOpenCreate} className='ml-auto'>
               <UserPlus className='h-4 w-4' /> Add user
             </Button>
           ) : null}
         </div>
         <TabsContent value='users' className='space-y-6'>
-          <UsersTableSection
-            rows={activeRows}
-            mode='active'
-            emptyMessage='No users found. Use the Add user button to invite someone.'
-            selfDeleteReason={selfDeleteReason}
-          />
+          {tab === 'users' ? (
+            <>
+              <UsersTableSection
+                rows={activeRows}
+                mode='active'
+                emptyMessage='No users found. Use the Add user button to invite someone.'
+                selfDeleteReason={selfDeleteReason}
+              />
+              <PaginationControls
+                hasNextPage={paginationState.hasNextPage}
+                hasPreviousPage={paginationState.hasPreviousPage}
+                onNext={() => handlePaginate('forward')}
+                onPrevious={() => handlePaginate('backward')}
+                disableAll={isPending}
+              />
+            </>
+          ) : null}
         </TabsContent>
         <TabsContent value='archive' className='space-y-6'>
-          <UsersTableSection
-            rows={archivedRows}
-            mode='archive'
-            emptyMessage='No archived users. Archived accounts appear here once deleted.'
-            selfDeleteReason={selfDeleteReason}
-          />
+          {tab === 'archive' ? (
+            <>
+              <UsersTableSection
+                rows={archivedRows}
+                mode='archive'
+                emptyMessage='No archived users. Archived accounts appear here once deleted.'
+                selfDeleteReason={selfDeleteReason}
+              />
+              <PaginationControls
+                hasNextPage={paginationState.hasNextPage}
+                hasPreviousPage={paginationState.hasPreviousPage}
+                onNext={() => handlePaginate('forward')}
+                onPrevious={() => handlePaginate('backward')}
+                disableAll={isPending}
+              />
+            </>
+          ) : null}
         </TabsContent>
         <TabsContent value='activity' className='space-y-3'>
           <div className='space-y-3 p-1'>
@@ -149,6 +221,13 @@ export function UsersSettingsTable({
           </div>
         </TabsContent>
       </Tabs>
+      {showListViews ? (
+        <div className='flex w-full justify-end'>
+          <span className='text-muted-foreground text-right text-sm'>
+            Total users: {totalCount}
+          </span>
+        </div>
+      ) : null}
       <UserSheet
         open={sheet.open}
         onOpenChange={sheet.onOpenChange}
@@ -207,6 +286,45 @@ function UsersTableSection({
           ) : null}
         </TableBody>
       </Table>
+    </div>
+  )
+}
+
+type PaginationControlsProps = {
+  hasNextPage: boolean
+  hasPreviousPage: boolean
+  onNext: () => void
+  onPrevious: () => void
+  disableAll?: boolean
+}
+
+function PaginationControls({
+  hasNextPage,
+  hasPreviousPage,
+  onNext,
+  onPrevious,
+  disableAll = false,
+}: PaginationControlsProps) {
+  const isPrevDisabled = disableAll || !hasPreviousPage
+  const isNextDisabled = disableAll || !hasNextPage
+
+  if (!hasNextPage && !hasPreviousPage) {
+    return null
+  }
+
+  return (
+    <div className='flex justify-end gap-2'>
+      <Button
+        type='button'
+        variant='outline'
+        onClick={onPrevious}
+        disabled={isPrevDisabled}
+      >
+        Previous
+      </Button>
+      <Button type='button' onClick={onNext} disabled={isNextDisabled}>
+        Next
+      </Button>
     </div>
   )
 }

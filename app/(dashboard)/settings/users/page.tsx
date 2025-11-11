@@ -4,7 +4,7 @@ import { UsersSettingsTable } from './users-table'
 import { AppShellHeader } from '@/components/layout/app-shell'
 import { requireRole } from '@/lib/auth/session'
 import {
-  listUsersWithAssignmentCounts,
+  listUsersForSettings,
 } from '@/lib/queries/users'
 import type { Database } from '@/supabase/types/database'
 
@@ -12,12 +12,64 @@ export const metadata: Metadata = {
   title: 'Users | Settings',
 }
 
-export default async function UsersSettingsPage() {
+type UsersSettingsPageProps = {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>
+}
+
+type UsersTab = 'users' | 'archive' | 'activity'
+
+export default async function UsersSettingsPage({
+  searchParams,
+}: UsersSettingsPageProps) {
   const currentUser = await requireRole('ADMIN')
+  const params = searchParams ? await searchParams : {}
+  const tabParamRaw = params.tab
+  const tabParam =
+    typeof tabParamRaw === 'string'
+      ? tabParamRaw
+      : Array.isArray(tabParamRaw)
+        ? tabParamRaw[0]
+        : 'users'
 
-  const userRecords = await listUsersWithAssignmentCounts(currentUser)
+  const tab: UsersTab =
+    tabParam === 'archive'
+      ? 'archive'
+      : tabParam === 'activity'
+        ? 'activity'
+        : 'users'
 
-  const users: Database['public']['Tables']['users']['Row'][] = userRecords.map(
+  const status = tab === 'archive' ? 'archived' : 'active'
+  const cursor =
+    typeof params.cursor === 'string'
+      ? params.cursor
+      : Array.isArray(params.cursor)
+        ? params.cursor[0] ?? null
+        : null
+  const directionParam =
+    typeof params.dir === 'string'
+      ? params.dir
+      : Array.isArray(params.dir)
+        ? params.dir[0] ?? null
+        : null
+  const direction =
+    directionParam === 'backward' ? 'backward' : ('forward' as const)
+  const limitParamRaw =
+    typeof params.limit === 'string'
+      ? params.limit
+      : Array.isArray(params.limit)
+        ? params.limit[0]
+        : undefined
+  const limitParam = Number.parseInt(limitParamRaw ?? '', 10)
+
+  const { items, assignments, totalCount, pageInfo } =
+    await listUsersForSettings(currentUser, {
+      status,
+      cursor,
+      direction,
+      limit: Number.isFinite(limitParam) ? limitParam : undefined,
+    })
+
+  const users: Database['public']['Tables']['users']['Row'][] = items.map(
     user => ({
       id: user.id,
       email: user.email,
@@ -29,29 +81,6 @@ export default async function UsersSettingsPage() {
       deleted_at: user.deletedAt,
     })
   )
-
-  const assignmentCounts: Record<
-    string,
-    { clients: number; projects: number; tasks: number }
-  > = {}
-
-  const ensureSummary = (userId: string) => {
-    if (!assignmentCounts[userId]) {
-      assignmentCounts[userId] = { clients: 0, projects: 0, tasks: 0 }
-    }
-    return assignmentCounts[userId]
-  }
-
-  for (const user of users) {
-    ensureSummary(user.id)
-  }
-
-  for (const record of userRecords) {
-    const summary = ensureSummary(record.id)
-    summary.clients = record.clientsCount
-    summary.tasks = record.tasksCount
-    // Projects count remains 0 as project_members no longer exists.
-  }
 
   return (
     <>
@@ -69,7 +98,10 @@ export default async function UsersSettingsPage() {
       <UsersSettingsTable
         users={users}
         currentUserId={currentUser.id}
-        assignments={assignmentCounts}
+        assignments={assignments}
+        tab={tab}
+        pageInfo={pageInfo}
+        totalCount={totalCount}
       />
     </>
   )

@@ -57,4 +57,5 @@ export type UsersTableState = {
   destroyDialog: DeleteDialogState
   onOpenCreate: () => void
   selfDeleteReason: string
+  isPending: boolean
 }
