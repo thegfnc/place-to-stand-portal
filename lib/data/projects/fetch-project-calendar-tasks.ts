@@ -3,12 +3,10 @@ import { and, asc, eq, gte, inArray, isNull, lte } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import {
   taskAssignees as taskAssigneesTable,
-  taskAttachments as taskAttachmentsTable,
-  taskComments as taskCommentsTable,
   tasks as tasksTable,
 } from '@/lib/db/schema'
 import { normalizeRawTask } from './normalize-task'
-import type { RawTaskAttachment, RawTaskRelation, RawTaskWithRelations } from './types'
+import type { RawTaskWithRelations } from './types'
 import type { DbTask, TaskWithRelations } from '@/lib/types'
 
 type TaskRow = {
@@ -30,25 +28,6 @@ type TaskRow = {
 type TaskAssigneeRow = {
   taskId: string
   userId: string
-  deletedAt: string | null
-}
-
-type TaskCommentRow = {
-  id: string
-  taskId: string
-  deletedAt: string | null
-}
-
-type TaskAttachmentRow = {
-  id: string
-  taskId: string
-  storagePath: string
-  originalName: string
-  mimeType: string
-  fileSize: number
-  uploadedBy: string
-  createdAt: string
-  updatedAt: string
   deletedAt: string | null
 }
 
@@ -92,76 +71,27 @@ export async function fetchProjectCalendarTasks({
 
   const taskIds = taskRows.map(row => row.id)
 
-  const [assigneeRows, commentRows, attachmentRows]: [
-    TaskAssigneeRow[],
-    TaskCommentRow[],
-    TaskAttachmentRow[],
-  ] = taskIds.length
-    ? await Promise.all([
-        db
-          .select({
-            taskId: taskAssigneesTable.taskId,
-            userId: taskAssigneesTable.userId,
-            deletedAt: taskAssigneesTable.deletedAt,
-          })
-          .from(taskAssigneesTable)
-          .where(inArray(taskAssigneesTable.taskId, taskIds)),
-        db
-          .select({
-            id: taskCommentsTable.id,
-            taskId: taskCommentsTable.taskId,
-            deletedAt: taskCommentsTable.deletedAt,
-          })
-          .from(taskCommentsTable)
-          .where(inArray(taskCommentsTable.taskId, taskIds)),
-        db
-          .select({
-            id: taskAttachmentsTable.id,
-            taskId: taskAttachmentsTable.taskId,
-            storagePath: taskAttachmentsTable.storagePath,
-            originalName: taskAttachmentsTable.originalName,
-            mimeType: taskAttachmentsTable.mimeType,
-            fileSize: taskAttachmentsTable.fileSize,
-            uploadedBy: taskAttachmentsTable.uploadedBy,
-            createdAt: taskAttachmentsTable.createdAt,
-            updatedAt: taskAttachmentsTable.updatedAt,
-            deletedAt: taskAttachmentsTable.deletedAt,
-          })
-          .from(taskAttachmentsTable)
-          .where(inArray(taskAttachmentsTable.taskId, taskIds)),
-      ])
-    : [[], [], []]
+  const assigneeRows: TaskAssigneeRow[] = taskIds.length
+    ? await db
+        .select({
+          taskId: taskAssigneesTable.taskId,
+          userId: taskAssigneesTable.userId,
+          deletedAt: taskAssigneesTable.deletedAt,
+        })
+        .from(taskAssigneesTable)
+        .where(
+          and(
+            inArray(taskAssigneesTable.taskId, taskIds),
+            isNull(taskAssigneesTable.deletedAt),
+          ),
+        )
+    : []
 
   const assigneesByTask = new Map<string, RawTaskWithRelations['assignees']>()
   assigneeRows.forEach(row => {
     const list = assigneesByTask.get(row.taskId) ?? []
     list.push({ user_id: row.userId, deleted_at: row.deletedAt })
     assigneesByTask.set(row.taskId, list)
-  })
-
-  const commentsByTask = new Map<string, RawTaskRelation[]>()
-  commentRows.forEach(row => {
-    const list = commentsByTask.get(row.taskId) ?? []
-    list.push({ id: row.id, deleted_at: row.deletedAt })
-    commentsByTask.set(row.taskId, list)
-  })
-
-  const attachmentsByTask = new Map<string, RawTaskAttachment[]>()
-  attachmentRows.forEach(row => {
-    const list = attachmentsByTask.get(row.taskId) ?? []
-    list.push({
-      id: row.id,
-      task_id: row.taskId,
-      storage_path: row.storagePath,
-      original_name: row.originalName,
-      mime_type: row.mimeType,
-      file_size: Number(row.fileSize ?? 0),
-      uploaded_by: row.uploadedBy,
-      created_at: row.createdAt,
-      updated_at: row.updatedAt,
-      deleted_at: row.deletedAt,
-    })
-    attachmentsByTask.set(row.taskId, list)
   })
 
   const rawTasks: RawTaskWithRelations[] = taskRows.map(row => ({
@@ -179,8 +109,8 @@ export async function fetchProjectCalendarTasks({
     updated_at: row.updatedAt,
     deleted_at: row.deletedAt,
     assignees: assigneesByTask.get(row.id) ?? [],
-    comments: commentsByTask.get(row.id) ?? [],
-    attachments: attachmentsByTask.get(row.id) ?? [],
+    comment_count: 0,
+    attachment_count: 0,
   }))
 
   const normalized = rawTasks

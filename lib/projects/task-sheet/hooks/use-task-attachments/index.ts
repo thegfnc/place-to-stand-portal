@@ -29,12 +29,15 @@ export const useTaskAttachments = ({
     [task]
   )
 
+  const [baselineAttachments, setBaselineAttachments] =
+    useState<AttachmentDraft[]>(defaultAttachments)
   const [attachments, setAttachments] =
     useState<AttachmentDraft[]>(defaultAttachments)
   const [attachmentsToRemove, setAttachmentsToRemove] = useState<string[]>([])
   const [pendingUploadCount, setPendingUploadCount] = useState(0)
   const pendingPathsRef = useRef<Set<string>>(new Set())
   const previewUrlRef = useRef<Map<string, string>>(new Map())
+  const loadedTaskIdRef = useRef<string | null>(null)
 
   const cleanupPendingAttachments = useCallback((paths: string[]) => {
     if (!paths.length) {
@@ -75,11 +78,11 @@ export const useTaskAttachments = ({
       }
 
       clearPreviewUrls()
-      setAttachments(defaultAttachments)
+      setAttachments(baselineAttachments)
       setAttachmentsToRemove([])
       setPendingUploadCount(0)
     },
-    [cleanupPendingAttachments, clearPreviewUrls, defaultAttachments]
+    [baselineAttachments, cleanupPendingAttachments, clearPreviewUrls]
   )
 
   const attachmentsDirty = useMemo(() => {
@@ -91,12 +94,12 @@ export const useTaskAttachments = ({
       return true
     }
 
-    if (attachments.length !== defaultAttachments.length) {
+    if (attachments.length !== baselineAttachments.length) {
       return true
     }
 
-    const defaultIds = new Set(
-      defaultAttachments
+    const baselineIds = new Set(
+      baselineAttachments
         .map(attachment => attachment.id)
         .filter((id): id is string => Boolean(id))
     )
@@ -106,18 +109,127 @@ export const useTaskAttachments = ({
         .map(attachment => attachment.id as string)
     )
 
-    if (defaultIds.size !== currentIds.size) {
+    if (baselineIds.size !== currentIds.size) {
       return true
     }
 
-    for (const id of defaultIds) {
+    for (const id of baselineIds) {
       if (!currentIds.has(id)) {
         return true
       }
     }
 
     return false
-  }, [attachments, attachmentsToRemove, defaultAttachments])
+  }, [attachments, attachmentsToRemove, baselineAttachments])
+
+  useEffect(() => {
+    pendingPathsRef.current.clear()
+    clearPreviewUrls()
+    setBaselineAttachments(defaultAttachments)
+    setAttachments(defaultAttachments)
+    setAttachmentsToRemove([])
+    setPendingUploadCount(0)
+    loadedTaskIdRef.current = task?.attachments?.length ? task.id ?? null : null
+  }, [
+    clearPreviewUrls,
+    defaultAttachments,
+    task?.attachments?.length,
+    task?.id,
+  ])
+
+  useEffect(() => {
+    const taskId = task?.id ?? null
+
+    if (!taskId) {
+      return
+    }
+
+    if (loadedTaskIdRef.current === taskId) {
+      return
+    }
+
+    if (task?.attachments?.length) {
+      loadedTaskIdRef.current = taskId
+      return
+    }
+
+    if ((task?.attachmentCount ?? 0) === 0) {
+      loadedTaskIdRef.current = taskId
+      return
+    }
+
+    const controller = new AbortController()
+
+    const loadAttachments = async () => {
+      try {
+        const response = await fetch(
+          `/api/v1/tasks/${taskId}/attachments`,
+          {
+            method: 'GET',
+            credentials: 'include',
+            signal: controller.signal,
+          }
+        )
+
+        if (!response.ok) {
+          const payload = (await response.json().catch(() => null)) as {
+            error?: string
+          } | null
+          throw new Error(payload?.error ?? 'Unable to load attachments.')
+        }
+
+        const payload = (await response.json()) as {
+          attachments?: Array<{
+            id: string
+            storage_path: string
+            original_name: string
+            mime_type: string
+            file_size: number | null
+          }>
+        }
+
+        if (controller.signal.aborted) {
+          return
+        }
+
+        const normalized = (payload.attachments ?? []).map(attachment => ({
+          id: attachment.id,
+          storagePath: attachment.storage_path,
+          originalName: attachment.original_name,
+          mimeType: attachment.mime_type,
+          fileSize: Number(attachment.file_size ?? 0),
+          isPending: false,
+          downloadUrl: `/api/storage/task-attachment/${attachment.id}`,
+          previewUrl: null,
+        }))
+
+        pendingPathsRef.current.clear()
+        clearPreviewUrls()
+        setBaselineAttachments(normalized)
+        setAttachments(normalized)
+        setAttachmentsToRemove([])
+        setPendingUploadCount(0)
+        loadedTaskIdRef.current = taskId
+      } catch (error) {
+        if (controller.signal.aborted) {
+          return
+        }
+        console.error('Failed to load task attachments', error)
+        loadedTaskIdRef.current = null
+      }
+    }
+
+    void loadAttachments()
+
+    return () => {
+      controller.abort()
+    }
+  }, [
+    clearPreviewUrls,
+    task?.attachmentCount,
+    task?.attachments?.length,
+    task?.id,
+  ])
 
   const handleAttachmentUpload = useCallback(
     async (fileList: FileList | File[]) => {

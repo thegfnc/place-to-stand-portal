@@ -1,11 +1,6 @@
 import type { DbClientMember, DbTask, DbUser } from '@/lib/types'
 export type MemberWithUser = DbClientMember & { user: DbUser | null }
 
-export type RawTaskRelation = {
-  id: string
-  deleted_at: string | null
-}
-
 export type RawTaskAttachment = {
   id: string
   task_id: string
@@ -21,8 +16,9 @@ export type RawTaskAttachment = {
 
 export type RawTaskWithRelations = DbTask & {
   assignees: Array<{ user_id: string; deleted_at: string | null }> | null
-  comments: RawTaskRelation[] | null
-  attachments: RawTaskAttachment[] | null
+  comment_count?: number | null
+  attachment_count?: number | null
+  attachments?: RawTaskAttachment[] | null
 }
 
 export type ClientMembership = {

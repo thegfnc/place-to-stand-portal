@@ -1,12 +1,13 @@
 import 'server-only'
 
-import { eq } from 'drizzle-orm'
+import { and, asc, eq, isNull } from 'drizzle-orm'
 
 import type { AppUser } from '@/lib/auth/session'
 import { ensureClientAccessByTaskId } from '@/lib/auth/permissions'
 import { db } from '@/lib/db'
 import { projects, taskAttachments, tasks } from '@/lib/db/schema'
 import { NotFoundError } from '@/lib/errors/http'
+import type { DbTaskAttachment } from '@/lib/types'
 
 type AttachmentSelection = {
   id: string
@@ -82,4 +83,57 @@ export async function getTaskAttachmentForDownload(
     originalName: attachment.originalName,
     mimeType: attachment.mimeType,
   }
+}
+
+export async function listTaskAttachments(
+  user: AppUser,
+  taskId: string,
+): Promise<DbTaskAttachment[]> {
+  await ensureClientAccessByTaskId(user, taskId)
+
+  const rows = (await db
+    .select({
+      id: taskAttachments.id,
+      taskId: taskAttachments.taskId,
+      storagePath: taskAttachments.storagePath,
+      originalName: taskAttachments.originalName,
+      mimeType: taskAttachments.mimeType,
+      fileSize: taskAttachments.fileSize,
+      uploadedBy: taskAttachments.uploadedBy,
+      createdAt: taskAttachments.createdAt,
+      updatedAt: taskAttachments.updatedAt,
+      deletedAt: taskAttachments.deletedAt,
+    })
+    .from(taskAttachments)
+    .where(
+      and(
+        eq(taskAttachments.taskId, taskId),
+        isNull(taskAttachments.deletedAt),
+      ),
+    )
+    .orderBy(asc(taskAttachments.createdAt))) as Array<{
+    id: string
+    taskId: string
+    storagePath: string
+    originalName: string
+    mimeType: string
+    fileSize: number | bigint | null
+    uploadedBy: string
+    createdAt: string
+    updatedAt: string
+    deletedAt: string | null
+  }>
+
+  return rows.map(row => ({
+    id: row.id,
+    task_id: row.taskId,
+    storage_path: row.storagePath,
+    original_name: row.originalName,
+    mime_type: row.mimeType,
+    file_size: Number(row.fileSize ?? 0),
+    uploaded_by: row.uploadedBy,
+    created_at: row.createdAt,
+    updated_at: row.updatedAt,
+    deleted_at: row.deletedAt,
+  }))
 }

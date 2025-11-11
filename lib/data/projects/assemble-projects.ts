@@ -49,9 +49,8 @@ export function assembleProjectsWithRelations({
     timeLogSummaries,
     projectClientLookup
   )
-  const { activeTasksByProject, archivedTasksByProject } = groupTasksByProject(
-    relations.tasks
-  )
+  const activeTasksByProject = groupTasksByProject(relations.tasks)
+  const archivedTasksByProject = groupTasksByProject(relations.archivedTasks)
 
   const scopedProjects =
     shouldScopeToUser && options.forUserId
@@ -159,12 +158,10 @@ function tallyPurchasedHours(blocks: RawHourBlock[]): Map<string, number> {
   return purchasedHoursByClient
 }
 
-function groupTasksByProject(tasks: RawTaskWithRelations[]): {
-  activeTasksByProject: Map<string, TaskWithRelations[]>
-  archivedTasksByProject: Map<string, TaskWithRelations[]>
-} {
-  const activeTasksByProject = new Map<string, TaskWithRelations[]>()
-  const archivedTasksByProject = new Map<string, TaskWithRelations[]>()
+function groupTasksByProject(
+  tasks: RawTaskWithRelations[]
+): Map<string, TaskWithRelations[]> {
+  const tasksByProject = new Map<string, TaskWithRelations[]>()
 
   tasks.forEach(task => {
     if (!task || !task.project_id) {
@@ -172,17 +169,12 @@ function groupTasksByProject(tasks: RawTaskWithRelations[]): {
     }
 
     const normalizedTask = normalizeRawTask(task)
-
-    const targetMap = task.deleted_at
-      ? archivedTasksByProject
-      : activeTasksByProject
-
-    const existingTasks = targetMap.get(task.project_id) ?? []
+    const existingTasks = tasksByProject.get(task.project_id) ?? []
     existingTasks.push(normalizedTask)
-    targetMap.set(task.project_id, existingTasks)
+    tasksByProject.set(task.project_id, existingTasks)
   })
 
-  return { activeTasksByProject, archivedTasksByProject }
+  return tasksByProject
 }
 
 function scopeProjects(

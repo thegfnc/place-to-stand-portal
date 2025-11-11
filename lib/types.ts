@@ -28,7 +28,8 @@ export type TaskWithRelations = DbTask & {
   rank: string
   assignees: { user_id: string }[]
   commentCount: number
-  attachments: DbTaskAttachment[]
+  attachmentCount: number
+  attachments?: DbTaskAttachment[]
 }
 
 export type TaskCommentAuthor = {

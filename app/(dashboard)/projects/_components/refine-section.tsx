@@ -129,7 +129,8 @@ function RefineTaskRow({
     ? assignees.map(person => person.name).join(', ')
     : 'Unassigned'
   const commentCount = task.commentCount ?? 0
-  const attachmentCount = task.attachments.length
+  const attachmentCount =
+    task.attachmentCount ?? (task.attachments?.length ?? 0)
 
   const handleKeyDown = useCallback(
     (event: KeyboardEvent<HTMLTableRowElement>) => {

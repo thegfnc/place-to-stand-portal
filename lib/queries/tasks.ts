@@ -1,6 +1,6 @@
 import 'server-only'
 
-import { and, asc, eq, inArray, isNull } from 'drizzle-orm'
+import { and, asc, eq, inArray, isNull, sql } from 'drizzle-orm'
 
 import type { AppUser } from '@/lib/auth/session'
 import {
@@ -111,6 +111,8 @@ type TaskWithRelationsSelection = {
   createdAt: string
   updatedAt: string
   deletedAt: string | null
+  commentCount: number
+  attachmentCount: number
 }
 
 type TaskAssigneeSelection = {
@@ -119,30 +121,16 @@ type TaskAssigneeSelection = {
   deletedAt: string | null
 }
 
-type TaskCommentSelection = {
-  id: string
-  taskId: string
-  deletedAt: string | null
-}
-
-type TaskAttachmentSelection = {
-  id: string
-  taskId: string
-  storagePath: string
-  originalName: string
-  mimeType: string
-  fileSize: number | bigint | null
-  uploadedBy: string
-  createdAt: string
-  updatedAt: string
-  deletedAt: string | null
-}
-
 export async function listProjectTasksWithRelations(
   user: AppUser,
   projectId: string,
+  options: { includeArchived?: boolean } = {},
 ): Promise<RawTaskWithRelations[]> {
   await ensureClientAccessByProjectId(user, projectId)
+
+  const whereClause = options.includeArchived
+    ? eq(tasks.projectId, projectId)
+    : and(eq(tasks.projectId, projectId), isNull(tasks.deletedAt))
 
   const taskRows = (await db
     .select({
@@ -159,9 +147,32 @@ export async function listProjectTasksWithRelations(
       createdAt: tasks.createdAt,
       updatedAt: tasks.updatedAt,
       deletedAt: tasks.deletedAt,
+      commentCount: sql<number>`
+        coalesce(
+          (
+            select count(*)
+            from ${taskComments}
+            where ${taskComments.taskId} = ${tasks.id}
+              and ${taskComments.deletedAt} is null
+          ),
+          0
+        )
+      `,
+      attachmentCount: sql<number>`
+        coalesce(
+          (
+            select count(*)
+            from ${taskAttachments}
+            where ${taskAttachments.taskId} = ${tasks.id}
+              and ${taskAttachments.deletedAt} is null
+          ),
+          0
+        )
+      `,
     })
     .from(tasks)
-    .where(eq(tasks.projectId, projectId))) as TaskWithRelationsSelection[]
+    .where(whereClause)
+    .orderBy(asc(tasks.rank))) as TaskWithRelationsSelection[]
 
   if (!taskRows.length) {
     return []
@@ -169,74 +180,25 @@ export async function listProjectTasksWithRelations(
 
   const taskIds = taskRows.map(row => row.id)
 
-  const [assigneeRows, commentRows, attachmentRows]: [
-    TaskAssigneeSelection[],
-    TaskCommentSelection[],
-    TaskAttachmentSelection[],
-  ] = await Promise.all([
-    db
-      .select({
-        taskId: taskAssignees.taskId,
-        userId: taskAssignees.userId,
-        deletedAt: taskAssignees.deletedAt,
-      })
-      .from(taskAssignees)
-      .where(inArray(taskAssignees.taskId, taskIds)),
-    db
-      .select({
-        id: taskComments.id,
-        taskId: taskComments.taskId,
-        deletedAt: taskComments.deletedAt,
-      })
-      .from(taskComments)
-      .where(inArray(taskComments.taskId, taskIds)),
-    db
-      .select({
-        id: taskAttachments.id,
-        taskId: taskAttachments.taskId,
-        storagePath: taskAttachments.storagePath,
-        originalName: taskAttachments.originalName,
-        mimeType: taskAttachments.mimeType,
-        fileSize: taskAttachments.fileSize,
-        uploadedBy: taskAttachments.uploadedBy,
-        createdAt: taskAttachments.createdAt,
-        updatedAt: taskAttachments.updatedAt,
-        deletedAt: taskAttachments.deletedAt,
-      })
-      .from(taskAttachments)
-      .where(inArray(taskAttachments.taskId, taskIds)),
-  ])
+  const assigneeRows = (await db
+    .select({
+      taskId: taskAssignees.taskId,
+      userId: taskAssignees.userId,
+      deletedAt: taskAssignees.deletedAt,
+    })
+    .from(taskAssignees)
+    .where(
+      and(
+        inArray(taskAssignees.taskId, taskIds),
+        isNull(taskAssignees.deletedAt),
+      ),
+    )) as TaskAssigneeSelection[]
 
   const assigneesByTask = new Map<string, RawTaskWithRelations['assignees']>()
   assigneeRows.forEach(row => {
     const list = assigneesByTask.get(row.taskId) ?? []
     list.push({ user_id: row.userId, deleted_at: row.deletedAt })
     assigneesByTask.set(row.taskId, list)
-  })
-
-  const commentsByTask = new Map<string, { id: string; deleted_at: string | null }[]>()
-  commentRows.forEach(row => {
-    const list = commentsByTask.get(row.taskId) ?? []
-    list.push({ id: row.id, deleted_at: row.deletedAt })
-    commentsByTask.set(row.taskId, list)
-  })
-
-  const attachmentsByTask = new Map<string, RawTaskWithRelations['attachments']>()
-  attachmentRows.forEach(row => {
-    const list = attachmentsByTask.get(row.taskId) ?? []
-    list.push({
-      id: row.id,
-      task_id: row.taskId,
-      storage_path: row.storagePath,
-      original_name: row.originalName,
-      mime_type: row.mimeType,
-      file_size: Number(row.fileSize ?? 0),
-      uploaded_by: row.uploadedBy,
-      created_at: row.createdAt,
-      updated_at: row.updatedAt,
-      deleted_at: row.deletedAt,
-    })
-    attachmentsByTask.set(row.taskId, list)
   })
 
   return taskRows.map(row => ({
@@ -254,8 +216,8 @@ export async function listProjectTasksWithRelations(
     updated_at: row.updatedAt,
     deleted_at: row.deletedAt,
     assignees: assigneesByTask.get(row.id) ?? [],
-    comments: commentsByTask.get(row.id) ?? [],
-    attachments: attachmentsByTask.get(row.id) ?? [],
+    comment_count: Number(row.commentCount ?? 0),
+    attachment_count: Number(row.attachmentCount ?? 0),
   }))
 }
 

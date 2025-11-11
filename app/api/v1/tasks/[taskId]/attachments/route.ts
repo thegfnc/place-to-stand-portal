@@ -1,17 +1,18 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
 import { z } from 'zod'
 
 import { getCurrentUser } from '@/lib/auth/session'
 import { HttpError } from '@/lib/errors/http'
-import { listProjectTasksWithRelations } from '@/lib/queries/tasks'
+import { listTaskAttachments } from '@/lib/queries/task-attachments'
 
 const paramsSchema = z.object({
-  projectId: z.string().uuid(),
+  taskId: z.string().uuid(),
 })
 
 type RouteContext = {
   params: Promise<{
-    projectId: string
+    taskId: string
   }>
 }
 
@@ -29,22 +30,22 @@ export async function GET(_request: NextRequest, context: RouteContext) {
   }
 
   try {
-    const tasks = await listProjectTasksWithRelations(
+    const attachments = await listTaskAttachments(
       user,
-      parsedParams.data.projectId,
-      { includeArchived: true },
+      parsedParams.data.taskId,
     )
 
-    return NextResponse.json(tasks, { status: 200 })
+    return NextResponse.json({ attachments }, { status: 200 })
   } catch (error) {
     if (error instanceof HttpError) {
       return NextResponse.json({ error: error.message }, { status: error.status })
     }
 
-    console.error('Failed to load project tasks', error)
+    console.error('Failed to load task attachments', error)
     return NextResponse.json(
-      { error: 'Unable to load project tasks.' },
+      { error: 'Unable to load attachments.' },
       { status: 500 },
     )
   }
 }
+
