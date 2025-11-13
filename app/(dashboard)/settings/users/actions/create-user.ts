@@ -3,6 +3,7 @@
 import { requireRole } from '@/lib/auth/session'
 import { logActivity } from '@/lib/activity/logger'
 import { userCreatedEvent } from '@/lib/activity/events'
+import { trackSettingsServerInteraction } from '@/lib/posthog/server'
 
 import { createPortalUser } from '@/lib/settings/users/services'
 import {
@@ -18,36 +19,48 @@ export async function createUser(
 ): Promise<ActionResult> {
   const actor = await requireRole('ADMIN')
 
-  const parsed = createUserSchema.safeParse(input)
-
-  if (!parsed.success) {
-    return { error: 'Please supply a valid email, full name, and role.' }
-  }
-
-  const payload = parsed.data
-  const result = await createPortalUser(actor, payload)
-
-  if (!result.error) {
-    if (result.userId) {
-      const event = userCreatedEvent({
-        fullName: payload.fullName,
-        role: payload.role,
-        email: payload.email,
-      })
-
-      await logActivity({
+  return trackSettingsServerInteraction(
+    {
+      entity: 'user',
+      mode: 'create',
+      targetId: null,
+      metadata: {
         actorId: actor.id,
-        actorRole: actor.role,
-        verb: event.verb,
-        summary: event.summary,
-        targetType: 'USER',
-        targetId: result.userId,
-        metadata: event.metadata,
-      })
+      },
+    },
+    async () => {
+      const parsed = createUserSchema.safeParse(input)
+
+      if (!parsed.success) {
+        return { error: 'Please supply a valid email, full name, and role.' }
+      }
+
+      const payload = parsed.data
+      const result = await createPortalUser(actor, payload)
+
+      if (!result.error) {
+        if (result.userId) {
+          const event = userCreatedEvent({
+            fullName: payload.fullName,
+            role: payload.role,
+            email: payload.email,
+          })
+
+          await logActivity({
+            actorId: actor.id,
+            actorRole: actor.role,
+            verb: event.verb,
+            summary: event.summary,
+            targetType: 'USER',
+            targetId: result.userId,
+            metadata: event.metadata,
+          })
+        }
+
+        revalidateUsers()
+      }
+
+      return result
     }
-
-    revalidateUsers()
-  }
-
-  return result
+  )
 }
