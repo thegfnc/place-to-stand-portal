@@ -3,6 +3,8 @@ export const INTERACTION_EVENTS = {
   DASHBOARD_REFRESH: "dashboard.refresh",
   SETTINGS_SAVE: "settings.save",
   ROUTER_TRANSITION: "router.transition",
+  BOARD_TAB_SWITCH: "board.tab_switch",
+  IDLE_RESUME: "idle.resume",
 } as const;
 
 export type InteractionEventName =

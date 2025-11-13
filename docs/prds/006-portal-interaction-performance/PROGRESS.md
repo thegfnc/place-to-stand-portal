@@ -13,6 +13,10 @@
 - Added client settings sheet instrumentation (client + server) via the shared PostHog helper, covering save/delete/restore/destroy flows.
 - Adopted the helper for project saves, soft deletes, restores, and permanent deletes, plus the full set of hour-block mutations (create/edit/archive/restore/destroy).
 - Wrapped user management actions (create/update/delete/destroy/restore) in the shared helper for consistent server instrumentation.
+- Added dedicated instrumentation for board tab switches and idle resume events, with the tracker wired through the PostHog provider.
+- Authored `phase-0-baseline-checklist.md` describing required dashboards/alerts and manual steps for capturing initial metrics.
+- Published a baseline capture checklist (`baseline-metrics.md`) covering dashboard configuration and scripted interactions.
+- Instrumented board tab switches and idle resume events to round out Phase 0 interaction timing coverage.
 - Documented interaction helpers/event constants under `lib/posthog/*` for reuse.
 
 ### ⏭️ Next Up

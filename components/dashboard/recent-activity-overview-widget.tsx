@@ -9,6 +9,9 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
+import { startClientInteraction } from '@/lib/posthog/client'
+import { INTERACTION_EVENTS } from '@/lib/posthog/types'
+import type { InteractionHandle } from '@/lib/perf/interaction-marks'
 
 const TIMEFRAME_OPTIONS = [
   { value: '7', label: '7d', description: 'Last 7 days' },
@@ -50,8 +53,66 @@ export function RecentActivityOverviewWidget({
   const [cacheMeta, setCacheMeta] = useState<CacheMeta | null>(null)
   const controllerRef = useRef<AbortController | null>(null)
   const lastRefreshKeyRef = useRef(refreshKey)
+  const interactionRef = useRef<InteractionHandle | null>(null)
+  const interactionContextRef = useRef<{
+    trigger: 'initial' | 'refresh' | 'timeframe'
+    timeframe: TimeframeValue
+  } | null>(null)
+  const pendingMetaRef = useRef<{ forceRefresh: boolean } | null>(null)
+
+  const beginInteraction = useCallback(
+    (trigger: 'initial' | 'refresh' | 'timeframe', timeframe: TimeframeValue) => {
+      const base = {
+        widget: 'recent_activity_overview',
+        trigger,
+        timeframe,
+      }
+
+      interactionRef.current?.end({
+        status: 'replaced',
+        ...base,
+      })
+
+      interactionRef.current = startClientInteraction(
+        INTERACTION_EVENTS.DASHBOARD_REFRESH,
+        {
+          metadata: base,
+          baseProperties: base,
+        }
+      )
+      interactionContextRef.current = { trigger, timeframe }
+    },
+    []
+  )
+
+  const finishInteraction = useCallback(
+    (
+      status: 'success' | 'error' | 'cancelled',
+      properties?: Record<string, unknown>
+    ) => {
+      if (!interactionRef.current) {
+        return
+      }
+
+      const context = interactionContextRef.current
+      interactionRef.current.end({
+        status,
+        ...(context ?? {}),
+        ...(pendingMetaRef.current ?? {}),
+        ...(properties ?? {}),
+      })
+      interactionRef.current = null
+      interactionContextRef.current = null
+      pendingMetaRef.current = null
+    },
+    []
+  )
 
   useEffect(() => {
+    if (!interactionRef.current) {
+      beginInteraction('initial', selectedTimeframe)
+    }
+
     const controller = new AbortController()
     controllerRef.current?.abort()
     controllerRef.current = controller
@@ -61,6 +122,7 @@ export function RecentActivityOverviewWidget({
 
     const shouldForceRefresh = refreshKey !== lastRefreshKeyRef.current
     lastRefreshKeyRef.current = refreshKey
+    pendingMetaRef.current = { forceRefresh: shouldForceRefresh }
 
     let isStreaming = false
     let didFail = false
@@ -84,12 +146,14 @@ export function RecentActivityOverviewWidget({
           throw new Error('Unable to generate summary right now.')
         }
 
+        const responseCacheStatus =
+          (response.headers.get('x-activity-overview-cache') as
+            | 'hit'
+            | 'miss'
+            | null) ?? null
+
         setCacheMeta({
-          cacheStatus:
-            (response.headers.get('x-activity-overview-cache') as
-              | 'hit'
-              | 'miss'
-              | null) ?? null,
+          cacheStatus: responseCacheStatus,
           cachedAt: response.headers.get('x-activity-overview-cached-at'),
           expiresAt: response.headers.get('x-activity-overview-expires-at'),
         })
@@ -97,6 +161,11 @@ export function RecentActivityOverviewWidget({
         if (!response.body) {
           const fallbackText = await response.text()
           setState({ status: 'success', text: fallbackText, error: null })
+          finishInteraction('success', {
+            cacheStatus: responseCacheStatus,
+            streaming: false,
+            forceRefresh: shouldForceRefresh,
+          })
           return
         }
 
@@ -124,8 +193,14 @@ export function RecentActivityOverviewWidget({
 
         accumulated += decoder.decode()
         setState({ status: 'success', text: accumulated, error: null })
+        finishInteraction('success', {
+          cacheStatus: responseCacheStatus,
+          streaming: isStreaming,
+          forceRefresh: shouldForceRefresh,
+        })
       } catch (error) {
         if (controller.signal.aborted) {
+          finishInteraction('cancelled', { reason: 'aborted' })
           return
         }
 
@@ -135,6 +210,9 @@ export function RecentActivityOverviewWidget({
             ? error.message
             : 'Something went wrong while summarizing activity.'
         setState({ status: 'error', text: '', error: message })
+        finishInteraction('error', {
+          errorMessage: message,
+        })
       } finally {
         if (!isStreaming && !didFail) {
           setState(current =>
@@ -151,11 +229,26 @@ export function RecentActivityOverviewWidget({
     return () => {
       controller.abort()
     }
-  }, [selectedTimeframe, refreshKey])
+  }, [
+    beginInteraction,
+    finishInteraction,
+    refreshKey,
+    selectedTimeframe,
+  ])
 
   const handleRefresh = useCallback(() => {
+    beginInteraction('refresh', selectedTimeframe)
     setRefreshKey(key => key + 1)
-  }, [])
+  }, [beginInteraction, selectedTimeframe])
+
+  const handleTimeframeChange = useCallback(
+    (value: string) => {
+      const timeframe = value as TimeframeValue
+      beginInteraction('timeframe', timeframe)
+      setSelectedTimeframe(timeframe)
+    },
+    [beginInteraction]
+  )
 
   const metaLabel = useMemo(() => {
     if (!cacheMeta?.cachedAt || state.status === 'error') {
@@ -198,7 +291,7 @@ export function RecentActivityOverviewWidget({
     >
       <Tabs
         value={selectedTimeframe}
-        onValueChange={value => setSelectedTimeframe(value as TimeframeValue)}
+        onValueChange={handleTimeframeChange}
         className='flex h-full flex-col'
       >
         <header className='flex flex-wrap items-start justify-between gap-3 border-b px-5 py-4'>

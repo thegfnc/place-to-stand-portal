@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
 import { TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { startBoardTabInteraction } from '@/lib/projects/board/board-tab-interaction'
 
 export type ProjectsBoardTabsHeaderProps = {
   initialTab: 'board' | 'calendar' | 'backlog' | 'activity' | 'review'
@@ -39,7 +40,11 @@ export function ProjectsBoardTabsHeader(props: ProjectsBoardTabsHeaderProps) {
     <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
       <TabsList className='bg-muted/40 h-10 w-full justify-start gap-2 rounded-lg p-1 sm:w-auto'>
         <TabsTrigger value='board' className='px-3 py-1.5 text-sm' asChild>
-          <Link href={boardHref} prefetch={false}>
+          <Link
+            href={boardHref}
+            prefetch={false}
+            onClick={() => startBoardTabInteraction(initialTab, 'board')}
+          >
             Board
           </Link>
         </TabsTrigger>
@@ -57,7 +62,9 @@ export function ProjectsBoardTabsHeader(props: ProjectsBoardTabsHeaderProps) {
             onClick={event => {
               if (calendarDisabled) {
                 event.preventDefault()
+                return
               }
+              startBoardTabInteraction(initialTab, 'calendar')
             }}
             className={
               calendarDisabled ? 'pointer-events-none opacity-50' : undefined
@@ -80,7 +87,9 @@ export function ProjectsBoardTabsHeader(props: ProjectsBoardTabsHeaderProps) {
             onClick={event => {
               if (backlogDisabled) {
                 event.preventDefault()
+                return
               }
+              startBoardTabInteraction(initialTab, 'backlog')
             }}
             className={
               backlogDisabled ? 'pointer-events-none opacity-50' : undefined
@@ -103,7 +112,9 @@ export function ProjectsBoardTabsHeader(props: ProjectsBoardTabsHeaderProps) {
             onClick={event => {
               if (reviewDisabled) {
                 event.preventDefault()
+                return
               }
+              startBoardTabInteraction(initialTab, 'review')
             }}
             className={
               reviewDisabled ? 'pointer-events-none opacity-50' : undefined
@@ -126,7 +137,9 @@ export function ProjectsBoardTabsHeader(props: ProjectsBoardTabsHeaderProps) {
             onClick={event => {
               if (activityDisabled) {
                 event.preventDefault()
+                return
               }
+              startBoardTabInteraction(initialTab, 'activity')
             }}
             className={
               activityDisabled ? 'pointer-events-none opacity-50' : undefined

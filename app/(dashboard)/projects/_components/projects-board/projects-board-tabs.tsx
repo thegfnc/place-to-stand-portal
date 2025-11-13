@@ -1,9 +1,11 @@
+import { useEffect } from 'react'
 import type { RefObject, UIEventHandler } from 'react'
 import { Tabs } from '@/components/ui/tabs'
 import type { TaskWithRelations } from '@/lib/types'
 import type { DndContextProps } from '@dnd-kit/core'
 import type { RenderAssigneeFn } from '../../../../../lib/projects/board/board-selectors'
 import type { BoardColumnId } from '@/lib/projects/board/board-constants'
+import { completeBoardTabInteraction } from '@/lib/projects/board/board-tab-interaction'
 
 import { BoardTabContent } from './board-tab-content'
 import { CalendarTabContent } from './calendar-tab-content'
@@ -132,6 +134,10 @@ export function ProjectsBoardTabs(props: ProjectsBoardTabsProps) {
     dropPreview,
     recentlyMovedTaskId,
   } = props
+
+  useEffect(() => {
+    completeBoardTabInteraction(initialTab)
+  }, [initialTab])
 
   return (
     <Tabs value={initialTab} className='flex min-h-0 flex-1 flex-col gap-2'>
