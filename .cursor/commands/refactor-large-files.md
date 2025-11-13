@@ -4,9 +4,9 @@ You are inspecting the repository for oversized source files. Run the following 
 git ls-files -coz --exclude-standard -- '*.js' '*.jsx' '*.ts' '*.tsx' '*.mjs' | while IFS= read -r -d '' file; do lines=$(wc -l < "$file"); if [ $lines -gt 300 ]; then echo "$lines $file"; fi; done | sort -nr
 ```
 
-While planning refactors, pay close attention to the architectural guidance in `AGENTS.md` lines 59-62:
+While planning refactors, pay close attention to the architectural guidance in `AGENTS.md`:
 
-- Group features by domain inside `/app` and `/components`.
-- Keep each component or module focused on a single responsibility, splitting files that creep past 300 lines.
-- Separate concerns between UI, state management, data fetching, and business logic.
-- Favor reuse of existing utilities, hooks, and components rather than duplicating logic.
+- **Modular Architecture:** Group features by domain inside `/app` and `/components`. Shared utilities live under `/lib`.
+- **Single Responsibility Principle:** As files approach 300 lines, consider splitting by responsibility. Each component, function, or module should have one clear purpose.
+- **Separation of Concerns:** Distinguish between UI, state management, data fetching, and business logic layers.
+- **DRY Principle:** Reuse code via shared utilities, hooks, and components. Abstract common patterns when they appear in 3+ places.
