@@ -9,11 +9,11 @@ import { Button } from '@/components/ui/button'
 import { DisabledFieldTooltip } from '@/components/ui/disabled-field-tooltip'
 import { cn } from '@/lib/utils'
 import { getStatusBadgeToken } from '@/lib/constants'
-import type { Database } from '@/lib/supabase/types'
+import type { UserRoleValue } from '@/lib/types'
 
 import type { UserRowState } from '@/lib/settings/users/state/use-users-table-state'
 
-const ROLE_LABELS: Record<Database['public']['Enums']['user_role'], string> = {
+const ROLE_LABELS: Record<UserRoleValue, string> = {
   ADMIN: 'Admin',
   CLIENT: 'Client',
 }

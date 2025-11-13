@@ -1,12 +1,9 @@
 import type { PageInfo } from '@/lib/pagination/cursor'
-import type { Database } from '@/lib/supabase/types'
+import type { DbClient, DbProject } from '@/lib/types'
 
-type ProjectRow = Database['public']['Tables']['projects']['Row']
+type ProjectRow = DbProject
 
-type ClientRow = Pick<
-  Database['public']['Tables']['clients']['Row'],
-  'id' | 'name' | 'deleted_at'
->
+type ClientRow = Pick<DbClient, 'id' | 'name' | 'deleted_at'>
 
 export type ProjectWithClient = ProjectRow & { client: ClientRow | null }
 

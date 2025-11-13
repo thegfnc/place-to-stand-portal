@@ -14,16 +14,11 @@ import {
   type ContractorUserSummary,
   type ProjectWithClient,
 } from '@/lib/settings/projects/use-project-sheet-state'
-import type { Database } from '@/lib/supabase/types'
+import type { ClientRow } from '@/lib/settings/projects/project-sheet-form'
 
 import { ProjectSheetForm } from './_components/project-sheet/project-sheet-form'
 import { ProjectSheetDialogs } from './_components/project-sheet/project-sheet-dialogs'
 import { createProjectSheetFieldState } from './_components/project-sheet/project-sheet-field-state'
-
-type ClientRow = Pick<
-  Database['public']['Tables']['clients']['Row'],
-  'id' | 'name' | 'deleted_at'
->
 
 type Props = {
   open: boolean

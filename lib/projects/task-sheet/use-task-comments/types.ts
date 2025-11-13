@@ -1,5 +1,5 @@
 import type { TaskCommentWithAuthor } from '@/lib/types'
-import type { Json } from '@/lib/supabase/types'
+import type { Json } from '@/lib/types/json'
 
 export type UseTaskCommentsOptions = {
   taskId: string | null

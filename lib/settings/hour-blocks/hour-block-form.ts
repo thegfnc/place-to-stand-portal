@@ -1,7 +1,5 @@
 import { z } from 'zod'
 
-import type { Database } from '@/lib/supabase/types'
-
 const invoicePattern = /^[A-Za-z0-9-]+$/
 
 export const DEFAULT_HOURS_PURCHASED = 5
@@ -24,12 +22,22 @@ export const hourBlockFormSchema = z.object({
 
 export type HourBlockFormValues = z.infer<typeof hourBlockFormSchema>
 
-type HourBlockRow = Database['public']['Tables']['hour_blocks']['Row']
+type HourBlockRow = {
+  id: string
+  client_id: string
+  hours_purchased: number
+  invoice_number: string | null
+  created_by: string | null
+  created_at: string
+  updated_at: string
+  deleted_at: string | null
+}
 
-type ClientRow = Pick<
-  Database['public']['Tables']['clients']['Row'],
-  'id' | 'name' | 'deleted_at'
->
+type ClientRow = {
+  id: string
+  name: string
+  deleted_at: string | null
+}
 
 export type HourBlockWithClient = HourBlockRow & { client: ClientRow | null }
 

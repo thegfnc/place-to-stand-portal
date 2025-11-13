@@ -6,12 +6,13 @@ import { eq } from 'drizzle-orm'
 
 import { db } from '@/lib/db'
 import { activityLogs, users } from '@/lib/db/schema'
-import type { Database, Json } from '@/lib/supabase/types'
+import type { UserRoleValue } from '@/lib/types'
+import type { Json } from '@/lib/types/json'
 import type { ActivityTargetType, ActivityVerb } from './types'
 
 export type LogActivityOptions = {
   actorId: string
-  actorRole?: Database['public']['Enums']['user_role'] | null
+  actorRole?: UserRoleValue | null
   verb: ActivityVerb
   summary: string
   targetType: ActivityTargetType | string
@@ -22,7 +23,7 @@ export type LogActivityOptions = {
   metadata?: Json
 }
 
-const DEFAULT_ACTOR_ROLE: Database['public']['Enums']['user_role'] = 'ADMIN'
+const DEFAULT_ACTOR_ROLE: UserRoleValue = 'ADMIN'
 
 export async function logActivity(options: LogActivityOptions) {
   try {
@@ -56,8 +57,8 @@ export async function logActivity(options: LogActivityOptions) {
 
 async function resolveActorRole(
   actorId: string,
-  providedRole?: Database['public']['Enums']['user_role'] | null
-): Promise<Database['public']['Enums']['user_role']> {
+  providedRole?: UserRoleValue | null
+): Promise<UserRoleValue> {
   if (providedRole) {
     return providedRole
   }

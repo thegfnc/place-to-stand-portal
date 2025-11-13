@@ -3,10 +3,8 @@ import type { Metadata } from 'next'
 import { UsersSettingsTable } from './users-table'
 import { AppShellHeader } from '@/components/layout/app-shell'
 import { requireRole } from '@/lib/auth/session'
-import {
-  listUsersForSettings,
-} from '@/lib/queries/users'
-import type { Database } from '@/lib/supabase/types'
+import { listUsersForSettings } from '@/lib/queries/users'
+import type { DbUser } from '@/lib/types'
 
 export const metadata: Metadata = {
   title: 'Users | Settings',
@@ -69,18 +67,16 @@ export default async function UsersSettingsPage({
       limit: Number.isFinite(limitParam) ? limitParam : undefined,
     })
 
-  const users: Database['public']['Tables']['users']['Row'][] = items.map(
-    user => ({
-      id: user.id,
-      email: user.email,
-      full_name: user.fullName,
-      role: user.role,
-      avatar_url: user.avatarUrl,
-      created_at: user.createdAt,
-      updated_at: user.updatedAt,
-      deleted_at: user.deletedAt,
-    })
-  )
+  const users: DbUser[] = items.map(user => ({
+    id: user.id,
+    email: user.email,
+    full_name: user.fullName,
+    role: user.role,
+    avatar_url: user.avatarUrl,
+    created_at: user.createdAt,
+    updated_at: user.updatedAt,
+    deleted_at: user.deletedAt,
+  }))
 
   return (
     <>

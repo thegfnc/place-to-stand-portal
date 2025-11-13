@@ -19,7 +19,7 @@ import {
 import type { TimeLogEntry } from '@/lib/projects/time-log/types'
 import type { DbTimeLog } from '@/lib/types'
 import type { TimeLogSummary } from '@/lib/data/projects/types'
-import type { Database } from '@/lib/supabase/types'
+import type { UserRoleValue } from '@/lib/types'
 
 const DEFAULT_HISTORY_LIMIT = 10
 
@@ -238,7 +238,7 @@ export async function listProjectTimeLogs(
           email: row.user.email,
           full_name: row.user.fullName,
           avatar_url: row.user.avatarUrl,
-          role: row.user.role as Database['public']['Enums']['user_role'],
+          role: row.user.role as UserRoleValue,
           created_at: row.user.createdAt,
           updated_at: row.user.updatedAt,
           deleted_at: row.user.deletedAt,

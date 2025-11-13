@@ -6,7 +6,7 @@ import {
   listClientsForSettings,
   type ClientsSettingsListItem,
 } from '@/lib/queries/clients'
-import type { Database } from '@/lib/supabase/types'
+import type { DbClient } from '@/lib/types'
 
 import { ClientsSettingsTable } from './clients-table'
 
@@ -18,7 +18,7 @@ type ClientsSettingsPageProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>
 }
 
-type ClientRow = Database['public']['Tables']['clients']['Row']
+type ClientRow = DbClient
 
 function mapClientToTableRow(client: ClientsSettingsListItem): ClientRow & {
   metrics: {

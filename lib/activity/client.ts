@@ -1,6 +1,6 @@
 'use client'
 
-import type { Json } from '@/lib/supabase/types'
+import type { Json } from '@/lib/types/json'
 
 import type { ActivityEvent, ActivityTargetType, ActivityVerb } from './types'
 

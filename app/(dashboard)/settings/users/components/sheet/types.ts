@@ -1,6 +1,6 @@
-import type { Database } from '@/lib/supabase/types'
+import type { DbUser } from '@/lib/types'
 
-export type UserRow = Database['public']['Tables']['users']['Row']
+export type UserRow = DbUser
 
 export type UserSheetProps = {
   open: boolean

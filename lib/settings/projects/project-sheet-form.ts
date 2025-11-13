@@ -6,13 +6,10 @@ import {
   PROJECT_STATUS_VALUES,
   type ProjectStatusValue,
 } from '@/lib/constants'
-import type { Database } from '@/lib/supabase/types'
+import type { DbClient, DbProject } from '@/lib/types'
 
-export type ProjectRow = Database['public']['Tables']['projects']['Row']
-export type ClientRow = Pick<
-  Database['public']['Tables']['clients']['Row'],
-  'id' | 'name' | 'deleted_at'
->
+export type ProjectRow = DbProject
+export type ClientRow = Pick<DbClient, 'id' | 'name' | 'deleted_at'>
 
 export type ProjectWithClient = ProjectRow & { client: ClientRow | null }
 

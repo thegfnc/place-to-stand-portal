@@ -8,13 +8,10 @@ import {
   type ProjectsSettingsListItem,
   type ProjectsSettingsResult,
 } from '@/lib/queries/projects'
-import type { Database } from '@/lib/supabase/types'
+import type { DbClient, DbProject } from '@/lib/types'
 
-type ProjectRow = Database['public']['Tables']['projects']['Row']
-type ClientRow = Pick<
-  Database['public']['Tables']['clients']['Row'],
-  'id' | 'name' | 'deleted_at'
->
+type ProjectRow = DbProject
+type ClientRow = Pick<DbClient, 'id' | 'name' | 'deleted_at'>
 
 type ProjectWithClient = ProjectRow & { client: ClientRow | null }
 

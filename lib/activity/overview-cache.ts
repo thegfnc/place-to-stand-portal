@@ -6,10 +6,17 @@ import { and, eq } from 'drizzle-orm'
 
 import { db } from '@/lib/db'
 import { activityOverviewCache } from '@/lib/db/schema'
-import type { Database } from '@/lib/supabase/types'
 
-export type ActivityOverviewCacheRow =
-  Database['public']['Tables']['activity_overview_cache']['Row']
+export type ActivityOverviewCacheRow = {
+  id: string
+  user_id: string
+  timeframe_days: number
+  summary: string
+  cached_at: string
+  expires_at: string
+  created_at: string
+  updated_at: string
+}
 
 type CacheSelection = {
   id: string

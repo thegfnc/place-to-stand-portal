@@ -17,7 +17,8 @@ import {
 
 import { db } from '@/lib/db'
 import { activityLogs, users } from '@/lib/db/schema'
-import type { Database } from '@/lib/supabase/types'
+import type { UserRoleValue } from '@/lib/types'
+import type { Json } from '@/lib/types/json'
 
 import type {
   ActivityLogWithActor,
@@ -35,7 +36,7 @@ type ActivityLogSelection = {
   log: {
     id: string
     actorId: string
-    actorRole: Database['public']['Enums']['user_role']
+    actorRole: UserRoleValue
     verb: string
     summary: string
     targetType: string
@@ -43,7 +44,7 @@ type ActivityLogSelection = {
     targetClientId: string | null
     targetProjectId: string | null
     contextRoute: string | null
-    metadata: unknown
+    metadata: Json
     createdAt: string
     updatedAt: string
     deletedAt: string | null
@@ -215,8 +216,7 @@ function combineConditions(conditions: Array<SqlExpression | undefined>) {
 
 function mapToActivityLog(row: ActivityLogSelection): ActivityLogWithActor {
   const { log, actor } = row
-  const metadata =
-    (log.metadata ?? {}) as ActivityLogWithActor['metadata']
+  const metadata = (log.metadata ?? {}) as ActivityLogWithActor['metadata']
 
   return {
     id: log.id,

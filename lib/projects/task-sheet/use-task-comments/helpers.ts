@@ -2,7 +2,7 @@ import { sanitizeEditorHtml } from '@/components/ui/rich-text-editor/utils'
 import { normalizeRichTextContent } from '@/lib/projects/task-sheet/task-sheet-utils'
 
 import type { CommentActivityMetadata } from './types'
-import type { Json } from '@/lib/supabase/types'
+import type { Json } from '@/lib/types/json'
 
 export const TASK_COMMENTS_QUERY_KEY = 'task-comments'
 

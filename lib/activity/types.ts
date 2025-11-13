@@ -1,6 +1,23 @@
-import type { Database, Json } from '@/lib/supabase/types'
+import type { UserRoleValue } from '@/lib/types'
+import type { Json } from '@/lib/types/json'
 
-export type DbActivityLog = Database['public']['Tables']['activity_logs']['Row']
+export type DbActivityLog = {
+  id: string
+  actor_id: string
+  actor_role: UserRoleValue
+  verb: string
+  summary: string
+  target_type: string
+  target_id: string | null
+  target_client_id: string | null
+  target_project_id: string | null
+  context_route: string | null
+  metadata: Json
+  created_at: string
+  updated_at: string
+  deleted_at: string | null
+  restored_at: string | null
+}
 
 export type ActivityLogWithActor = DbActivityLog & {
   actor?: {
