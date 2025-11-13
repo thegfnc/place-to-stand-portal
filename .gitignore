@@ -37,3 +37,5 @@ next-env.d.ts
 
 # supabase
 supabase/seed.sql
+
+.env.local
