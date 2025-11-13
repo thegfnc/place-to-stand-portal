@@ -1,6 +1,8 @@
 import { useCallback, useState } from 'react'
 
 import { softDeleteClient } from '@/app/(dashboard)/settings/clients/actions'
+import { startClientInteraction } from '@/lib/posthog/client'
+import { INTERACTION_EVENTS } from '@/lib/posthog/types'
 
 import { PENDING_REASON } from '../client-sheet-constants'
 
@@ -41,20 +43,61 @@ export function useClientDeletionState({
     setIsDeleteDialogOpen(false)
     startTransition(async () => {
       setFeedback(null)
-      const result = await softDeleteClient({ id: client.id })
+      const interaction = startClientInteraction(
+        INTERACTION_EVENTS.SETTINGS_SAVE,
+        {
+          metadata: {
+            entity: 'client',
+            mode: 'delete',
+            clientId: client.id,
+          },
+          baseProperties: {
+            entity: 'client',
+            mode: 'delete',
+            clientId: client.id,
+          },
+        }
+      )
 
-      if (result.error) {
-        setFeedback(result.error)
-        return
+      try {
+        const result = await softDeleteClient({ id: client.id })
+
+        if (result.error) {
+          interaction.end({
+            status: 'error',
+            entity: 'client',
+            mode: 'delete',
+            clientId: client.id,
+            error: result.error,
+          })
+          setFeedback(result.error)
+          return
+        }
+
+        interaction.end({
+          status: 'success',
+          entity: 'client',
+          mode: 'delete',
+          clientId: client.id,
+        })
+
+        toast({
+          title: 'Client deleted',
+          description: `${client.name} is hidden from selectors but remains available for history.`,
+        })
+
+        onOpenChange(false)
+        onComplete()
+      } catch (error) {
+        interaction.end({
+          status: 'error',
+          entity: 'client',
+          mode: 'delete',
+          clientId: client.id,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        })
+        setFeedback('We could not delete this client. Please try again.')
       }
-
-      toast({
-        title: 'Client deleted',
-        description: `${client.name} is hidden from selectors but remains available for history.`,
-      })
-
-      onOpenChange(false)
-      onComplete()
     })
   }, [
     client,

@@ -4,6 +4,8 @@ import { zodResolver } from '@hookform/resolvers/zod'
 
 import { saveClient } from '@/app/(dashboard)/settings/clients/actions'
 import { useUnsavedChangesWarning } from '@/lib/hooks/use-unsaved-changes-warning'
+import { startClientInteraction } from '@/lib/posthog/client'
+import { INTERACTION_EVENTS } from '@/lib/posthog/types'
 
 import {
   CLIENT_MEMBERS_HELP_TEXT,
@@ -213,29 +215,68 @@ export function useClientSheetFormState({
           return
         }
 
-        const result = await saveClient(payload)
+        const interaction = startClientInteraction(
+          INTERACTION_EVENTS.SETTINGS_SAVE,
+          {
+            metadata: {
+              entity: 'client',
+              mode: isEditing ? 'edit' : 'create',
+              hasMembers: payload.memberIds.length > 0,
+            },
+            baseProperties: {
+              entity: 'client',
+              mode: isEditing ? 'edit' : 'create',
+            },
+          }
+        )
 
-        if (result.error) {
-          setFeedback(result.error)
+        try {
+          const result = await saveClient(payload)
+
+          if (result.error) {
+            interaction.end({
+              status: 'error',
+              entity: 'client',
+              mode: isEditing ? 'edit' : 'create',
+              error: result.error,
+            })
+            setFeedback(result.error)
+            return
+          }
+
+          interaction.end({
+            status: 'success',
+            entity: 'client',
+            mode: isEditing ? 'edit' : 'create',
+            clientId: payload.id ?? null,
+          })
+
+          toast({
+            title: isEditing ? 'Client updated' : 'Client created',
+            description: isEditing
+              ? 'Changes saved successfully.'
+              : 'The client is ready for new projects.',
+          })
+
+          setSavedMemberIds(selectedMembers.map(member => member.id).sort())
+          form.reset({
+            name: payload.name,
+            slug: payload.slug ?? '',
+            notes: payload.notes ?? '',
+          })
+
+          onOpenChange(false)
+          onComplete()
+        } catch (error) {
+          interaction.end({
+            status: 'error',
+            entity: 'client',
+            mode: isEditing ? 'edit' : 'create',
+            error: error instanceof Error ? error.message : 'Unknown error',
+          })
+          setFeedback('We could not save this client. Please try again.')
           return
         }
-
-        toast({
-          title: isEditing ? 'Client updated' : 'Client created',
-          description: isEditing
-            ? 'Changes saved successfully.'
-            : 'The client is ready for new projects.',
-        })
-
-        setSavedMemberIds(selectedMembers.map(member => member.id).sort())
-        form.reset({
-          name: payload.name,
-          slug: payload.slug ?? '',
-          notes: payload.notes ?? '',
-        })
-
-        onOpenChange(false)
-        onComplete()
       })
     },
     [

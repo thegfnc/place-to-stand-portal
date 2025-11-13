@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { getSupabaseBrowserClient } from '@/lib/supabase/client'
+import { startClientInteraction } from '@/lib/posthog/client'
+import { INTERACTION_EVENTS } from '@/lib/posthog/types'
 import type { AssignedTaskSummary } from '@/lib/data/tasks'
 
 import { sortAssignedTasks } from './assigned-task-utils'
@@ -93,18 +95,52 @@ export function useMyTasksWidgetState({
 
       refreshInFlightRef.current.add(taskId)
 
+      const interaction = startClientInteraction(
+        INTERACTION_EVENTS.DASHBOARD_REFRESH,
+        {
+          metadata: {
+            taskId,
+            trigger: 'realtime',
+          },
+          baseProperties: {
+            taskId,
+            trigger: 'realtime',
+          },
+        }
+      )
+
       try {
         const summary = await loadTaskSummary(taskId)
         if (summary) {
           upsertTask(summary)
+          interaction.end({
+            status: 'success',
+            taskId,
+            trigger: 'realtime',
+            result: 'updated',
+          })
         } else {
           removeTask(taskId)
+          interaction.end({
+            status: 'success',
+            taskId,
+            trigger: 'realtime',
+            result: 'removed',
+          })
         }
+      } catch (error) {
+        interaction.end({
+          status: 'error',
+          taskId,
+          trigger: 'realtime',
+          error:
+            error instanceof Error ? error.message : 'Unknown dashboard error',
+        })
       } finally {
         refreshInFlightRef.current.delete(taskId)
       }
     },
-    [loadTaskSummary, refreshInFlightRef, removeTask, upsertTask]
+    [loadTaskSummary, removeTask, upsertTask]
   )
 
   const flushRefreshQueue = useCallback(() => {
