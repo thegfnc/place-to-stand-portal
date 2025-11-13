@@ -360,12 +360,6 @@ Harden cache reuse when the user returns from idle or navigates via history cont
 - Conduct manual QA passes covering idle resume, back button flows, cache reuse, and high-traffic interaction loops in projects, dashboard, and settings.
 - Manually verify cache invalidation rules (mutation triggers, Supabase events) update React Query stores without reloading routes.
 
-### Phase 4 – Verification & Knowledge Share
-
-- Audit PostHog dashboards to confirm custom events/marks are flowing; configure alerts for regressions.
-- Capture before/after metrics through manual benchmarking, update the performance runbook, and share findings in engineering syncs.
-- Pair with adjacent teams to adopt the shared caching/instrumentation primitives.
-
 ## 6. Risks & Mitigations
 
 - **State divergence** – Optimistic UIs may show stale data. Mitigate with refresh queues, stale indicators, and reconciliation on mutation success.
