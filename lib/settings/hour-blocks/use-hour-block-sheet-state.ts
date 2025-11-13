@@ -11,6 +11,10 @@ import {
 import { useToast } from '@/components/ui/use-toast'
 import { useUnsavedChangesWarning } from '@/lib/hooks/use-unsaved-changes-warning'
 import {
+  finishSettingsInteraction,
+  startSettingsInteraction,
+} from '@/lib/posthog/settings'
+import {
   buildHourBlockFormDefaults,
   createHourBlockSavePayload,
   hourBlockFormSchema,
@@ -147,30 +151,62 @@ export function useHourBlockSheetState({
 
         const payload = createHourBlockSavePayload(values, hourBlock)
 
-        const result = await saveHourBlock(payload)
-
-        applyServerFieldErrors(result.fieldErrors)
-
-        if (result.error) {
-          setFeedback(result.error)
-          toast({
-            title: 'Unable to save hour block',
-            description: result.error,
-            variant: 'destructive',
-          })
-          return
-        }
-
-        toast({
-          title: isEditing ? 'Hour block updated' : 'Hour block created',
-          description: isEditing
-            ? 'Changes saved successfully.'
-            : 'The hour block is ready for tracking.',
+        const interaction = startSettingsInteraction({
+          entity: 'hour_block',
+          mode: isEditing ? 'edit' : 'create',
+          targetId: payload.id ?? null,
+          metadata: {
+            clientId: payload.clientId ?? null,
+          },
         })
 
-        resetFormState()
-        onOpenChange(false)
-        onComplete()
+        try {
+          const result = await saveHourBlock(payload)
+
+          applyServerFieldErrors(result.fieldErrors)
+
+          if (result.error) {
+            finishSettingsInteraction(interaction, {
+              status: 'error',
+              error: result.error,
+            })
+            setFeedback(result.error)
+            toast({
+              title: 'Unable to save hour block',
+              description: result.error,
+              variant: 'destructive',
+            })
+            return
+          }
+
+          finishSettingsInteraction(interaction, {
+            status: 'success',
+            targetId: payload.id ?? null,
+          })
+
+          toast({
+            title: isEditing ? 'Hour block updated' : 'Hour block created',
+            description: isEditing
+              ? 'Changes saved successfully.'
+              : 'The hour block is ready for tracking.',
+          })
+
+          resetFormState()
+          onOpenChange(false)
+          onComplete()
+        } catch (error) {
+          finishSettingsInteraction(interaction, {
+            status: 'error',
+            error: error instanceof Error ? error.message : 'Unknown error',
+          })
+          setFeedback('We could not save this hour block. Please try again.')
+          toast({
+            title: 'Unable to save hour block',
+            description:
+              error instanceof Error ? error.message : 'Unknown error.',
+            variant: 'destructive',
+          })
+        }
       })
     },
     [
@@ -211,26 +247,60 @@ export function useHourBlockSheetState({
     startTransition(async () => {
       setFeedback(null)
       form.clearErrors()
-      const result = await softDeleteHourBlock({ id: hourBlock.id })
-
-      if (result.error) {
-        setFeedback(result.error)
-        toast({
-          title: 'Unable to delete hour block',
-          description: result.error,
-          variant: 'destructive',
-        })
-        return
-      }
-
-      toast({
-        title: 'Hour block archived',
-        description:
-          'It will be hidden from active tracking but remains available historically.',
+      const interaction = startSettingsInteraction({
+        entity: 'hour_block',
+        mode: 'delete',
+        targetId: hourBlock.id,
+        metadata: {
+          clientId: hourBlock.client?.id ?? null,
+        },
       })
 
-      onOpenChange(false)
-      onComplete()
+      try {
+        const result = await softDeleteHourBlock({ id: hourBlock.id })
+
+        if (result.error) {
+          finishSettingsInteraction(interaction, {
+            status: 'error',
+            targetId: hourBlock.id,
+            error: result.error,
+          })
+          setFeedback(result.error)
+          toast({
+            title: 'Unable to delete hour block',
+            description: result.error,
+            variant: 'destructive',
+          })
+          return
+        }
+
+        finishSettingsInteraction(interaction, {
+          status: 'success',
+          targetId: hourBlock.id,
+        })
+
+        toast({
+          title: 'Hour block archived',
+          description:
+            'It will be hidden from active tracking but remains available historically.',
+        })
+
+        onOpenChange(false)
+        onComplete()
+      } catch (error) {
+        finishSettingsInteraction(interaction, {
+          status: 'error',
+          targetId: hourBlock.id,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        })
+        setFeedback('We could not delete this hour block. Please try again.')
+        toast({
+          title: 'Unable to delete hour block',
+          description:
+            error instanceof Error ? error.message : 'Unknown error.',
+          variant: 'destructive',
+        })
+      }
     })
   }, [
     form,

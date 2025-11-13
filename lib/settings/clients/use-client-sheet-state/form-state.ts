@@ -4,8 +4,10 @@ import { zodResolver } from '@hookform/resolvers/zod'
 
 import { saveClient } from '@/app/(dashboard)/settings/clients/actions'
 import { useUnsavedChangesWarning } from '@/lib/hooks/use-unsaved-changes-warning'
-import { startClientInteraction } from '@/lib/posthog/client'
-import { INTERACTION_EVENTS } from '@/lib/posthog/types'
+import {
+  finishSettingsInteraction,
+  startSettingsInteraction,
+} from '@/lib/posthog/settings'
 
 import {
   CLIENT_MEMBERS_HELP_TEXT,
@@ -215,40 +217,30 @@ export function useClientSheetFormState({
           return
         }
 
-        const interaction = startClientInteraction(
-          INTERACTION_EVENTS.SETTINGS_SAVE,
-          {
-            metadata: {
-              entity: 'client',
-              mode: isEditing ? 'edit' : 'create',
-              hasMembers: payload.memberIds.length > 0,
-            },
-            baseProperties: {
-              entity: 'client',
-              mode: isEditing ? 'edit' : 'create',
-            },
-          }
-        )
+        const interaction = startSettingsInteraction({
+          entity: 'client',
+          mode: isEditing ? 'edit' : 'create',
+          targetId: payload.id ?? null,
+          metadata: {
+            hasMembers: payload.memberIds.length > 0,
+          },
+        })
 
         try {
           const result = await saveClient(payload)
 
           if (result.error) {
-            interaction.end({
+            finishSettingsInteraction(interaction, {
               status: 'error',
-              entity: 'client',
-              mode: isEditing ? 'edit' : 'create',
               error: result.error,
             })
             setFeedback(result.error)
             return
           }
 
-          interaction.end({
+          finishSettingsInteraction(interaction, {
             status: 'success',
-            entity: 'client',
-            mode: isEditing ? 'edit' : 'create',
-            clientId: payload.id ?? null,
+            targetId: payload.id ?? null,
           })
 
           toast({
@@ -268,10 +260,8 @@ export function useClientSheetFormState({
           onOpenChange(false)
           onComplete()
         } catch (error) {
-          interaction.end({
+          finishSettingsInteraction(interaction, {
             status: 'error',
-            entity: 'client',
-            mode: isEditing ? 'edit' : 'create',
             error: error instanceof Error ? error.message : 'Unknown error',
           })
           setFeedback('We could not save this client. Please try again.')

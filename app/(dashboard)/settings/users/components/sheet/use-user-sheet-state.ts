@@ -8,6 +8,10 @@ import {
 } from '@/app/(dashboard)/settings/users/actions'
 import { useUnsavedChangesWarning } from '@/lib/hooks/use-unsaved-changes-warning'
 import { useToast } from '@/components/ui/use-toast'
+import {
+  finishSettingsInteraction,
+  startSettingsInteraction,
+} from '@/lib/posthog/settings'
 
 import { deriveInitials } from './derive-initials'
 import {
@@ -135,44 +139,95 @@ export const useUserSheetState = ({
           ? values.avatarPath.trim()
           : undefined
         const avatarRemoved = Boolean(values.avatarRemoved)
+        const baseInteraction = startSettingsInteraction({
+          entity: 'user',
+          mode: isEditing ? 'edit' : 'create',
+          targetId: user?.id ?? null,
+          metadata: {
+            role: values.role,
+            editingSelf,
+          },
+        })
 
         if (isEditing && user) {
-          const result = await updateUser({
-            id: user.id,
-            fullName: values.fullName,
-            role: editingSelf ? user.role : values.role,
-            password: trimmedPassword.length >= 8 ? trimmedPassword : undefined,
-            avatarPath: normalizedAvatarPath,
-            avatarRemoved,
-          })
+          try {
+            const result = await updateUser({
+              id: user.id,
+              fullName: values.fullName,
+              role: editingSelf ? user.role : values.role,
+              password:
+                trimmedPassword.length >= 8 ? trimmedPassword : undefined,
+              avatarPath: normalizedAvatarPath,
+              avatarRemoved,
+            })
 
-          if (result.error) {
-            setFeedback(result.error)
+            if (result.error) {
+              finishSettingsInteraction(baseInteraction, {
+                status: 'error',
+                targetId: user.id,
+                error: result.error,
+              })
+              setFeedback(result.error)
+              return
+            }
+
+            finishSettingsInteraction(baseInteraction, {
+              status: 'success',
+              targetId: user.id,
+            })
+
+            toast({
+              title: 'User updated',
+              description: 'Changes saved successfully.',
+            })
+          } catch (error) {
+            finishSettingsInteraction(baseInteraction, {
+              status: 'error',
+              targetId: user.id,
+              error: error instanceof Error ? error.message : 'Unknown error',
+            })
+            setFeedback('We could not update this user. Please try again.')
             return
           }
-
-          toast({
-            title: 'User updated',
-            description: 'Changes saved successfully.',
-          })
         } else {
-          const result = await createUser({
-            email: values.email,
-            fullName: values.fullName,
-            role: values.role,
-            avatarPath: normalizedAvatarPath,
-          })
+          try {
+            const result = await createUser({
+              email: values.email,
+              fullName: values.fullName,
+              role: values.role,
+              avatarPath: normalizedAvatarPath,
+            })
 
-          if (result.error) {
-            setFeedback(result.error)
+            if (result.error) {
+              finishSettingsInteraction(baseInteraction, {
+                status: 'error',
+                error: result.error,
+              })
+              setFeedback(result.error)
+              return
+            }
+
+            const createdUserId =
+              (result as { userId?: string | null }).userId ?? null
+
+            finishSettingsInteraction(baseInteraction, {
+              status: 'success',
+              targetId: createdUserId,
+            })
+
+            toast({
+              title: 'Invite sent',
+              description:
+                'The new teammate received their login details via email.',
+            })
+          } catch (error) {
+            finishSettingsInteraction(baseInteraction, {
+              status: 'error',
+              error: error instanceof Error ? error.message : 'Unknown error',
+            })
+            setFeedback('We could not create this user. Please try again.')
             return
           }
-
-          toast({
-            title: 'Invite sent',
-            description:
-              'The new teammate received their login details via email.',
-          })
         }
 
         resetFormState()
@@ -226,19 +281,47 @@ export const useUserSheetState = ({
 
     startTransition(async () => {
       setFeedback(null)
-      const result = await softDeleteUser({ id: user.id })
-
-      if (result.error) {
-        setFeedback(result.error)
-        return
-      }
-
-      onOpenChange(false)
-      onComplete()
-      toast({
-        title: 'User deleted',
-        description: `${user.full_name ?? user.email} can no longer access the portal.`,
+      const interaction = startSettingsInteraction({
+        entity: 'user',
+        mode: 'delete',
+        targetId: user.id,
+        metadata: {
+          email: user.email,
+        },
       })
+
+      try {
+        const result = await softDeleteUser({ id: user.id })
+
+        if (result.error) {
+          finishSettingsInteraction(interaction, {
+            status: 'error',
+            targetId: user.id,
+            error: result.error,
+          })
+          setFeedback(result.error)
+          return
+        }
+
+        finishSettingsInteraction(interaction, {
+          status: 'success',
+          targetId: user.id,
+        })
+
+        onOpenChange(false)
+        onComplete()
+        toast({
+          title: 'User deleted',
+          description: `${user.full_name ?? user.email} can no longer access the portal.`,
+        })
+      } catch (error) {
+        finishSettingsInteraction(interaction, {
+          status: 'error',
+          targetId: user.id,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        })
+        setFeedback('We could not delete this user. Please try again.')
+      }
     })
   }, [
     currentUserId,

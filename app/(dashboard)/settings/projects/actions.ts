@@ -12,7 +12,6 @@ import { saveProject as saveProjectAction } from '@/lib/settings/projects/action
 import { softDeleteProject as softDeleteProjectAction } from '@/lib/settings/projects/actions/soft-delete-project'
 import { restoreProject as restoreProjectAction } from '@/lib/settings/projects/actions/restore-project'
 import { destroyProject as destroyProjectAction } from '@/lib/settings/projects/actions/destroy-project'
-
 export async function saveProject(
   input: ProjectInput
 ): Promise<ProjectActionResult> {

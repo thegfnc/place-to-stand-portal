@@ -8,6 +8,10 @@ import {
   restoreUser,
   softDeleteUser,
 } from '@/app/(dashboard)/settings/users/actions'
+import {
+  finishSettingsInteraction,
+  startSettingsInteraction,
+} from '@/lib/posthog/settings'
 
 import {
   SELF_DELETE_REASON,
@@ -111,10 +115,25 @@ export const useUserMutationState = ({
     setPendingDeleteId(target.id)
 
     startTransition(async () => {
+      const interaction = startSettingsInteraction({
+        entity: 'user',
+        mode: 'delete',
+        targetId: target.id,
+        metadata: {
+          email: target.email,
+          role: target.role,
+        },
+      })
+
       try {
         const result = await softDeleteUser({ id: target.id })
 
         if (result.error) {
+          finishSettingsInteraction(interaction, {
+            status: 'error',
+            targetId: target.id,
+            error: result.error,
+          })
           toast({
             title: 'Unable to delete user',
             description: result.error,
@@ -123,11 +142,28 @@ export const useUserMutationState = ({
           return
         }
 
+        finishSettingsInteraction(interaction, {
+          status: 'success',
+          targetId: target.id,
+        })
+
         toast({
           title: 'User deleted',
           description: `${target.full_name ?? target.email} can no longer access the portal.`,
         })
         router.refresh()
+      } catch (error) {
+        finishSettingsInteraction(interaction, {
+          status: 'error',
+          targetId: target.id,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        })
+        toast({
+          title: 'Unable to delete user',
+          description:
+            error instanceof Error ? error.message : 'Unknown error.',
+          variant: 'destructive',
+        })
       } finally {
         setPendingDeleteId(null)
         deleteTargetRef.current = null
@@ -184,10 +220,25 @@ export const useUserMutationState = ({
     setPendingDestroyId(target.id)
 
     startTransition(async () => {
+      const interaction = startSettingsInteraction({
+        entity: 'user',
+        mode: 'destroy',
+        targetId: target.id,
+        metadata: {
+          email: target.email,
+          role: target.role,
+        },
+      })
+
       try {
         const result = await destroyUser({ id: target.id })
 
         if (result.error) {
+          finishSettingsInteraction(interaction, {
+            status: 'error',
+            targetId: target.id,
+            error: result.error,
+          })
           toast({
             title: 'Unable to permanently delete user',
             description: result.error,
@@ -196,11 +247,28 @@ export const useUserMutationState = ({
           return
         }
 
+        finishSettingsInteraction(interaction, {
+          status: 'success',
+          targetId: target.id,
+        })
+
         toast({
           title: 'User permanently deleted',
           description: `${target.full_name ?? target.email} has been removed from the portal.`,
         })
         router.refresh()
+      } catch (error) {
+        finishSettingsInteraction(interaction, {
+          status: 'error',
+          targetId: target.id,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        })
+        toast({
+          title: 'Unable to permanently delete user',
+          description:
+            error instanceof Error ? error.message : 'Unknown error.',
+          variant: 'destructive',
+        })
       } finally {
         setPendingDestroyId(null)
         destroyTargetRef.current = null
@@ -216,10 +284,25 @@ export const useUserMutationState = ({
 
       setPendingRestoreId(user.id)
       startTransition(async () => {
+        const interaction = startSettingsInteraction({
+          entity: 'user',
+          mode: 'restore',
+          targetId: user.id,
+          metadata: {
+            email: user.email,
+            role: user.role,
+          },
+        })
+
         try {
           const result = await restoreUser({ id: user.id })
 
           if (result.error) {
+            finishSettingsInteraction(interaction, {
+              status: 'error',
+              targetId: user.id,
+              error: result.error,
+            })
             toast({
               title: 'Unable to restore user',
               description: result.error,
@@ -228,11 +311,28 @@ export const useUserMutationState = ({
             return
           }
 
+          finishSettingsInteraction(interaction, {
+            status: 'success',
+            targetId: user.id,
+          })
+
           toast({
             title: 'User restored',
             description: `${user.full_name ?? user.email} can access the portal again.`,
           })
           router.refresh()
+        } catch (error) {
+          finishSettingsInteraction(interaction, {
+            status: 'error',
+            targetId: user.id,
+            error: error instanceof Error ? error.message : 'Unknown error',
+          })
+          toast({
+            title: 'Unable to restore user',
+            description:
+              error instanceof Error ? error.message : 'Unknown error.',
+            variant: 'destructive',
+          })
         } finally {
           setPendingRestoreId(null)
         }

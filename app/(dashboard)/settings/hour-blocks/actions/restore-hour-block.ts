@@ -7,6 +7,7 @@ import { requireUser } from '@/lib/auth/session'
 import { assertAdmin } from '@/lib/auth/permissions'
 import { logActivity } from '@/lib/activity/logger'
 import { hourBlockRestoredEvent } from '@/lib/activity/events'
+import { trackSettingsServerInteraction } from '@/lib/posthog/server'
 import { db } from '@/lib/db'
 import { hourBlocks } from '@/lib/db/schema'
 import { getHourBlockWithClientById } from '@/lib/queries/hour-blocks'
@@ -16,6 +17,19 @@ import type { ActionResult, RestoreInput } from './types'
 import { HOUR_BLOCKS_SETTINGS_PATH } from './helpers'
 
 export async function restoreHourBlock(
+  input: RestoreInput,
+): Promise<ActionResult> {
+  return trackSettingsServerInteraction(
+    {
+      entity: 'hour_block',
+      mode: 'restore',
+      targetId: input.id,
+    },
+    async () => performRestoreHourBlock(input),
+  )
+}
+
+async function performRestoreHourBlock(
   input: RestoreInput,
 ): Promise<ActionResult> {
   const user = await requireUser()

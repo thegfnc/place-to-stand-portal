@@ -10,6 +10,7 @@ import {
   hourBlockCreatedEvent,
   hourBlockUpdatedEvent,
 } from '@/lib/activity/events'
+import { trackSettingsServerInteraction } from '@/lib/posthog/server'
 import { db } from '@/lib/db'
 import { hourBlocks } from '@/lib/db/schema'
 import {
@@ -25,6 +26,25 @@ import {
 } from './helpers'
 
 export async function saveHourBlock(
+  input: HourBlockInput,
+): Promise<ActionResult> {
+  const mode = input.id ? 'edit' : 'create'
+  const targetId = input.id ?? null
+
+  return trackSettingsServerInteraction(
+    {
+      entity: 'hour_block',
+      mode,
+      targetId,
+      metadata: {
+        clientId: input.clientId,
+      },
+    },
+    async () => performSaveHourBlock(input),
+  )
+}
+
+async function performSaveHourBlock(
   input: HourBlockInput,
 ): Promise<ActionResult> {
   const user = await requireUser()

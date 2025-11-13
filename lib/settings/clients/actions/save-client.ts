@@ -1,3 +1,4 @@
+import { trackSettingsServerInteraction } from '@/lib/posthog/server'
 import {
   clientSchema,
   type ClientInput,
@@ -36,21 +37,34 @@ export async function saveClientMutation(
 
   const cleanedNotes = notes?.trim() ? notes.trim() : null
   const providedSlug = slug?.trim() || null
+  const mode = id ? 'edit' : 'create'
 
-  if (!id) {
-    return createClient(context, {
-      name: trimmedName,
-      providedSlug,
-      notes: cleanedNotes,
-      memberIds: normalizedMemberIds,
-    })
-  }
+  return trackSettingsServerInteraction(
+    {
+      entity: 'client',
+      mode,
+      targetId: id ?? null,
+      metadata: {
+        hasMembers: normalizedMemberIds.length > 0,
+      },
+    },
+    async () => {
+      if (!id) {
+        return createClient(context, {
+          name: trimmedName,
+          providedSlug,
+          notes: cleanedNotes,
+          memberIds: normalizedMemberIds,
+        })
+      }
 
-  return updateClient(context, {
-    id,
-    name: trimmedName,
-    providedSlug,
-    notes: cleanedNotes,
-    memberIds: normalizedMemberIds,
-  })
+      return updateClient(context, {
+        id,
+        name: trimmedName,
+        providedSlug,
+        notes: cleanedNotes,
+        memberIds: normalizedMemberIds,
+      })
+    }
+  )
 }

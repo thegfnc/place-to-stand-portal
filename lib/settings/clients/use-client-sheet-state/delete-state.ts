@@ -1,8 +1,10 @@
 import { useCallback, useState } from 'react'
 
 import { softDeleteClient } from '@/app/(dashboard)/settings/clients/actions'
-import { startClientInteraction } from '@/lib/posthog/client'
-import { INTERACTION_EVENTS } from '@/lib/posthog/types'
+import {
+  finishSettingsInteraction,
+  startSettingsInteraction,
+} from '@/lib/posthog/settings'
 
 import { PENDING_REASON } from '../client-sheet-constants'
 
@@ -43,42 +45,28 @@ export function useClientDeletionState({
     setIsDeleteDialogOpen(false)
     startTransition(async () => {
       setFeedback(null)
-      const interaction = startClientInteraction(
-        INTERACTION_EVENTS.SETTINGS_SAVE,
-        {
-          metadata: {
-            entity: 'client',
-            mode: 'delete',
-            clientId: client.id,
-          },
-          baseProperties: {
-            entity: 'client',
-            mode: 'delete',
-            clientId: client.id,
-          },
-        }
-      )
+      const interaction = startSettingsInteraction({
+        entity: 'client',
+        mode: 'delete',
+        targetId: client.id,
+      })
 
       try {
         const result = await softDeleteClient({ id: client.id })
 
         if (result.error) {
-          interaction.end({
+          finishSettingsInteraction(interaction, {
             status: 'error',
-            entity: 'client',
-            mode: 'delete',
-            clientId: client.id,
+            targetId: client.id,
             error: result.error,
           })
           setFeedback(result.error)
           return
         }
 
-        interaction.end({
+        finishSettingsInteraction(interaction, {
           status: 'success',
-          entity: 'client',
-          mode: 'delete',
-          clientId: client.id,
+          targetId: client.id,
         })
 
         toast({
@@ -89,11 +77,9 @@ export function useClientDeletionState({
         onOpenChange(false)
         onComplete()
       } catch (error) {
-        interaction.end({
+        finishSettingsInteraction(interaction, {
           status: 'error',
-          entity: 'client',
-          mode: 'delete',
-          clientId: client.id,
+          targetId: client.id,
           error: error instanceof Error ? error.message : 'Unknown error',
         })
         setFeedback('We could not delete this client. Please try again.')

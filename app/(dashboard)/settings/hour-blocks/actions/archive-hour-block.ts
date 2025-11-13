@@ -7,6 +7,7 @@ import { requireUser } from '@/lib/auth/session'
 import { assertAdmin } from '@/lib/auth/permissions'
 import { logActivity } from '@/lib/activity/logger'
 import { hourBlockArchivedEvent } from '@/lib/activity/events'
+import { trackSettingsServerInteraction } from '@/lib/posthog/server'
 import { db } from '@/lib/db'
 import { hourBlocks } from '@/lib/db/schema'
 import { getHourBlockWithClientById } from '@/lib/queries/hour-blocks'
@@ -16,6 +17,19 @@ import type { ActionResult, DeleteInput } from './types'
 import { HOUR_BLOCKS_SETTINGS_PATH } from './helpers'
 
 export async function softDeleteHourBlock(
+  input: DeleteInput,
+): Promise<ActionResult> {
+  return trackSettingsServerInteraction(
+    {
+      entity: 'hour_block',
+      mode: 'delete',
+      targetId: input.id,
+    },
+    async () => performSoftDeleteHourBlock(input),
+  )
+}
+
+async function performSoftDeleteHourBlock(
   input: DeleteInput,
 ): Promise<ActionResult> {
   const user = await requireUser()

@@ -11,6 +11,10 @@ import {
 import { useToast } from '@/components/ui/use-toast'
 import { useUnsavedChangesWarning } from '@/lib/hooks/use-unsaved-changes-warning'
 import {
+  finishSettingsInteraction,
+  startSettingsInteraction,
+} from '@/lib/posthog/settings'
+import {
   buildProjectFormDefaults,
   createProjectSavePayload,
   projectSheetFormSchema,
@@ -168,38 +172,71 @@ export function useProjectSheetState({
           return
         }
 
-        const result = await saveProject(payload)
+        const interaction = startSettingsInteraction({
+          entity: 'project',
+          mode: isEditing ? 'edit' : 'create',
+          targetId: payload.id ?? null,
+          metadata: {
+            clientId: payload.clientId,
+            status: payload.status,
+          },
+        })
 
-        applyServerFieldErrors(result.fieldErrors)
+        try {
+          const result = await saveProject(payload)
 
-        if (result.error) {
-          setFeedback(result.error)
+          applyServerFieldErrors(result.fieldErrors)
+
+          if (result.error) {
+            finishSettingsInteraction(interaction, {
+              status: 'error',
+              error: result.error,
+            })
+            setFeedback(result.error)
+            toast({
+              title: 'Unable to save project',
+              description: result.error,
+              variant: 'destructive',
+            })
+            return
+          }
+
+          finishSettingsInteraction(interaction, {
+            status: 'success',
+            targetId: payload.id ?? null,
+          })
+
+          toast({
+            title: isEditing ? 'Project updated' : 'Project created',
+            description: isEditing
+              ? 'Changes saved successfully.'
+              : 'The project is ready to track activity.',
+          })
+
+          form.reset({
+            name: payload.name,
+            clientId: payload.clientId,
+            status: payload.status,
+            startsOn: payload.startsOn ?? '',
+            endsOn: payload.endsOn ?? '',
+            slug: payload.slug ?? '',
+          })
+
+          onOpenChange(false)
+          onComplete()
+        } catch (error) {
+          finishSettingsInteraction(interaction, {
+            status: 'error',
+            error: error instanceof Error ? error.message : 'Unknown error',
+          })
+          setFeedback('We could not save the project. Please try again.')
           toast({
             title: 'Unable to save project',
-            description: result.error,
+            description:
+              error instanceof Error ? error.message : 'Unknown error.',
             variant: 'destructive',
           })
-          return
         }
-
-        toast({
-          title: isEditing ? 'Project updated' : 'Project created',
-          description: isEditing
-            ? 'Changes saved successfully.'
-            : 'The project is ready to track activity.',
-        })
-
-        form.reset({
-          name: payload.name,
-          clientId: payload.clientId,
-          status: payload.status,
-          startsOn: payload.startsOn ?? '',
-          endsOn: payload.endsOn ?? '',
-          slug: payload.slug ?? '',
-        })
-
-        onOpenChange(false)
-        onComplete()
       })
     },
     [
@@ -239,25 +276,59 @@ export function useProjectSheetState({
     startTransition(async () => {
       setFeedback(null)
       form.clearErrors()
-      const result = await softDeleteProject({ id: project.id })
-
-      if (result.error) {
-        setFeedback(result.error)
-        toast({
-          title: 'Unable to delete project',
-          description: result.error,
-          variant: 'destructive',
-        })
-        return
-      }
-
-      toast({
-        title: 'Project deleted',
-        description: 'You can still find it in historical reporting.',
+      const interaction = startSettingsInteraction({
+        entity: 'project',
+        mode: 'delete',
+        targetId: project.id,
+        metadata: {
+          clientId: project.client_id ?? null,
+        },
       })
 
-      onOpenChange(false)
-      onComplete()
+      try {
+        const result = await softDeleteProject({ id: project.id })
+
+        if (result.error) {
+          finishSettingsInteraction(interaction, {
+            status: 'error',
+            targetId: project.id,
+            error: result.error,
+          })
+          setFeedback(result.error)
+          toast({
+            title: 'Unable to delete project',
+            description: result.error,
+            variant: 'destructive',
+          })
+          return
+        }
+
+        finishSettingsInteraction(interaction, {
+          status: 'success',
+          targetId: project.id,
+        })
+
+        toast({
+          title: 'Project deleted',
+          description: 'You can still find it in historical reporting.',
+        })
+
+        onOpenChange(false)
+        onComplete()
+      } catch (error) {
+        finishSettingsInteraction(interaction, {
+          status: 'error',
+          targetId: project.id,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        })
+        setFeedback('We could not delete this project. Please try again.')
+        toast({
+          title: 'Unable to delete project',
+          description:
+            error instanceof Error ? error.message : 'Unknown error.',
+          variant: 'destructive',
+        })
+      }
     })
   }, [
     form,

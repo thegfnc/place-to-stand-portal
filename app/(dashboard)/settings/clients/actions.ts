@@ -54,8 +54,8 @@ async function runClientMutation<TInput>(
   ) => Promise<ClientMutationResult>
 ): Promise<ClientActionResult> {
   const user = await requireUser()
-
-  const { didMutate, ...result } = await mutate({ user }, input)
+  const mutationResult = await mutate({ user }, input)
+  const { didMutate, ...result } = mutationResult
 
   if (didMutate) {
     revalidatePath(CLIENT_SETTINGS_PATH)

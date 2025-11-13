@@ -4,15 +4,15 @@ import { z } from 'zod'
 
 const schema = z.object({
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
-  NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
+  NEXT_PUBLIC_SUPABASE_URL: z.url(),
   NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1),
   NEXT_PUBLIC_POSTHOG_KEY: z.string().min(1),
-  NEXT_PUBLIC_POSTHOG_HOST: z.string().url(),
+  NEXT_PUBLIC_POSTHOG_HOST: z.url(),
   RESEND_API_KEY: z.string().min(1),
-  RESEND_FROM_EMAIL: z.string().email(),
-  RESEND_REPLY_TO_EMAIL: z.string().email(),
+  RESEND_FROM_EMAIL: z.email(),
+  RESEND_REPLY_TO_EMAIL: z.email(),
   AI_GATEWAY_API_KEY: z.string().min(1),
-  APP_BASE_URL: z.string().url().optional(),
+  APP_BASE_URL: z.url().optional(),
 })
 
 export const serverEnv = schema.parse({
