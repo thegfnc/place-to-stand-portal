@@ -22,9 +22,9 @@ const nextConfig: NextConfig = {
 }
 
 export default withPostHogConfig(nextConfig, {
-  personalApiKey: process.env.NEXT_PUBLIC_POSTHOG_KEY!, // Your personal API key from PostHog settings
-  envId: '248520', // Your environment ID (project ID)
-  host: 'https://us.i.posthog.com', // Optional: Your PostHog instance URL, defaults to https://us.posthog.com
+  personalApiKey: process.env.POSTHOG_PERSONAL_API_KEY!, // Your personal API key from PostHog settings
+  envId: process.env.POSTHOG_PROJECT_ID!, // Your environment ID (project ID)
+  host: process.env.NEXT_PUBLIC_POSTHOG_HOST!, // Optional: Your PostHog instance URL, defaults to https://us.posthog.com
   sourcemaps: {
     // Optional
     enabled: process.env.NODE_ENV === 'production', // Optional: Enable sourcemaps generation and upload, defaults to true on production builds
