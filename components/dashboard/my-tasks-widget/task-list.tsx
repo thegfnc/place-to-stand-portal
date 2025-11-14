@@ -35,6 +35,7 @@ export function TaskList({ items }: TaskListProps) {
 function TaskListItem({ task }: { task: AssignedTaskSummary }) {
   const dueMeta = getTaskDueMeta(task.dueOn, { status: task.status })
   const linkMeta = getTaskLinkMeta(task)
+  const projectLinkMeta = getProjectLinkMeta(task)
   const statusToken = getTaskStatusToken(task.status)
   const statusLabel = getTaskStatusLabel(task.status)
 
@@ -62,7 +63,17 @@ function TaskListItem({ task }: { task: AssignedTaskSummary }) {
           </Badge>
           <span className='text-muted-foreground inline-flex items-center gap-1'>
             <FolderKanban className='size-3.5' aria-hidden />
-            {task.project.name}
+            {projectLinkMeta.href ? (
+              <Link
+                href={projectLinkMeta.href}
+                onClick={e => e.stopPropagation()}
+                className='hover:text-foreground underline-offset-4 transition-colors hover:underline'
+              >
+                {task.project.name}
+              </Link>
+            ) : (
+              task.project.name
+            )}
             {task.client?.name ? ` / ${task.client.name}` : ''}
           </span>
           <span
@@ -119,5 +130,19 @@ function getTaskLinkMeta(task: AssignedTaskSummary): TaskLinkMeta {
 
   return {
     href: `/projects/${client.slug}/${project.slug}/board/${task.id}`,
+  }
+}
+
+function getProjectLinkMeta(task: AssignedTaskSummary): TaskLinkMeta {
+  const { client, project } = task
+
+  if (!project.slug || !client?.slug) {
+    return {
+      href: null,
+    }
+  }
+
+  return {
+    href: `/projects/${client.slug}/${project.slug}/board`,
   }
 }
