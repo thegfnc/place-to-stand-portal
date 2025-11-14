@@ -1,0 +1,9 @@
+You are auditing the repository for dead code while preserving intentional abstractions and feature-flagged logic.
+
+1. From the repo root, run `npm run lint -- --report-unused-disable-directives --max-warnings=0` and `npm run type-check` to surface unused variables, imports, and unreachable branches. Fix flagged issues before moving on.
+2. Generate a list of rarely referenced modules. Start with `git ls-files -co --exclude-standard -- '*.ts' '*.tsx' '*.js' '*.jsx'` piped through `xargs -I{} git grep -l 'TODO: keep alive' -- {} | sort` to exclude intentionally retained files, then inspect the remaining candidates with `rg --files-without-match '<symbolName>'` as needed. Skip generated artifacts, Drizzle migrations, and Supabase schema files.
+3. For TypeScript exports you suspect are unused, run `npx ts-prune --ignore node_modules` if available; otherwise manually `rg` for the symbol across `app`, `components`, `lib`, and `docs` to confirm it is truly orphaned. Watch for dynamic imports, reflection, or string-based references before deleting anything.
+4. When removing code, check for associated assets (styles, tests, fixtures) and delete them together to keep the tree clean. Ensure you do not break shared utilities used by other domains; search for the module path (`rg 'from \".*/<module>\"'`) before removal.
+5. After each deletion batch, re-run `npm run lint` and `npm run type-check` to confirm no regressions. If the change touches runtime behavior, add or update tests (`npm run test -- --runInBand`) or manual QA notes.
+
+Cross-check your plan against the architectural guardrails in `AGENTS.md`, especially around modular structure, RBAC safeguards, and soft-delete expectations. Prefer refactoring common logic into shared utilities instead of duplicating it, and leave a short inline comment when the removal decision is non-obvious (e.g., legacy endpoint replaced elsewhere).

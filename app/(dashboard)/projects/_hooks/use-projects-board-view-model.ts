@@ -1,29 +1,25 @@
 'use client'
 
 import { useCallback, useMemo } from 'react'
-import { PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
-
-import { useToast } from '@/components/ui/use-toast'
-import { useProjectsBoardState } from '@/lib/projects/board/use-projects-board-state'
-import { useBoardAssignedFilter } from '@/lib/projects/board/state/use-board-assigned-filter'
-import { useBoardScrollPersistence } from '@/lib/projects/board/state/use-board-scroll-persistence'
-import { useBoardTimeLogDialogs } from '@/lib/projects/board/state/use-board-time-log-dialogs'
-import { useProjectsBoardDerivedState } from '@/lib/projects/board/state/use-projects-board-derived-state'
-import { useProjectCalendarSync } from '@/lib/projects/calendar/use-project-calendar-sync'
-import { createRenderAssignees } from '@/lib/projects/board/board-selectors'
-import { useProjectsBoardReviewActions } from '../_hooks/use-projects-board-review-actions'
 
 import type { ProjectsBoardTabsSectionProps } from '../_components/projects-board/projects-board-tabs-section'
 import type { ProjectsBoardDialogsProps } from '../_components/projects-board-dialogs'
+import { buildProjectsBoardBurndown } from './builders/build-projects-board-burndown'
+import { buildProjectsBoardDialogs } from './builders/build-projects-board-dialogs'
+import { buildProjectsBoardHeader } from './builders/build-projects-board-header'
+import { buildProjectsBoardTabs } from './builders/build-projects-board-tabs'
+import {
+  useProjectsBoardCoreState,
+  type UseProjectsBoardCoreStateArgs,
+} from './use-projects-board-core-state'
 import { useProjectsBoardNavigation } from './use-projects-board-navigation'
+import { useProjectsBoardSensors } from './use-projects-board-sensors'
 
 const NO_PROJECTS_TITLE = 'No projects assigned yet'
 const NO_PROJECTS_DESCRIPTION =
   'Once an administrator links you to a project, the workspace will unlock here.'
 
-type UseProjectsBoardStateArgs = Parameters<typeof useProjectsBoardState>[0]
-
-type BaseProps = Omit<UseProjectsBoardStateArgs, 'currentView'>
+type BaseProps = Omit<UseProjectsBoardCoreStateArgs, 'currentView'>
 
 export type ProjectsBoardProps = BaseProps & {
   initialTab?: 'board' | 'calendar' | 'activity' | 'backlog' | 'review'
@@ -65,170 +61,78 @@ export function useProjectsBoardViewModel({
   initialTab = 'board',
   ...props
 }: ProjectsBoardProps): ProjectsBoardViewModel {
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8,
-      },
-    })
-  )
-  const { toast } = useToast()
-
+  const { sensors } = useProjectsBoardSensors()
   const {
-    isPending,
-    feedback,
-    selectedClientId,
-    selectedProjectId,
-    clientItems,
-    projectItems,
-    canSelectNextProject,
-    canSelectPreviousProject,
-    activeProject,
-    activeProjectTasks,
-    activeProjectArchivedTasks,
-    activeProjectAcceptedTasks,
-    canManageTasks,
-    memberDirectory,
-    tasksByColumn,
-    draggingTask,
-    isSheetOpen,
-    sheetTask,
-    scrimLocked,
-    handleClientSelect,
-    handleProjectSelect,
-    handleSelectNextProject,
-    handleSelectPreviousProject,
-    handleDragStart,
-    handleDragOver,
-    handleDragEnd,
-    handleCalendarDragStart,
-    handleCalendarDragEnd,
-    openCreateSheet,
-    handleEditTask,
-    handleSheetOpenChange,
-    defaultTaskStatus,
-    defaultTaskDueOn,
-    calendarDraggingTask,
-    activeDropColumnId,
-    dropPreview,
-    recentlyMovedTaskId,
-  } = useProjectsBoardState({ ...props, currentView: initialTab })
+    boardState,
+    derivedState,
+    reviewActions,
+    renderAssignees,
+    handleAssignedFilterChange,
+    onlyAssignedToMe,
+    boardViewportRef,
+    handleBoardScroll,
+    timeLogDialogs,
+    canLogTime,
+    canAcceptTasks,
+  } = useProjectsBoardCoreState({ ...props, currentView: initialTab })
 
-  const canLogTime = props.currentUserRole !== 'CLIENT'
   const addTimeLogDisabledReason = canLogTime
     ? null
     : 'Clients can review logged hours but cannot add new entries.'
 
-  const activeProjectId = activeProject?.id ?? null
-  const storageNamespace = props.currentUserId
-    ? `projects-board-assigned-filter:${props.currentUserId}`
-    : null
-  const canAcceptTasks = props.currentUserRole === 'ADMIN'
-
-  const { onlyAssignedToMe, handleAssignedFilterChange } =
-    useBoardAssignedFilter({
-      activeProjectId,
-      storageNamespace,
-    })
-
-  const { boardViewportRef, handleBoardScroll } = useBoardScrollPersistence({
-    activeProjectId,
-  })
-
-  const {
-    isTimeLogDialogOpen,
-    timeLogProjectId,
-    handleTimeLogDialogOpenChange,
-    isViewTimeLogsOpen,
-    viewTimeLogsProjectId,
-    handleViewTimeLogsDialogOpenChange,
-  } = useBoardTimeLogDialogs({ activeProject, canLogTime })
-
   const navigation = useProjectsBoardNavigation({
-    activeProject,
+    activeProject: boardState.activeProject,
     clients: props.clients,
   })
 
   const activeProjectSummary = useMemo(() => {
-    if (!activeProject) {
+    if (!boardState.activeProject) {
       return null
     }
 
     return {
-      id: activeProject.id,
-      name: activeProject.name,
+      id: boardState.activeProject.id,
+      name: boardState.activeProject.name,
       client: {
-        id: activeProject.client?.id ?? null,
-        name: activeProject.client?.name ?? null,
+        id: boardState.activeProject.client?.id ?? null,
+        name: boardState.activeProject.client?.name ?? null,
       },
       burndown: {
         totalClientRemainingHours:
-          activeProject.burndown.totalClientRemainingHours,
-        totalProjectLoggedHours: activeProject.burndown.totalProjectLoggedHours,
+          boardState.activeProject.burndown.totalClientRemainingHours,
+        totalProjectLoggedHours:
+          boardState.activeProject.burndown.totalProjectLoggedHours,
       },
     }
-  }, [activeProject])
+  }, [boardState.activeProject])
 
-  const renderAssignees = useMemo(
-    () => createRenderAssignees(memberDirectory),
-    [memberDirectory]
-  )
-
-  useProjectCalendarSync({
-    activeProjectId,
-    tasks: activeProjectTasks,
-  })
-
-  const {
-    onDeckTasks,
-    backlogTasks,
-    tasksByColumnToRender,
-    acceptedTasks,
-    archivedTasks,
-    doneColumnTasks,
-    acceptAllDisabled,
-    acceptAllDisabledReason,
-  } = useProjectsBoardDerivedState({
-    activeProjectTasks,
-    activeProjectArchivedTasks,
-    activeProjectAcceptedTasks,
-    tasksByColumn,
-    onlyAssignedToMe,
-    currentUserId: props.currentUserId ?? null,
-    canAcceptTasks,
-  })
-
-  const {
-    handleAcceptAllDone,
-    handleAcceptTask,
-    handleUnacceptTask,
-    handleRestoreTask,
-    handleDestroyTask,
-    isAcceptingDone,
-    isReviewActionPending,
-    pendingReviewAction,
-  } = useProjectsBoardReviewActions({
-    canAcceptTasks,
-    activeProjectId,
-    toast,
-  })
-
-  const activeSheetTaskId = sheetTask?.id ?? null
-
-  const reviewActionTaskId = pendingReviewAction?.taskId ?? null
-  const reviewActionType = pendingReviewAction?.type ?? null
+  const reviewActionTaskId = reviewActions.pendingReviewAction?.taskId ?? null
+  const reviewActionType = reviewActions.pendingReviewAction?.type ?? null
   const reviewActionDisabledReason = canAcceptTasks
     ? null
     : 'Only administrators can manage review tasks.'
 
   const handleCreateTaskForDate = useCallback(
     (dueOn: string) => {
-      openCreateSheet(undefined, { dueOn })
+      boardState.openCreateSheet(undefined, { dueOn })
     },
-    [openCreateSheet]
+    [boardState]
   )
 
-  const tabs: ProjectsBoardTabsSectionProps = {
+  const header = buildProjectsBoardHeader({
+    clientItems: boardState.clientItems,
+    projectItems: boardState.projectItems,
+    selectedClientId: boardState.selectedClientId,
+    selectedProjectId: boardState.selectedProjectId,
+    onClientChange: boardState.handleClientSelect,
+    onProjectChange: boardState.handleProjectSelect,
+    onSelectNextProject: boardState.handleSelectNextProject,
+    onSelectPreviousProject: boardState.handleSelectPreviousProject,
+    canSelectNextProject: boardState.canSelectNextProject,
+    canSelectPreviousProject: boardState.canSelectPreviousProject,
+  })
+
+  const tabs = buildProjectsBoardTabs({
     initialTab,
     navigation,
     assignmentFilter: {
@@ -236,119 +140,102 @@ export function useProjectsBoardViewModel({
       onAssignedFilterChange: handleAssignedFilterChange,
     },
     board: {
-      feedback,
+      feedback: boardState.feedback,
       activeProject: activeProjectSummary,
-      canManageTasks,
+      canManageTasks: boardState.canManageTasks,
       renderAssignees,
-      tasksByColumn: tasksByColumnToRender,
-      calendarProjectId: activeProject?.id ?? null,
+      tasksByColumn: derivedState.tasksByColumnToRender,
+      calendarProjectId: boardState.activeProject?.id ?? null,
       calendarAssignedUserId: props.currentUserId ?? null,
-      onEditTask: handleEditTask,
-      onCreateTask: openCreateSheet,
+      onEditTask: boardState.handleEditTask,
+      onCreateTask: boardState.openCreateSheet,
       onCreateTaskForDate: handleCreateTaskForDate,
-      activeSheetTaskId,
-      activityTargetClientId: activeProject?.client?.id ?? null,
+      activeSheetTaskId: boardState.sheetTask?.id ?? null,
+      activityTargetClientId: boardState.activeProject?.client?.id ?? null,
     },
     drag: {
       sensors,
-      onDragStart: handleDragStart,
-      onDragOver: handleDragOver,
-      onDragEnd: handleDragEnd,
-      draggingTask,
-      scrimLocked,
-      isPending,
+      onDragStart: boardState.handleDragStart,
+      onDragOver: boardState.handleDragOver,
+      onDragEnd: boardState.handleDragEnd,
+      draggingTask: boardState.draggingTask,
+      scrimLocked: boardState.scrimLocked,
+      isPending: boardState.isPending,
       boardViewportRef,
       onBoardScroll: handleBoardScroll,
     },
     calendarDrag: {
-      onCalendarDragStart: handleCalendarDragStart,
-      onCalendarDragEnd: handleCalendarDragEnd,
-      calendarDraggingTask,
+      onCalendarDragStart: boardState.handleCalendarDragStart,
+      onCalendarDragEnd: boardState.handleCalendarDragEnd,
+      calendarDraggingTask: boardState.calendarDraggingTask,
     },
     backlog: {
-      onDeckTasks,
-      backlogTasks,
+      onDeckTasks: derivedState.onDeckTasks,
+      backlogTasks: derivedState.backlogTasks,
     },
     review: {
-      doneTasks: doneColumnTasks,
-      acceptedTasks,
-      archivedTasks,
-      onAcceptAllDone: handleAcceptAllDone,
-      acceptAllDisabled,
-      acceptAllDisabledReason,
-      isAcceptingDone,
-      onAcceptTask: handleAcceptTask,
-      onUnacceptTask: handleUnacceptTask,
-      onRestoreTask: handleRestoreTask,
-      onDestroyTask: handleDestroyTask,
+      doneTasks: derivedState.doneColumnTasks,
+      acceptedTasks: derivedState.acceptedTasks,
+      archivedTasks: derivedState.archivedTasks,
+      onAcceptAllDone: reviewActions.handleAcceptAllDone,
+      acceptAllDisabled: derivedState.acceptAllDisabled,
+      acceptAllDisabledReason: derivedState.acceptAllDisabledReason,
+      isAcceptingDone: reviewActions.isAcceptingDone,
+      onAcceptTask: reviewActions.handleAcceptTask,
+      onUnacceptTask: reviewActions.handleUnacceptTask,
+      onRestoreTask: reviewActions.handleRestoreTask,
+      onDestroyTask: reviewActions.handleDestroyTask,
       reviewActionTaskId,
       reviewActionType,
       reviewActionDisabledReason,
-      isReviewActionPending,
+      isReviewActionPending: reviewActions.isReviewActionPending,
     },
     drop: {
-      activeDropColumnId,
-      dropPreview,
-      recentlyMovedTaskId,
+      activeDropColumnId: boardState.activeDropColumnId,
+      dropPreview: boardState.dropPreview,
+      recentlyMovedTaskId: boardState.recentlyMovedTaskId,
     },
-  }
+  })
 
-  const dialogs: ProjectsBoardDialogsProps = {
-    activeProject,
+  const dialogs = buildProjectsBoardDialogs({
+    activeProject: boardState.activeProject,
     sheetState: {
-      open: isSheetOpen,
-      onOpenChange: handleSheetOpenChange,
-      task: sheetTask,
-      canManage: canManageTasks,
+      open: boardState.isSheetOpen,
+      onOpenChange: boardState.handleSheetOpenChange,
+      task: boardState.sheetTask,
+      canManage: boardState.canManageTasks,
       admins: props.admins,
       currentUserId: props.currentUserId,
       currentUserRole: props.currentUserRole,
-      defaultStatus: defaultTaskStatus,
-      defaultDueOn: defaultTaskDueOn,
+      defaultStatus: boardState.defaultTaskStatus,
+      defaultDueOn: boardState.defaultTaskDueOn,
     },
     timeLogState: {
-      isOpen: isTimeLogDialogOpen,
-      onOpenChange: handleTimeLogDialogOpenChange,
+      isOpen: timeLogDialogs.isTimeLogDialogOpen,
+      onOpenChange: timeLogDialogs.handleTimeLogDialogOpenChange,
       canLogTime,
-      timeLogProjectId,
-      tasks: activeProjectTasks,
+      timeLogProjectId: timeLogDialogs.timeLogProjectId,
+      tasks: boardState.activeProjectTasks,
       currentUserId: props.currentUserId,
       currentUserRole: props.currentUserRole,
       admins: props.admins,
     },
     timeLogHistoryState: {
-      isOpen: isViewTimeLogsOpen,
-      onOpenChange: handleViewTimeLogsDialogOpenChange,
-      viewTimeLogsProjectId,
+      isOpen: timeLogDialogs.isViewTimeLogsOpen,
+      onOpenChange: timeLogDialogs.handleViewTimeLogsDialogOpenChange,
+      viewTimeLogsProjectId: timeLogDialogs.viewTimeLogsProjectId,
       currentUserId: props.currentUserId,
       currentUserRole: props.currentUserRole,
     },
-  }
+  })
 
-  const burndown: ProjectsBoardBurndownProps = {
-    visible: Boolean(activeProject),
-    totalClientRemainingHours:
-      activeProject?.burndown.totalClientRemainingHours ?? 0,
-    totalProjectLoggedHours:
-      activeProject?.burndown.totalProjectLoggedHours ?? 0,
+  const burndown = buildProjectsBoardBurndown({
+    activeProject: boardState.activeProject,
     canLogTime,
     addTimeLogDisabledReason,
-    onAddTimeLog: () => handleTimeLogDialogOpenChange(true),
-    onViewTimeLogs: () => handleViewTimeLogsDialogOpenChange(true),
-  }
-
-  const header: ProjectsBoardHeaderProps = {
-    clientItems,
-    projectItems,
-    selectedClientId,
-    selectedProjectId,
-    onClientChange: handleClientSelect,
-    onProjectChange: handleProjectSelect,
-    onSelectNextProject: handleSelectNextProject,
-    onSelectPreviousProject: handleSelectPreviousProject,
-    canSelectNext: canSelectNextProject,
-    canSelectPrevious: canSelectPreviousProject,
-  }
+    onAddTimeLog: () => timeLogDialogs.handleTimeLogDialogOpenChange(true),
+    onViewTimeLogs: () => timeLogDialogs.handleViewTimeLogsDialogOpenChange(true),
+  })
 
   return {
     header,
