@@ -70,7 +70,7 @@ export function AppShell({ user, children }: Props) {
   )
 
   return (
-    <div className='bg-muted flex min-h-screen'>
+    <div className='bg-muted flex h-screen'>
       <Sidebar user={user} />
       <HeaderContext.Provider value={headerContextValue}>
         <div className='flex min-h-screen flex-1 flex-col'>
