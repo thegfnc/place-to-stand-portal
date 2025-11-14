@@ -1,5 +1,10 @@
 import Link from 'next/link'
-import { CalendarDays, ChevronRight, FolderKanban } from 'lucide-react'
+import {
+  Building2,
+  CalendarDays,
+  ChevronRight,
+  FolderKanban,
+} from 'lucide-react'
 
 import { Badge } from '@/components/ui/badge'
 import type { AssignedTaskSummary } from '@/lib/data/tasks'
@@ -75,30 +80,35 @@ function TaskListItem({ task }: { task: AssignedTaskSummary }) {
             >
               {statusLabel}
             </Badge>
-            <span className='text-muted-foreground inline-flex items-center gap-1'>
-              {task.client?.name ? `${task.client.name} /` : ''}
-              <FolderKanban className='size-3.5' aria-hidden />
-              {projectLinkMeta.href ? (
-                <Link
-                  href={projectLinkMeta.href}
-                  onClick={e => e.stopPropagation()}
-                  className='hover:text-foreground pointer-events-auto relative z-20 underline-offset-4 transition-colors hover:underline'
-                >
-                  {task.project.name}
-                </Link>
-              ) : (
-                task.project.name
-              )}
-            </span>
-            <span
-              className={cn(
-                'inline-flex items-center gap-1',
-                TASK_DUE_TONE_CLASSES[dueMeta.tone]
-              )}
-            >
-              <CalendarDays className='size-3.5' aria-hidden />
-              {dueMeta.label}
-            </span>
+            <div className='text-muted-foreground inline-flex items-center gap-3'>
+              <div className='flex items-center gap-1'>
+                <Building2 className='size-3.5' aria-hidden />
+                {task.client?.name ? `${task.client.name}` : ''}
+              </div>
+              <div className='flex items-center gap-1'>
+                <FolderKanban className='size-3.5' aria-hidden />
+                {projectLinkMeta.href ? (
+                  <Link
+                    href={projectLinkMeta.href}
+                    onClick={e => e.stopPropagation()}
+                    className='hover:text-foreground pointer-events-auto relative z-20 underline-offset-4 transition-colors hover:underline'
+                  >
+                    {task.project.name}
+                  </Link>
+                ) : (
+                  task.project.name
+                )}
+              </div>
+              <div
+                className={cn(
+                  'inline-flex items-center gap-1',
+                  TASK_DUE_TONE_CLASSES[dueMeta.tone]
+                )}
+              >
+                <CalendarDays className='size-3.5' aria-hidden />
+                {dueMeta.label}
+              </div>
+            </div>
           </div>
         </div>
         {hasTaskLink ? (

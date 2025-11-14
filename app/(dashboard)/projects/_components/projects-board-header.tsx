@@ -11,11 +11,8 @@ export type BoardHeaderItem = {
 }
 
 type ProjectsBoardHeaderProps = {
-  clientItems: BoardHeaderItem[]
   projectItems: BoardHeaderItem[]
-  selectedClientId: string | null
   selectedProjectId: string | null
-  onClientChange: (clientId: string) => void
   onProjectChange: (projectId: string | null) => void
   onSelectNextProject: () => void
   onSelectPreviousProject: () => void
@@ -24,11 +21,8 @@ type ProjectsBoardHeaderProps = {
 }
 
 export function ProjectsBoardHeader({
-  clientItems,
   projectItems,
-  selectedClientId,
   selectedProjectId,
-  onClientChange,
   onProjectChange,
   onSelectNextProject,
   onSelectPreviousProject,
@@ -37,31 +31,18 @@ export function ProjectsBoardHeader({
 }: ProjectsBoardHeaderProps) {
   return (
     <div className='flex w-full flex-wrap items-end gap-3'>
-      <div className='min-w-[200px] space-y-1'>
-        <Label htmlFor='projects-client-select'>Client</Label>
-        <SearchableCombobox
-          id='projects-client-select'
-          items={clientItems}
-          value={selectedClientId ?? ''}
-          onChange={value => onClientChange(value)}
-          placeholder='Select client'
-          searchPlaceholder='Search clients...'
-          disabled={clientItems.length === 0}
-          ariaLabel='Select client'
-        />
-      </div>
-      <div className='flex items-end gap-3'>
-        <div className='min-w-60 space-y-1'>
-          <Label htmlFor='projects-project-select'>Project</Label>
+      <div className='flex flex-1 items-end gap-3'>
+        <div className='min-w-[400px] space-y-2'>
+          <Label htmlFor='projects-project-select'>Project Selector</Label>
           <SearchableCombobox
             id='projects-project-select'
             items={projectItems}
             value={selectedProjectId ?? ''}
             onChange={value => onProjectChange(value || null)}
-            placeholder='Select project'
-            searchPlaceholder='Search projects...'
+            placeholder='Select client / project'
+            searchPlaceholder='Search clients or projects...'
             disabled={projectItems.length === 0}
-            ariaLabel='Select project'
+            ariaLabel='Select client and project'
           />
         </div>
         <div className='flex gap-2'>

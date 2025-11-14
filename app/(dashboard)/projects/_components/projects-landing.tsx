@@ -141,7 +141,7 @@ export function ProjectsLanding({ projects, clients }: ProjectsLandingProps) {
 
               return (
                 <Link key={project.id} href={href}>
-                  <Card className='flex h-full cursor-pointer flex-col justify-between transition hover:shadow-md'>
+                  <Card className='border-card-foreground/20 hover:border-card-foreground/40 flex h-full cursor-pointer flex-col justify-between transition hover:shadow-md'>
                     <CardHeader>
                       <div className='flex items-start justify-between gap-2'>
                         <div className='flex min-w-0 flex-1 items-center gap-2'>

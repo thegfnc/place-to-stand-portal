@@ -5,7 +5,11 @@ import { useRouter, usePathname } from 'next/navigation'
 
 import { ProjectsBoardHeader } from './projects-board-header'
 import { useBoardNavigation } from '@/lib/projects/board/state/use-board-navigation'
-import { createProjectLookup, createProjectsByClientLookup, createClientSlugLookup } from '@/lib/projects/board/board-utils'
+import {
+  createProjectLookup,
+  createProjectsByClientLookup,
+  createClientSlugLookup,
+} from '@/lib/projects/board/board-utils'
 import type { ProjectWithRelations } from '@/lib/types'
 
 type ProjectsLandingHeaderProps = {
@@ -39,44 +43,18 @@ export function ProjectsLandingHeader({
     setFeedback: () => {},
   })
 
-  const sortedClients = useMemo(
-    () => [...clients].sort((a, b) => a.name.localeCompare(b.name)),
-    [clients]
-  )
-
-  const clientItems = useMemo(
-    () =>
-      sortedClients.map(client => ({
-        value: client.id,
-        label: client.name,
-        keywords: [client.name],
-      })),
-    [sortedClients]
-  )
-
   const projectItems = useMemo(() => {
-    // When on landing page, show all projects
-    return projects
-      .sort((a, b) => a.name.localeCompare(b.name))
-      .map(project => ({
-        value: project.id,
-        label: project.name,
-        keywords: [project.name],
-      }))
+    return [...projects]
+      .map(project => {
+        const clientName = project.client?.name ?? 'Unassigned'
+        return {
+          value: project.id,
+          label: `${clientName} / ${project.name}`,
+          keywords: [clientName, project.name],
+        }
+      })
+      .sort((a, b) => a.label.localeCompare(b.label))
   }, [projects])
-
-  const handleClientSelect = (clientId: string) => {
-    const clientProjects = (projectsByClientId.get(clientId) ?? [])
-      .slice()
-      .sort((a, b) => a.name.localeCompare(b.name))
-
-    if (clientProjects.length > 0) {
-      const firstProject = clientProjects[0]
-      if (firstProject) {
-        navigateToProject(firstProject.id, { view: 'board' })
-      }
-    }
-  }
 
   const handleProjectSelect = (projectId: string | null) => {
     if (!projectId) {
@@ -95,11 +73,8 @@ export function ProjectsLandingHeader({
 
   return (
     <ProjectsBoardHeader
-      clientItems={clientItems}
       projectItems={projectItems}
-      selectedClientId={null}
       selectedProjectId={null}
-      onClientChange={handleClientSelect}
       onProjectChange={handleProjectSelect}
       onSelectNextProject={handleSelectNextProject}
       onSelectPreviousProject={handleSelectPreviousProject}

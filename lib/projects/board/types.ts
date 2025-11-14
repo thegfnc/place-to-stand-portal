@@ -15,7 +15,6 @@ export type BoardLookups = {
 }
 
 export type BoardContext = {
-  selectedClientId: string | null
   selectedProjectId: string | null
   feedback: string | null
   isPending: boolean

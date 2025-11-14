@@ -33,5 +33,4 @@ export const BOARD_BASE_PATH = '/projects'
 export const MISSING_SLUG_MESSAGE =
   'This project is missing a slug. Update it in Settings -> Projects.'
 
-export const NO_CLIENT_PROJECTS_MESSAGE =
-  'This client does not have any projects yet.'
+export const NO_PROJECTS_MESSAGE = 'No projects are available yet.'

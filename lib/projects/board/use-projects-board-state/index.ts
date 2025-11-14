@@ -29,7 +29,6 @@ export const useProjectsBoardState = ({
   currentUserId,
   currentUserRole,
   admins,
-  activeClientId,
   activeProjectId,
   activeTaskId,
   currentView,
@@ -59,22 +58,15 @@ export const useProjectsBoardState = ({
   })
 
   const {
-    selectedClientId,
     selectedProjectId,
-    filteredProjects,
-    clientItems,
     projectItems,
     canSelectNextProject,
     canSelectPreviousProject,
-    handleClientSelect,
     handleProjectSelect,
     handleSelectNextProject,
     handleSelectPreviousProject,
   } = useBoardSelectionState({
     projects,
-    clients,
-    projectsByClientId,
-    activeClientId,
     activeProjectId,
     startTransition,
     navigateToProject,
@@ -86,19 +78,18 @@ export const useProjectsBoardState = ({
     tasksByProject,
     setTasksByProject,
     archivedTasksByProject,
-    setArchivedTasksByProject,
     acceptedTasksByProject,
-    setAcceptedTasksByProject,
   } = useBoardTaskCollections({
     projects,
     startTransition,
   })
 
   const activeProject = useMemo(() => {
-    return (
-      filteredProjects.find(project => project.id === selectedProjectId) ?? null
-    )
-  }, [filteredProjects, selectedProjectId])
+    if (!selectedProjectId) {
+      return null
+    }
+    return projectLookup.get(selectedProjectId) ?? null
+  }, [projectLookup, selectedProjectId])
 
   const activeProjectTasks = useMemo(() => {
     if (!activeProject) {
@@ -226,10 +217,7 @@ export const useProjectsBoardState = ({
   return {
     isPending,
     feedback,
-    selectedClientId,
     selectedProjectId,
-    filteredProjects,
-    clientItems,
     projectItems,
     canSelectNextProject,
     canSelectPreviousProject,
@@ -246,7 +234,6 @@ export const useProjectsBoardState = ({
     isSheetOpen,
     sheetTask,
     scrimLocked,
-    handleClientSelect,
     handleProjectSelect,
     handleDragStart,
     handleDragEnd,

@@ -28,10 +28,7 @@ export type MemberDirectoryEntry = { name: string }
 export type ProjectsBoardState = {
   isPending: boolean
   feedback: string | null
-  selectedClientId: string | null
   selectedProjectId: string | null
-  filteredProjects: ProjectWithRelations[]
-  clientItems: Array<{ value: string; label: string; keywords: string[] }>
   projectItems: Array<{ value: string; label: string; keywords: string[] }>
   canSelectNextProject: boolean
   canSelectPreviousProject: boolean
@@ -49,7 +46,6 @@ export type ProjectsBoardState = {
   isSheetOpen: boolean
   sheetTask: TaskWithRelations | undefined
   scrimLocked: boolean
-  handleClientSelect: (clientId: string) => void
   handleProjectSelect: (projectId: string | null) => void
   handleSelectNextProject: () => void
   handleSelectPreviousProject: () => void
