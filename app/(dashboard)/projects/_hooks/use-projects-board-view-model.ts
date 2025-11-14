@@ -67,6 +67,7 @@ export function useProjectsBoardViewModel({
   initialTab = 'board',
   ...props
 }: ProjectsBoardProps): ProjectsBoardViewModel {
+  const currentBoardView = initialTab === 'timeLogs' ? 'board' : initialTab
   const { sensors } = useProjectsBoardSensors()
   const {
     boardState,
@@ -80,7 +81,7 @@ export function useProjectsBoardViewModel({
     timeLogDialogs,
     canLogTime,
     canAcceptTasks,
-  } = useProjectsBoardCoreState({ ...props, currentView: initialTab })
+  } = useProjectsBoardCoreState({ ...props, currentView: currentBoardView })
 
   const addTimeLogDisabledReason = canLogTime
     ? null

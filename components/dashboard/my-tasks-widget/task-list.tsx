@@ -76,6 +76,7 @@ function TaskListItem({ task }: { task: AssignedTaskSummary }) {
               {statusLabel}
             </Badge>
             <span className='text-muted-foreground inline-flex items-center gap-1'>
+              {task.client?.name ? `${task.client.name} /` : ''}
               <FolderKanban className='size-3.5' aria-hidden />
               {projectLinkMeta.href ? (
                 <Link
@@ -88,7 +89,6 @@ function TaskListItem({ task }: { task: AssignedTaskSummary }) {
               ) : (
                 task.project.name
               )}
-              {task.client?.name ? ` / ${task.client.name}` : ''}
             </span>
             <span
               className={cn(
