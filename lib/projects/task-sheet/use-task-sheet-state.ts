@@ -202,9 +202,12 @@ export const useTaskSheetState = ({
             : 'The task was added to the project board.',
         })
 
-        router.refresh()
         resetFormState({ preservePending: true })
         onOpenChange(false)
+        // Defer refresh to allow navigation from closing sheet to complete first
+        queueMicrotask(() => {
+          router.refresh()
+        })
       })
     },
     [
