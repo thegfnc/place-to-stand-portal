@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
 import { format } from 'date-fns'
@@ -15,19 +15,26 @@ import {
 import { useTimeLogFormState } from './time-log-form-state'
 import { useTimeLogOverage } from './time-log-overage'
 import { useTimeLogTaskSelection } from './time-log-task-selection'
-import type { ProjectTimeLogDialogParams, TimeLogFormErrors } from './types'
+import type {
+  ProjectTimeLogDialogParams,
+  TimeLogEntry,
+  TimeLogFormErrors,
+} from './types'
 import { TIME_LOGS_QUERY_KEY } from './types'
 
 export type UseProjectTimeLogDialogOptions = ProjectTimeLogDialogParams & {
   onOpenChange: (open: boolean) => void
+  mode: 'create' | 'edit'
+  timeLogEntry: TimeLogEntry | null
 }
 
 export type ProjectTimeLogDialogState = {
   canLogTime: boolean
   canSelectUser: boolean
   projectLabel: string
+  isEditMode: boolean
   isMutating: boolean
-  disableCreate: boolean
+  disableSubmit: boolean
   formErrors: TimeLogFormErrors
   fieldErrorIds: {
     hours?: string
@@ -88,16 +95,28 @@ export function useProjectTimeLogDialog(
     currentUserRole,
     projectMembers,
     admins,
+    mode,
+    timeLogEntry,
   } = options
 
   const canLogTime = currentUserRole !== 'CLIENT'
   const canSelectUser = currentUserRole === 'ADMIN'
+  const isEditMode = mode === 'edit' && Boolean(timeLogEntry)
 
   const router = useRouter()
   const queryClient = useQueryClient()
   const { toast } = useToast()
 
   const getToday = useCallback(() => format(new Date(), 'yyyy-MM-dd'), [])
+  const normalizeLoggedOnValue = useCallback(
+    (value: string | null | undefined) => {
+      if (!value) {
+        return getToday()
+      }
+      return value.includes('T') ? value.split('T')[0] ?? getToday() : value
+    },
+    [getToday]
+  )
 
   const {
     hoursInput,
@@ -114,6 +133,7 @@ export function useProjectTimeLogDialog(
     userComboboxItems,
     prepareForOpen,
     resetForClose,
+    setFormValues,
   } = useTimeLogFormState({
     currentUserId,
     canSelectUser,
@@ -145,6 +165,12 @@ export function useProjectTimeLogDialog(
 
   const [showDiscardDialog, setShowDiscardDialog] = useState(false)
   const [pendingClose, setPendingClose] = useState(false)
+  const [baselineState, setBaselineState] = useState(() => ({
+    hours: '',
+    note: '',
+    loggedOn: getToday(),
+    taskIds: [] as string[],
+  }))
 
   const baseQueryKey = useMemo(
     () => [TIME_LOGS_QUERY_KEY, projectId] as const,
@@ -160,6 +186,56 @@ export function useProjectTimeLogDialog(
   const handleClose = useCallback(() => {
     onOpenChange(false)
   }, [onOpenChange])
+
+  const projectLabel = useMemo(() => {
+    return clientName ? `${projectName} · ${clientName}` : projectName
+  }, [clientName, projectName])
+
+  const successToast = isEditMode
+    ? {
+        title: 'Time log updated',
+        description: 'The entry now reflects your changes.',
+      }
+    : undefined
+
+  const editTaskIds = useMemo(() => {
+    if (!timeLogEntry?.linked_tasks) {
+      return []
+    }
+
+    return timeLogEntry.linked_tasks
+      .map(link => link?.task?.id ?? null)
+      .filter((taskId): taskId is string => Boolean(taskId))
+  }, [timeLogEntry])
+
+  useEffect(() => {
+    if (!isEditMode || !timeLogEntry) {
+      return
+    }
+
+    const loggedOnValue = normalizeLoggedOnValue(timeLogEntry.logged_on)
+    setFormValues({
+      hoursInput: String(timeLogEntry.hours ?? ''),
+      loggedOnInput: loggedOnValue,
+      noteInput: timeLogEntry.note ?? '',
+      selectedUserId: timeLogEntry.user_id,
+    })
+    initializeSelection(editTaskIds)
+    setBaselineState({
+      hours: String(timeLogEntry.hours ?? ''),
+      note: timeLogEntry.note ?? '',
+      loggedOn: loggedOnValue,
+      taskIds: editTaskIds,
+    })
+  }, [
+    editTaskIds,
+    initializeSelection,
+    isEditMode,
+    normalizeLoggedOnValue,
+    setBaselineState,
+    setFormValues,
+    timeLogEntry,
+  ])
 
   const mutationOptions: UseProjectTimeLogMutationOptions = {
     queryClient,
@@ -183,26 +259,25 @@ export function useProjectTimeLogDialog(
     onSuccessReset: handleSuccessReset,
     onClose: handleClose,
     setFormErrors,
+    mode,
+    timeLogId: timeLogEntry?.id ?? null,
+    successToast,
   }
 
-  const createLog = useProjectTimeLogMutation(mutationOptions)
-  const isMutating = createLog.isPending
+  const timeLogMutation = useProjectTimeLogMutation(mutationOptions)
+  const isMutating = timeLogMutation.isPending
 
-  const disableCreate =
+  const disableSubmit =
     !canLogTime ||
     isMutating ||
     !hoursInput.trim() ||
     !loggedOnInput.trim() ||
     (canSelectUser && !selectedUserId)
 
-  const projectLabel = useMemo(() => {
-    return clientName ? `${projectName} · ${clientName}` : projectName
-  }, [clientName, projectName])
-
   const taskPickerButtonDisabled = isMutating || availableTasks.length === 0
 
   const taskPickerReason = isMutating
-    ? 'Logging time...'
+    ? 'Saving time log...'
     : availableTasks.length === 0
       ? 'All eligible tasks are already linked.'
       : null
@@ -225,8 +300,8 @@ export function useProjectTimeLogDialog(
   }, [isMutating, rawCancelTaskRemoval])
 
   const runMutation = useCallback(() => {
-    createLog.mutate()
-  }, [createLog])
+    timeLogMutation.mutate()
+  }, [timeLogMutation])
 
   const handleSubmit = useCallback(
     (event: React.FormEvent<HTMLFormElement>) => {
@@ -283,14 +358,21 @@ export function useProjectTimeLogDialog(
   )
 
   const isFormDirty = useMemo(() => {
-    const today = getToday()
+    const trimmedHours = hoursInput.trim()
+    const trimmedNote = noteInput.trim()
+    const baselineHours = baselineState.hours.trim()
+    const baselineNote = baselineState.note.trim()
+    const tasksChanged =
+      baselineState.taskIds.length !== selectedTaskIds.length ||
+      baselineState.taskIds.some((taskId, index) => taskId !== selectedTaskIds[index])
+
     return (
-      hoursInput.trim() !== '' ||
-      noteInput.trim() !== '' ||
-      selectedTaskIds.length > 0 ||
-      loggedOnInput !== today
+      trimmedHours !== baselineHours ||
+      trimmedNote !== baselineNote ||
+      loggedOnInput !== baselineState.loggedOn ||
+      tasksChanged
     )
-  }, [hoursInput, noteInput, selectedTaskIds.length, loggedOnInput, getToday])
+  }, [baselineState, hoursInput, loggedOnInput, noteInput, selectedTaskIds])
 
   const handleDiscardConfirm = useCallback(() => {
     setShowDiscardDialog(false)
@@ -318,8 +400,33 @@ export function useProjectTimeLogDialog(
   const handleDialogOpenChange = useCallback(
     (nextOpen: boolean) => {
       if (nextOpen) {
-        prepareForOpen(currentUserId)
-        initializeSelection()
+        const initialUserId =
+          isEditMode && timeLogEntry?.user_id ? timeLogEntry.user_id : currentUserId
+        prepareForOpen(initialUserId)
+        if (isEditMode && timeLogEntry) {
+          const loggedOnValue = normalizeLoggedOnValue(timeLogEntry.logged_on)
+          setFormValues({
+            hoursInput: String(timeLogEntry.hours ?? ''),
+            loggedOnInput: loggedOnValue,
+            noteInput: timeLogEntry.note ?? '',
+            selectedUserId: timeLogEntry.user_id,
+          })
+          initializeSelection(editTaskIds)
+          setBaselineState({
+            hours: String(timeLogEntry.hours ?? ''),
+            note: timeLogEntry.note ?? '',
+            loggedOn: loggedOnValue,
+            taskIds: editTaskIds,
+          })
+        } else {
+          initializeSelection()
+          setBaselineState({
+            hours: '',
+            note: '',
+            loggedOn: getToday(),
+            taskIds: [],
+          })
+        }
         resetOverage()
         setShowDiscardDialog(false)
         setPendingClose(false)
@@ -333,12 +440,21 @@ export function useProjectTimeLogDialog(
         resetForClose(currentUserId)
         resetSelection()
         resetOverage()
+        setBaselineState({
+          hours: '',
+          note: '',
+          loggedOn: getToday(),
+          taskIds: [],
+        })
         onOpenChange(false)
       }
     },
     [
       currentUserId,
+      editTaskIds,
+      getToday,
       initializeSelection,
+      isEditMode,
       isFormDirty,
       isMutating,
       onOpenChange,
@@ -346,6 +462,10 @@ export function useProjectTimeLogDialog(
       resetForClose,
       resetOverage,
       resetSelection,
+      normalizeLoggedOnValue,
+      setBaselineState,
+      setFormValues,
+      timeLogEntry,
     ]
   )
 
@@ -380,8 +500,9 @@ export function useProjectTimeLogDialog(
     canLogTime,
     canSelectUser,
     projectLabel,
+    isEditMode,
     isMutating,
-    disableCreate,
+    disableSubmit,
     formErrors,
     fieldErrorIds,
     hoursInput,

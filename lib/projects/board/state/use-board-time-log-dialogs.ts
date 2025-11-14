@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react'
 
 import type { ProjectWithRelations } from '@/lib/types'
+import type { TimeLogEntry } from '@/lib/projects/time-log/types'
 
 type UseBoardTimeLogDialogsOptions = {
   activeProject: ProjectWithRelations | null
@@ -11,9 +12,10 @@ type UseBoardTimeLogDialogsReturn = {
   isTimeLogDialogOpen: boolean
   timeLogProjectId: string | null
   handleTimeLogDialogOpenChange: (open: boolean) => void
-  isViewTimeLogsOpen: boolean
-  viewTimeLogsProjectId: string | null
-  handleViewTimeLogsDialogOpenChange: (open: boolean) => void
+  openCreateTimeLogDialog: () => void
+  openEditTimeLogDialog: (entry: TimeLogEntry) => void
+  mode: 'create' | 'edit'
+  editingEntry: TimeLogEntry | null
 }
 
 export function useBoardTimeLogDialogs(
@@ -22,63 +24,73 @@ export function useBoardTimeLogDialogs(
   const { activeProject, canLogTime } = options
   const [isTimeLogDialogOpen, setIsTimeLogDialogOpen] = useState(false)
   const [timeLogProjectId, setTimeLogProjectId] = useState<string | null>(null)
-  const [isViewTimeLogsOpen, setIsViewTimeLogsOpen] = useState(false)
-  const [viewTimeLogsProjectId, setViewTimeLogsProjectId] = useState<
-    string | null
-  >(null)
+  const [mode, setMode] = useState<'create' | 'edit'>('create')
+  const [editingEntry, setEditingEntry] = useState<TimeLogEntry | null>(null)
+
+  const resetDialogState = useCallback(() => {
+    setIsTimeLogDialogOpen(false)
+    setTimeLogProjectId(null)
+    setMode('create')
+    setEditingEntry(null)
+  }, [])
 
   const handleTimeLogDialogOpenChange = useCallback(
     (open: boolean) => {
       if (!open) {
-        setIsTimeLogDialogOpen(false)
-        setTimeLogProjectId(null)
+        resetDialogState()
         return
       }
 
-      if (!canLogTime) {
-        setIsTimeLogDialogOpen(false)
-        setTimeLogProjectId(null)
-        return
-      }
-
-      if (!activeProject) {
-        setIsTimeLogDialogOpen(false)
-        setTimeLogProjectId(null)
+      if (!canLogTime || !activeProject) {
+        resetDialogState()
         return
       }
 
       setTimeLogProjectId(activeProject.id)
       setIsTimeLogDialogOpen(true)
     },
-    [activeProject, canLogTime]
+    [activeProject, canLogTime, resetDialogState]
   )
 
-  const handleViewTimeLogsDialogOpenChange = useCallback(
-    (open: boolean) => {
-      if (!open) {
-        setIsViewTimeLogsOpen(false)
-        setViewTimeLogsProjectId(null)
+  const openCreateTimeLogDialog = useCallback(() => {
+    if (!activeProject || !canLogTime) {
+      resetDialogState()
+      return
+    }
+
+    setMode('create')
+    setEditingEntry(null)
+    setTimeLogProjectId(activeProject.id)
+    setIsTimeLogDialogOpen(true)
+  }, [activeProject, canLogTime, resetDialogState])
+
+  const openEditTimeLogDialog = useCallback(
+    (entry: TimeLogEntry) => {
+      if (!activeProject || !canLogTime) {
+        resetDialogState()
         return
       }
 
-      if (!activeProject) {
-        setIsViewTimeLogsOpen(false)
-        setViewTimeLogsProjectId(null)
+      if (entry.project_id && entry.project_id !== activeProject.id) {
+        resetDialogState()
         return
       }
 
-      setViewTimeLogsProjectId(activeProject.id)
-      setIsViewTimeLogsOpen(true)
+      setMode('edit')
+      setEditingEntry(entry)
+      setTimeLogProjectId(activeProject.id)
+      setIsTimeLogDialogOpen(true)
     },
-    [activeProject]
+    [activeProject, canLogTime, resetDialogState]
   )
 
   return {
     isTimeLogDialogOpen,
     timeLogProjectId,
     handleTimeLogDialogOpenChange,
-    isViewTimeLogsOpen,
-    viewTimeLogsProjectId,
-    handleViewTimeLogsDialogOpenChange,
+    openCreateTimeLogDialog,
+    openEditTimeLogDialog,
+    mode,
+    editingEntry,
   }
 }

@@ -1,4 +1,4 @@
-import type { ProjectsBoardBurndownProps } from "../use-projects-board-view-model"
+import type { ProjectsBoardBurndownProps } from '../use-projects-board-view-model'
 
 type BuildBurndownArgs = {
   activeProject: {
@@ -8,9 +8,9 @@ type BuildBurndownArgs = {
     }
   } | null
   canLogTime: boolean
-  addTimeLogDisabledReason: ProjectsBoardBurndownProps["addTimeLogDisabledReason"]
+  addTimeLogDisabledReason: ProjectsBoardBurndownProps['addTimeLogDisabledReason']
   onAddTimeLog: () => void
-  onViewTimeLogs: () => void
+  viewTimeLogsHref: string | null
 }
 
 export function buildProjectsBoardBurndown({
@@ -18,7 +18,7 @@ export function buildProjectsBoardBurndown({
   canLogTime,
   addTimeLogDisabledReason,
   onAddTimeLog,
-  onViewTimeLogs,
+  viewTimeLogsHref,
 }: BuildBurndownArgs): ProjectsBoardBurndownProps {
   return {
     visible: Boolean(activeProject),
@@ -29,7 +29,7 @@ export function buildProjectsBoardBurndown({
     canLogTime,
     addTimeLogDisabledReason,
     onAddTimeLog,
-    onViewTimeLogs,
+    viewTimeLogsHref,
   }
 }
 

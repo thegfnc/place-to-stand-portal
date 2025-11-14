@@ -1,4 +1,4 @@
-import { Loader2, PlusCircle } from 'lucide-react'
+import { Loader2, PlusCircle, Pencil } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { DisabledFieldTooltip } from '@/components/ui/disabled-field-tooltip'
@@ -16,7 +16,7 @@ export type ProjectTimeLogFormProps = {
   canLogTime: boolean
   canSelectUser: boolean
   isMutating: boolean
-  disableCreate: boolean
+  disableSubmit: boolean
   formErrors: TimeLogFormErrors
   fieldErrorIds: {
     hours?: string
@@ -44,6 +44,8 @@ export type ProjectTimeLogFormProps = {
   taskPickerButtonDisabled: boolean
   taskPickerReason: string | null
   requestTaskRemoval: (task: TaskWithRelations) => void
+  submitLabel: string
+  isEditMode: boolean
 }
 
 export function ProjectTimeLogForm(props: ProjectTimeLogFormProps) {
@@ -51,7 +53,7 @@ export function ProjectTimeLogForm(props: ProjectTimeLogFormProps) {
     canLogTime,
     canSelectUser,
     isMutating,
-    disableCreate,
+    disableSubmit,
     formErrors,
     fieldErrorIds,
     hoursInput,
@@ -73,13 +75,17 @@ export function ProjectTimeLogForm(props: ProjectTimeLogFormProps) {
     taskPickerButtonDisabled,
     taskPickerReason,
     requestTaskRemoval,
+    submitLabel,
+    isEditMode,
   } = props
 
   const submitTooltipReason = canLogTime
-    ? disableCreate
+    ? disableSubmit
       ? 'Complete the form before submitting.'
       : null
     : 'Only internal teammates can log time.'
+
+  const SubmitIcon = isEditMode ? Pencil : PlusCircle
 
   return (
     <form onSubmit={handleSubmit} className='grid gap-4 sm:grid-cols-2'>
@@ -204,20 +210,20 @@ export function ProjectTimeLogForm(props: ProjectTimeLogFormProps) {
       ) : null}
       <div className='flex items-center justify-end gap-3 sm:col-span-2'>
         <DisabledFieldTooltip
-          disabled={disableCreate}
+          disabled={disableSubmit}
           reason={submitTooltipReason}
         >
           <Button
             type='submit'
-            disabled={disableCreate}
+            disabled={disableSubmit}
             className='inline-flex items-center gap-2'
           >
             {isMutating ? (
               <Loader2 className='size-4 animate-spin' />
             ) : (
-              <PlusCircle className='size-4' />
+              <SubmitIcon className='size-4' />
             )}
-            Log time
+            {submitLabel}
           </Button>
         </DisabledFieldTooltip>
       </div>

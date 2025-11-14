@@ -16,8 +16,7 @@ const PAGE_SIZE = 10
 
 export type UseProjectTimeLogHistoryOptions =
   ProjectTimeLogHistoryDialogParams & {
-    open: boolean
-    onOpenChange: (open: boolean) => void
+    enabled?: boolean
   }
 
 export type ProjectTimeLogHistoryState = {
@@ -29,7 +28,6 @@ export type ProjectTimeLogHistoryState = {
   refresh: () => void
   showLoadMore: boolean
   loadMore: () => void
-  handleDialogOpenChange: (open: boolean) => void
   deleteState: {
     pendingEntry: TimeLogEntry | null
     pendingEntryId: string | null
@@ -43,7 +41,12 @@ export type ProjectTimeLogHistoryState = {
 export function useProjectTimeLogHistory(
   options: UseProjectTimeLogHistoryOptions
 ): ProjectTimeLogHistoryState {
-  const { open, onOpenChange, projectId, projectName, clientName } = options
+  const {
+    enabled = true,
+    projectId,
+    projectName,
+    clientName,
+  } = options
 
   const queryClient = useQueryClient()
   const router = useRouter()
@@ -64,7 +67,7 @@ export function useProjectTimeLogHistory(
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey,
-    enabled: open,
+    enabled,
     queryFn: async () => {
       const params = new URLSearchParams({ limit: visibleCount.toString() })
       const response = await fetch(
@@ -145,19 +148,6 @@ export function useProjectTimeLogHistory(
     },
   })
 
-  const handleDialogOpenChange = useCallback(
-    (nextOpen: boolean) => {
-      if (nextOpen) {
-        setVisibleCount(PAGE_SIZE)
-      } else {
-        setPendingDelete(null)
-      }
-
-      onOpenChange(nextOpen)
-    },
-    [onOpenChange]
-  )
-
   const loadMore = useCallback(() => {
     if (isLoading) {
       return
@@ -202,7 +192,6 @@ export function useProjectTimeLogHistory(
     refresh,
     showLoadMore,
     loadMore,
-    handleDialogOpenChange,
     deleteState: {
       pendingEntry: pendingDelete,
       pendingEntryId,

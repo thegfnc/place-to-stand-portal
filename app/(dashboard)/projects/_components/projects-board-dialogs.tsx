@@ -7,10 +7,10 @@ import type {
 } from '@/lib/types'
 import type { UserRole } from '@/lib/auth/session'
 import type { BoardColumnId } from '@/lib/projects/board/board-constants'
+import type { TimeLogEntry } from '@/lib/projects/time-log/types'
 
 import { TaskSheet } from '../task-sheet'
 import { ProjectTimeLogDialog } from './project-time-log/project-time-log-dialog'
-import { ProjectTimeLogHistoryDialog } from './project-time-log-history-dialog'
 
 type SheetState = {
   open: boolean
@@ -33,28 +33,20 @@ type TimeLogState = {
   currentUserId: string
   currentUserRole: UserRole
   admins: DbUser[]
-}
-
-type TimeLogHistoryState = {
-  isOpen: boolean
-  onOpenChange: (open: boolean) => void
-  viewTimeLogsProjectId: string | null
-  currentUserId: string
-  currentUserRole: UserRole
+  mode: 'create' | 'edit'
+  editingEntry: TimeLogEntry | null
 }
 
 export type ProjectsBoardDialogsProps = {
   activeProject: ProjectWithRelations | null
   sheetState: SheetState
   timeLogState: TimeLogState
-  timeLogHistoryState: TimeLogHistoryState
 }
 
 export function ProjectsBoardDialogs({
   activeProject,
   sheetState,
   timeLogState,
-  timeLogHistoryState,
 }: ProjectsBoardDialogsProps) {
   if (!activeProject) {
     return null
@@ -81,21 +73,12 @@ export function ProjectsBoardDialogs({
     currentUserId: timeLogUserId,
     currentUserRole: timeLogUserRole,
     admins: timeLogAdmins,
+    mode: timeLogMode,
+    editingEntry,
   } = timeLogState
-
-  const {
-    isOpen: isHistoryOpen,
-    onOpenChange: onHistoryOpenChange,
-    viewTimeLogsProjectId,
-    currentUserId: historyUserId,
-    currentUserRole: historyUserRole,
-  } = timeLogHistoryState
 
   const timeLogDialogOpen =
     canLogTime && isTimeLogOpen && timeLogProjectId === activeProject.id
-
-  const timeLogHistoryOpen =
-    isHistoryOpen && viewTimeLogsProjectId === activeProject.id
 
   return (
     <>
@@ -125,16 +108,8 @@ export function ProjectsBoardDialogs({
         currentUserRole={timeLogUserRole}
         projectMembers={activeProject.members}
         admins={timeLogAdmins}
-      />
-
-      <ProjectTimeLogHistoryDialog
-        open={timeLogHistoryOpen}
-        onOpenChange={onHistoryOpenChange}
-        projectId={activeProject.id}
-        projectName={activeProject.name}
-        clientName={activeProject.client?.name ?? null}
-        currentUserId={historyUserId}
-        currentUserRole={historyUserRole}
+        mode={timeLogMode}
+        timeLogEntry={editingEntry}
       />
     </>
   )

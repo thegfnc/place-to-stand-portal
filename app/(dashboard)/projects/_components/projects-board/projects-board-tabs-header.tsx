@@ -6,16 +6,24 @@ import { TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { startBoardTabInteraction } from '@/lib/projects/board/board-tab-interaction'
 
 export type ProjectsBoardTabsHeaderProps = {
-  initialTab: 'board' | 'calendar' | 'backlog' | 'activity' | 'review'
+  initialTab:
+    | 'board'
+    | 'calendar'
+    | 'backlog'
+    | 'activity'
+    | 'review'
+    | 'timeLogs'
   boardHref: string
   calendarHref: string
   backlogHref: string
   activityHref: string
   reviewHref: string
+  timeLogsHref: string
   calendarDisabled: boolean
   backlogDisabled: boolean
   activityDisabled: boolean
   reviewDisabled: boolean
+  timeLogsDisabled: boolean
   onlyAssignedToMe: boolean
   onAssignedFilterChange: (checked: boolean) => void
 }
@@ -28,10 +36,12 @@ export function ProjectsBoardTabsHeader(props: ProjectsBoardTabsHeaderProps) {
     backlogHref,
     activityHref,
     reviewHref,
+    timeLogsHref,
     calendarDisabled,
     backlogDisabled,
     activityDisabled,
     reviewDisabled,
+    timeLogsDisabled,
     onlyAssignedToMe,
     onAssignedFilterChange,
   } = props
@@ -121,6 +131,31 @@ export function ProjectsBoardTabsHeader(props: ProjectsBoardTabsHeaderProps) {
             }
           >
             Review
+          </Link>
+        </TabsTrigger>
+        <TabsTrigger
+          value='timeLogs'
+          className='px-3 py-1.5 text-sm'
+          asChild
+          disabled={timeLogsDisabled}
+        >
+          <Link
+            href={timeLogsHref}
+            prefetch={false}
+            aria-disabled={timeLogsDisabled}
+            tabIndex={timeLogsDisabled ? -1 : undefined}
+            onClick={event => {
+              if (timeLogsDisabled) {
+                event.preventDefault()
+                return
+              }
+              startBoardTabInteraction(initialTab, 'timeLogs')
+            }}
+            className={
+              timeLogsDisabled ? 'pointer-events-none opacity-50' : undefined
+            }
+          >
+            Time Logs
           </Link>
         </TabsTrigger>
         <TabsTrigger

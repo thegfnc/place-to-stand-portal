@@ -1,16 +1,17 @@
-import type { ProjectsBoardTabsSectionProps } from "../../_components/projects-board/projects-board-tabs-section"
-import type { ProjectsBoardNavigation } from "../use-projects-board-navigation"
+import type { ProjectsBoardTabsSectionProps } from '../../_components/projects-board/projects-board-tabs-section'
+import type { ProjectsBoardNavigation } from '../use-projects-board-navigation'
 
 type BuildTabsArgs = {
-  initialTab: ProjectsBoardTabsSectionProps["initialTab"]
+  initialTab: ProjectsBoardTabsSectionProps['initialTab']
   navigation: ProjectsBoardNavigation
-  assignmentFilter: ProjectsBoardTabsSectionProps["assignmentFilter"]
-  board: ProjectsBoardTabsSectionProps["board"]
-  drag: ProjectsBoardTabsSectionProps["drag"]
-  calendarDrag: ProjectsBoardTabsSectionProps["calendarDrag"]
-  backlog: ProjectsBoardTabsSectionProps["backlog"]
-  review: ProjectsBoardTabsSectionProps["review"]
-  drop: ProjectsBoardTabsSectionProps["drop"]
+  assignmentFilter: ProjectsBoardTabsSectionProps['assignmentFilter']
+  board: ProjectsBoardTabsSectionProps['board']
+  drag: ProjectsBoardTabsSectionProps['drag']
+  calendarDrag: ProjectsBoardTabsSectionProps['calendarDrag']
+  backlog: ProjectsBoardTabsSectionProps['backlog']
+  review: ProjectsBoardTabsSectionProps['review']
+  drop: ProjectsBoardTabsSectionProps['drop']
+  timeLogs: ProjectsBoardTabsSectionProps['timeLogs']
 }
 
 export function buildProjectsBoardTabs({
@@ -23,6 +24,7 @@ export function buildProjectsBoardTabs({
   backlog,
   review,
   drop,
+  timeLogs,
 }: BuildTabsArgs): ProjectsBoardTabsSectionProps {
   return {
     initialTab,
@@ -34,6 +36,7 @@ export function buildProjectsBoardTabs({
     backlog,
     review,
     drop,
+    timeLogs,
   }
 }
 

@@ -6,6 +6,8 @@ import type { DndContextProps } from '@dnd-kit/core'
 import type { RenderAssigneeFn } from '../../../../../lib/projects/board/board-selectors'
 import type { BoardColumnId } from '@/lib/projects/board/board-constants'
 import { completeBoardTabInteraction } from '@/lib/projects/board/board-tab-interaction'
+import type { UserRole } from '@/lib/auth/session'
+import type { TimeLogEntry } from '@/lib/projects/time-log/types'
 
 import { BoardTabContent } from './board-tab-content'
 import { CalendarTabContent } from './calendar-tab-content'
@@ -15,18 +17,27 @@ import { ReviewTabContent } from './review-tab-content'
 import type { ReviewActionKind } from './review-tab/review-tab.types'
 import { ProjectsBoardTabsHeader } from './projects-board-tabs-header'
 import type { ProjectsBoardActiveProject } from './board-tab-content'
+import { TimeLogsTabContent } from './time-logs-tab-content'
 
 export type ProjectsBoardTabsProps = {
-  initialTab: 'board' | 'calendar' | 'backlog' | 'activity' | 'review'
+  initialTab:
+    | 'board'
+    | 'calendar'
+    | 'backlog'
+    | 'activity'
+    | 'review'
+    | 'timeLogs'
   boardHref: string
   calendarHref: string
   backlogHref: string
   activityHref: string
   reviewHref: string
+  timeLogsHref: string
   calendarDisabled: boolean
   backlogDisabled: boolean
   activityDisabled: boolean
   reviewDisabled: boolean
+  timeLogsDisabled: boolean
   onlyAssignedToMe: boolean
   onAssignedFilterChange: (checked: boolean) => void
   feedback: string | null
@@ -73,6 +84,10 @@ export type ProjectsBoardTabsProps = {
   activeDropColumnId: BoardColumnId | null
   dropPreview: { columnId: BoardColumnId; index: number } | null
   recentlyMovedTaskId: string | null
+  currentUserId: string
+  currentUserRole: UserRole
+  canLogTime: boolean
+  onEditTimeLogEntry: (entry: TimeLogEntry) => void
 }
 
 export function ProjectsBoardTabs(props: ProjectsBoardTabsProps) {
@@ -83,10 +98,12 @@ export function ProjectsBoardTabs(props: ProjectsBoardTabsProps) {
     backlogHref,
     activityHref,
     reviewHref,
+    timeLogsHref,
     calendarDisabled,
     backlogDisabled,
     activityDisabled,
     reviewDisabled,
+    timeLogsDisabled,
     onlyAssignedToMe,
     onAssignedFilterChange,
     feedback,
@@ -133,6 +150,10 @@ export function ProjectsBoardTabs(props: ProjectsBoardTabsProps) {
     activeDropColumnId,
     dropPreview,
     recentlyMovedTaskId,
+    currentUserId,
+    currentUserRole,
+    canLogTime,
+    onEditTimeLogEntry,
   } = props
 
   useEffect(() => {
@@ -148,10 +169,12 @@ export function ProjectsBoardTabs(props: ProjectsBoardTabsProps) {
         backlogHref={backlogHref}
         activityHref={activityHref}
         reviewHref={reviewHref}
+        timeLogsHref={timeLogsHref}
         calendarDisabled={calendarDisabled}
         backlogDisabled={backlogDisabled}
         activityDisabled={activityDisabled}
         reviewDisabled={reviewDisabled}
+        timeLogsDisabled={timeLogsDisabled}
         onlyAssignedToMe={onlyAssignedToMe}
         onAssignedFilterChange={onAssignedFilterChange}
       />
@@ -217,11 +240,6 @@ export function ProjectsBoardTabs(props: ProjectsBoardTabsProps) {
         activeSheetTaskId={activeSheetTaskId}
         activeDropColumnId={activeDropColumnId}
       />
-      <ActivityTabContent
-        isActive={initialTab === 'activity'}
-        activeProject={activeProject}
-        activityTargetClientId={activityTargetClientId}
-      />
       <ReviewTabContent
         isActive={initialTab === 'review'}
         activeProject={activeProject}
@@ -244,6 +262,20 @@ export function ProjectsBoardTabs(props: ProjectsBoardTabsProps) {
         reviewActionType={reviewActionType}
         reviewActionDisabledReason={reviewActionDisabledReason}
         isReviewActionPending={isReviewActionPending}
+      />
+      <TimeLogsTabContent
+        key={activeProject?.id ?? 'no-project'}
+        isActive={initialTab === 'timeLogs'}
+        activeProject={activeProject}
+        currentUserId={currentUserId}
+        currentUserRole={currentUserRole}
+        canLogTime={canLogTime}
+        onEditEntry={onEditTimeLogEntry}
+      />
+      <ActivityTabContent
+        isActive={initialTab === 'activity'}
+        activeProject={activeProject}
+        activityTargetClientId={activityTargetClientId}
       />
     </Tabs>
   )

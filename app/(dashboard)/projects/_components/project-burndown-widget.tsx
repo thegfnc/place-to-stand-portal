@@ -1,5 +1,7 @@
 'use client'
 
+import Link from 'next/link'
+
 import { Button } from '@/components/ui/button'
 import { DisabledFieldTooltip } from '@/components/ui/disabled-field-tooltip'
 import { cn } from '@/lib/utils'
@@ -20,7 +22,7 @@ type ProjectBurndownWidgetProps = {
   className?: string
   canLogTime: boolean
   addTimeLogDisabledReason?: string | null
-  onViewTimeLogs: () => void
+  viewTimeLogsHref: string | null
   onAddTimeLog: () => void
 }
 
@@ -30,7 +32,7 @@ export function ProjectBurndownWidget({
   className,
   canLogTime,
   addTimeLogDisabledReason,
-  onViewTimeLogs,
+  viewTimeLogsHref,
   onAddTimeLog,
 }: ProjectBurndownWidgetProps) {
   const projectLogged = Math.max(totalProjectLoggedHours, 0)
@@ -54,16 +56,31 @@ export function ProjectBurndownWidget({
         />
       </dl>
       <div className='flex flex-col gap-2'>
-        <Button
-          type='button'
-          size='xs'
-          variant='outline'
-          onClick={onViewTimeLogs}
-          className='justify-start'
-        >
-          <Eye className='h-3! w-3!' />
-          View
-        </Button>
+        {viewTimeLogsHref ? (
+          <Button
+            type='button'
+            size='xs'
+            variant='outline'
+            asChild
+            className='justify-start'
+          >
+            <Link href={viewTimeLogsHref} prefetch={false}>
+              <Eye className='h-3! w-3!' />
+              View
+            </Link>
+          </Button>
+        ) : (
+          <Button
+            type='button'
+            size='xs'
+            variant='outline'
+            disabled
+            className='justify-start'
+          >
+            <Eye className='h-3! w-3!' />
+            View
+          </Button>
+        )}
         <DisabledFieldTooltip
           disabled={!canLogTime}
           reason={

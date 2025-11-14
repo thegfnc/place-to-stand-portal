@@ -50,6 +50,12 @@ export type UseTimeLogFormStateResult = {
   userComboboxItems: SearchableComboboxItem[]
   prepareForOpen: (nextUserId: string) => void
   resetForClose: (nextUserId: string) => void
+  setFormValues: (values: {
+    hoursInput?: string
+    loggedOnInput?: string
+    noteInput?: string
+    selectedUserId?: string
+  }) => void
 }
 
 export function useTimeLogFormState(
@@ -134,6 +140,29 @@ export function useTimeLogFormState(
     [prepareForOpen]
   )
 
+  const setFormValues = useCallback(
+    (values: {
+      hoursInput?: string
+      loggedOnInput?: string
+      noteInput?: string
+      selectedUserId?: string
+    }) => {
+      if (values.hoursInput !== undefined) {
+        setHoursInput(values.hoursInput)
+      }
+      if (values.loggedOnInput !== undefined) {
+        setLoggedOnInput(values.loggedOnInput)
+      }
+      if (values.noteInput !== undefined) {
+        setNoteInput(values.noteInput)
+      }
+      if (values.selectedUserId !== undefined) {
+        setSelectedUserId(values.selectedUserId)
+      }
+    },
+    []
+  )
+
   const userComboboxItems = useMemo<SearchableComboboxItem[]>(() => {
     if (!canSelectUser) {
       return []
@@ -172,5 +201,6 @@ export function useTimeLogFormState(
     userComboboxItems,
     prepareForOpen,
     resetForClose,
+    setFormValues,
   }
 }

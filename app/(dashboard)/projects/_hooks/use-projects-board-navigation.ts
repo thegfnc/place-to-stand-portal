@@ -10,10 +10,12 @@ export type ProjectsBoardNavigation = {
   backlogHref: string
   activityHref: string
   reviewHref: string
+  timeLogsHref: string
   calendarDisabled: boolean
   backlogDisabled: boolean
   activityDisabled: boolean
   reviewDisabled: boolean
+  timeLogsDisabled: boolean
 }
 
 type UseProjectsBoardNavigationArgs = {
@@ -51,10 +53,14 @@ export function useProjectsBoardNavigation({
         ? `${projectPathBase}/activity`
         : defaultHref,
       reviewHref: projectPathBase ? `${projectPathBase}/review` : defaultHref,
+      timeLogsHref: projectPathBase
+        ? `${projectPathBase}/time-logs`
+        : defaultHref,
       calendarDisabled: !projectPathBase,
       backlogDisabled: !projectPathBase,
       activityDisabled: !projectPathBase,
       reviewDisabled: !projectPathBase,
+      timeLogsDisabled: !projectPathBase,
     }
   }, [activeProject, clients])
 }

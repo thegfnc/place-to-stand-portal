@@ -22,7 +22,13 @@ const NO_PROJECTS_DESCRIPTION =
 type BaseProps = Omit<UseProjectsBoardCoreStateArgs, 'currentView'>
 
 export type ProjectsBoardProps = BaseProps & {
-  initialTab?: 'board' | 'calendar' | 'activity' | 'backlog' | 'review'
+  initialTab?:
+    | 'board'
+    | 'calendar'
+    | 'activity'
+    | 'backlog'
+    | 'review'
+    | 'timeLogs'
 }
 
 export type ProjectsBoardHeaderProps = {
@@ -45,7 +51,7 @@ export type ProjectsBoardBurndownProps = {
   canLogTime: boolean
   addTimeLogDisabledReason: string | null
   onAddTimeLog: () => void
-  onViewTimeLogs: () => void
+  viewTimeLogsHref: string | null
 }
 
 export type ProjectsBoardViewModel = {
@@ -195,6 +201,12 @@ export function useProjectsBoardViewModel({
       dropPreview: boardState.dropPreview,
       recentlyMovedTaskId: boardState.recentlyMovedTaskId,
     },
+    timeLogs: {
+      currentUserId: props.currentUserId,
+      currentUserRole: props.currentUserRole,
+      onEditTimeLogEntry: timeLogDialogs.openEditTimeLogDialog,
+      canLogTime,
+    },
   })
 
   const dialogs = buildProjectsBoardDialogs({
@@ -219,13 +231,8 @@ export function useProjectsBoardViewModel({
       currentUserId: props.currentUserId,
       currentUserRole: props.currentUserRole,
       admins: props.admins,
-    },
-    timeLogHistoryState: {
-      isOpen: timeLogDialogs.isViewTimeLogsOpen,
-      onOpenChange: timeLogDialogs.handleViewTimeLogsDialogOpenChange,
-      viewTimeLogsProjectId: timeLogDialogs.viewTimeLogsProjectId,
-      currentUserId: props.currentUserId,
-      currentUserRole: props.currentUserRole,
+      mode: timeLogDialogs.mode,
+      editingEntry: timeLogDialogs.editingEntry,
     },
   })
 
@@ -233,8 +240,8 @@ export function useProjectsBoardViewModel({
     activeProject: boardState.activeProject,
     canLogTime,
     addTimeLogDisabledReason,
-    onAddTimeLog: () => timeLogDialogs.handleTimeLogDialogOpenChange(true),
-    onViewTimeLogs: () => timeLogDialogs.handleViewTimeLogsDialogOpenChange(true),
+    onAddTimeLog: () => timeLogDialogs.openCreateTimeLogDialog(),
+    viewTimeLogsHref: navigation.timeLogsDisabled ? null : navigation.timeLogsHref,
   })
 
   return {

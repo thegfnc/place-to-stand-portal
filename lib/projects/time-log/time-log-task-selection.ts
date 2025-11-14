@@ -17,7 +17,7 @@ export type UseTimeLogTaskSelectionResult = {
   confirmTaskRemoval: () => void
   cancelTaskRemoval: () => void
   taskRemovalCandidate: ProjectTask | null
-  initializeSelection: () => void
+  initializeSelection: (taskIds?: string[]) => void
   resetSelection: () => void
 }
 
@@ -114,8 +114,9 @@ export function useTimeLogTaskSelection(
     setTaskRemovalCandidate(null)
   }, [])
 
-  const initializeSelection = useCallback(() => {
-    setSelectedTaskIds([])
+  const initializeSelection = useCallback((taskIds: string[] = []) => {
+    setSelectedTaskIds(taskIds)
+    setTaskRemovalCandidate(null)
   }, [])
 
   const resetSelection = useCallback(() => {

@@ -42,6 +42,9 @@ export type UseProjectTimeLogMutationOptions = {
   onSuccessReset: () => void
   onClose: () => void
   setFormErrors: Dispatch<SetStateAction<TimeLogFormErrors>>
+  mode: 'create' | 'edit'
+  timeLogId: string | null
+  successToast?: ToastOptions
 }
 
 export function useProjectTimeLogMutation(
@@ -60,10 +63,18 @@ export function useProjectTimeLogMutation(
     onSuccessReset,
     onClose,
     setFormErrors,
+    mode,
+    timeLogId,
+    successToast,
   } = options
 
   return useMutation({
     mutationFn: async () => {
+      const isEditMode = mode === 'edit'
+      if (isEditMode && !timeLogId) {
+        throw new Error('Missing time log identifier for update.')
+      }
+
       const parsedHours = Number.parseFloat(formValues.hoursInput)
 
       if (!Number.isFinite(parsedHours) || parsedHours <= 0) {
@@ -91,8 +102,12 @@ export function useProjectTimeLogMutation(
         taskIds: selectedTaskIds,
       }
 
-      const response = await fetch(`/api/projects/${project.id}/time-logs`, {
-        method: 'POST',
+      const endpoint = isEditMode
+        ? `/api/projects/${project.id}/time-logs/${timeLogId}`
+        : `/api/projects/${project.id}/time-logs`
+
+      const response = await fetch(endpoint, {
+        method: isEditMode ? 'PATCH' : 'POST',
         headers: {
           'content-type': 'application/json',
         },
@@ -147,41 +162,45 @@ export function useProjectTimeLogMutation(
         throw new Error(message || 'Unable to log time.')
       }
 
-      const timeLogId =
+      const resolvedTimeLogId =
         typeof result === 'object' && result && 'timeLogId' in result
           ? String((result as { timeLogId?: unknown }).timeLogId ?? '')
-          : ''
+          : isEditMode
+            ? timeLogId ?? ''
+            : ''
 
-      if (!timeLogId) {
-        throw new Error('Time log was created without an identifier.')
+      if (!resolvedTimeLogId) {
+        throw new Error('Time log mutation did not return an identifier.')
       }
 
-      const event = timeLogCreatedEvent({
-        hours: parsedHours,
-        projectName: project.name,
-        linkedTaskCount: selectedTaskIds.length,
-      })
+      if (!isEditMode) {
+        const event = timeLogCreatedEvent({
+          hours: parsedHours,
+          projectName: project.name,
+          linkedTaskCount: selectedTaskIds.length,
+        })
 
-      const metadata = {
-        taskIds: selectedTaskIds,
-        notePresent: Boolean(formValues.noteInput.trim()),
-        loggedOn: formValues.loggedOnInput,
+        const metadata = {
+          taskIds: selectedTaskIds,
+          notePresent: Boolean(formValues.noteInput.trim()),
+          loggedOn: formValues.loggedOnInput,
+        }
+
+        await logClientActivity(event, {
+          actorId: logUserId,
+          targetType: 'TIME_LOG',
+          targetId: resolvedTimeLogId,
+          targetProjectId: project.id,
+          targetClientId: project.clientId ?? null,
+          metadata: JSON.parse(JSON.stringify(metadata)) as Json,
+        })
       }
-
-      await logClientActivity(event, {
-        actorId: logUserId,
-        targetType: 'TIME_LOG',
-        targetId: timeLogId,
-        targetProjectId: project.id,
-        targetClientId: project.clientId ?? null,
-        metadata: JSON.parse(JSON.stringify(metadata)) as Json,
-      })
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: baseQueryKey })
       onSuccessReset()
       onClose()
-      toast(SUCCESS_TOAST)
+      toast(successToast ?? SUCCESS_TOAST)
       router.refresh()
     },
     onError: error => {

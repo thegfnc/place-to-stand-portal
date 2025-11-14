@@ -10,10 +10,12 @@ type NavigationProps = Pick<
   | 'backlogHref'
   | 'activityHref'
   | 'reviewHref'
+  | 'timeLogsHref'
   | 'calendarDisabled'
   | 'backlogDisabled'
   | 'activityDisabled'
   | 'reviewDisabled'
+  | 'timeLogsDisabled'
 >
 
 type AssignmentFilterProps = Pick<
@@ -81,6 +83,11 @@ type DropProps = Pick<
   'activeDropColumnId' | 'dropPreview' | 'recentlyMovedTaskId'
 >
 
+type TimeLogsProps = Pick<
+  ProjectsBoardTabsProps,
+  'currentUserId' | 'currentUserRole' | 'canLogTime' | 'onEditTimeLogEntry'
+>
+
 export type ProjectsBoardTabsSectionProps = {
   initialTab: ProjectsBoardTabsProps['initialTab']
   navigation: NavigationProps
@@ -91,6 +98,7 @@ export type ProjectsBoardTabsSectionProps = {
   backlog: BacklogProps
   review: ReviewProps
   drop: DropProps
+  timeLogs: TimeLogsProps
 }
 
 export function ProjectsBoardTabsSection({
@@ -103,6 +111,7 @@ export function ProjectsBoardTabsSection({
   backlog,
   review,
   drop,
+  timeLogs,
 }: ProjectsBoardTabsSectionProps) {
   return (
     <ProjectsBoardTabs
@@ -115,6 +124,7 @@ export function ProjectsBoardTabsSection({
       {...backlog}
       {...review}
       {...drop}
+      {...timeLogs}
     />
   )
 }

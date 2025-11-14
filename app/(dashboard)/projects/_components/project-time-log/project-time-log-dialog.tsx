@@ -10,37 +10,47 @@ import {
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { ProjectTimeLogForm } from './project-time-log-form'
 import { useProjectTimeLogDialog } from '@/lib/projects/time-log/use-project-time-log-dialog'
-import type { ProjectTimeLogDialogParams } from '@/lib/projects/time-log/types'
+import type {
+  ProjectTimeLogDialogParams,
+  TimeLogEntry,
+} from '@/lib/projects/time-log/types'
 
 export type ProjectTimeLogDialogProps = ProjectTimeLogDialogParams & {
   open: boolean
   onOpenChange: (open: boolean) => void
+  mode: 'create' | 'edit'
+  timeLogEntry: TimeLogEntry | null
 }
 
 export function ProjectTimeLogDialog(props: ProjectTimeLogDialogProps) {
-  const { open, onOpenChange, ...rest } = props
+  const { open, onOpenChange, mode, timeLogEntry, ...rest } = props
 
   const state = useProjectTimeLogDialog({
     ...(rest as ProjectTimeLogDialogParams),
     onOpenChange,
+    mode,
+    timeLogEntry,
   })
+
+  const dialogTitle = state.isEditMode ? 'Edit time log' : 'Add time log'
+  const dialogDescription = state.isEditMode
+    ? `Updates apply immediately to the burndown overview for ${state.projectLabel}.`
+    : `Entries logged here are reflected immediately in the burndown overview for ${state.projectLabel}.`
+  const submitLabel = state.isEditMode ? 'Save changes' : 'Log time'
 
   return (
     <>
       <Dialog open={open} onOpenChange={state.handleDialogOpenChange}>
         <DialogContent className='w-full max-w-xl'>
           <DialogHeader>
-            <DialogTitle>Add time log</DialogTitle>
-            <DialogDescription>
-              Entries logged here are reflected immediately in the burndown
-              overview for {state.projectLabel}.
-            </DialogDescription>
+            <DialogTitle>{dialogTitle}</DialogTitle>
+            <DialogDescription>{dialogDescription}</DialogDescription>
           </DialogHeader>
           <ProjectTimeLogForm
             canLogTime={state.canLogTime}
             canSelectUser={state.canSelectUser}
             isMutating={state.isMutating}
-            disableCreate={state.disableCreate}
+            disableSubmit={state.disableSubmit}
             formErrors={state.formErrors}
             fieldErrorIds={state.fieldErrorIds}
             hoursInput={state.hoursInput}
@@ -62,6 +72,8 @@ export function ProjectTimeLogDialog(props: ProjectTimeLogDialogProps) {
             taskPickerButtonDisabled={state.taskPickerButtonDisabled}
             taskPickerReason={state.taskPickerReason}
             requestTaskRemoval={state.requestTaskRemoval}
+            submitLabel={submitLabel}
+            isEditMode={state.isEditMode}
           />
         </DialogContent>
       </Dialog>

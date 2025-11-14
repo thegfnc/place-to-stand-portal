@@ -49,7 +49,7 @@ export function ProjectsBoard(props: ProjectsBoardProps) {
                 addTimeLogDisabledReason={
                   viewModel.burndown.addTimeLogDisabledReason
                 }
-                onViewTimeLogs={viewModel.burndown.onViewTimeLogs}
+                viewTimeLogsHref={viewModel.burndown.viewTimeLogsHref}
                 onAddTimeLog={viewModel.burndown.onAddTimeLog}
               />
             ) : null}
