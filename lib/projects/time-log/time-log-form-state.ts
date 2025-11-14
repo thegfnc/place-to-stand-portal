@@ -16,6 +16,7 @@ export const FORM_ERROR_IDS = {
   hours: 'time-log-hours-error',
   loggedOn: 'time-log-date-error',
   user: 'time-log-user-error',
+  note: 'time-log-note-error',
   general: 'time-log-general-error',
 } as const
 
@@ -43,6 +44,7 @@ export type UseTimeLogFormStateResult = {
     hours?: string
     loggedOn?: string
     user?: string
+    note?: string
     general?: string
   }
   userComboboxItems: SearchableComboboxItem[]
@@ -98,9 +100,13 @@ export function useTimeLogFormState(
     [clearFieldErrors]
   )
 
-  const onNoteChange = useCallback((value: string) => {
-    setNoteInput(value)
-  }, [])
+  const onNoteChange = useCallback(
+    (value: string) => {
+      setNoteInput(value)
+      clearFieldErrors(['note', 'general'])
+    },
+    [clearFieldErrors]
+  )
 
   const onSelectUser = useCallback(
     (value: string) => {
@@ -145,6 +151,7 @@ export function useTimeLogFormState(
       hours: formErrors.hours ? FORM_ERROR_IDS.hours : undefined,
       loggedOn: formErrors.loggedOn ? FORM_ERROR_IDS.loggedOn : undefined,
       user: formErrors.user ? FORM_ERROR_IDS.user : undefined,
+      note: formErrors.note ? FORM_ERROR_IDS.note : undefined,
       general: formErrors.general ? FORM_ERROR_IDS.general : undefined,
     }
   }, [formErrors])

@@ -19,7 +19,7 @@ export type ProjectTimeLogDialogParams = {
   admins: DbUser[]
 }
 
-export type TimeLogFormField = 'hours' | 'loggedOn' | 'user' | 'general'
+export type TimeLogFormField = 'hours' | 'loggedOn' | 'user' | 'note' | 'general'
 
 export type TimeLogFormErrors = Partial<Record<TimeLogFormField, string>>
 

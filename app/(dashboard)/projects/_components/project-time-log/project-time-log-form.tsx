@@ -22,6 +22,7 @@ export type ProjectTimeLogFormProps = {
     hours?: string
     loggedOn?: string
     user?: string
+    note?: string
     general?: string
   }
   hoursInput: string
@@ -178,7 +179,18 @@ export function ProjectTimeLogForm(props: ProjectTimeLogFormProps) {
           rows={3}
           placeholder='Capture any context, like what was accomplished.'
           disabled={isMutating}
+          aria-invalid={Boolean(formErrors.note)}
+          aria-describedby={fieldErrorIds.note}
         />
+        {formErrors.note ? (
+          <p
+            id={fieldErrorIds.note}
+            className='text-destructive text-xs'
+            role='alert'
+          >
+            {formErrors.note}
+          </p>
+        ) : null}
       </div>
       {formErrors.general ? (
         <div

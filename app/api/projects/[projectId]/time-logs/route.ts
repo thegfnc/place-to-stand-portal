@@ -25,10 +25,8 @@ const createBodySchema = z.object({
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/u, 'loggedOn must be in YYYY-MM-DD format'),
   note: z
-    .string()
-    .trim()
-    .max(2000)
-    .transform(value => (value.length ? value : null))
+    .union([z.string().trim().max(2000, 'Notes must be 2000 characters or fewer.'), z.null()])
+    .transform(value => (value === null || value.length === 0 ? null : value))
     .optional(),
   taskIds: z.array(z.string().uuid()).optional(),
 })
@@ -89,14 +87,52 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
   const { projectId } = await context.params
 
-  let payload: z.infer<typeof createBodySchema>
+  let body: unknown
   try {
-    const body = await request.json()
-    payload = createBodySchema.parse(body)
+    body = await request.json()
   } catch (error) {
-    console.error('Invalid time log payload', error)
-    return NextResponse.json({ error: 'Invalid request payload.' }, { status: 400 })
+    console.error('Failed to parse request body', error)
+    return NextResponse.json(
+      { error: 'Invalid request format.', fieldErrors: {} },
+      { status: 400 }
+    )
   }
+
+  const parsed = createBodySchema.safeParse(body)
+  if (!parsed.success) {
+    const fieldErrors: Record<string, string> = {}
+
+    parsed.error.issues.forEach(issue => {
+      const path = issue.path.join('.')
+      if (path) {
+        // Map Zod field names to form field names
+        const formField =
+          path === 'userId'
+            ? 'user'
+            : path === 'loggedOn'
+              ? 'loggedOn'
+              : path === 'hours'
+                ? 'hours'
+                : path === 'note'
+                  ? 'note'
+                  : null
+
+        if (formField) {
+          fieldErrors[formField] = issue.message
+        }
+      }
+    })
+
+    return NextResponse.json(
+      {
+        error: 'Invalid request payload.',
+        fieldErrors,
+      },
+      { status: 400 }
+    )
+  }
+
+  const payload = parsed.data
 
   try {
     const timeLogId = await createTimeLog(user, {

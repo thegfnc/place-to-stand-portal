@@ -6,7 +6,11 @@ import type { Dispatch, SetStateAction } from 'react'
 import { logClientActivity } from '@/lib/activity/client'
 import { timeLogCreatedEvent } from '@/lib/activity/events'
 import type { ToastOptions } from '@/components/ui/use-toast'
-import type { FieldError, TimeLogFormErrors } from './types'
+import type {
+  FieldError,
+  TimeLogFormErrors,
+  TimeLogFormField,
+} from './types'
 import type { Json } from '@/lib/types/json'
 
 const SUCCESS_TOAST: ToastOptions = {
@@ -103,10 +107,42 @@ export function useProjectTimeLogMutation(
       }
 
       if (!response.ok) {
+        const errorResult =
+          typeof result === 'object' && result && result !== null
+            ? (result as { error?: unknown; fieldErrors?: Record<string, string> })
+            : null
+
         const message =
-          typeof result === 'object' && result && 'error' in result
-            ? String((result as { error?: unknown }).error ?? '').trim()
+          errorResult && 'error' in errorResult
+            ? String(errorResult.error ?? '').trim()
             : ''
+
+        const fieldErrors =
+          errorResult && 'fieldErrors' in errorResult
+            ? errorResult.fieldErrors
+            : null
+
+        // If we have field-level errors, create an error with all field errors attached
+        if (fieldErrors && Object.keys(fieldErrors).length > 0) {
+          const firstField = Object.keys(fieldErrors)[0] as TimeLogFormField
+          const firstMessage = fieldErrors[firstField] ?? message ?? 'Invalid input.'
+
+          // Attach all field errors to the error object
+          const error = makeFieldError(firstField, firstMessage) as FieldError & {
+            allFieldErrors?: TimeLogFormErrors
+          }
+
+          const allFieldErrors: TimeLogFormErrors = {}
+          Object.entries(fieldErrors).forEach(([key, value]) => {
+            const field = key as TimeLogFormField
+            if (['hours', 'loggedOn', 'user', 'note', 'general'].includes(field)) {
+              allFieldErrors[field] = value
+            }
+          })
+          error.allFieldErrors = allFieldErrors
+
+          throw error
+        }
 
         throw new Error(message || 'Unable to log time.')
       }
@@ -151,7 +187,17 @@ export function useProjectTimeLogMutation(
     onError: error => {
       console.error('Failed to log time', error)
 
-      const field = (error as FieldError | null)?.field
+      const fieldError = error as FieldError & {
+        allFieldErrors?: TimeLogFormErrors
+      }
+
+      // If we have all field errors from the API, use those
+      if (fieldError.allFieldErrors) {
+        setFormErrors(fieldError.allFieldErrors)
+        return
+      }
+
+      const field = fieldError?.field
       const message = resolveErrorMessage(error)
 
       if (field && field !== 'general') {
