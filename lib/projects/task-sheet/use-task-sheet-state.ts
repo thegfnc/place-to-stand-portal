@@ -205,9 +205,12 @@ export const useTaskSheetState = ({
         resetFormState({ preservePending: true })
         onOpenChange(false)
         // Defer refresh to allow navigation from closing sheet to complete first
-        queueMicrotask(() => {
+        // If editing a task, the URL has a taskId that needs to be removed via navigation
+        // before refresh, otherwise the sheet will reopen. Use a delay to ensure navigation completes.
+        const delay = task ? 100 : 0
+        setTimeout(() => {
           router.refresh()
-        })
+        }, delay)
       })
     },
     [
