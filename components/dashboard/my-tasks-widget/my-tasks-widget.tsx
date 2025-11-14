@@ -29,7 +29,6 @@ export function MyTasksWidget({
 
   const { items } = useMyTasksWidgetState({
     initialTasks: tasks,
-    userId,
   })
 
   return (

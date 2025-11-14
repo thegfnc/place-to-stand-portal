@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 
 export async function revalidateProjectTaskViews() {
   await Promise.all([
+    revalidatePath('/home'),
     revalidatePath('/projects'),
     revalidatePath('/projects/[clientSlug]/[projectSlug]/board', 'page'),
     revalidatePath('/projects/[clientSlug]/[projectSlug]/calendar', 'page'),

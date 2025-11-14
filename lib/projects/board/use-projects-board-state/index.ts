@@ -17,7 +17,6 @@ import { useBoardSelectionState } from '../state/use-board-selection'
 import { useBoardSheetState } from '../state/use-board-sheet-state'
 import { useBoardTaskCollections } from '../state/use-board-task-collections'
 
-import { useProjectsTaskRefresh } from './task-refresh/use-projects-task-refresh'
 import type {
   MemberDirectoryEntry,
   ProjectsBoardState,
@@ -92,14 +91,6 @@ export const useProjectsBoardState = ({
     setAcceptedTasksByProject,
   } = useBoardTaskCollections({
     projects,
-    startTransition,
-  })
-
-  useProjectsTaskRefresh({
-    projects,
-    setTasksByProject,
-    setArchivedTasksByProject,
-    setAcceptedTasksByProject,
     startTransition,
   })
 
