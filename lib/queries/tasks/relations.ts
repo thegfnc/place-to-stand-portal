@@ -46,7 +46,7 @@ export type ProjectTaskCollections = {
 export async function listProjectTasksWithRelations(
   user: AppUser,
   projectId: string,
-  options: { includeArchived?: boolean } = {},
+  options: { includeArchived?: boolean } = {}
 ): Promise<RawTaskWithRelations[]> {
   await ensureClientAccessByProjectId(user, projectId)
 
@@ -69,28 +69,18 @@ export async function listProjectTasksWithRelations(
       createdAt: tasks.createdAt,
       updatedAt: tasks.updatedAt,
       deletedAt: tasks.deletedAt,
-      commentCount: sql<number>`
-        coalesce(
-          (
-            select count(*)
-            from ${taskComments}
-            where ${taskComments.taskId} = ${tasks.id}
-              and ${taskComments.deletedAt} is null
-          ),
-          0
-        )
-      `,
-      attachmentCount: sql<number>`
-        coalesce(
-          (
-            select count(*)
-            from ${taskAttachments}
-            where ${taskAttachments.taskId} = ${tasks.id}
-              and ${taskAttachments.deletedAt} is null
-          ),
-          0
-        )
-      `,
+      commentCount: sql<number>`(
+        select coalesce(count(*), 0)
+        from ${taskComments}
+        where ${taskComments.taskId} = tasks.id
+          and ${taskComments.deletedAt} is null
+      )`,
+      attachmentCount: sql<number>`(
+        select coalesce(count(*), 0)
+        from ${taskAttachments}
+        where ${taskAttachments.taskId} = tasks.id
+          and ${taskAttachments.deletedAt} is null
+      )`,
     })
     .from(tasks)
     .where(whereClause)
@@ -110,7 +100,10 @@ export async function listProjectTasksWithRelations(
     })
     .from(taskAssignees)
     .where(
-      and(inArray(taskAssignees.taskId, taskIds), isNull(taskAssignees.deletedAt)),
+      and(
+        inArray(taskAssignees.taskId, taskIds),
+        isNull(taskAssignees.deletedAt)
+      )
     )) as TaskAssigneeSelection[]
 
   const assigneesByTask = new Map<string, RawTaskWithRelations['assignees']>()
@@ -142,7 +135,7 @@ export async function listProjectTasksWithRelations(
 
 export async function listProjectTaskCollectionsWithRelations(
   user: AppUser,
-  projectId: string,
+  projectId: string
 ): Promise<ProjectTaskCollections> {
   const rows = await listProjectTasksWithRelations(user, projectId, {
     includeArchived: true,
@@ -171,4 +164,3 @@ export async function listProjectTaskCollectionsWithRelations(
     archived,
   }
 }
-

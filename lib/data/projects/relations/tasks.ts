@@ -37,7 +37,7 @@ export type TaskAssigneeRow = {
 
 export async function loadTaskRows(
   projectIds: string[],
-  options: { archived?: boolean } = {},
+  options: { archived?: boolean } = {}
 ): Promise<TaskRow[]> {
   if (!projectIds.length) {
     return []
@@ -61,28 +61,18 @@ export async function loadTaskRows(
     createdAt: tasksTable.createdAt,
     updatedAt: tasksTable.updatedAt,
     deletedAt: tasksTable.deletedAt,
-    commentCount: sql<number>`
-      coalesce(
-        (
-          select count(*)
-          from ${taskCommentsTable}
-          where ${taskCommentsTable.taskId} = ${tasksTable.id}
-            and ${taskCommentsTable.deletedAt} is null
-        ),
-        0
-      )
-    `,
-    attachmentCount: sql<number>`
-      coalesce(
-        (
-          select count(*)
-          from ${taskAttachmentsTable}
-          where ${taskAttachmentsTable.taskId} = ${tasksTable.id}
-            and ${taskAttachmentsTable.deletedAt} is null
-        ),
-        0
-      )
-    `,
+    commentCount: sql<number>`(
+      select coalesce(count(*), 0)
+      from ${taskCommentsTable}
+      where ${taskCommentsTable.taskId} = tasks.id
+        and ${taskCommentsTable.deletedAt} is null
+    )`,
+    attachmentCount: sql<number>`(
+      select coalesce(count(*), 0)
+      from ${taskAttachmentsTable}
+      where ${taskAttachmentsTable.taskId} = tasks.id
+        and ${taskAttachmentsTable.deletedAt} is null
+    )`,
   } satisfies Record<string, unknown>
 
   return db
@@ -92,7 +82,7 @@ export async function loadTaskRows(
 }
 
 export async function loadTaskAssigneeRows(
-  taskIds: string[],
+  taskIds: string[]
 ): Promise<TaskAssigneeRow[]> {
   if (!taskIds.length) {
     return []
@@ -105,11 +95,16 @@ export async function loadTaskAssigneeRows(
       deletedAt: taskAssigneesTable.deletedAt,
     })
     .from(taskAssigneesTable)
-    .where(and(inArray(taskAssigneesTable.taskId, taskIds), isNull(taskAssigneesTable.deletedAt)))
+    .where(
+      and(
+        inArray(taskAssigneesTable.taskId, taskIds),
+        isNull(taskAssigneesTable.deletedAt)
+      )
+    )
 }
 
 export function buildAssigneeMap(
-  rows: TaskAssigneeRow[],
+  rows: TaskAssigneeRow[]
 ): Map<string, RawTaskWithRelations['assignees']> {
   const assigneesByTask = new Map<string, RawTaskWithRelations['assignees']>()
 
@@ -124,7 +119,7 @@ export function buildAssigneeMap(
 
 export function mapTaskRowsToRaw(
   rows: TaskRow[],
-  assigneesByTask: Map<string, RawTaskWithRelations['assignees']>,
+  assigneesByTask: Map<string, RawTaskWithRelations['assignees']>
 ): RawTaskWithRelations[] {
   return rows.map(row => {
     const normalized = {
@@ -149,4 +144,3 @@ export function mapTaskRowsToRaw(
     return normalized
   })
 }
-
