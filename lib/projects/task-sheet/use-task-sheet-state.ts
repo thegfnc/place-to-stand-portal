@@ -1,7 +1,7 @@
 'use client'
 
-import { useCallback, useEffect, useState, useTransition } from 'react'
-import { useRouter } from 'next/navigation'
+import { useCallback, useEffect, useRef, useState, useTransition } from 'react'
+import { usePathname, useRouter } from 'next/navigation'
 import type { UseFormReturn } from 'react-hook-form'
 
 import type {
@@ -86,10 +86,13 @@ export const useTaskSheetState = ({
   defaultDueOn,
 }: UseTaskSheetStateArgs): UseTaskSheetStateReturn => {
   const router = useRouter()
+  const pathname = usePathname()
   const [feedback, setFeedback] = useState<string | null>(null)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [isPending, startTransition] = useTransition()
   const { toast } = useToast()
+  const pendingRefreshRef = useRef(false)
+  const previousPathnameRef = useRef(pathname)
 
   const {
     form,
@@ -150,6 +153,24 @@ export const useTaskSheetState = ({
     })
   }, [open, resetFormState, startTransition])
 
+  // Refresh data after sheet closes and URL has been updated (taskId removed)
+  useEffect(() => {
+    if (!open && pendingRefreshRef.current) {
+      // Check if pathname changed (navigation completed)
+      if (pathname !== previousPathnameRef.current) {
+        pendingRefreshRef.current = false
+        // Small delay to ensure navigation is fully complete
+        setTimeout(() => {
+          router.refresh()
+        }, 50)
+      }
+    }
+    // Update previous pathname to track changes
+    if (pathname !== previousPathnameRef.current) {
+      previousPathnameRef.current = pathname
+    }
+  }, [open, pathname, router])
+
   const handleSheetOpenChange = useCallback(
     (next: boolean) => {
       if (!next) {
@@ -204,13 +225,18 @@ export const useTaskSheetState = ({
 
         resetFormState({ preservePending: true })
         onOpenChange(false)
-        // Defer refresh to allow navigation from closing sheet to complete first
-        // If editing a task, the URL has a taskId that needs to be removed via navigation
-        // before refresh, otherwise the sheet will reopen. Use a delay to ensure navigation completes.
-        const delay = task ? 100 : 0
-        setTimeout(() => {
-          router.refresh()
-        }, delay)
+        // If editing a task, wait for navigation to complete before refreshing
+        // If creating a new task, refresh immediately (no URL change needed)
+        if (task) {
+          // Mark that we need to refresh after navigation completes
+          pendingRefreshRef.current = true
+          // Refresh will happen in useEffect after pathname changes (navigation completes)
+        } else {
+          // For new tasks, refresh immediately since there's no URL change
+          setTimeout(() => {
+            router.refresh()
+          }, 50)
+        }
       })
     },
     [

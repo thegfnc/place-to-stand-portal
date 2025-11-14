@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useMemo } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
 import { format } from 'date-fns'
@@ -63,6 +63,11 @@ export type ProjectTimeLogDialogState = {
   overageDialog: {
     isOpen: boolean
     description: string
+    confirm: () => void
+    cancel: () => void
+  }
+  discardDialog: {
+    isOpen: boolean
     confirm: () => void
     cancel: () => void
   }
@@ -137,6 +142,9 @@ export function useProjectTimeLogDialog(
     reset: resetOverage,
     overageDialog,
   } = useTimeLogOverage({ clientRemainingHours })
+
+  const [showDiscardDialog, setShowDiscardDialog] = useState(false)
+  const [pendingClose, setPendingClose] = useState(false)
 
   const baseQueryKey = useMemo(
     () => [TIME_LOGS_QUERY_KEY, projectId] as const,
@@ -274,23 +282,65 @@ export function useProjectTimeLogDialog(
     ]
   )
 
+  const isFormDirty = useMemo(() => {
+    const today = getToday()
+    return (
+      hoursInput.trim() !== '' ||
+      noteInput.trim() !== '' ||
+      selectedTaskIds.length > 0 ||
+      loggedOnInput !== today
+    )
+  }, [hoursInput, noteInput, selectedTaskIds.length, loggedOnInput, getToday])
+
+  const handleDiscardConfirm = useCallback(() => {
+    setShowDiscardDialog(false)
+    if (pendingClose) {
+      resetForClose(currentUserId)
+      resetSelection()
+      resetOverage()
+      onOpenChange(false)
+      setPendingClose(false)
+    }
+  }, [
+    currentUserId,
+    onOpenChange,
+    pendingClose,
+    resetForClose,
+    resetOverage,
+    resetSelection,
+  ])
+
+  const handleDiscardCancel = useCallback(() => {
+    setShowDiscardDialog(false)
+    setPendingClose(false)
+  }, [])
+
   const handleDialogOpenChange = useCallback(
     (nextOpen: boolean) => {
       if (nextOpen) {
         prepareForOpen(currentUserId)
         initializeSelection()
         resetOverage()
+        setShowDiscardDialog(false)
+        setPendingClose(false)
+        onOpenChange(true)
       } else {
+        if (isFormDirty && !isMutating) {
+          setPendingClose(true)
+          setShowDiscardDialog(true)
+          return
+        }
         resetForClose(currentUserId)
         resetSelection()
         resetOverage()
+        onOpenChange(false)
       }
-
-      onOpenChange(nextOpen)
     },
     [
       currentUserId,
       initializeSelection,
+      isFormDirty,
+      isMutating,
       onOpenChange,
       prepareForOpen,
       resetForClose,
@@ -317,6 +367,14 @@ export function useProjectTimeLogDialog(
       },
     }
   }, [isMutating, overageDialog])
+
+  const discardDialog = useMemo(() => {
+    return {
+      isOpen: showDiscardDialog,
+      confirm: handleDiscardConfirm,
+      cancel: handleDiscardCancel,
+    }
+  }, [showDiscardDialog, handleDiscardConfirm, handleDiscardCancel])
 
   return {
     canLogTime,
@@ -350,5 +408,6 @@ export function useProjectTimeLogDialog(
     confirmTaskRemoval,
     cancelTaskRemoval,
     overageDialog: guardedOverageDialog,
+    discardDialog,
   }
 }

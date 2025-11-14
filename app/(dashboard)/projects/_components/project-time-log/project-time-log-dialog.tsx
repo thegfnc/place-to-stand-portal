@@ -86,6 +86,16 @@ export function ProjectTimeLogDialog(props: ProjectTimeLogDialogProps) {
         onCancel={state.overageDialog.cancel}
         onConfirm={state.overageDialog.confirm}
       />
+      <ConfirmDialog
+        open={state.discardDialog.isOpen}
+        title='Discard time log?'
+        description='You have unsaved changes. Are you sure you want to discard them?'
+        confirmLabel='Discard'
+        confirmVariant='destructive'
+        confirmDisabled={state.isMutating}
+        onCancel={state.discardDialog.cancel}
+        onConfirm={state.discardDialog.confirm}
+      />
     </>
   )
 }
