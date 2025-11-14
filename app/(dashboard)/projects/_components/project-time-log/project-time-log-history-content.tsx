@@ -1,5 +1,5 @@
 import { format } from 'date-fns'
-import { Loader2, Pencil, RotateCcw, Trash2 } from 'lucide-react'
+import { Archive, Loader2, Pencil, RotateCcw } from 'lucide-react'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -265,7 +265,7 @@ function ProjectTimeLogHistoryRow(props: ProjectTimeLogHistoryRowProps) {
                 {isDeleting && pendingDeleteId === log.id ? (
                   <Loader2 className='size-4 animate-spin' />
                 ) : (
-                  <Trash2 className='size-4' />
+                  <Archive className='size-4' />
                 )}
               </Button>
             </DisabledFieldTooltip>
