@@ -599,7 +599,7 @@ export const activityOverviewCache = pgTable(
     }),
     check(
       'activity_overview_cache_timeframe_days_check',
-      sql`timeframe_days = ANY (ARRAY[7, 14, 28])`
+      sql`timeframe_days = ANY (ARRAY[1, 7, 14, 28])`
     ),
   ]
 )

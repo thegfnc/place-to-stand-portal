@@ -8,6 +8,13 @@
       "when": 1762891144453,
       "tag": "0000_supabase_baseline",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1763142979017,
+      "tag": "0001_add_one_day_timeframe_to_cache_constraint",
+      "breakpoints": true
     }
   ]
 }

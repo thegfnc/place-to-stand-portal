@@ -10,7 +10,7 @@ import {
 } from '@/lib/activity/overview-cache'
 import { getCurrentUser } from '@/lib/auth/session'
 
-const VALID_TIMEFRAMES = [7, 14, 28] as const
+const VALID_TIMEFRAMES = [1, 7, 14, 28] as const
 const ONE_HOUR_MS = 60 * 60 * 1000
 const MAX_LOG_LINES_IN_PROMPT = 200
 
@@ -257,6 +257,8 @@ function buildFallbackSummary(
 
 function timeframeDaysLabel(timeframe: ValidTimeframe): string {
   switch (timeframe) {
+    case 1:
+      return 'last 1 day'
     case 7:
       return 'last 7 days'
     case 14:
