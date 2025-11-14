@@ -12,6 +12,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
+import { Progress } from '@/components/ui/progress'
 import { getProjectStatusLabel, getProjectStatusToken } from '@/lib/constants'
 import { formatProjectDateRange } from '@/lib/settings/projects/project-formatters'
 import { buildBoardPath } from '@/lib/projects/board/board-utils'
@@ -126,17 +127,17 @@ export function ProjectsLanding({ projects, clients }: ProjectsLandingProps) {
                 project.ends_on
               )
 
-              // Calculate task counts by status
+              // Calculate task progress (excluding archived tasks)
               // Tasks are already filtered at query level to exclude deleted tasks
-              const backlogCount = project.tasks.filter(
-                task => task.status === 'BACKLOG'
-              ).length
-              const doneCount = project.tasks.filter(
+              const activeTasks = project.tasks.filter(
+                task => task.status !== 'ARCHIVED'
+              )
+              const doneCount = activeTasks.filter(
                 task => task.status === 'DONE'
               ).length
-              const inProgressCount = project.tasks.filter(
-                task => task.status !== 'BACKLOG' && task.status !== 'DONE'
-              ).length
+              const totalCount = activeTasks.length
+              const progressPercentage =
+                totalCount > 0 ? Math.round((doneCount / totalCount) * 100) : 0
 
               return (
                 <Link key={project.id} href={href}>
@@ -162,17 +163,17 @@ export function ProjectsLanding({ projects, clients }: ProjectsLandingProps) {
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <ul className='text-muted-foreground flex gap-4 text-xs'>
-                        <li className='flex items-center gap-1'>
-                          <strong>{backlogCount}</strong> Backlog
-                        </li>
-                        <li className='flex items-center gap-1'>
-                          <strong>{inProgressCount}</strong> In Progress
-                        </li>
-                        <li className='flex items-center gap-1'>
-                          <strong>{doneCount}</strong> Done
-                        </li>
-                      </ul>
+                      <div className='space-y-2'>
+                        <div className='flex items-center justify-between text-xs'>
+                          <span className='text-muted-foreground'>
+                            Task Progress
+                          </span>
+                          <span className='text-muted-foreground font-medium'>
+                            {doneCount} of {totalCount} done
+                          </span>
+                        </div>
+                        <Progress value={progressPercentage} />
+                      </div>
                     </CardContent>
                   </Card>
                 </Link>
