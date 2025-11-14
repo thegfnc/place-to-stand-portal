@@ -87,6 +87,7 @@ export function BoardTabContent(props: BoardTabContentProps) {
   } = props
 
   const lastTaskOverId = useRef<UniqueIdentifier | null>(null)
+  const lastColumnOverId = useRef<UniqueIdentifier | null>(null)
 
   type CollisionArgs = Parameters<CollisionDetection>[0]
 
@@ -141,6 +142,23 @@ export function BoardTabContent(props: BoardTabContentProps) {
     [findDroppable]
   )
 
+  const rememberColumnCollision = useCallback(
+    (
+      collisions: ReturnType<typeof pointerWithin>,
+      droppableContainers: CollisionArgs['droppableContainers']
+    ) => {
+      for (const collision of collisions) {
+        const container = findDroppable(collision.id, droppableContainers)
+
+        if (container?.data?.current?.type === 'column') {
+          lastColumnOverId.current = collision.id
+          return
+        }
+      }
+    },
+    [findDroppable]
+  )
+
   const fallbackToLastTask = useCallback(
     (droppableContainers: CollisionArgs['droppableContainers']) => {
       if (!lastTaskOverId.current) {
@@ -162,6 +180,27 @@ export function BoardTabContent(props: BoardTabContentProps) {
     [findDroppable]
   )
 
+  const fallbackToLastColumn = useCallback(
+    (droppableContainers: CollisionArgs['droppableContainers']) => {
+      if (!lastColumnOverId.current) {
+        return null
+      }
+
+      const container = findDroppable(
+        lastColumnOverId.current,
+        droppableContainers
+      )
+
+      if (!container) {
+        lastColumnOverId.current = null
+        return null
+      }
+
+      return [{ id: lastColumnOverId.current }]
+    },
+    [findDroppable]
+  )
+
   const collisionDetection = useCallback<CollisionDetection>(
     args => {
       const pointerCollisions = pointerWithin(args)
@@ -173,6 +212,7 @@ export function BoardTabContent(props: BoardTabContentProps) {
         )
 
         rememberTaskCollision(prioritized, args.droppableContainers)
+        rememberColumnCollision(pointerCollisions, args.droppableContainers)
 
         return prioritized
       }
@@ -186,19 +226,32 @@ export function BoardTabContent(props: BoardTabContentProps) {
         )
 
         rememberTaskCollision(prioritized, args.droppableContainers)
+        rememberColumnCollision(intersections, args.droppableContainers)
 
         return prioritized
       }
 
-      const fallback = fallbackToLastTask(args.droppableContainers)
+      const taskFallback = fallbackToLastTask(args.droppableContainers)
 
-      if (fallback) {
-        return fallback
+      if (taskFallback) {
+        return taskFallback
+      }
+
+      const columnFallback = fallbackToLastColumn(args.droppableContainers)
+
+      if (columnFallback) {
+        return columnFallback
       }
 
       return closestCenter(args)
     },
-    [fallbackToLastTask, prioritizeCollisions, rememberTaskCollision]
+    [
+      fallbackToLastTask,
+      fallbackToLastColumn,
+      prioritizeCollisions,
+      rememberTaskCollision,
+      rememberColumnCollision,
+    ]
   )
 
   if (!isActive) {
@@ -228,10 +281,15 @@ export function BoardTabContent(props: BoardTabContentProps) {
             >
               <DndContext
                 sensors={sensors}
-                onDragStart={onDragStart}
+                onDragStart={event => {
+                  lastTaskOverId.current = null
+                  lastColumnOverId.current = null
+                  onDragStart?.(event)
+                }}
                 onDragOver={onDragOver}
                 onDragEnd={event => {
                   lastTaskOverId.current = null
+                  lastColumnOverId.current = null
                   onDragEnd?.(event)
                 }}
                 collisionDetection={collisionDetection}
