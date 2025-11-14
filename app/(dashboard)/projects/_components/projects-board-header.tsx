@@ -30,10 +30,12 @@ export function ProjectsBoardHeader({
   canSelectPrevious,
 }: ProjectsBoardHeaderProps) {
   return (
-    <div className='flex w-full flex-wrap items-end gap-3'>
-      <div className='flex flex-1 items-end gap-3'>
+    <div className='flex w-full flex-wrap items-center gap-3'>
+      <div className='flex flex-1 items-center gap-3 py-2.5'>
         <div className='min-w-[400px] space-y-2'>
-          <Label htmlFor='projects-project-select'>Project Selector</Label>
+          <Label htmlFor='projects-project-select' className='sr-only'>
+            Project Selector
+          </Label>
           <SearchableCombobox
             id='projects-project-select'
             items={projectItems}

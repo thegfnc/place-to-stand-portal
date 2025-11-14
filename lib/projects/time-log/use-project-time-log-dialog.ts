@@ -221,12 +221,29 @@ export function useProjectTimeLogDialog(
       selectedUserId: timeLogEntry.user_id,
     })
     initializeSelection(editTaskIds)
-    setBaselineState({
+    const nextBaselineState = {
       hours: String(timeLogEntry.hours ?? ''),
       note: timeLogEntry.note ?? '',
       loggedOn: loggedOnValue,
       taskIds: editTaskIds,
+    }
+    let cancelled = false
+    const scheduleBaselineUpdate =
+      typeof queueMicrotask === 'function'
+        ? queueMicrotask
+        : (callback: () => void) => {
+            Promise.resolve().then(callback)
+          }
+
+    scheduleBaselineUpdate(() => {
+      if (!cancelled) {
+        setBaselineState(nextBaselineState)
+      }
     })
+
+    return () => {
+      cancelled = true
+    }
   }, [
     editTaskIds,
     initializeSelection,

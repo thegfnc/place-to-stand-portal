@@ -12,14 +12,12 @@ import { TaskList } from './task-list'
 type MyTasksWidgetProps = {
   tasks: AssignedTaskSummary[]
   role: UserRole
-  userId: string
   className?: string
 }
 
 export function MyTasksWidget({
   tasks,
   role,
-  userId,
   className,
 }: MyTasksWidgetProps) {
   const description =
