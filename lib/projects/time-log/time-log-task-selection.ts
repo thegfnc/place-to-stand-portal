@@ -34,7 +34,10 @@ export function useTimeLogTaskSelection(
       if (task.deleted_at !== null) {
         return false
       }
-      if (task.status === 'DONE' || task.status === 'ARCHIVED') {
+      if (task.status === 'ARCHIVED') {
+        return false
+      }
+      if (task.accepted_at !== null) {
         return false
       }
       return true
