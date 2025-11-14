@@ -10,3 +10,5 @@ While planning refactors, pay close attention to the architectural guidance in `
 - **Single Responsibility Principle:** As files approach 300 lines, consider splitting by responsibility. Each component, function, or module should have one clear purpose.
 - **Separation of Concerns:** Distinguish between UI, state management, data fetching, and business logic layers.
 - **DRY Principle:** Reuse code via shared utilities, hooks, and components. Abstract common patterns when they appear in 3+ places.
+
+ENSURE THAT FUNCTIONALITY IS NOT BROKEN BY THE REFACOTRING PROCESS.

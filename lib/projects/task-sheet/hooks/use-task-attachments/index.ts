@@ -2,11 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
-import {
-  ACCEPTED_TASK_ATTACHMENT_MIME_TYPES,
-  MAX_TASK_ATTACHMENT_FILE_SIZE,
-} from '@/lib/storage/task-attachment-constants'
-
 import { buildDefaultAttachments } from './default-attachments'
 import {
   UPLOAD_ENDPOINT,
@@ -15,9 +10,13 @@ import {
   type UseTaskAttachmentsArgs,
   type UseTaskAttachmentsReturn,
 } from './types'
-
-const makeAttachmentKey = (attachment: AttachmentDraft) =>
-  attachment.id ?? attachment.storagePath
+import {
+  attachmentsAreDirty,
+  buildAttachmentSubmission,
+  makeAttachmentKey,
+  toAttachmentItems,
+} from './attachment-transformers'
+import { useAttachmentUploader } from './use-attachment-uploader'
 
 export const useTaskAttachments = ({
   task,
@@ -34,10 +33,18 @@ export const useTaskAttachments = ({
   const [attachments, setAttachments] =
     useState<AttachmentDraft[]>(defaultAttachments)
   const [attachmentsToRemove, setAttachmentsToRemove] = useState<string[]>([])
-  const [pendingUploadCount, setPendingUploadCount] = useState(0)
   const pendingPathsRef = useRef<Set<string>>(new Set())
   const previewUrlRef = useRef<Map<string, string>>(new Map())
   const loadedTaskIdRef = useRef<string | null>(null)
+
+  const { handleAttachmentUpload, pendingUploadCount, resetPendingUploads } =
+    useAttachmentUploader({
+      canManage,
+      toast,
+      setAttachments,
+      pendingPathsRef,
+      previewUrlRef,
+    })
 
   const cleanupPendingAttachments = useCallback((paths: string[]) => {
     if (!paths.length) {
@@ -80,47 +87,25 @@ export const useTaskAttachments = ({
       clearPreviewUrls()
       setAttachments(baselineAttachments)
       setAttachmentsToRemove([])
-      setPendingUploadCount(0)
+      resetPendingUploads()
     },
-    [baselineAttachments, cleanupPendingAttachments, clearPreviewUrls]
+    [
+      baselineAttachments,
+      cleanupPendingAttachments,
+      clearPreviewUrls,
+      resetPendingUploads,
+    ]
   )
 
-  const attachmentsDirty = useMemo(() => {
-    if (attachments.some(attachment => attachment.isPending)) {
-      return true
-    }
-
-    if (attachmentsToRemove.length) {
-      return true
-    }
-
-    if (attachments.length !== baselineAttachments.length) {
-      return true
-    }
-
-    const baselineIds = new Set(
-      baselineAttachments
-        .map(attachment => attachment.id)
-        .filter((id): id is string => Boolean(id))
-    )
-    const currentIds = new Set(
-      attachments
-        .filter(attachment => !attachment.isPending && attachment.id)
-        .map(attachment => attachment.id as string)
-    )
-
-    if (baselineIds.size !== currentIds.size) {
-      return true
-    }
-
-    for (const id of baselineIds) {
-      if (!currentIds.has(id)) {
-        return true
-      }
-    }
-
-    return false
-  }, [attachments, attachmentsToRemove, baselineAttachments])
+  const attachmentsDirty = useMemo(
+    () =>
+      attachmentsAreDirty(
+        attachments,
+        baselineAttachments,
+        attachmentsToRemove,
+      ),
+    [attachments, attachmentsToRemove, baselineAttachments],
+  )
 
   useEffect(() => {
     pendingPathsRef.current.clear()
@@ -128,11 +113,12 @@ export const useTaskAttachments = ({
     setBaselineAttachments(defaultAttachments)
     setAttachments(defaultAttachments)
     setAttachmentsToRemove([])
-    setPendingUploadCount(0)
+    resetPendingUploads()
     loadedTaskIdRef.current = task?.attachments?.length ? task.id ?? null : null
   }, [
     clearPreviewUrls,
     defaultAttachments,
+    resetPendingUploads,
     task?.attachments?.length,
     task?.id,
   ])
@@ -208,7 +194,7 @@ export const useTaskAttachments = ({
         setBaselineAttachments(normalized)
         setAttachments(normalized)
         setAttachmentsToRemove([])
-        setPendingUploadCount(0)
+        resetPendingUploads()
         loadedTaskIdRef.current = taskId
       } catch (error) {
         if (controller.signal.aborted) {
@@ -226,105 +212,11 @@ export const useTaskAttachments = ({
     }
   }, [
     clearPreviewUrls,
+    resetPendingUploads,
     task?.attachmentCount,
     task?.attachments?.length,
     task?.id,
   ])
-
-  const handleAttachmentUpload = useCallback(
-    async (fileList: FileList | File[]) => {
-      if (!canManage) {
-        return
-      }
-
-      const files = Array.from(fileList ?? [])
-
-      if (!files.length) {
-        return
-      }
-
-      for (const file of files) {
-        if (
-          !ACCEPTED_TASK_ATTACHMENT_MIME_TYPES.includes(
-            file.type as (typeof ACCEPTED_TASK_ATTACHMENT_MIME_TYPES)[number]
-          )
-        ) {
-          toast({
-            title: 'Unsupported file type',
-            description: 'Images, videos, PDFs, and ZIPs are supported.',
-            variant: 'destructive',
-          })
-          continue
-        }
-
-        if (file.size > MAX_TASK_ATTACHMENT_FILE_SIZE) {
-          toast({
-            title: 'File too large',
-            description: 'Please choose a smaller attachment.',
-            variant: 'destructive',
-          })
-          continue
-        }
-
-        setPendingUploadCount(count => count + 1)
-
-        try {
-          const formData = new FormData()
-          formData.append('file', file)
-
-          const response = await fetch(UPLOAD_ENDPOINT, {
-            method: 'POST',
-            body: formData,
-          })
-
-          if (!response.ok) {
-            const payload = (await response.json().catch(() => null)) as {
-              error?: string
-            } | null
-            throw new Error(payload?.error ?? 'Unable to upload attachment.')
-          }
-
-          const payload = (await response.json()) as {
-            path: string
-            originalName: string
-            mimeType: string
-            fileSize: number
-          }
-
-          const previewUrl = URL.createObjectURL(file)
-          pendingPathsRef.current.add(payload.path)
-          previewUrlRef.current.set(payload.path, previewUrl)
-
-          setAttachments(prev => [
-            ...prev,
-            {
-              id: null,
-              storagePath: payload.path,
-              originalName: payload.originalName,
-              mimeType: payload.mimeType,
-              fileSize: payload.fileSize,
-              isPending: true,
-              downloadUrl: previewUrl,
-              previewUrl,
-            },
-          ])
-        } catch (error) {
-          console.error('Attachment upload failed', error)
-          toast({
-            title: 'Upload failed',
-            description:
-              error instanceof Error
-                ? error.message
-                : 'Unable to upload attachment.',
-            variant: 'destructive',
-          })
-        } finally {
-          setPendingUploadCount(count => Math.max(count - 1, 0))
-        }
-      }
-    },
-    [canManage, toast]
-  )
 
   const handleAttachmentRemove = useCallback(
     (key: string) => {
@@ -360,40 +252,16 @@ export const useTaskAttachments = ({
   )
 
   const attachmentItems = useMemo<AttachmentItem[]>(
-    () =>
-      attachments.map(attachment => ({
-        key: makeAttachmentKey(attachment),
-        id: attachment.id,
-        name: attachment.originalName,
-        mimeType: attachment.mimeType,
-        size: attachment.fileSize,
-        isPending: attachment.isPending,
-        url: attachment.downloadUrl,
-      })),
-    [attachments]
+    () => toAttachmentItems(attachments),
+    [attachments],
   )
 
   const isUploading = pendingUploadCount > 0
 
-  const buildSubmissionPayload = useCallback(() => {
-    const pendingAttachments = attachments.filter(
-      attachment => attachment.isPending
-    )
-
-    if (!pendingAttachments.length && !attachmentsToRemove.length) {
-      return undefined
-    }
-
-    return {
-      toAttach: pendingAttachments.map(attachment => ({
-        path: attachment.storagePath,
-        originalName: attachment.originalName,
-        mimeType: attachment.mimeType,
-        fileSize: attachment.fileSize,
-      })),
-      toRemove: attachmentsToRemove,
-    }
-  }, [attachments, attachmentsToRemove])
+  const buildSubmissionPayload = useCallback(
+    () => buildAttachmentSubmission(attachments, attachmentsToRemove),
+    [attachments, attachmentsToRemove],
+  )
 
   useEffect(() => {
     const pendingPathSet = pendingPathsRef.current

@@ -5,12 +5,17 @@ import type { TransitionStartFunction } from 'react'
 import { getSupabaseBrowserClient } from '@/lib/supabase/client'
 import { normalizeRawTask } from '@/lib/data/projects/normalize-task'
 import type { RawTaskWithRelations } from '@/lib/data/projects/types'
-import type { TaskWithRelations } from '@/lib/types'
+import type { ProjectWithRelations, TaskWithRelations } from '@/lib/types'
 
 import type { TaskLookup } from '../../state/types'
 
+type ProjectsInput = Pick<
+  ProjectWithRelations,
+  'id' | 'tasks' | 'archivedTasks' | 'acceptedTasks'
+>
+
 type UseProjectsTaskRefreshArgs = {
-  projects: { id: string }[]
+  projects: ProjectsInput[]
   setTasksByProject: React.Dispatch<React.SetStateAction<TaskLookup>>
   setArchivedTasksByProject: React.Dispatch<React.SetStateAction<TaskLookup>>
   setAcceptedTasksByProject: React.Dispatch<React.SetStateAction<TaskLookup>>
@@ -29,6 +34,31 @@ export function useProjectsTaskRefresh({
   startTransition,
 }: UseProjectsTaskRefreshArgs): TaskRefreshState {
   const supabase = useMemo(() => getSupabaseBrowserClient(), [])
+  const taskProjectLookupRef = useRef(new Map<string, string>())
+
+  const registerProjectTasks = useCallback(
+    (projectId: string, taskGroups: Array<TaskWithRelations[]>) => {
+      const lookup = taskProjectLookupRef.current
+      taskGroups.forEach(group => {
+        group.forEach(task => {
+          if (task?.id) {
+            lookup.set(task.id, projectId)
+          }
+        })
+      })
+    },
+    []
+  )
+
+  const resolveProjectIdForTask = useCallback(
+    (taskId: string | null | undefined) => {
+      if (!taskId) {
+        return null
+      }
+      return taskProjectLookupRef.current.get(taskId) ?? null
+    },
+    []
+  )
 
   const fetchProjectTasks = useCallback(async (projectId: string) => {
     const response = await fetch(`/api/projects/${projectId}/tasks`, {
@@ -90,6 +120,11 @@ export function useProjectsTaskRefresh({
         const nextActive = collections.active.map(normalizeRawTask)
         const nextArchived = collections.archived.map(normalizeRawTask)
         const nextAccepted = collections.accepted.map(normalizeRawTask)
+        registerProjectTasks(projectId, [
+          nextActive,
+          nextArchived,
+          nextAccepted,
+        ])
 
         startTransition(() => {
           setTasksByProject(prev =>
@@ -115,6 +150,7 @@ export function useProjectsTaskRefresh({
       setTasksByProject,
       startTransition,
       trackedProjectIdsSet,
+      registerProjectTasks,
     ]
   )
 
@@ -168,11 +204,54 @@ export function useProjectsTaskRefresh({
   }, [])
 
   useEffect(() => {
+    const lookup = taskProjectLookupRef.current
+    lookup.clear()
+    projects.forEach(project => {
+      if (!project?.id) {
+        return
+      }
+      registerProjectTasks(project.id, [
+        project.tasks ?? [],
+        project.archivedTasks ?? [],
+        project.acceptedTasks ?? [],
+      ])
+    })
+  }, [projects, registerProjectTasks])
+
+  useEffect(() => {
     if (!trackedProjectIds.length) {
       return
     }
 
     const filterValues = trackedProjectIds.map(id => '"' + id + '"').join(',')
+
+    const handleTaskChange = (payload: {
+      new: { project_id?: string } | null
+      old: { project_id?: string } | null
+    }) => {
+      const projectId =
+        payload.new?.project_id ?? payload.old?.project_id ?? null
+
+      if (!projectId) {
+        return
+      }
+
+      scheduleRefresh(projectId)
+    }
+
+    const handleAttachmentChange = (payload: {
+      new: { task_id?: string } | null
+      old: { task_id?: string } | null
+    }) => {
+      const taskId = payload.new?.task_id ?? payload.old?.task_id ?? null
+      const projectId = resolveProjectIdForTask(taskId)
+      if (!projectId) {
+        return
+      }
+      scheduleRefresh(projectId)
+    }
+
+    const handleCommentChange = handleAttachmentChange
 
     const channel = supabase
       .channel(`projects-board-tasks:${trackedProjectIds.join(',')}`)
@@ -184,25 +263,57 @@ export function useProjectsTaskRefresh({
           table: 'tasks',
           filter: `project_id=in.(${filterValues})`,
         },
-        payload => {
-          const projectId =
-            (payload.new as { project_id?: string } | null)?.project_id ??
-            (payload.old as { project_id?: string } | null)?.project_id ??
-            null
-
-          if (!projectId) {
-            return
-          }
-
-          scheduleRefresh(projectId)
-        }
+        handleTaskChange
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'task_attachments',
+        },
+        handleAttachmentChange
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'task_attachments',
+        },
+        handleAttachmentChange
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'task_comments',
+        },
+        handleCommentChange
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'task_comments',
+        },
+        handleCommentChange
       )
       .subscribe()
 
     return () => {
       void supabase.removeChannel(channel)
     }
-  }, [scheduleRefresh, supabase, trackedProjectIds])
+  }, [
+    projects,
+    registerProjectTasks,
+    resolveProjectIdForTask,
+    scheduleRefresh,
+    supabase,
+    trackedProjectIds,
+  ])
 
   return { scheduleRefresh }
 }

@@ -12,7 +12,6 @@ export default withPostHogConfig(nextConfig, {
   envId: process.env.POSTHOG_PROJECT_ID!, // Your environment ID (project ID)
   host: process.env.NEXT_PUBLIC_POSTHOG_HOST!, // Optional: Your PostHog instance URL, defaults to https://us.posthog.com
   sourcemaps: {
-    // Optional
     enabled: process.env.NODE_ENV === 'production', // Optional: Enable sourcemaps generation and upload, defaults to true on production builds
     project: 'place-to-stand-portal', // Optional: Project name, defaults to git repository name
     version: process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA!, // Optional: Release version, defaults to current git commit
