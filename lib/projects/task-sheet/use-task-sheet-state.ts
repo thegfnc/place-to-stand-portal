@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import type { UseFormReturn } from 'react-hook-form'
 
 import type {
@@ -84,6 +85,7 @@ export const useTaskSheetState = ({
   defaultStatus,
   defaultDueOn,
 }: UseTaskSheetStateArgs): UseTaskSheetStateReturn => {
+  const router = useRouter()
   const [feedback, setFeedback] = useState<string | null>(null)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [isPending, startTransition] = useTransition()
@@ -200,6 +202,7 @@ export const useTaskSheetState = ({
             : 'The task was added to the project board.',
         })
 
+        router.refresh()
         resetFormState({ preservePending: true })
         onOpenChange(false)
       })
@@ -209,6 +212,7 @@ export const useTaskSheetState = ({
       canManage,
       onOpenChange,
       project.id,
+      router,
       resetFormState,
       task,
       toast,
@@ -251,10 +255,11 @@ export const useTaskSheetState = ({
         description: 'The task has been removed from the board.',
       })
 
+      router.refresh()
       resetFormState()
       onOpenChange(false)
     })
-  }, [canManage, isPending, onOpenChange, resetFormState, task, toast])
+  }, [canManage, isPending, onOpenChange, resetFormState, router, task, toast])
 
   const attachmentsDisabledReason = getDisabledReason(
     !canManage || isPending,

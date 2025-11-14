@@ -139,11 +139,6 @@ export const useTaskAttachments = ({
       return
     }
 
-    if ((task?.attachmentCount ?? 0) === 0) {
-      loadedTaskIdRef.current = taskId
-      return
-    }
-
     const controller = new AbortController()
 
     const loadAttachments = async () => {
