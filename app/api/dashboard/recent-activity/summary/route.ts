@@ -1,14 +1,22 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { streamText } from 'ai'
+import { and, inArray, isNull } from 'drizzle-orm'
 
 import type { ActivityLogWithActor } from '@/lib/activity/types'
+import type { Json } from '@/lib/types/json'
 import { fetchActivityLogsSince } from '@/lib/activity/queries'
 import {
   loadActivityOverviewCache,
   upsertActivityOverviewCache,
 } from '@/lib/activity/overview-cache'
-import { getCurrentUser } from '@/lib/auth/session'
+import { getCurrentUser, type AppUser } from '@/lib/auth/session'
+import {
+  listAccessibleClientIds,
+  listAccessibleProjectIds,
+} from '@/lib/auth/permissions'
+import { db } from '@/lib/db'
+import { clients, projects } from '@/lib/db/schema'
 
 const VALID_TIMEFRAMES = [1, 7, 14, 28] as const
 const ONE_HOUR_MS = 60 * 60 * 1000
@@ -113,6 +121,7 @@ export async function POST(request: Request) {
       })
     }
 
+    const context = await buildActivityContext(user, logs)
     const expiresAtIso = new Date(now.getTime() + ONE_HOUR_MS).toISOString()
 
     const result = await streamText({
@@ -122,11 +131,12 @@ export async function POST(request: Request) {
         timeframeDays: timeframeDays as ValidTimeframe,
         logs,
         now,
+        context,
       }),
       onFinish: async ({ text }) => {
         const completion = (text ?? '').trim()
         const summaryToStore =
-          completion || buildFallbackSummary(logs, timeframeDays)
+          completion || buildFallbackSummary(logs, timeframeDays, context)
 
         try {
           await upsertActivityOverviewCache({
@@ -190,9 +200,12 @@ function buildSystemPrompt(timeframe: ValidTimeframe): string {
   return [
     'You are the Place to Stand chief of staff drafting a high-signal executive briefing for an extremely busy CEO.',
     `Summarize the most important activity from the last ${timeframe} days using concise markdown sections. Keep it short and to the point.`,
-    'Output exactly three level-three headings named "### Done", "### In Progress", "### PotentialRisks", each followed by a bullet list (maximum 5 bullet points each).',
-    'Use plain language, include clients or projects when relevant, avoid fluff, and never fabricate details.',
-    'If there are no risks or next steps, supply a single bullet that states "None noted" for that section.',
+    'Group updates by client and project using level-three markdown headings in the exact format "### {Client Name} - {Project Name}".',
+    'Always include a "### Place To Stand - General" section first when there are organization-wide updates or uncategorized activity.',
+    'If only one of client/project is known, label the missing dimension as "General". When nothing fits, use the heading "### Place To Stand - General".',
+    'Under each heading include up to three bullet points that capture the latest movement, progress, blockers, or decisions. Skip filler, avoid repeating the same idea, and never speculate.',
+    'Do not fabricate project or client names—only reference what the activity feed supports.',
+    'If there is no activity, output a single heading "### Place To Stand - General" followed by the bullet "- No recent updates logged."',
   ].join(' ')
 }
 
@@ -200,21 +213,28 @@ function buildUserPrompt({
   timeframeDays,
   logs,
   now,
+  context,
 }: {
   timeframeDays: ValidTimeframe
   logs: ActivityLogWithActor[]
   now: Date
+  context: ActivityContext
 }): string {
   const timeframeLabel = timeframeDaysLabel(timeframeDays)
-  const formattedLogs = logs.map(formatActivityLog).join('\n')
+  const formattedLogs = logs
+    .map(log => formatActivityLog(log, context))
+    .join('\n')
 
   return [
     `Today is ${now.toISOString()}. Summarize company activity for ${timeframeLabel}.`,
-    'Each line below represents a recorded activity. Treat them as factual notes.',
-    'Identify the biggest wins, emerging risks, and commitments leadership should track.',
+    'Each line below is a JSON object describing a recorded activity. Treat them as factual notes.',
+    'Group updates so that each heading captures a single client/project pair and is formatted "### {Client Name} - {Project Name}".',
+    'Place any uncategorized or cross-company updates in "### Place To Stand - General" and list that heading first when it exists.',
+    'If only one dimension is known, label the missing half as "General". When nothing fits, place the update under "Place To Stand - General".',
+    'Combine multiple logs for the same project into a single heading that reflects the latest movement.',
     'Respond using markdown with the required headings and bullet lists only—no additional prose or sections.',
     '',
-    'Activity log:',
+    'Activity log (JSON lines):',
     formattedLogs,
   ]
     .filter(Boolean)
@@ -223,36 +243,34 @@ function buildUserPrompt({
 
 function buildNoActivitySummary(timeframeDays: ValidTimeframe): string {
   return [
-    '### Momentum',
-    `- No activity logged in the ${timeframeDaysLabel(timeframeDays)}; operations remained stable.`,
-    '### Risks',
-    '- None noted',
-    '### Next',
-    '- Maintain current cadence and monitor for new updates.',
+    `### ${COMPANY_GENERAL_HEADING}`,
+    `- No recent updates logged during the ${timeframeDaysLabel(timeframeDays)}.`,
+    '- Operations remain steady while we await new activity.',
   ].join('\n')
 }
 
 function buildFallbackSummary(
   logs: ActivityLogWithActor[],
-  timeframeDays: number
+  timeframeDays: number,
+  context: ActivityContext
 ): string {
-  const highlights = logs
-    .slice(-3)
-    .map(log => log.summary.trim())
-    .filter(Boolean)
-  const highlightText = highlights.length
-    ? highlights.map(item => `- ${item}`).join('\n')
-    : '- No standout highlights were captured.'
+  const grouped = groupLogsByProject(logs, context)
 
-  return [
-    '### Momentum',
-    `- Logged ${logs.length} updates over the ${timeframeDaysLabel(timeframeDays as ValidTimeframe)}.`,
-    highlightText,
-    '### Risks',
-    '- No additional context captured in the raw activity feed.',
-    '### Next',
-    '- Review detailed logs to prioritize any follow-up needed.',
-  ].join('\n')
+  if (!grouped.length) {
+    return [
+      `### ${COMPANY_GENERAL_HEADING}`,
+      `- Logged ${logs.length} updates over the ${timeframeDaysLabel(timeframeDays as ValidTimeframe)}.`,
+    ].join('\n')
+  }
+
+  const sections: string[] = []
+
+  for (const group of grouped) {
+    sections.push(`### ${group.heading}`)
+    sections.push(...group.bullets)
+  }
+
+  return sections.join('\n')
 }
 
 function timeframeDaysLabel(timeframe: ValidTimeframe): string {
@@ -270,6 +288,24 @@ function timeframeDaysLabel(timeframe: ValidTimeframe): string {
   }
 }
 
+type ActivityContext = {
+  projects: Record<
+    string,
+    {
+      id: string
+      name: string
+      clientId: string | null
+    }
+  >
+  clients: Record<
+    string,
+    {
+      id: string
+      name: string
+    }
+  >
+}
+
 const TARGET_LABELS: Record<string, string> = {
   TASK: 'task work',
   PROJECT: 'project updates',
@@ -282,7 +318,16 @@ const TARGET_LABELS: Record<string, string> = {
   GENERAL: 'general operations',
 }
 
-function formatActivityLog(log: ActivityLogWithActor): string {
+const DEFAULT_PROJECT_LABEL = 'General'
+const DEFAULT_CLIENT_LABEL = 'General'
+const COMPANY_GENERAL_CLIENT_LABEL = 'Place To Stand'
+const COMPANY_GENERAL_HEADING = `${COMPANY_GENERAL_CLIENT_LABEL} - ${DEFAULT_PROJECT_LABEL}`
+
+function formatActivityLog(
+  log: ActivityLogWithActor,
+  context: ActivityContext
+): string {
+  const { project, client } = resolveProjectClientLabels(log, context)
   const timestamp = new Date(log.created_at)
   const formattedTimestamp = new Intl.DateTimeFormat('en-US', {
     month: 'short',
@@ -302,6 +347,290 @@ function formatActivityLog(log: ActivityLogWithActor): string {
     TARGET_LABELS[log.target_type] || log.target_type || 'activity'
   const summary = log.summary.trim()
   const verb = log.verb.replaceAll('_', ' ').toLowerCase()
+  const record: Record<string, unknown> = {
+    timestamp: formattedTimestamp,
+    actor: actorName,
+    project,
+    client,
+    projectId: log.target_project_id,
+    clientId: log.target_client_id,
+    targetType: log.target_type,
+    targetLabel,
+    verb,
+    summary,
+  }
 
-  return `${formattedTimestamp} — ${actorName} (${targetLabel}; ${verb}): ${summary}`
+  if (log.metadata && typeof log.metadata === 'object') {
+    record.metadata = log.metadata
+  }
+
+  return JSON.stringify(record)
+}
+
+async function buildActivityContext(
+  user: AppUser,
+  logs: ActivityLogWithActor[]
+): Promise<ActivityContext> {
+  const projectIds = dedupeIds(logs.map(log => log.target_project_id))
+  const clientIds = dedupeIds(logs.map(log => log.target_client_id))
+
+  const [allowedProjectIds, allowedClientIds] = await Promise.all([
+    resolveAllowedProjects(user, projectIds),
+    resolveAllowedClients(user, clientIds),
+  ])
+
+  const [projectRows, clientRows] = await Promise.all([
+    allowedProjectIds.length
+      ? db
+          .select({
+            id: projects.id,
+            name: projects.name,
+            clientId: projects.clientId,
+          })
+          .from(projects)
+          .where(
+            and(
+              inArray(projects.id, allowedProjectIds),
+              isNull(projects.deletedAt)
+            )
+          )
+      : Promise.resolve([]),
+    allowedClientIds.length
+      ? db
+          .select({
+            id: clients.id,
+            name: clients.name,
+          })
+          .from(clients)
+          .where(
+            and(
+              inArray(clients.id, allowedClientIds),
+              isNull(clients.deletedAt)
+            )
+          )
+      : Promise.resolve([]),
+  ])
+
+  const projectDirectory = projectRows.reduce<ActivityContext['projects']>(
+    (acc, row) => {
+      acc[row.id] = {
+        id: row.id,
+        name: row.name?.trim() || 'Unnamed Project',
+        clientId: row.clientId,
+      }
+      return acc
+    },
+    {}
+  )
+
+  const clientDirectory = clientRows.reduce<ActivityContext['clients']>(
+    (acc, row) => {
+      acc[row.id] = {
+        id: row.id,
+        name: row.name?.trim() || 'Unnamed Client',
+      }
+      return acc
+    },
+    {}
+  )
+
+  return {
+    projects: projectDirectory,
+    clients: clientDirectory,
+  }
+}
+
+function dedupeIds(values: Array<string | null>): string[] {
+  return Array.from(
+    new Set(values.filter((value): value is string => Boolean(value)))
+  )
+}
+
+async function resolveAllowedProjects(
+  user: AppUser,
+  projectIds: string[]
+): Promise<string[]> {
+  if (!projectIds.length) {
+    return []
+  }
+
+  if (user.role === 'ADMIN') {
+    return projectIds
+  }
+
+  const accessible = await listAccessibleProjectIds(user)
+  const accessibleSet = new Set(accessible)
+
+  return projectIds.filter(id => accessibleSet.has(id))
+}
+
+async function resolveAllowedClients(
+  user: AppUser,
+  clientIds: string[]
+): Promise<string[]> {
+  if (!clientIds.length) {
+    return []
+  }
+
+  if (user.role === 'ADMIN') {
+    return clientIds
+  }
+
+  const accessible = await listAccessibleClientIds(user)
+  const accessibleSet = new Set(accessible)
+
+  return clientIds.filter(id => accessibleSet.has(id))
+}
+
+const MAX_FALLBACK_PROJECTS = 6
+const MAX_FALLBACK_BULLETS_PER_PROJECT = 3
+
+function groupLogsByProject(
+  logs: ActivityLogWithActor[],
+  context: ActivityContext
+) {
+  if (!logs.length) {
+    return []
+  }
+
+  const orderedLogs = [...logs].reverse()
+  const groups = new Map<
+    string,
+    { heading: string; bullets: string[]; order: number }
+  >()
+  let orderCounter = 0
+
+  for (const log of orderedLogs) {
+    const { project, client } = resolveProjectClientLabels(log, context)
+    const heading = buildHeading(client, project)
+
+    let group = groups.get(heading)
+
+    if (!group) {
+      if (groups.size >= MAX_FALLBACK_PROJECTS) {
+        continue
+      }
+
+      group = { heading, bullets: [], order: orderCounter++ }
+      groups.set(heading, group)
+    }
+
+    if (group.bullets.length >= MAX_FALLBACK_BULLETS_PER_PROJECT) {
+      continue
+    }
+
+    const summary = log.summary.trim()
+
+    if (summary) {
+      group.bullets.push(`- ${summary}`)
+    }
+  }
+
+  return Array.from(groups.values()).sort((a, b) => {
+    const aIsGeneral = a.heading === COMPANY_GENERAL_HEADING
+    const bIsGeneral = b.heading === COMPANY_GENERAL_HEADING
+
+    if (aIsGeneral && !bIsGeneral) {
+      return -1
+    }
+
+    if (!aIsGeneral && bIsGeneral) {
+      return 1
+    }
+
+    return a.order - b.order
+  })
+}
+
+function resolveProjectClientLabels(
+  log: ActivityLogWithActor,
+  context: ActivityContext
+): { project: string; client: string } {
+  const projectFromContext = log.target_project_id
+    ? (context.projects[log.target_project_id] ?? null)
+    : null
+
+  const clientFromProject =
+    projectFromContext?.clientId && context.clients[projectFromContext.clientId]
+      ? context.clients[projectFromContext.clientId]
+      : null
+
+  const clientFromContext = log.target_client_id
+    ? (context.clients[log.target_client_id] ?? null)
+    : null
+
+  const projectName = selectFirstNonEmpty(
+    [
+      projectFromContext?.name,
+      readMetadataString(log.metadata, ['project', 'name']),
+      readMetadataString(log.metadata, ['task', 'projectName']),
+      readMetadataString(log.metadata, ['projectName']),
+    ],
+    DEFAULT_PROJECT_LABEL
+  )
+
+  let clientName = selectFirstNonEmpty(
+    [
+      clientFromProject?.name,
+      clientFromContext?.name,
+      readMetadataString(log.metadata, ['client', 'name']),
+      readMetadataString(log.metadata, ['clientName']),
+    ],
+    DEFAULT_CLIENT_LABEL
+  )
+
+  if (
+    clientName === DEFAULT_CLIENT_LABEL &&
+    projectName === DEFAULT_PROJECT_LABEL
+  ) {
+    clientName = COMPANY_GENERAL_CLIENT_LABEL
+  }
+
+  return { project: projectName, client: clientName }
+}
+
+function buildHeading(client: string, project: string): string {
+  return `${client} - ${project}`
+}
+
+function selectFirstNonEmpty(
+  values: Array<string | null | undefined>,
+  fallback: string
+): string {
+  for (const value of values) {
+    if (typeof value === 'string') {
+      const trimmed = value.trim()
+      if (trimmed.length) {
+        return trimmed
+      }
+    }
+  }
+
+  return fallback
+}
+
+function readMetadataString(
+  source: Json | null | undefined,
+  path: string[]
+): string | null {
+  if (!source) {
+    return null
+  }
+
+  let current: Json | null | undefined = source
+
+  for (const segment of path) {
+    if (
+      current &&
+      typeof current === 'object' &&
+      !Array.isArray(current) &&
+      segment in current
+    ) {
+      current = (current as Record<string, Json | undefined>)[segment]
+    } else {
+      return null
+    }
+  }
+
+  return typeof current === 'string' ? current : null
 }
