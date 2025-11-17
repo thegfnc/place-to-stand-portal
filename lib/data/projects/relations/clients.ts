@@ -20,6 +20,7 @@ export type ClientRow = {
   name: string
   slug: string | null
   notes: string | null
+  billingType: DbClient['billing_type']
   createdBy: string | null
   createdAt: string
   updatedAt: string
@@ -69,6 +70,7 @@ export async function loadClientRows(clientIds: string[]): Promise<ClientRow[]> 
       name: clientsTable.name,
       slug: clientsTable.slug,
       notes: clientsTable.notes,
+      billingType: clientsTable.billingType,
       createdBy: clientsTable.createdBy,
       createdAt: clientsTable.createdAt,
       updatedAt: clientsTable.updatedAt,
@@ -144,6 +146,7 @@ export function mapClientRows(rows: ClientRow[]): DbClient[] {
     name: row.name,
     slug: row.slug,
     notes: row.notes,
+    billing_type: row.billingType,
     created_by: row.createdBy ?? null,
     created_at: row.createdAt,
     updated_at: row.updatedAt,

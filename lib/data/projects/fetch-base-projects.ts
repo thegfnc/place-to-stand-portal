@@ -25,6 +25,8 @@ export async function fetchBaseProjects(): Promise<BaseProjectFetchResult> {
       updatedAt: projects.updatedAt,
       deletedAt: projects.deletedAt,
       createdBy: projects.createdBy,
+      isPersonal: projects.isPersonal,
+      isInternal: projects.isInternal,
     })
     .from(projects)
     .where(isNull(projects.deletedAt))
@@ -42,6 +44,8 @@ export async function fetchBaseProjects(): Promise<BaseProjectFetchResult> {
     updated_at: row.updatedAt,
     deleted_at: row.deletedAt,
     created_by: row.createdBy ?? null,
+    is_personal: row.isPersonal,
+    is_internal: row.isInternal,
   }))
 
   const projectIds = normalizedProjects.map(project => project.id)

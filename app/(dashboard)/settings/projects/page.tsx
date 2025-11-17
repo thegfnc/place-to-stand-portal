@@ -36,6 +36,8 @@ function mapProjectToTableRow(project: ProjectsSettingsListItem): ProjectWithCli
     created_at: project.createdAt,
     updated_at: project.updatedAt,
     deleted_at: project.deletedAt,
+    is_personal: project.isPersonal,
+    is_internal: project.isInternal,
     client: project.client
       ? {
           id: project.client.id,

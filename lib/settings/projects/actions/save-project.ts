@@ -155,7 +155,7 @@ export async function saveProject(
             startsOn: string | null
             endsOn: string | null
             slug: string | null
-            clientId: string
+            clientId: string | null
           }
         | undefined
 

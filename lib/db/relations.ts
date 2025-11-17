@@ -4,6 +4,7 @@ import {
   clients,
   tasks,
   taskAssignees,
+  taskAssigneeMetadata,
   hourBlocks,
   clientMembers,
   projects,
@@ -13,6 +14,7 @@ import {
   taskAttachments,
   activityOverviewCache,
   activityLogs,
+  leads,
 } from './schema'
 
 export const clientsRelations = relations(clients, ({ one, many }) => ({
@@ -28,6 +30,7 @@ export const clientsRelations = relations(clients, ({ one, many }) => ({
 export const usersRelations = relations(users, ({ many }) => ({
   clients: many(clients),
   taskAssignees: many(taskAssignees),
+  taskAssigneeMetadata: many(taskAssigneeMetadata),
   hourBlocks: many(hourBlocks),
   clientMembers: many(clientMembers),
   projects: many(projects),
@@ -35,6 +38,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   timeLogs: many(timeLogs),
   taskAttachments: many(taskAttachments),
   activityOverviewCaches: many(activityOverviewCache),
+  leads: many(leads),
   tasks_createdBy: many(tasks, {
     relationName: 'tasks_createdBy_users_id',
   }),
@@ -55,8 +59,23 @@ export const taskAssigneesRelations = relations(taskAssignees, ({ one }) => ({
   }),
 }))
 
+export const taskAssigneeMetadataRelations = relations(
+  taskAssigneeMetadata,
+  ({ one }) => ({
+    task: one(tasks, {
+      fields: [taskAssigneeMetadata.taskId],
+      references: [tasks.id],
+    }),
+    user: one(users, {
+      fields: [taskAssigneeMetadata.userId],
+      references: [users.id],
+    }),
+  })
+)
+
 export const tasksRelations = relations(tasks, ({ one, many }) => ({
   taskAssignees: many(taskAssignees),
+  taskAssigneeMetadata: many(taskAssigneeMetadata),
   taskComments: many(taskComments),
   timeLogTasks: many(timeLogTasks),
   taskAttachments: many(taskAttachments),
@@ -73,6 +92,13 @@ export const tasksRelations = relations(tasks, ({ one, many }) => ({
     fields: [tasks.updatedBy],
     references: [users.id],
     relationName: 'tasks_updatedBy_users_id',
+  }),
+}))
+
+export const leadsRelations = relations(leads, ({ one }) => ({
+  owner: one(users, {
+    fields: [leads.ownerId],
+    references: [users.id],
   }),
 }))
 

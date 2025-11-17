@@ -49,7 +49,7 @@ export async function destroyProject(
         | {
             id: string
             name: string
-            clientId: string
+            clientId: string | null
             deletedAt: string | null
           }
         | undefined

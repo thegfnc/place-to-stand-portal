@@ -1,13 +1,20 @@
-import { taskStatus, userRole } from '@/lib/db/schema'
+import {
+  clientBillingType,
+  taskStatus,
+  userRole,
+} from '@/lib/db/schema'
 
 export type UserRoleValue = (typeof userRole.enumValues)[number]
 export type TaskStatusValue = (typeof taskStatus.enumValues)[number]
+export type ClientBillingTypeValue =
+  (typeof clientBillingType.enumValues)[number]
 
 export type DbClient = {
   id: string
   name: string
   slug: string | null
   notes: string | null
+  billing_type: ClientBillingTypeValue
   created_by: string | null
   created_at: string
   updated_at: string
@@ -24,7 +31,7 @@ export type DbClientMember = {
 
 export type DbProject = {
   id: string
-  client_id: string
+  client_id: string | null
   name: string
   status: string
   starts_on: string | null
@@ -34,6 +41,8 @@ export type DbProject = {
   updated_at: string
   deleted_at: string | null
   slug: string | null
+  is_personal: boolean
+  is_internal: boolean
 }
 
 export type DbTask = {

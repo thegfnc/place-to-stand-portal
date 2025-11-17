@@ -15,6 +15,13 @@
       "when": 1763142979017,
       "tag": "0001_add_one_day_timeframe_to_cache_constraint",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1763401666840,
+      "tag": "0002_crm-phase-1",
+      "breakpoints": true
     }
   ]
 }

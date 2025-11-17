@@ -20,6 +20,8 @@ export const projectFields = {
   createdAt: projects.createdAt,
   updatedAt: projects.updatedAt,
   deletedAt: projects.deletedAt,
+  isPersonal: projects.isPersonal,
+  isInternal: projects.isInternal,
 } as const
 
 export type ProjectClientSummary = {
@@ -59,6 +61,8 @@ export const projectGroupByColumns = [
   projects.createdAt,
   projects.updatedAt,
   projects.deletedAt,
+  projects.isPersonal,
+  projects.isInternal,
   clients.id,
   clients.name,
   clients.deletedAt,
@@ -76,6 +80,8 @@ export const projectSelection = {
   createdAt: projects.createdAt,
   updatedAt: projects.updatedAt,
   deletedAt: projects.deletedAt,
+  isPersonal: projects.isPersonal,
+  isInternal: projects.isInternal,
 } as const
 
 export type ProjectSelectionResult = {
@@ -83,13 +89,15 @@ export type ProjectSelectionResult = {
   name: string
   status: string
   slug: string | null
-  clientId: string
+  clientId: string | null
   createdBy: string | null
   startsOn: string | null
   endsOn: string | null
   createdAt: string
   updatedAt: string
   deletedAt: string | null
+  isPersonal: boolean
+  isInternal: boolean
 }
 
 export function buildProjectCursorCondition(
