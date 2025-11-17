@@ -11,6 +11,7 @@ import {
   Building2,
   Users2,
   Home as HomeIcon,
+  ListTodo,
 } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
@@ -43,6 +44,11 @@ const NAV_GROUPS: NavGroup[] = [
         href: '/home',
         label: 'Home',
         icon: HomeIcon,
+      },
+      {
+        href: '/my-tasks',
+        label: 'My Tasks',
+        icon: ListTodo,
       },
     ],
   },

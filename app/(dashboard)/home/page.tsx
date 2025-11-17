@@ -10,10 +10,17 @@ export const metadata: Metadata = {
 
 export default async function HomePage() {
   const user = await requireUser()
-  const tasks = await fetchAssignedTasksSummary({
+  const tasksResult = await fetchAssignedTasksSummary({
     userId: user.id,
     role: user.role,
+    limit: 5,
   })
 
-  return <HomeDashboard user={user} tasks={tasks} />
+  return (
+    <HomeDashboard
+      user={user}
+      tasks={tasksResult.items}
+      totalTaskCount={tasksResult.totalCount}
+    />
+  )
 }

@@ -12,10 +12,11 @@ This document tracks the progress of the implementation of the features outlined
 
 ## Phase 2: "My Tasks" Feature Implementation
 
-- [ ] **Backend API**
-- [ ] **Frontend Page**
-- [ ] **UI Implementation**
-- [ ] **Homepage Widget**
+- [x] **Backend API** – implemented `/api/my-tasks` (query) and `/api/my-tasks/reorder` (drag/drop persistence) backed by `task_assignee_metadata`.
+- [x] **Frontend Page** – added the `/my-tasks` route that loads the new client dashboard experience with Tabs + React Query state.
+- [x] **UI Implementation** – built the personalized Kanban board (with DnD + user-specific sort) and calendar view that reuses existing helpers for due-date display.
+- [x] **Homepage Widget** – wired the widget to the new query, added total count + "See all" CTA, and improved metadata display.
+- [x] **Board & Calendar Polish** – filtered backlog tasks from all My Tasks surfaces, reused the project board layout/columns (with contextual task cards), and enabled calendar drag/drop to persist due date changes via the shared task sheet APIs.
 
 ## Phase 3: Client Management Feature Implementation
 

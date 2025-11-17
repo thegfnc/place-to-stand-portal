@@ -15,6 +15,9 @@ export type RawAssignedTaskRow = {
     id: string
     name: string
     slug: string | null
+    is_internal?: boolean | null
+    is_personal?: boolean | null
+    created_by?: string | null
     client?: {
       id: string
       name: string
@@ -50,12 +53,17 @@ export function toAssignedTaskSummary(
     id: row.id,
     title: row.title,
     status: row.status,
+    description: null,
     dueOn: row.due_on ?? null,
     updatedAt: row.updated_at ?? row.created_at ?? null,
+    sortOrder: null,
     project: {
       id: row.project?.id ?? row.project_id,
       name: projectName,
       slug: row.project?.slug ?? null,
+      isInternal: row.project?.is_internal ?? false,
+      isPersonal: row.project?.is_personal ?? false,
+      createdBy: row.project?.created_by ?? null,
     },
     client: row.project?.client
       ? {

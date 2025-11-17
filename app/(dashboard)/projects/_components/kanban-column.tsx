@@ -13,7 +13,12 @@ import {
   getTaskStatusToken,
 } from '@/lib/projects/task-status'
 
-import { TaskCard } from '../task-card'
+import { TaskCard, type TaskContextDetails } from '../task-card'
+
+type TaskCardOptions = {
+  context?: TaskContextDetails
+  hideAssignees?: boolean
+}
 
 type KanbanColumnProps = {
   columnId: BoardColumnId
@@ -30,6 +35,7 @@ type KanbanColumnProps = {
   dropIndicatorIndex?: number | null
   draggingTask?: TaskWithRelations | null
   recentlyMovedTaskId?: string | null
+  getTaskCardOptions?: (task: TaskWithRelations) => TaskCardOptions | undefined
 }
 
 export function KanbanColumn({
@@ -45,6 +51,7 @@ export function KanbanColumn({
   dropIndicatorIndex = null,
   draggingTask = null,
   recentlyMovedTaskId = null,
+  getTaskCardOptions,
 }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: columnId,
@@ -112,6 +119,8 @@ export function KanbanColumn({
             const shouldShowPlaceholder =
               showPlaceholder && dropIndicatorIndex === index
 
+            const cardOptions = getTaskCardOptions?.(task) ?? {}
+
             return (
               <Fragment key={task.id}>
                 {shouldShowPlaceholder ? <TaskDropPlaceholder /> : null}
@@ -122,6 +131,8 @@ export function KanbanColumn({
                   draggable={canManage}
                   isActive={task.id === activeTaskId}
                   disableDropTransition={task.id === recentlyMovedTaskId}
+                  context={cardOptions.context}
+                  hideAssignees={cardOptions.hideAssignees}
                 />
               </Fragment>
             )

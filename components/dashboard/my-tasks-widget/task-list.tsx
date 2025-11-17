@@ -44,6 +44,7 @@ function TaskListItem({ task }: { task: AssignedTaskSummary }) {
   const statusToken = getTaskStatusToken(task.status)
   const statusLabel = getTaskStatusLabel(task.status)
   const hasTaskLink = Boolean(linkMeta.href)
+  const clientLabel = getClientDisplayName(task)
 
   return (
     <li className={cn('relative', hasTaskLink && 'group')}>
@@ -83,7 +84,7 @@ function TaskListItem({ task }: { task: AssignedTaskSummary }) {
             <div className='text-muted-foreground inline-flex items-center gap-3'>
               <div className='flex items-center gap-1'>
                 <Building2 className='size-3.5' aria-hidden />
-                {task.client?.name ? `${task.client.name}` : ''}
+                {clientLabel}
               </div>
               <div className='flex items-center gap-1'>
                 <FolderKanban className='size-3.5' aria-hidden />
@@ -128,18 +129,8 @@ function TaskListItem({ task }: { task: AssignedTaskSummary }) {
 }
 
 function getTaskLinkMeta(task: AssignedTaskSummary): TaskLinkMeta {
-  const { client, project } = task
-
-  if (!project.slug || !client?.slug) {
-    return {
-      href: null,
-      reason:
-        "This task's project is missing a client or project slug. Update it in Settings -> Projects to enable quick navigation.",
-    }
-  }
-
   return {
-    href: `/projects/${client.slug}/${project.slug}/board/${task.id}`,
+    href: `/my-tasks/${task.id}`,
   }
 }
 
@@ -155,4 +146,20 @@ function getProjectLinkMeta(task: AssignedTaskSummary): TaskLinkMeta {
   return {
     href: `/projects/${client.slug}/${project.slug}/board`,
   }
+}
+
+function getClientDisplayName(task: AssignedTaskSummary): string {
+  if (task.client?.name) {
+    return task.client.name
+  }
+
+  if (task.project.isPersonal) {
+    return 'Personal'
+  }
+
+  if (task.project.isInternal) {
+    return 'Internal'
+  }
+
+  return 'Unassigned'
 }

@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import {
   useEffect,
   useMemo,
@@ -9,7 +10,14 @@ import {
 } from 'react'
 import { CSS } from '@dnd-kit/utilities'
 import { useSortable } from '@dnd-kit/sortable'
-import { CalendarDays, MessageCircle, Paperclip, Users2 } from 'lucide-react'
+import {
+  Building2,
+  CalendarDays,
+  FolderKanban,
+  MessageCircle,
+  Paperclip,
+  Users2,
+} from 'lucide-react'
 
 import { cn } from '@/lib/utils'
 import type { TaskWithRelations } from '@/lib/types'
@@ -23,6 +31,13 @@ type AssigneeInfo = {
   name: string
 }
 
+type TaskContextDetails = {
+  clientLabel?: string
+  projectLabel?: string
+  projectHref?: string | null
+  layout?: 'inline' | 'stacked'
+}
+
 type TaskCardProps = {
   task: TaskWithRelations
   assignees: AssigneeInfo[]
@@ -30,6 +45,8 @@ type TaskCardProps = {
   draggable: boolean
   isActive?: boolean
   disableDropTransition?: boolean
+  context?: TaskContextDetails
+  hideAssignees?: boolean
 }
 
 const toPlainText = (value: string | null) => {
@@ -48,9 +65,13 @@ const toPlainText = (value: string | null) => {
 function CardContent({
   task,
   assignees,
+  context,
+  hideAssignees = false,
 }: {
   task: TaskWithRelations
   assignees: AssigneeInfo[]
+  context?: TaskContextDetails
+  hideAssignees?: boolean
 }) {
   const assignedSummary = assignees.length
     ? assignees
@@ -59,8 +80,7 @@ function CardContent({
         .join(', ')
     : 'Unassigned'
   const descriptionPreview = toPlainText(task.description)
-  const attachmentCount =
-    task.attachmentCount ?? (task.attachments?.length ?? 0)
+  const attachmentCount = task.attachmentCount ?? task.attachments?.length ?? 0
   const dueMeta = task.due_on
     ? getTaskDueMeta(task.due_on, { status: task.status })
     : null
@@ -78,12 +98,50 @@ function CardContent({
         ) : null}
       </div>
       <div className='mt-4 space-y-2'>
-        <div className='text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-2 text-xs'>
-          <div className='inline-flex items-center gap-1'>
-            <Users2 className='h-3.5 w-3.5' /> {assignedSummary}
+        {!hideAssignees ? (
+          <div className='text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-2 text-xs'>
+            <div className='inline-flex items-center gap-1'>
+              <Users2 className='h-3.5 w-3.5' /> {assignedSummary}
+            </div>
           </div>
-        </div>
+        ) : null}
 
+        {context?.clientLabel || context?.projectLabel ? (
+          <div
+            className={cn(
+              'text-muted-foreground text-xs',
+              context.layout === 'stacked'
+                ? 'align-start flex flex-col gap-2'
+                : 'flex flex-wrap items-center gap-3'
+            )}
+          >
+            {context.clientLabel ? (
+              <span className='inline-flex items-center gap-1'>
+                <Building2 className='h-3.5 w-3.5' aria-hidden />
+                {context.clientLabel}
+              </span>
+            ) : null}
+            {context.projectLabel ? (
+              context.projectHref ? (
+                <div className='flex items-center gap-1'>
+                  <Link
+                    href={context.projectHref}
+                    className='hover:text-foreground inline-flex items-center gap-1 underline-offset-4 transition hover:underline'
+                    onClick={event => event.stopPropagation()}
+                  >
+                    <FolderKanban className='h-3.5 w-3.5' aria-hidden />
+                    {context.projectLabel}
+                  </Link>
+                </div>
+              ) : (
+                <span className='inline-flex items-center gap-1'>
+                  <FolderKanban className='h-3.5 w-3.5' aria-hidden />
+                  {context.projectLabel}
+                </span>
+              )
+            ) : null}
+          </div>
+        ) : null}
         {dueMeta ? (
           <div className='text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-2 text-xs'>
             <div
@@ -125,6 +183,8 @@ export function TaskCard({
   draggable,
   isActive = false,
   disableDropTransition = false,
+  context,
+  hideAssignees = false,
 }: TaskCardProps) {
   const {
     attributes,
@@ -204,7 +264,12 @@ export function TaskCard({
           'hover:border-primary/40 hover:bg-primary/5 hover:shadow-md'
       )}
     >
-      <CardContent task={task} assignees={assignees} />
+      <CardContent
+        task={task}
+        assignees={assignees}
+        context={context}
+        hideAssignees={hideAssignees}
+      />
     </div>
   )
 }
@@ -212,13 +277,24 @@ export function TaskCard({
 export function TaskCardPreview({
   task,
   assignees,
+  context,
+  hideAssignees = false,
 }: {
   task: TaskWithRelations
   assignees: AssigneeInfo[]
+  context?: TaskContextDetails
+  hideAssignees?: boolean
 }) {
   return (
     <div className='bg-card w-80 rounded-lg border p-4 shadow-sm'>
-      <CardContent task={task} assignees={assignees} />
+      <CardContent
+        task={task}
+        assignees={assignees}
+        context={context}
+        hideAssignees={hideAssignees}
+      />
     </div>
   )
 }
+
+export type { TaskContextDetails }

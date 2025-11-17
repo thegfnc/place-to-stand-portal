@@ -1,4 +1,4 @@
-import { asc, isNull } from 'drizzle-orm'
+import { and, asc, inArray, isNull } from 'drizzle-orm'
 
 import { db } from '@/lib/db'
 import { projects } from '@/lib/db/schema'
@@ -11,7 +11,15 @@ export type BaseProjectFetchResult = {
   projectClientLookup: Map<string, string | null>
 }
 
-export async function fetchBaseProjects(): Promise<BaseProjectFetchResult> {
+export async function fetchBaseProjects(
+  filterProjectIds?: string[]
+): Promise<BaseProjectFetchResult> {
+  const conditions = [isNull(projects.deletedAt)]
+
+  if (filterProjectIds?.length) {
+    conditions.push(inArray(projects.id, filterProjectIds))
+  }
+
   const rows = await db
     .select({
       id: projects.id,
@@ -29,7 +37,7 @@ export async function fetchBaseProjects(): Promise<BaseProjectFetchResult> {
       isInternal: projects.isInternal,
     })
     .from(projects)
-    .where(isNull(projects.deletedAt))
+    .where(and(...conditions))
     .orderBy(asc(projects.name))
 
   const normalizedProjects: DbProject[] = rows.map(row => ({
