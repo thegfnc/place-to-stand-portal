@@ -130,7 +130,7 @@ function TaskListItem({ task }: { task: AssignedTaskSummary }) {
 
 function getTaskLinkMeta(task: AssignedTaskSummary): TaskLinkMeta {
   return {
-    href: `/my-tasks/${task.id}`,
+    href: `/my-tasks/board/${task.id}`,
   }
 }
 

@@ -35,9 +35,9 @@ export function HomeDashboard({
           tasks={tasks}
           role={user.role}
           totalCount={totalTaskCount}
-          className='md:col-span-2 xl:col-span-5'
+          className='md:col-span-2 xl:col-span-6'
         />
-        <RecentActivityOverviewWidget className='md:col-span-2 xl:col-span-7' />
+        <RecentActivityOverviewWidget className='md:col-span-2 xl:col-span-6' />
       </div>
     </div>
   )

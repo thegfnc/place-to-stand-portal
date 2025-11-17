@@ -1,6 +1,11 @@
 import type { Metadata } from 'next'
+import { redirect } from 'next/navigation'
 
-import { MyTasksPage, type MyTasksInitialEntry } from '@/components/my-tasks/my-tasks-page'
+import {
+  MyTasksPage,
+  type MyTasksInitialEntry,
+  type MyTasksView,
+} from '@/components/my-tasks/my-tasks-page'
 import { requireUser } from '@/lib/auth/session'
 import {
   fetchProjectsWithRelationsByIds,
@@ -13,6 +18,7 @@ export const metadata: Metadata = {
 }
 
 type PageParams = {
+  view: string
   taskId?: string[]
 }
 
@@ -20,10 +26,18 @@ type PageProps = {
   params: Promise<PageParams>
 }
 
-export default async function MyTasksRoute({ params }: PageProps) {
+const DEFAULT_VIEW: MyTasksView = 'board'
+
+export default async function MyTasksViewRoute({ params }: PageProps) {
   const user = await requireUser()
   const resolvedParams = await params
+  const viewParam = resolvedParams.view
   const activeTaskId = resolvedParams.taskId?.[0] ?? null
+
+  if (!isMyTasksView(viewParam)) {
+    const suffix = activeTaskId ? `/${activeTaskId}` : ''
+    redirect(`/my-tasks/${DEFAULT_VIEW}${suffix}`)
+  }
 
   const [assignedSummaries, admins] = await Promise.all([
     listAssignedTaskSummaries({
@@ -70,7 +84,12 @@ export default async function MyTasksRoute({ params }: PageProps) {
       projects={relevantProjects}
       initialEntries={initialEntries}
       activeTaskId={activeTaskId}
+      view={viewParam}
     />
   )
+}
+
+function isMyTasksView(value: string): value is MyTasksView {
+  return value === 'board' || value === 'calendar'
 }
 

@@ -26,12 +26,15 @@ export type MyTasksInitialEntry = {
   sortOrder: number | null
 }
 
+export type MyTasksView = 'board' | 'calendar'
+
 type MyTasksPageProps = {
   user: AppUser
   admins: DbUser[]
   projects: ProjectWithRelations[]
   initialEntries: MyTasksInitialEntry[]
   activeTaskId: string | null
+  view: MyTasksView
 }
 
 export function MyTasksPage({
@@ -40,9 +43,10 @@ export function MyTasksPage({
   projects,
   initialEntries,
   activeTaskId,
+  view,
 }: MyTasksPageProps) {
   const router = useRouter()
-  const [currentTab, setCurrentTab] = useState<'board' | 'calendar'>('board')
+  const [currentView, setCurrentView] = useState<MyTasksView>(view)
   const reorderMutation = useMyTasksReorderMutation()
   const [isSheetOpen, setIsSheetOpen] = useState(Boolean(activeTaskId))
   const [, startRefresh] = useTransition()
@@ -63,6 +67,10 @@ export function MyTasksPage({
   useEffect(() => {
     setIsSheetOpen(Boolean(activeTaskId))
   }, [activeTaskId])
+
+  useEffect(() => {
+    setCurrentView(view)
+  }, [view])
 
   const memberDirectory = useMemo(
     () => buildMemberDirectory(projects, admins),
@@ -109,18 +117,35 @@ export function MyTasksPage({
     ? (taskLookup.get(activeTaskId) ?? null)
     : null
 
+  const buildViewPath = useCallback(
+    (targetView: MyTasksView, taskId?: string | null) => {
+      const suffix = taskId ? `/${taskId}` : ''
+      return `/my-tasks/${targetView}${suffix}`
+    },
+    []
+  )
+
+  const handleTabChange = useCallback(
+    (nextValue: string) => {
+      const nextView = nextValue as MyTasksView
+      setCurrentView(nextView)
+      router.push(buildViewPath(nextView, activeTaskId), { scroll: false })
+    },
+    [activeTaskId, buildViewPath, router]
+  )
+
   const handleOpenTask = useCallback(
     (taskId: string) => {
-      router.push(`/my-tasks/${taskId}`, { scroll: false })
+      router.push(buildViewPath(currentView, taskId), { scroll: false })
     },
-    [router]
+    [buildViewPath, currentView, router]
   )
 
   const handleSheetChange = useCallback(
     (open: boolean) => {
       if (!open) {
         setIsSheetOpen(false)
-        router.push('/my-tasks', { scroll: false })
+        router.push(buildViewPath(currentView), { scroll: false })
         startRefresh(() => {
           router.refresh()
         })
@@ -129,7 +154,7 @@ export function MyTasksPage({
 
       setIsSheetOpen(true)
     },
-    [router]
+    [buildViewPath, currentView, router, startRefresh]
   )
 
   const handleReorder = useCallback(
@@ -156,8 +181,8 @@ export function MyTasksPage({
         </div>
       </AppShellHeader>
       <Tabs
-        value={currentTab}
-        onValueChange={value => setCurrentTab(value as 'board' | 'calendar')}
+        value={currentView}
+        onValueChange={handleTabChange}
         className='flex min-h-0 flex-1 flex-col gap-3'
       >
         <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
