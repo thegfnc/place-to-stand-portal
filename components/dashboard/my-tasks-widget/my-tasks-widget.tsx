@@ -43,7 +43,7 @@ export function MyTasksWidget({
       )}
       aria-labelledby='my-tasks-heading'
     >
-      <header className='flex flex-wrap items-start justify-between gap-3 border-b px-5 py-4'>
+      <header className='flex flex-wrap items-center justify-between gap-3 border-b px-5 py-4'>
         <div className='min-w-0 flex-1'>
           <h2 id='my-tasks-heading' className='text-base font-semibold'>
             My Tasks

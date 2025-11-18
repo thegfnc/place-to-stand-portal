@@ -4,7 +4,7 @@ This document tracks the progress of the implementation of the features outlined
 
 ## Phase 1: Data Model & Backend Foundation
 
-- [x] **Update `projects` Table** – added `is_personal`, `is_internal`, made `client_id` nullable, and enforced the integrity check constraint described in the PRD.
+- [ ] **Update `projects` Table** – Change from `is_personal`/`is_internal` booleans to a `type` enum (`CLIENT`, `PERSONAL`, `INTERNAL`) and enforce the integrity check.
 - [x] **Update `clients` Table** – introduced the `billing_type` enum (`prepaid` | `net_30`) with a default of `prepaid`.
 - [x] **Create `task_assignee_metadata` Table** – added the join table with composite primary key, cascading FKs, timestamps, and policies to prep per-user task ordering.
 - [x] **Create `leads` Table** – implemented the approved schema (without `estimated_value`), including the `lead_status` enum and soft-delete friendly fields.
@@ -18,20 +18,25 @@ This document tracks the progress of the implementation of the features outlined
 - [x] **Homepage Widget** – wired the widget to the new query, added total count + "See all" CTA, and improved metadata display.
 - [x] **Board & Calendar Polish** – filtered backlog tasks from all My Tasks surfaces, reused the project board layout/columns (with contextual task cards), and enabled calendar drag/drop to persist due date changes via the shared task sheet APIs.
 
-## Phase 3: Client Management Feature Implementation
+## Phase 3: Project Configuration UI
+
+- [ ] **UI Updates**
+- [ ] **Conditional Logic**
+
+## Phase 4: Client Management Feature Implementation
 
 - [ ] **Navigation**
 - [ ] **Client Landing Page (`/clients`)**
 - [ ] **Client Detail Page (`/clients/[clientId]`)**
 
-## Phase 4: Sales & Leads Pipeline Implementation
+## Phase 5: Sales & Leads Pipeline Implementation
 
 - [ ] **Navigation**
 - [ ] **Backend API**
 - [ ] **Leads View (`/leads`)**
 - [ ] **Lead Management**
 
-## Phase 5: Finalization & Verification
+## Phase 6: Finalization & Verification
 
 - [ ] **Analytics**
 - [ ] **Documentation**

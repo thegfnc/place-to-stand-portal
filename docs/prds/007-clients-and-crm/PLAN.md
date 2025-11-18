@@ -9,8 +9,7 @@ This document outlines a phased development plan for implementing the features d
 **Tasks:**
 
 1.  **Update `projects` Table:**
-    - Add `is_personal` (boolean, default `false`).
-    - Add `is_internal` (boolean, default `false`).
+    - Add `type` (enum: `'CLIENT' | 'PERSONAL' | 'INTERNAL'`, default `'CLIENT'`).
     - Modify `client_id` to be nullable.
     - Implement the database check constraint for data integrity.
 2.  **Update `clients` Table:**
@@ -46,7 +45,19 @@ This document outlines a phased development plan for implementing the features d
     - Update the existing "My Tasks" widget to link to the new page.
     - Add the "See All" button and the total task count to the widget header.
 
-## Phase 3: Client Management Feature Implementation
+## Phase 3: Project Configuration UI
+
+**Goal:** Update the project creation and editing interfaces to allow users to set the `is_personal` and `is_internal` flags.
+
+**Tasks:**
+
+1.  **UI Updates:**
+    - Add a "Project Type" selector (radio group or dropdown) to the "Create Project" and "Edit Project" forms.
+2.  **Conditional Logic:**
+    - Implement frontend logic to disable and clear the "Client" dropdown when the project type is "Personal" or "Internal".
+    - Add a tooltip to explain the disabled state.
+
+## Phase 4: Client Management Feature Implementation
 
 **Goal:** Create the new dedicated section for viewing and managing clients.
 
@@ -64,7 +75,7 @@ This document outlines a phased development plan for implementing the features d
     - Upgrade the `notes` field from a simple textarea to the full Rich Text Editor component.
     - Display a grid of the client's projects below their details.
 
-## Phase 4: Sales & Leads Pipeline Implementation
+## Phase 5: Sales & Leads Pipeline Implementation
 
 **Goal:** Build the Kanban-style sales pipeline to track leads.
 
@@ -81,7 +92,7 @@ This document outlines a phased development plan for implementing the features d
 4.  **Lead Management:**
     - Implement the lead creation and editing forms within a sheet component, similar to the existing task UI.
 
-## Phase 5: Finalization & Verification
+## Phase 6: Finalization & Verification
 
 **Goal:** Implement analytics, document the work, and prepare for manual testing.
 

@@ -61,22 +61,21 @@ Proposals to address current limitations in how projects and clients are categor
 
 **Proposed Solution:**
 
-We will introduce two new boolean fields to the `projects` table and make the `client_id` field nullable to properly categorize projects without needing a client record.
+We will introduce a new `type` field to the `projects` table and make the `client_id` field nullable to properly categorize projects without needing a client record.
 
-- **`is_personal`** (boolean, default `false`): When `true`, the project is considered personal. Visibility will be restricted to the user specified in the `created_by` field.
-- **`is_internal`** (boolean, default `false`): When `true`, this marks the project as an internal one for "Place to Stand".
+- **`type`** (enum, e.g., `'CLIENT' | 'PERSONAL' | 'INTERNAL'`, default `'CLIENT'`): This field will define the project's category.
 - **`client_id`** (uuid, nullable): The `client_id` field will be modified to allow `NULL` values.
 
 **Data Integrity Rule:**
 A database check constraint or application-level validation will be implemented to enforce the following logic:
 
-- If `is_personal` is `true` OR `is_internal` is `true`, then `client_id` **must** be `NULL`.
-- If `is_personal` is `false` AND `is_internal` is `false`, then `client_id` **must not** be `NULL`.
+- If `type` is `PERSONAL` OR `type` is `INTERNAL`, then `client_id` **must** be `NULL`.
+- If `type` is `CLIENT`, then `client_id` **must not** be `NULL`.
 
 This approach removes the need for fake client records, ensures data integrity, and allows for cleaner separation of project types.
 
-- **Personal Projects:** Visibility will be restricted to the user specified in the `created_by` field.
-- **Internal Projects:** These will be visible to all users in the organization.
+- **Personal Projects:** When `type` is `PERSONAL`, visibility will be restricted to the user specified in the `created_by` field.
+- **Internal Projects:** When `type` is `INTERNAL`, these will be visible to all users in the organization.
 
 #### 3.1.1. Task Sorting Implementation
 
@@ -89,6 +88,19 @@ The `assignee_sort_order` column on the `tasks` table is not suitable for multip
   - Primary Key: `(task_id, user_id)`
 
 This join table approach is confirmed and will be used for user-specific task sorting.
+
+`### 3.1.2. Project Creation & Editing UI
+
+To support the new `type` field, the project creation and editing UI must be updated.
+
+- **Form Updates:** The "Create Project" and "Edit Project" forms (likely a sheet or modal) will include a new radio group or dropdown to select the "Project Type":
+  - "Client Project" (default)
+  - "Personal Project"
+  - "Internal Project"
+- **Conditional Logic:**
+  - By default, "Client Project" will be selected.
+  - If either "Personal Project" or "Internal Project" is selected, the "Client" selection dropdown **must** be disabled and cleared. This enforces the data integrity rule that personal or internal projects cannot have an associated client.
+  - The UI should provide a tooltip or helper text explaining why the client field is disabled when one of these options is selected.
 
 ### 3.2. Client Billing Models
 
