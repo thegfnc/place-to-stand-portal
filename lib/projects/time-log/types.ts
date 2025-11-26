@@ -1,5 +1,6 @@
 import type { UserRole } from '@/lib/auth/session'
 import type {
+  ClientBillingTypeValue,
   DbUser,
   ProjectMemberWithUser,
   TaskWithRelations,
@@ -11,6 +12,7 @@ export type ProjectTimeLogDialogParams = {
   projectName: string
   clientId: string | null
   clientName: string | null
+  clientBillingType: ClientBillingTypeValue | null
   clientRemainingHours: number | null
   tasks: TaskWithRelations[]
   currentUserId: string
@@ -19,7 +21,12 @@ export type ProjectTimeLogDialogParams = {
   admins: DbUser[]
 }
 
-export type TimeLogFormField = 'hours' | 'loggedOn' | 'user' | 'note' | 'general'
+export type TimeLogFormField =
+  | 'hours'
+  | 'loggedOn'
+  | 'user'
+  | 'note'
+  | 'general'
 
 export type TimeLogFormErrors = Partial<Record<TimeLogFormField, string>>
 

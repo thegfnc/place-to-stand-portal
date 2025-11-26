@@ -6,6 +6,7 @@ import type { UserRole } from '@/lib/auth/session'
 import { assertAdmin } from '@/lib/auth/permissions'
 import { db } from '@/lib/db'
 import { clientMembers, clients } from '@/lib/db/schema'
+import type { ClientBillingTypeValue } from '@/lib/types'
 import {
   clientSlugExists,
   syncClientMembers,
@@ -22,6 +23,7 @@ type UpdateClientPayload = {
   id: string
   name: string
   providedSlug: string | null
+  billingType: ClientBillingTypeValue
   notes: string | null
   memberIds: string[]
 }
@@ -30,6 +32,7 @@ type ExistingClientRecord = {
   id: string
   name: string
   slug: string | null
+  billingType: ClientBillingTypeValue
   notes: string | null
 }
 
@@ -39,7 +42,7 @@ export async function updateClient(
 ): Promise<ClientMutationResult> {
   const { user } = context
   assertAdmin(user)
-  const { id, name, providedSlug, notes, memberIds } = payload
+  const { id, name, providedSlug, billingType, notes, memberIds } = payload
 
   const slugToUpdate = providedSlug ? toClientSlug(providedSlug) : null
 
@@ -67,6 +70,7 @@ export async function updateClient(
         id: clients.id,
         name: clients.name,
         slug: clients.slug,
+        billingType: clients.billingType,
         notes: clients.notes,
       })
       .from(clients)
@@ -90,10 +94,7 @@ export async function updateClient(
       .select({ userId: clientMembers.userId })
       .from(clientMembers)
       .where(
-        and(
-          eq(clientMembers.clientId, id),
-          isNull(clientMembers.deletedAt),
-        ),
+        and(eq(clientMembers.clientId, id), isNull(clientMembers.deletedAt))
       )
 
     existingMemberIds = memberRows.map(member => member.userId)
@@ -105,7 +106,7 @@ export async function updateClient(
   try {
     await db
       .update(clients)
-      .set({ name, slug: slugToUpdate, notes })
+      .set({ name, slug: slugToUpdate, billingType, notes })
       .where(eq(clients.id, id))
   } catch (error) {
     console.error('Failed to update client', error)
@@ -124,7 +125,7 @@ export async function updateClient(
   await recordUpdateActivity({
     userContext: { id: user.id, role: user.role },
     existingClient,
-    updatedValues: { name, notes, slugToUpdate },
+    updatedValues: { name, notes, slugToUpdate, billingType },
     existingMemberIds,
     nextMemberIds: memberIds,
   })
@@ -142,6 +143,7 @@ type RecordUpdateActivityArgs = {
     name: string
     notes: string | null
     slugToUpdate: string | null
+    billingType: ClientBillingTypeValue
   }
   existingMemberIds: string[]
   nextMemberIds: string[]
@@ -222,6 +224,15 @@ function calculateDiff({
     changedFields.push('notes')
     previousDetails.notes = previousNotes
     nextDetails.notes = nextNotes
+  }
+
+  const previousBillingType = existingClient.billingType
+  const nextBillingType = updatedValues.billingType
+
+  if (previousBillingType !== nextBillingType) {
+    changedFields.push('billing type')
+    previousDetails.billingType = previousBillingType
+    nextDetails.billingType = nextBillingType
   }
 
   const addedMembers = diff(nextMemberIds, existingMemberIds)

@@ -102,6 +102,7 @@ export function ProjectsBoardDialogs({
         projectName={activeProject.name}
         clientId={activeProject.client?.id ?? null}
         clientName={activeProject.client?.name ?? null}
+        clientBillingType={activeProject.client?.billing_type ?? null}
         clientRemainingHours={activeProject.burndown.totalClientRemainingHours}
         tasks={tasks}
         currentUserId={timeLogUserId}

@@ -7,6 +7,7 @@ import {
   clientSlugExistsDrizzle,
   generateUniqueClientSlugDrizzle,
 } from '@/lib/queries/clients'
+import { CLIENT_BILLING_TYPE_VALUES } from '@/lib/settings/clients/billing-types'
 
 export const clientSchema = z.object({
   id: z.string().uuid().optional(),
@@ -20,6 +21,7 @@ export const clientSchema = z.object({
     .or(z.literal(''))
     .nullish()
     .transform(value => (value ? value : null)),
+  billingType: z.enum(CLIENT_BILLING_TYPE_VALUES).default('prepaid'),
   notes: z
     .string()
     .nullish()

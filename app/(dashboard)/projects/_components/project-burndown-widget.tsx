@@ -19,23 +19,37 @@ function formatHours(value: number) {
 type ProjectBurndownWidgetProps = {
   totalClientRemainingHours: number
   totalProjectLoggedHours: number
+  projectMonthToDateLoggedHours?: number
   className?: string
   canLogTime: boolean
   addTimeLogDisabledReason?: string | null
   viewTimeLogsHref: string | null
   onAddTimeLog: () => void
+  showClientRemainingCard?: boolean
+  showProjectMonthToDate?: boolean
 }
 
 export function ProjectBurndownWidget({
   totalClientRemainingHours,
   totalProjectLoggedHours,
+  projectMonthToDateLoggedHours = 0,
   className,
   canLogTime,
   addTimeLogDisabledReason,
   viewTimeLogsHref,
   onAddTimeLog,
+  showClientRemainingCard = true,
+  showProjectMonthToDate = false,
 }: ProjectBurndownWidgetProps) {
   const projectLogged = Math.max(totalProjectLoggedHours, 0)
+  const projectMonthToDateLogged = Math.max(projectMonthToDateLoggedHours, 0)
+  const shouldShowMonthToDate = showProjectMonthToDate
+  const projectLoggedValue = shouldShowMonthToDate
+    ? projectMonthToDateLogged
+    : projectLogged
+  const projectHoursLabel = shouldShowMonthToDate
+    ? 'Project hours logged this month'
+    : 'Project hours logged total'
   const clientRemaining = totalClientRemainingHours
   const remainingTone = clientRemaining < 0 ? 'destructive' : 'default'
 
@@ -45,14 +59,16 @@ export function ProjectBurndownWidget({
       aria-label='Burndown overview'
     >
       <dl className='flex flex-col gap-2 text-[10px] font-medium md:flex-row md:items-stretch md:gap-2'>
+        {showClientRemainingCard ? (
+          <MetricRow
+            label='Client hours remaining'
+            value={`${formatHours(clientRemaining)} hrs`}
+            tone={remainingTone}
+          />
+        ) : null}
         <MetricRow
-          label='Client hours remaining'
-          value={`${formatHours(clientRemaining)} hrs`}
-          tone={remainingTone}
-        />
-        <MetricRow
-          label='Project hours logged'
-          value={`${formatHours(projectLogged)} hrs`}
+          label={projectHoursLabel}
+          value={`${formatHours(projectLoggedValue)} hrs`}
         />
       </dl>
       <div className='flex flex-col gap-2'>
@@ -116,7 +132,7 @@ function MetricRow({ label, value, tone = 'default' }: MetricRowProps) {
   return (
     <div
       className={cn(
-        'flex min-w-[150px] flex-1 items-center justify-between gap-1 rounded-md border px-3 py-2 md:flex-col md:items-start',
+        'flex min-w-[160px] flex-1 items-center justify-between gap-1 rounded-md border px-3 py-2 md:flex-col md:items-start',
         tone === 'destructive'
           ? 'border-destructive/40 bg-destructive/10 text-destructive'
           : 'border-border bg-background text-foreground'

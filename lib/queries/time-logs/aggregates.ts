@@ -9,6 +9,7 @@ import type { TimeLogSummary } from '@/lib/data/projects/types'
 type ProjectTimeLogAggregateRow = {
   projectId: string
   totalHours: string | null
+  monthToDateHours: string | null
   lastLogAt: string | null
 }
 
@@ -40,10 +41,21 @@ export async function getTimeLogSummariesForProjects(
     return new Map()
   }
 
+  const startOfCurrentMonth = sql`DATE_TRUNC('month', timezone('utc', now()))::date`
+
   const rows = (await db
     .select({
       projectId: timeLogs.projectId,
       totalHours: sql<string | null>`SUM(${timeLogs.hours})`,
+      monthToDateHours: sql<string | null>`
+        SUM(
+          CASE
+            WHEN ${timeLogs.loggedOn} >= ${startOfCurrentMonth}
+            THEN ${timeLogs.hours}
+            ELSE 0
+          END
+        )
+      `,
       lastLogAt: sql<string | null>`MAX(${timeLogs.loggedOn})`,
     })
     .from(timeLogs)
@@ -56,8 +68,10 @@ export async function getTimeLogSummariesForProjects(
 
   rows.forEach(row => {
     const total = Number(row.totalHours ?? '0')
+    const monthToDate = Number(row.monthToDateHours ?? '0')
     summaries.set(row.projectId, {
       totalHours: Number.isFinite(total) ? total : 0,
+      monthToDateHours: Number.isFinite(monthToDate) ? monthToDate : 0,
       lastLogAt: row.lastLogAt ?? null,
     })
   })

@@ -89,6 +89,7 @@ export function useProjectTimeLogDialog(
     projectName,
     clientId,
     clientName,
+    clientBillingType,
     clientRemainingHours,
     tasks,
     currentUserId,
@@ -113,7 +114,7 @@ export function useProjectTimeLogDialog(
       if (!value) {
         return getToday()
       }
-      return value.includes('T') ? value.split('T')[0] ?? getToday() : value
+      return value.includes('T') ? (value.split('T')[0] ?? getToday()) : value
     },
     [getToday]
   )
@@ -161,7 +162,10 @@ export function useProjectTimeLogDialog(
     requestConfirmation,
     reset: resetOverage,
     overageDialog,
-  } = useTimeLogOverage({ clientRemainingHours })
+  } = useTimeLogOverage({
+    clientRemainingHours,
+    enforceOverageCheck: clientBillingType !== 'net_30',
+  })
 
   const [showDiscardDialog, setShowDiscardDialog] = useState(false)
   const [pendingClose, setPendingClose] = useState(false)
@@ -381,7 +385,9 @@ export function useProjectTimeLogDialog(
     const baselineNote = baselineState.note.trim()
     const tasksChanged =
       baselineState.taskIds.length !== selectedTaskIds.length ||
-      baselineState.taskIds.some((taskId, index) => taskId !== selectedTaskIds[index])
+      baselineState.taskIds.some(
+        (taskId, index) => taskId !== selectedTaskIds[index]
+      )
 
     return (
       trimmedHours !== baselineHours ||
@@ -418,7 +424,9 @@ export function useProjectTimeLogDialog(
     (nextOpen: boolean) => {
       if (nextOpen) {
         const initialUserId =
-          isEditMode && timeLogEntry?.user_id ? timeLogEntry.user_id : currentUserId
+          isEditMode && timeLogEntry?.user_id
+            ? timeLogEntry.user_id
+            : currentUserId
         prepareForOpen(initialUserId)
         if (isEditMode && timeLogEntry) {
           const loggedOnValue = normalizeLoggedOnValue(timeLogEntry.logged_on)

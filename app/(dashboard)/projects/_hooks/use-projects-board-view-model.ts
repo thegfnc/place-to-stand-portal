@@ -49,10 +49,13 @@ export type ProjectsBoardBurndownProps = {
   visible: boolean
   totalClientRemainingHours: number
   totalProjectLoggedHours: number
+  projectMonthToDateLoggedHours: number
   canLogTime: boolean
   addTimeLogDisabledReason: string | null
   onAddTimeLog: () => void
   viewTimeLogsHref: string | null
+  showProjectMonthToDate: boolean
+  showClientRemainingCard: boolean
 }
 
 export type ProjectsBoardViewModel = {
@@ -110,6 +113,8 @@ export function useProjectsBoardViewModel({
           boardState.activeProject.burndown.totalClientRemainingHours,
         totalProjectLoggedHours:
           boardState.activeProject.burndown.totalProjectLoggedHours,
+        projectMonthToDateLoggedHours:
+          boardState.activeProject.burndown.projectMonthToDateLoggedHours,
       },
     }
   }, [boardState.activeProject])
@@ -241,7 +246,9 @@ export function useProjectsBoardViewModel({
     canLogTime,
     addTimeLogDisabledReason,
     onAddTimeLog: () => timeLogDialogs.openCreateTimeLogDialog(),
-    viewTimeLogsHref: navigation.timeLogsDisabled ? null : navigation.timeLogsHref,
+    viewTimeLogsHref: navigation.timeLogsDisabled
+      ? null
+      : navigation.timeLogsHref,
   })
 
   return {

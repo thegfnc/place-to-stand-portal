@@ -67,6 +67,7 @@ export function useClientSheetFormState({
     defaultValues: {
       name: client?.name ?? '',
       slug: client?.slug ?? '',
+      billingType: client?.billing_type ?? 'prepaid',
       notes: client?.notes ?? '',
     },
   })
@@ -105,6 +106,7 @@ export function useClientSheetFormState({
     const defaults = {
       name: client?.name ?? '',
       slug: client?.slug ?? '',
+      billingType: client?.billing_type ?? 'prepaid',
       notes: client?.notes ?? '',
     }
 
@@ -208,6 +210,7 @@ export function useClientSheetFormState({
               ? values.slug.trim()
               : null
             : null,
+          billingType: values.billingType,
           notes: values.notes?.trim() ? values.notes.trim() : null,
           memberIds: selectedMembers.map(member => member.id),
         } satisfies Parameters<typeof saveClient>[0]
@@ -254,6 +257,7 @@ export function useClientSheetFormState({
           form.reset({
             name: payload.name,
             slug: payload.slug ?? '',
+            billingType: payload.billingType,
             notes: payload.notes ?? '',
           })
 

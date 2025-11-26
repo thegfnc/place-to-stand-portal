@@ -203,17 +203,17 @@ async function loadAssignedTaskSummaries({
 
     return {
       id: row.id,
-      title: row.title ?? '',
+      title: row.title,
       description: row.description ?? null,
-      status: row.status ?? 'BACKLOG',
+      status: row.status,
       dueOn: row.dueOn ?? null,
       updatedAt: updatedSource,
       sortOrder: row.sortOrder ?? null,
       project: {
         id: row.project.id,
-        name: row.project.name ?? 'Untitled project',
+        name: row.project.name,
         slug: row.project.slug ?? null,
-        type: (row.project.type as ProjectTypeValue) ?? 'CLIENT',
+        type: row.project.type as ProjectTypeValue,
         createdBy: row.project.createdBy ?? null,
       },
       client: row.client?.id

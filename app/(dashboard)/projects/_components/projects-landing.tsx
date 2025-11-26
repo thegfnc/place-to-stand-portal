@@ -212,7 +212,7 @@ export function ProjectsLanding({
       <div className='space-y-10'>
         {clientSections.map(({ client, projects: clientProjects }) => (
           <div key={client.id} className='space-y-4'>
-            <div className='flex items-center gap-2 border-b pb-2'>
+            <div className='flex items-center gap-2'>
               <h3 className='text-sm font-semibold'>{client.name}</h3>
             </div>
             {renderProjectGrid(clientProjects)}
@@ -269,11 +269,9 @@ export function ProjectsLanding({
               <Icon className='text-muted-foreground h-4 w-4' />
             </div>
             <h2 className='text-lg font-semibold tracking-tight'>{title}</h2>
-            <Badge variant='secondary' className='ml-auto'>
-              {count}
-            </Badge>
+            <Badge variant='secondary'>{count}</Badge>
           </div>
-          <div className='p-6'>{content}</div>
+          <div className='mb-4 p-6'>{content}</div>
         </section>
       ))}
     </div>

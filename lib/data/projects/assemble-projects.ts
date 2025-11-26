@@ -225,7 +225,7 @@ function scopeProjects(
     }
 
     if (project.type === 'PERSONAL') {
-      return project.created_by === currentUserId
+      return project.created_by !== null && project.created_by === currentUserId
     }
 
     if (project.client_id && accessibleClientIds.has(project.client_id)) {
@@ -248,6 +248,8 @@ function buildProjectBurndown(
     ? (purchasedHoursByClient.get(clientId) ?? 0)
     : 0
   const totalProjectLoggedHours = projectLogSummary?.totalHours ?? 0
+  const projectMonthToDateLoggedHours =
+    projectLogSummary?.monthToDateHours ?? 0
   const totalClientLoggedHours = clientId
     ? (timeLogTotalsByClient.get(clientId) ?? 0)
     : 0
@@ -260,6 +262,7 @@ function buildProjectBurndown(
     totalClientLoggedHours,
     totalClientRemainingHours,
     totalProjectLoggedHours,
+    projectMonthToDateLoggedHours,
     lastLogAt,
   }
 }

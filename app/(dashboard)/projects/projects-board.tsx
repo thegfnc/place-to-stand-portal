@@ -44,6 +44,9 @@ export function ProjectsBoard(props: ProjectsBoardProps) {
                 totalProjectLoggedHours={
                   viewModel.burndown.totalProjectLoggedHours
                 }
+                projectMonthToDateLoggedHours={
+                  viewModel.burndown.projectMonthToDateLoggedHours
+                }
                 className='ml-auto w-full sm:w-auto'
                 canLogTime={viewModel.burndown.canLogTime}
                 addTimeLogDisabledReason={
@@ -51,6 +54,12 @@ export function ProjectsBoard(props: ProjectsBoardProps) {
                 }
                 viewTimeLogsHref={viewModel.burndown.viewTimeLogsHref}
                 onAddTimeLog={viewModel.burndown.onAddTimeLog}
+                showClientRemainingCard={
+                  viewModel.burndown.showClientRemainingCard
+                }
+                showProjectMonthToDate={
+                  viewModel.burndown.showProjectMonthToDate
+                }
               />
             ) : null}
           </div>

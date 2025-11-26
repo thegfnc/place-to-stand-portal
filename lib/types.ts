@@ -155,6 +155,7 @@ export type ProjectBurndownSummary = {
   totalClientLoggedHours: number
   totalClientRemainingHours: number
   totalProjectLoggedHours: number
+  projectMonthToDateLoggedHours: number
   lastLogAt: string | null
 }
 
