@@ -271,7 +271,7 @@ export function ProjectsLanding({
             <h2 className='text-lg font-semibold tracking-tight'>{title}</h2>
             <Badge variant='secondary'>{count}</Badge>
           </div>
-          <div className='mb-4 p-6'>{content}</div>
+          <div className='mb-6 p-6'>{content}</div>
         </section>
       ))}
     </div>
