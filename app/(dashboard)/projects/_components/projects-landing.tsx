@@ -262,14 +262,16 @@ export function ProjectsLanding({
       {sectionConfigs.map(({ key, title, icon: Icon, count, content }) => (
         <section
           key={key}
-          className='bg-card text-card-foreground overflow-hidden rounded-xl border shadow-sm'
+          className='bg-card/50 text-card-foreground overflow-hidden rounded-xl border shadow-sm'
         >
-          <div className='bg-muted/30 flex items-center gap-3 border-b px-6 py-4'>
+          <div className='bg-muted flex items-center gap-3 border-b px-6 py-4'>
             <div className='bg-background flex h-8 w-8 items-center justify-center rounded-md border shadow-sm'>
               <Icon className='text-muted-foreground h-4 w-4' />
             </div>
             <h2 className='text-lg font-semibold tracking-tight'>{title}</h2>
-            <Badge variant='secondary'>{count}</Badge>
+            <Badge variant='secondary' className='border-border'>
+              {count}
+            </Badge>
           </div>
           <div className='mb-6 p-6'>{content}</div>
         </section>

@@ -57,6 +57,11 @@ const NAV_GROUPS: NavGroup[] = [
     roles: ['ADMIN', 'CLIENT'],
     items: [
       {
+        href: '/clients',
+        label: 'Clients',
+        icon: Building2,
+      },
+      {
         href: '/projects',
         label: 'Projects',
         icon: KanbanSquare,

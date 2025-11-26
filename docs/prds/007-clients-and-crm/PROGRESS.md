@@ -25,9 +25,18 @@ This document tracks the progress of the implementation of the features outlined
 
 ## Phase 4: Client Management Feature Implementation
 
-- [ ] **Navigation**
-- [ ] **Client Landing Page (`/clients`)**
-- [ ] **Client Detail Page (`/clients/[clientId]`)**
+- [x] **Navigation** – Added "Clients" link to the "Work" section of the sidebar, positioned above "Projects". The link uses the existing `Building2` icon for consistency.
+- [x] **Client Landing Page (`/clients`)** – Created at `/app/(dashboard)/clients/page.tsx` with:
+  - Client data fetching via `fetchClientsWithMetrics` that includes project counts (total and active).
+  - Grid of client cards showing name, billing type, slug, and project metrics.
+  - Quick switcher header component (`ClientsLandingHeader`) with searchable combobox for easy navigation between clients.
+- [x] **Client Detail Page (`/clients/[clientSlug]`)** – Created at `/app/(dashboard)/clients/[clientSlug]/page.tsx` with:
+  - Support for both UUID and slug-based routing via `resolveClientIdentifier`.
+  - Client info section displaying name, slug, billing type, and creation date.
+  - Rich Text Editor for notes using the existing TipTap-based `RichTextEditor` component.
+  - Server action `updateClientNotes` for persisting notes changes.
+  - Projects grid showing all projects for the client with progress indicators, status badges, and links to the project board.
+  - Reused existing project card patterns from the projects landing page for visual consistency.
 
 ## Phase 5: Sales & Leads Pipeline Implementation
 

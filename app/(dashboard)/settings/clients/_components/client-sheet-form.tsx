@@ -17,7 +17,6 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
 import {
   Select,
   SelectContent,
@@ -226,30 +225,6 @@ export function ClientSheetForm({
               </FormItem>
             )
           }}
-        />
-        <FormField
-          control={form.control}
-          name='notes'
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Notes (optional)</FormLabel>
-              <FormControl>
-                <DisabledFieldTooltip
-                  disabled={isPending}
-                  reason={isPending ? pendingReason : null}
-                >
-                  <Textarea
-                    {...field}
-                    value={field.value ?? ''}
-                    placeholder='Context or points of contact'
-                    disabled={isPending}
-                    rows={4}
-                  />
-                </DisabledFieldTooltip>
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
         />
         <div className='space-y-2'>
           <FormLabel>Client users</FormLabel>

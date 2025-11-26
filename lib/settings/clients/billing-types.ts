@@ -18,3 +18,12 @@ export const CLIENT_BILLING_TYPE_SELECT_OPTIONS: Array<{
     description: 'Clients are invoiced at the end of each month.',
   },
 ]
+
+export function getBillingTypeLabel(
+  billingType: ClientBillingTypeValue
+): string {
+  const option = CLIENT_BILLING_TYPE_SELECT_OPTIONS.find(
+    opt => opt.value === billingType
+  )
+  return option?.label ?? billingType
+}
