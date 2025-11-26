@@ -209,14 +209,11 @@ export function ProjectsLanding({
 
   const clientSectionContent =
     clientSections.length > 0 ? (
-      <div className='space-y-6'>
+      <div className='space-y-10'>
         {clientSections.map(({ client, projects: clientProjects }) => (
-          <div key={client.id} className='space-y-2'>
-            <div className='flex items-center gap-2 px-2'>
-              <h3 className='text-base font-normal'>{client.name}</h3>
-              <Badge variant='secondary' className='ml-2'>
-                {clientProjects.length}
-              </Badge>
+          <div key={client.id} className='space-y-4'>
+            <div className='flex items-center gap-2 border-b pb-2'>
+              <h3 className='text-sm font-semibold'>{client.name}</h3>
             </div>
             {renderProjectGrid(clientProjects)}
           </div>
@@ -261,17 +258,22 @@ export function ProjectsLanding({
   ]
 
   return (
-    <div className='mb-18 space-y-18'>
+    <div className='space-y-10 pb-10'>
       {sectionConfigs.map(({ key, title, icon: Icon, count, content }) => (
-        <section key={key} className='space-y-6'>
-          <div className='border-border flex items-center gap-2 border-b px-4 py-2'>
-            <Icon className='text-muted-foreground h-5 w-5' />
-            <h2 className='text-xl font-semibold'>{title}</h2>
-            <Badge variant='secondary' className='ml-2'>
+        <section
+          key={key}
+          className='bg-card text-card-foreground overflow-hidden rounded-xl border shadow-sm'
+        >
+          <div className='bg-muted/30 flex items-center gap-3 border-b px-6 py-4'>
+            <div className='bg-background flex h-8 w-8 items-center justify-center rounded-md border shadow-sm'>
+              <Icon className='text-muted-foreground h-4 w-4' />
+            </div>
+            <h2 className='text-lg font-semibold tracking-tight'>{title}</h2>
+            <Badge variant='secondary' className='ml-auto'>
               {count}
             </Badge>
           </div>
-          <div className='px-4'>{content}</div>
+          <div className='p-6'>{content}</div>
         </section>
       ))}
     </div>
