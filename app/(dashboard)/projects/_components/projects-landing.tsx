@@ -264,7 +264,7 @@ export function ProjectsLanding({
     <div className='mb-18 space-y-18'>
       {sectionConfigs.map(({ key, title, icon: Icon, count, content }) => (
         <section key={key} className='space-y-6'>
-          <div className='flex items-center gap-2 rounded-lg bg-black/16 px-4 py-2'>
+          <div className='border-border flex items-center gap-2 border-b px-4 py-2'>
             <Icon className='text-muted-foreground h-5 w-5' />
             <h2 className='text-xl font-semibold'>{title}</h2>
             <Badge variant='secondary' className='ml-2'>

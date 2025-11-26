@@ -9,7 +9,7 @@ import {
   FolderKanban,
   KanbanSquare,
   Building2,
-  Users2,
+  Users,
   Home as HomeIcon,
   ListTodo,
 } from 'lucide-react'
@@ -70,7 +70,7 @@ const NAV_GROUPS: NavGroup[] = [
       {
         href: '/settings/users',
         label: 'Users',
-        icon: Users2,
+        icon: Users,
       },
       {
         href: '/settings/clients',
