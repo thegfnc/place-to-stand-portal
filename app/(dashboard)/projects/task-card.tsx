@@ -34,6 +34,7 @@ type AssigneeInfo = {
 
 type TaskContextDetails = {
   clientLabel?: string
+  clientHref?: string | null
   projectLabel?: string
   projectHref?: string | null
   layout?: 'inline' | 'stacked'
@@ -118,10 +119,21 @@ function CardContent({
             )}
           >
             {context.clientLabel ? (
-              <span className='inline-flex items-center gap-1'>
-                {renderProjectTypeIcon(context?.projectType, 'h-3.5 w-3.5')}
-                {context.clientLabel}
-              </span>
+              context.clientHref ? (
+                <Link
+                  href={context.clientHref}
+                  className='hover:text-foreground inline-flex items-center gap-1 underline-offset-4 transition hover:underline'
+                  onClick={event => event.stopPropagation()}
+                >
+                  {renderProjectTypeIcon(context?.projectType, 'h-3.5 w-3.5')}
+                  {context.clientLabel}
+                </Link>
+              ) : (
+                <span className='inline-flex items-center gap-1'>
+                  {renderProjectTypeIcon(context?.projectType, 'h-3.5 w-3.5')}
+                  {context.clientLabel}
+                </span>
+              )
             ) : null}
             {context.projectLabel ? (
               context.projectHref ? (

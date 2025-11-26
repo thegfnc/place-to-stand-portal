@@ -253,6 +253,7 @@ export function MyTasksPage({
 
 type TaskContextMeta = {
   clientLabel: string
+  clientHref: string | null
   projectLabel: string
   projectHref: string | null
   layout: 'inline' | 'stacked'
@@ -304,10 +305,12 @@ function buildTaskContextLookup(
 
   lookup.forEach(({ project }, taskId) => {
     const clientLabel = resolveClientLabel(project)
+    const clientHref = buildClientHref(project)
     const projectHref = buildProjectHref(project)
 
     map.set(taskId, {
       clientLabel,
+      clientHref,
       projectLabel: project.name,
       projectHref,
       layout: 'stacked',
@@ -332,6 +335,20 @@ function resolveClientLabel(project: ProjectWithRelations): string {
   }
 
   return 'Unassigned'
+}
+
+function buildClientHref(project: ProjectWithRelations): string | null {
+  // Only link to client pages for CLIENT-type projects with a valid client
+  if (project.type !== 'CLIENT' || !project.client) {
+    return null
+  }
+
+  const clientSlug = project.client.slug
+  if (clientSlug) {
+    return `/clients/${clientSlug}`
+  }
+
+  return `/clients/${project.client.id}`
 }
 
 function buildProjectHref(project: ProjectWithRelations): string | null {

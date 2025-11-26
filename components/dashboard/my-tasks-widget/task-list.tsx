@@ -45,6 +45,7 @@ function TaskListItem({ task }: { task: AssignedTaskSummary }) {
   const dueMeta = getTaskDueMeta(task.dueOn, { status: task.status })
   const linkMeta = getTaskLinkMeta(task)
   const projectLinkMeta = getProjectLinkMeta(task)
+  const clientLinkMeta = getClientLinkMeta(task)
   const statusToken = getTaskStatusToken(task.status)
   const statusLabel = getTaskStatusLabel(task.status)
   const hasTaskLink = Boolean(linkMeta.href)
@@ -86,24 +87,36 @@ function TaskListItem({ task }: { task: AssignedTaskSummary }) {
               {statusLabel}
             </Badge>
             <div className='text-muted-foreground inline-flex items-center gap-3'>
-              <div className='flex items-center gap-1'>
-                {renderProjectTypeIcon(task.project.type, 'size-3.5')}
-                {clientLabel}
-              </div>
-              <div className='flex items-center gap-1'>
-                <FolderKanban className='size-3.5' aria-hidden />
-                {projectLinkMeta.href ? (
-                  <Link
-                    href={projectLinkMeta.href}
-                    onClick={e => e.stopPropagation()}
-                    className='hover:text-foreground pointer-events-auto relative z-20 underline-offset-4 transition-colors hover:underline'
-                  >
-                    {task.project.name}
-                  </Link>
-                ) : (
-                  task.project.name
-                )}
-              </div>
+              {clientLinkMeta.href ? (
+                <Link
+                  href={clientLinkMeta.href}
+                  onClick={e => e.stopPropagation()}
+                  className='hover:text-foreground pointer-events-auto relative z-20 inline-flex items-center gap-1 underline-offset-4 transition hover:underline'
+                >
+                  {renderProjectTypeIcon(task.project.type, 'size-3.5')}
+                  {clientLabel}
+                </Link>
+              ) : (
+                <span className='inline-flex items-center gap-1'>
+                  {renderProjectTypeIcon(task.project.type, 'size-3.5')}
+                  {clientLabel}
+                </span>
+              )}
+              {projectLinkMeta.href ? (
+                <Link
+                  href={projectLinkMeta.href}
+                  onClick={e => e.stopPropagation()}
+                  className='hover:text-foreground pointer-events-auto relative z-20 inline-flex items-center gap-1 underline-offset-4 transition hover:underline'
+                >
+                  <FolderKanban className='size-3.5' aria-hidden />
+                  {task.project.name}
+                </Link>
+              ) : (
+                <span className='inline-flex items-center gap-1'>
+                  <FolderKanban className='size-3.5' aria-hidden />
+                  {task.project.name}
+                </span>
+              )}
               <div
                 className={cn(
                   'inline-flex items-center gap-1',
@@ -167,6 +180,22 @@ function getProjectLinkMeta(task: AssignedTaskSummary): TaskLinkMeta {
   return {
     href: `/projects/${clientSlug}/${projectSlug}/board`,
   }
+}
+
+function getClientLinkMeta(task: AssignedTaskSummary): TaskLinkMeta {
+  const { client, project } = task
+
+  // Only link to client pages for CLIENT-type projects with a valid client
+  if (project.type !== 'CLIENT' || !client) {
+    return { href: null }
+  }
+
+  const clientSlug = client.slug
+  if (clientSlug) {
+    return { href: `/clients/${clientSlug}` }
+  }
+
+  return { href: `/clients/${client.id}` }
 }
 
 function getClientDisplayName(task: AssignedTaskSummary): string {
