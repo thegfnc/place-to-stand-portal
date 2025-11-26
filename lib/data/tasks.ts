@@ -15,6 +15,7 @@ import {
 } from 'drizzle-orm'
 
 import type { UserRole } from '@/lib/auth/session'
+import type { ProjectTypeValue } from '@/lib/types'
 import { db } from '@/lib/db'
 import {
   clients as clientsTable,
@@ -37,8 +38,7 @@ export type AssignedTaskSummary = {
     id: string
     name: string
     slug: string | null
-    isInternal: boolean
-    isPersonal: boolean
+    type: ProjectTypeValue
     createdBy: string | null
   }
   client: {
@@ -118,8 +118,8 @@ async function loadAssignedTaskSummaries({
 
   if (shouldScopeToUser) {
     let accessCondition: SQL<unknown> = or(
-      eq(projectsTable.isInternal, true),
-      and(eq(projectsTable.isPersonal, true), eq(projectsTable.createdBy, userId))
+      eq(projectsTable.type, 'INTERNAL'),
+      and(eq(projectsTable.type, 'PERSONAL'), eq(projectsTable.createdBy, userId))
     )!
 
     if (accessibleClientIds.length > 0) {
@@ -158,8 +158,7 @@ async function loadAssignedTaskSummaries({
         id: projectsTable.id,
         name: projectsTable.name,
         slug: projectsTable.slug,
-        isInternal: projectsTable.isInternal,
-        isPersonal: projectsTable.isPersonal,
+        type: projectsTable.type,
         createdBy: projectsTable.createdBy,
       },
       client: {
@@ -214,8 +213,7 @@ async function loadAssignedTaskSummaries({
         id: row.project.id,
         name: row.project.name ?? 'Untitled project',
         slug: row.project.slug ?? null,
-        isInternal: row.project.isInternal ?? false,
-        isPersonal: row.project.isPersonal ?? false,
+        type: (row.project.type as ProjectTypeValue) ?? 'CLIENT',
         createdBy: row.project.createdBy ?? null,
       },
       client: row.client?.id

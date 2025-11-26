@@ -45,7 +45,7 @@ export function ProjectsTableSection({
         <TableHeader>
           <TableRow className='bg-muted/40'>
             <TableHead>Name</TableHead>
-            <TableHead>Client</TableHead>
+            <TableHead>Owner</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Timeline</TableHead>
             <TableHead className='w-32 text-right'>Actions</TableHead>

@@ -6,12 +6,25 @@ import {
   PROJECT_STATUS_VALUES,
   type ProjectStatusValue,
 } from '@/lib/constants'
-import type { DbClient, DbProject } from '@/lib/types'
+import type {
+  DbClient,
+  DbProject,
+  ProjectTypeValue,
+} from '@/lib/types'
 
 export type ProjectRow = DbProject
 export type ClientRow = Pick<DbClient, 'id' | 'name' | 'deleted_at'>
 
-export type ProjectWithClient = ProjectRow & { client: ClientRow | null }
+export type ProjectOwnerSummary = {
+  id: string | null
+  fullName: string | null
+  email: string | null
+}
+
+export type ProjectWithClient = ProjectRow & {
+  client: ClientRow | null
+  owner?: ProjectOwnerSummary | null
+}
 
 export type ContractorUserSummary = {
   id: string
@@ -19,10 +32,43 @@ export type ContractorUserSummary = {
   fullName: string | null
 }
 
+export const PROJECT_TYPE_ENUM_VALUES = [
+  'CLIENT',
+  'PERSONAL',
+  'INTERNAL',
+] as const satisfies ReadonlyArray<ProjectTypeValue>
+
+export const PROJECT_TYPE_OPTIONS: ReadonlyArray<{
+  value: ProjectTypeValue
+  label: string
+  description: string
+}> = [
+  {
+    value: 'CLIENT',
+    label: 'Client project',
+    description: 'Linked to a client workspace for shared tracking.',
+  },
+  {
+    value: 'PERSONAL',
+    label: 'Personal project',
+    description: 'Visible only to you. Client selection is disabled.',
+  },
+  {
+    value: 'INTERNAL',
+    label: 'Internal project',
+    description: 'Visible to the whole team without a client link.',
+  },
+] as const
+
 export const projectSheetFormSchema = z
   .object({
     name: z.string().min(1, 'Project name is required'),
-    clientId: z.string().uuid('Select a client'),
+    projectType: z.enum(PROJECT_TYPE_ENUM_VALUES).default('CLIENT'),
+    clientId: z
+      .string()
+      .uuid('Select a client')
+      .or(z.literal(''))
+      .optional(),
     status: z.enum(PROJECT_STATUS_ENUM_VALUES),
     startsOn: z.string().optional().or(z.literal('')),
     endsOn: z.string().optional().or(z.literal('')),
@@ -49,12 +95,33 @@ export const projectSheetFormSchema = z
         })
       }
     }
+
+    const trimmedClientId = data.clientId?.trim() ?? ''
+    const requiresClient = data.projectType === 'CLIENT'
+    const hasClient = Boolean(trimmedClientId)
+
+    if (requiresClient && !hasClient) {
+      ctx.addIssue({
+        path: ['clientId'],
+        code: z.ZodIssueCode.custom,
+        message: 'Select a client for client projects.',
+      })
+    }
+
+    if (!requiresClient && hasClient) {
+      ctx.addIssue({
+        path: ['clientId'],
+        code: z.ZodIssueCode.custom,
+        message: 'Personal and internal projects cannot be linked to clients.',
+      })
+    }
   })
 
 export type ProjectSheetFormValues = z.infer<typeof projectSheetFormSchema>
 
 export const PROJECT_FORM_FIELDS: Array<keyof ProjectSheetFormValues> = [
   'name',
+  'projectType',
   'clientId',
   'status',
   'startsOn',
@@ -79,6 +146,7 @@ export const buildProjectFormDefaults = (
   project: ProjectWithClient | null
 ): ProjectSheetFormValues => ({
   name: project?.name ?? '',
+  projectType: project?.type ?? 'CLIENT',
   clientId: project?.client_id ?? '',
   status: deriveInitialStatus(project),
   startsOn: project?.starts_on ? project.starts_on.slice(0, 10) : '',
@@ -89,7 +157,8 @@ export const buildProjectFormDefaults = (
 export type ProjectSavePayload = {
   id?: string
   name: string
-  clientId: string
+  projectType: ProjectTypeValue
+  clientId: string | null
   status: ProjectStatusValue
   startsOn: string | null
   endsOn: string | null
@@ -106,15 +175,22 @@ export const createProjectSavePayload = ({
   values,
   project,
   isEditing,
-}: CreatePayloadArgs): ProjectSavePayload => ({
-  id: project?.id,
-  name: values.name.trim(),
-  clientId: values.clientId,
-  status: values.status,
-  startsOn: values.startsOn ? values.startsOn : null,
-  endsOn: values.endsOn ? values.endsOn : null,
-  slug: isEditing ? (values.slug?.trim() ? values.slug.trim() : null) : null,
-})
+}: CreatePayloadArgs): ProjectSavePayload => {
+  const trimmedClientId = values.clientId?.trim() ?? ''
+  const normalizedClientId =
+    values.projectType === 'CLIENT' && trimmedClientId ? trimmedClientId : null
+
+  return {
+    id: project?.id,
+    name: values.name.trim(),
+    projectType: values.projectType,
+    clientId: normalizedClientId,
+    status: values.status,
+    startsOn: values.startsOn ? values.startsOn : null,
+    endsOn: values.endsOn ? values.endsOn : null,
+    slug: isEditing ? (values.slug?.trim() ? values.slug.trim() : null) : null,
+  }
+}
 
 export const sortClientsByName = (clients: ClientRow[]): ClientRow[] =>
   [...clients].sort((a, b) =>

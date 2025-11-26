@@ -4,7 +4,7 @@ This document tracks the progress of the implementation of the features outlined
 
 ## Phase 1: Data Model & Backend Foundation
 
-- [ ] **Update `projects` Table** – Change from `is_personal`/`is_internal` booleans to a `type` enum (`CLIENT`, `PERSONAL`, `INTERNAL`) and enforce the integrity check.
+- [x] **Update `projects` Table** – Change from `is_personal`/`is_internal` booleans to a `type` enum (`CLIENT`, `PERSONAL`, `INTERNAL`) and enforce the integrity check. Added the `project_type` enum, migrated existing rows via `0003_crm-phase-3-project-type.sql`, and replaced all consumers with the new `type` field.
 - [x] **Update `clients` Table** – introduced the `billing_type` enum (`prepaid` | `net_30`) with a default of `prepaid`.
 - [x] **Create `task_assignee_metadata` Table** – added the join table with composite primary key, cascading FKs, timestamps, and policies to prep per-user task ordering.
 - [x] **Create `leads` Table** – implemented the approved schema (without `estimated_value`), including the `lead_status` enum and soft-delete friendly fields.
@@ -20,8 +20,8 @@ This document tracks the progress of the implementation of the features outlined
 
 ## Phase 3: Project Configuration UI
 
-- [ ] **UI Updates**
-- [ ] **Conditional Logic**
+- [x] **UI Updates** – Added the “Project Type” selector to the sheet, surfaced helper copy for each option, and plumbed the new field through validation, form state, and server actions so edits persist to the enum.
+- [x] **Conditional Logic** – Client picker now disables/clears itself for Personal/Internal projects with explanatory tooltips and the submit button gating, ensuring only Client projects can link to clients.
 
 ## Phase 4: Client Management Feature Implementation
 

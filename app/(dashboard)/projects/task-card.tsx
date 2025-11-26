@@ -16,11 +16,12 @@ import {
   FolderKanban,
   MessageCircle,
   Paperclip,
-  Users2,
+  User,
+  Users,
 } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
-import type { TaskWithRelations } from '@/lib/types'
+import type { ProjectTypeValue, TaskWithRelations } from '@/lib/types'
 import {
   TASK_DUE_TONE_CLASSES,
   getTaskDueMeta,
@@ -36,6 +37,7 @@ type TaskContextDetails = {
   projectLabel?: string
   projectHref?: string | null
   layout?: 'inline' | 'stacked'
+  projectType?: ProjectTypeValue
 }
 
 type TaskCardProps = {
@@ -101,7 +103,7 @@ function CardContent({
         {!hideAssignees ? (
           <div className='text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-2 text-xs'>
             <div className='inline-flex items-center gap-1'>
-              <Users2 className='h-3.5 w-3.5' /> {assignedSummary}
+              <User className='h-3.5 w-3.5' /> {assignedSummary}
             </div>
           </div>
         ) : null}
@@ -117,7 +119,7 @@ function CardContent({
           >
             {context.clientLabel ? (
               <span className='inline-flex items-center gap-1'>
-                <Building2 className='h-3.5 w-3.5' aria-hidden />
+                {renderProjectTypeIcon(context?.projectType, 'h-3.5 w-3.5')}
                 {context.clientLabel}
               </span>
             ) : null}
@@ -295,6 +297,21 @@ export function TaskCardPreview({
       />
     </div>
   )
+}
+
+function renderProjectTypeIcon(
+  projectType: ProjectTypeValue | undefined,
+  className: string
+) {
+  if (projectType === 'INTERNAL') {
+    return <Users className={className} aria-hidden />
+  }
+
+  if (projectType === 'PERSONAL') {
+    return <User className={className} aria-hidden />
+  }
+
+  return <Building2 className={className} aria-hidden />
 }
 
 export type { TaskContextDetails }

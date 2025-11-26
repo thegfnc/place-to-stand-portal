@@ -16,7 +16,6 @@ import {
   jsonb,
   pgView,
   pgEnum,
-  boolean,
   integer,
   primaryKey,
 } from 'drizzle-orm/pg-core'
@@ -35,6 +34,11 @@ export const userRole = pgEnum('user_role', ['ADMIN', 'CLIENT'])
 export const clientBillingType = pgEnum('client_billing_type', [
   'prepaid',
   'net_30',
+])
+export const projectType = pgEnum('project_type', [
+  'CLIENT',
+  'PERSONAL',
+  'INTERNAL',
 ])
 export const leadStatus = pgEnum('lead_status', [
   'NEW_OPPORTUNITIES',
@@ -340,8 +344,7 @@ export const projects = pgTable(
       .notNull(),
     deletedAt: timestamp('deleted_at', { withTimezone: true, mode: 'string' }),
     slug: text(),
-    isPersonal: boolean('is_personal').default(false).notNull(),
-    isInternal: boolean('is_internal').default(false).notNull(),
+    type: projectType('type').default('CLIENT').notNull(),
   },
   table => [
     index('idx_projects_client')
@@ -385,15 +388,12 @@ export const projects = pgTable(
       to: ['public'],
     }),
     check(
-      'projects_personal_internal_client_check',
+      'projects_type_client_check',
       sql`(
-        (
-          (is_personal OR is_internal)
-          AND client_id IS NULL
-        )
+        (type = 'CLIENT' AND client_id IS NOT NULL)
         OR (
-          (NOT is_personal AND NOT is_internal)
-          AND client_id IS NOT NULL
+          type IN ('PERSONAL', 'INTERNAL')
+          AND client_id IS NULL
         )
       )`
     ),

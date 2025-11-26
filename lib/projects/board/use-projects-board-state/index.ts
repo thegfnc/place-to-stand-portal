@@ -60,6 +60,7 @@ export const useProjectsBoardState = ({
   const {
     selectedProjectId,
     projectItems,
+    projectGroups,
     canSelectNextProject,
     canSelectPreviousProject,
     handleProjectSelect,
@@ -219,6 +220,7 @@ export const useProjectsBoardState = ({
     feedback,
     selectedProjectId,
     projectItems,
+    projectGroups,
     canSelectNextProject,
     canSelectPreviousProject,
     activeProject,

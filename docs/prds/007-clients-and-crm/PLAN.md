@@ -47,15 +47,15 @@ This document outlines a phased development plan for implementing the features d
 
 ## Phase 3: Project Configuration UI
 
-**Goal:** Update the project creation and editing interfaces to allow users to set the `is_personal` and `is_internal` flags.
+**Goal:** Update the project creation and editing interfaces to allow users to set the unified `type` field (`CLIENT`, `PERSONAL`, `INTERNAL`).
 
 **Tasks:**
 
 1.  **UI Updates:**
-    - Add a "Project Type" selector (radio group or dropdown) to the "Create Project" and "Edit Project" forms.
+    - Add a "Project Type" selector (radio group or dropdown) to the "Create Project" and "Edit Project" forms so admins can choose between Client, Personal, or Internal projects.
 2.  **Conditional Logic:**
     - Implement frontend logic to disable and clear the "Client" dropdown when the project type is "Personal" or "Internal".
-    - Add a tooltip to explain the disabled state.
+    - Add a tooltip or helper text to explain the disabled state.
 
 ## Phase 4: Client Management Feature Implementation
 

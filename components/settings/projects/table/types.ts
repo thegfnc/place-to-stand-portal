@@ -1,11 +1,10 @@
 import type { PageInfo } from '@/lib/pagination/cursor'
-import type { DbClient, DbProject } from '@/lib/types'
+import type {
+  ClientRow,
+  ProjectWithClient as SheetProjectWithClient,
+} from '@/lib/settings/projects/project-sheet-form'
 
-type ProjectRow = DbProject
-
-type ClientRow = Pick<DbClient, 'id' | 'name' | 'deleted_at'>
-
-export type ProjectWithClient = ProjectRow & { client: ClientRow | null }
+export type ProjectWithClient = SheetProjectWithClient
 
 export type ContractorUserSummary = {
   id: string

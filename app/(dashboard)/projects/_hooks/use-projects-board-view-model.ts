@@ -33,6 +33,10 @@ export type ProjectsBoardProps = BaseProps & {
 
 export type ProjectsBoardHeaderProps = {
   projectItems: Array<{ value: string; label: string; keywords: string[] }>
+  projectGroups?: Array<{
+    label: string
+    items: Array<{ value: string; label: string; keywords: string[] }>
+  }>
   selectedProjectId: string | null
   onProjectChange: (projectId: string | null) => void
   onSelectNextProject: () => void
@@ -125,6 +129,7 @@ export function useProjectsBoardViewModel({
 
   const header = buildProjectsBoardHeader({
     projectItems: boardState.projectItems,
+    projectGroups: boardState.projectGroups,
     selectedProjectId: boardState.selectedProjectId,
     onProjectChange: boardState.handleProjectSelect,
     onSelectNextProject: boardState.handleSelectNextProject,

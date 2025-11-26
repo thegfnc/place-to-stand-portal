@@ -1,5 +1,6 @@
 import {
   clientBillingType,
+  projectType,
   taskStatus,
   userRole,
 } from '@/lib/db/schema'
@@ -8,6 +9,7 @@ export type UserRoleValue = (typeof userRole.enumValues)[number]
 export type TaskStatusValue = (typeof taskStatus.enumValues)[number]
 export type ClientBillingTypeValue =
   (typeof clientBillingType.enumValues)[number]
+export type ProjectTypeValue = (typeof projectType.enumValues)[number]
 
 export type DbClient = {
   id: string
@@ -34,6 +36,7 @@ export type DbProject = {
   client_id: string | null
   name: string
   status: string
+  type: ProjectTypeValue
   starts_on: string | null
   ends_on: string | null
   created_by: string | null
@@ -41,8 +44,6 @@ export type DbProject = {
   updated_at: string
   deleted_at: string | null
   slug: string | null
-  is_personal: boolean
-  is_internal: boolean
 }
 
 export type DbTask = {

@@ -15,8 +15,7 @@ export type RawAssignedTaskRow = {
     id: string
     name: string
     slug: string | null
-    is_internal?: boolean | null
-    is_personal?: boolean | null
+    type?: string | null
     created_by?: string | null
     client?: {
       id: string
@@ -61,8 +60,7 @@ export function toAssignedTaskSummary(
       id: row.project?.id ?? row.project_id,
       name: projectName,
       slug: row.project?.slug ?? null,
-      isInternal: row.project?.is_internal ?? false,
-      isPersonal: row.project?.is_personal ?? false,
+      type: (row.project?.type as AssignedTaskSummary['project']['type']) ?? 'CLIENT',
       createdBy: row.project?.created_by ?? null,
     },
     client: row.project?.client

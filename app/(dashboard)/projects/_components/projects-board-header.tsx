@@ -10,8 +10,14 @@ export type BoardHeaderItem = {
   keywords: string[]
 }
 
+export type BoardHeaderItemGroup = {
+  label: string
+  items: BoardHeaderItem[]
+}
+
 type ProjectsBoardHeaderProps = {
   projectItems: BoardHeaderItem[]
+  projectGroups?: BoardHeaderItemGroup[]
   selectedProjectId: string | null
   onProjectChange: (projectId: string | null) => void
   onSelectNextProject: () => void
@@ -22,6 +28,7 @@ type ProjectsBoardHeaderProps = {
 
 export function ProjectsBoardHeader({
   projectItems,
+  projectGroups,
   selectedProjectId,
   onProjectChange,
   onSelectNextProject,
@@ -39,6 +46,7 @@ export function ProjectsBoardHeader({
           <SearchableCombobox
             id='projects-project-select'
             items={projectItems}
+            groups={projectGroups}
             value={selectedProjectId ?? ''}
             onChange={value => onProjectChange(value || null)}
             placeholder='Select client / project'

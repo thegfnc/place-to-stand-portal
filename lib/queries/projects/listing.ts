@@ -20,10 +20,7 @@ import {
   listAccessibleProjectIds,
 } from '@/lib/auth/permissions'
 import { db } from '@/lib/db'
-import {
-  clients,
-  projects,
-} from '@/lib/db/schema'
+import { clients, projects, users } from '@/lib/db/schema'
 import { NotFoundError } from '@/lib/errors/http'
 import {
   clampLimit,
@@ -41,6 +38,7 @@ import {
   projectGroupByColumns,
   projectSelection,
   type ProjectClientSummary,
+  type ProjectOwnerSummary,
   type ProjectSelectionResult,
   type ProjectsSettingsListItem,
   type ProjectsSettingsResult,
@@ -154,9 +152,15 @@ export async function listProjectsForSettings(
         name: clients.name,
         deletedAt: clients.deletedAt,
       },
+      owner: {
+        id: users.id,
+        fullName: users.fullName,
+        email: users.email,
+      },
     })
     .from(projects)
     .leftJoin(clients, eq(projects.clientId, clients.id))
+    .leftJoin(users, eq(projects.createdBy, users.id))
     .where(whereClause)
     .groupBy(...projectGroupByColumns)
     .orderBy(...ordering)
@@ -165,6 +169,7 @@ export async function listProjectsForSettings(
   const rows = rawRows as Array<{
     project: ProjectSelectionResult
     client: ProjectClientSummary | null
+    owner: ProjectOwnerSummary | null
   }>
 
   const hasExtraRecord = rows.length > limit
@@ -183,6 +188,19 @@ export async function listProjectsForSettings(
           }
         : null
       : null,
+    owner: row.owner
+      ? {
+          id: row.owner.id,
+          fullName: row.owner.fullName,
+          email: row.owner.email,
+        }
+      : row.project.createdBy
+          ? {
+              id: row.project.createdBy,
+              fullName: null,
+              email: null,
+            }
+          : null,
   }))
 
   const [totalResult, clientDirectory] = await Promise.all([

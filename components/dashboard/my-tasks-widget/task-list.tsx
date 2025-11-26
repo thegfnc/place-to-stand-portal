@@ -4,10 +4,13 @@ import {
   CalendarDays,
   ChevronRight,
   FolderKanban,
+  User,
+  Users,
 } from 'lucide-react'
 
 import { Badge } from '@/components/ui/badge'
 import type { AssignedTaskSummary } from '@/lib/data/tasks'
+import type { ProjectTypeValue } from '@/lib/types'
 import {
   TASK_DUE_TONE_CLASSES,
   getTaskDueMeta,
@@ -17,6 +20,7 @@ import {
   getTaskStatusToken,
 } from '@/lib/projects/task-status'
 import { cn } from '@/lib/utils'
+import { PROJECT_SPECIAL_SEGMENTS } from '@/lib/projects/board/board-utils'
 
 type TaskListProps = {
   items: AssignedTaskSummary[]
@@ -83,7 +87,7 @@ function TaskListItem({ task }: { task: AssignedTaskSummary }) {
             </Badge>
             <div className='text-muted-foreground inline-flex items-center gap-3'>
               <div className='flex items-center gap-1'>
-                <Building2 className='size-3.5' aria-hidden />
+                {renderProjectTypeIcon(task.project.type, 'size-3.5')}
                 {clientLabel}
               </div>
               <div className='flex items-center gap-1'>
@@ -136,15 +140,32 @@ function getTaskLinkMeta(task: AssignedTaskSummary): TaskLinkMeta {
 
 function getProjectLinkMeta(task: AssignedTaskSummary): TaskLinkMeta {
   const { client, project } = task
+  const projectSlug = project.slug ?? null
 
-  if (!project.slug || !client?.slug) {
+  if (!projectSlug) {
+    return { href: null }
+  }
+
+  if (project.type === 'INTERNAL') {
     return {
-      href: null,
+      href: `/projects/${PROJECT_SPECIAL_SEGMENTS.INTERNAL}/${projectSlug}/board`,
     }
   }
 
+  if (project.type === 'PERSONAL') {
+    return {
+      href: `/projects/${PROJECT_SPECIAL_SEGMENTS.PERSONAL}/${projectSlug}/board`,
+    }
+  }
+
+  const clientSlug = client?.slug ?? null
+
+  if (!clientSlug) {
+    return { href: null }
+  }
+
   return {
-    href: `/projects/${client.slug}/${project.slug}/board`,
+    href: `/projects/${clientSlug}/${projectSlug}/board`,
   }
 }
 
@@ -153,13 +174,28 @@ function getClientDisplayName(task: AssignedTaskSummary): string {
     return task.client.name
   }
 
-  if (task.project.isPersonal) {
+  if (task.project.type === 'PERSONAL') {
     return 'Personal'
   }
 
-  if (task.project.isInternal) {
+  if (task.project.type === 'INTERNAL') {
     return 'Internal'
   }
 
   return 'Unassigned'
+}
+
+function renderProjectTypeIcon(
+  projectType: ProjectTypeValue,
+  className: string
+) {
+  if (projectType === 'INTERNAL') {
+    return <Users className={className} aria-hidden />
+  }
+
+  if (projectType === 'PERSONAL') {
+    return <User className={className} aria-hidden />
+  }
+
+  return <Building2 className={className} aria-hidden />
 }

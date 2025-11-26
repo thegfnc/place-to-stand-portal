@@ -36,6 +36,7 @@ export function ProjectSheet(props: Props) {
     feedback,
     isEditing,
     isPending,
+    requiresClientSelection,
     clientOptions,
     submitButton,
     deleteButton,
@@ -53,8 +54,9 @@ export function ProjectSheet(props: Props) {
       createProjectSheetFieldState({
         isPending,
         hasClients: clientOptions.length > 0,
+        requiresClientSelection,
       }),
-    [clientOptions, isPending]
+    [clientOptions, isPending, requiresClientSelection]
   )
 
   return (

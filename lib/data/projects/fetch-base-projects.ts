@@ -25,6 +25,7 @@ export async function fetchBaseProjects(
       id: projects.id,
       name: projects.name,
       status: projects.status,
+      type: projects.type,
       clientId: projects.clientId,
       slug: projects.slug,
       startsOn: projects.startsOn,
@@ -33,8 +34,6 @@ export async function fetchBaseProjects(
       updatedAt: projects.updatedAt,
       deletedAt: projects.deletedAt,
       createdBy: projects.createdBy,
-      isPersonal: projects.isPersonal,
-      isInternal: projects.isInternal,
     })
     .from(projects)
     .where(and(...conditions))
@@ -44,6 +43,7 @@ export async function fetchBaseProjects(
     id: row.id,
     name: row.name,
     status: row.status,
+    type: row.type,
     client_id: row.clientId,
     slug: row.slug,
     starts_on: row.startsOn,
@@ -52,8 +52,6 @@ export async function fetchBaseProjects(
     updated_at: row.updatedAt,
     deleted_at: row.deletedAt,
     created_by: row.createdBy ?? null,
-    is_personal: row.isPersonal,
-    is_internal: row.isInternal,
   }))
 
   const projectIds = normalizedProjects.map(project => project.id)

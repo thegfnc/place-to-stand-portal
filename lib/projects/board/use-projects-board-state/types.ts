@@ -30,6 +30,10 @@ export type ProjectsBoardState = {
   feedback: string | null
   selectedProjectId: string | null
   projectItems: Array<{ value: string; label: string; keywords: string[] }>
+  projectGroups: Array<{
+    label: string
+    items: Array<{ value: string; label: string; keywords: string[] }>
+  }>
   canSelectNextProject: boolean
   canSelectPreviousProject: boolean
   activeProject: ProjectWithRelations | null

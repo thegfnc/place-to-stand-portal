@@ -69,8 +69,7 @@ export async function ensureClientAccessByProjectId(
     .select({
       id: projects.id,
       clientId: projects.clientId,
-      isPersonal: projects.isPersonal,
-      isInternal: projects.isInternal,
+      type: projects.type,
       createdBy: projects.createdBy,
     })
     .from(projects)
@@ -83,26 +82,25 @@ export async function ensureClientAccessByProjectId(
 
   const projectRecord = project[0]
 
-  if (!projectRecord.clientId) {
-    if (projectRecord.isPersonal) {
-      if (!isAdmin(user) && projectRecord.createdBy !== user.id) {
-        throw new ForbiddenError('Insufficient permissions to access project')
-      }
-      return
-    }
-
-    if (projectRecord.isInternal) {
-      return
-    }
-
-    if (!isAdmin(user)) {
+  if (projectRecord.type === 'PERSONAL') {
+    if (!isAdmin(user) && projectRecord.createdBy !== user.id) {
       throw new ForbiddenError('Insufficient permissions to access project')
     }
-
     return
   }
 
-  await ensureClientAccess(user, projectRecord.clientId)
+  if (projectRecord.type === 'INTERNAL') {
+    return
+  }
+
+  if (projectRecord.clientId) {
+    await ensureClientAccess(user, projectRecord.clientId)
+    return
+  }
+
+  if (!isAdmin(user)) {
+    throw new ForbiddenError('Insufficient permissions to access project')
+  }
 }
 
 export async function ensureClientAccessByTaskId(

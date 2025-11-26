@@ -8,10 +8,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import type { AppUser } from '@/lib/auth/session'
 import type {
   DbUser,
+  ProjectTypeValue,
   ProjectWithRelations,
   TaskWithRelations,
 } from '@/lib/types'
 import { createRenderAssignees } from '@/lib/projects/board/board-selectors'
+import { PROJECT_SPECIAL_SEGMENTS } from '@/lib/projects/board/board-utils'
 import { ProjectsBoardEmpty } from '@/app/(dashboard)/projects/_components/projects-board-empty'
 import { TaskSheet } from '@/app/(dashboard)/projects/task-sheet'
 import { useMyTasksReorderMutation } from '@/lib/projects/tasks/use-my-tasks-data'
@@ -175,7 +177,7 @@ export function MyTasksPage({
   return (
     <div className='flex h-full min-h-0 flex-col gap-6'>
       <AppShellHeader>
-        <div className='space-y-1'>
+        <div>
           <h1 className='text-2xl font-semibold tracking-tight'>My Tasks</h1>
           <p className='text-muted-foreground text-sm'>{description}</p>
         </div>
@@ -254,6 +256,7 @@ type TaskContextMeta = {
   projectLabel: string
   projectHref: string | null
   layout: 'inline' | 'stacked'
+  projectType: ProjectTypeValue
 }
 
 function buildTaskLookup(projects: ProjectWithRelations[]): TaskLookup {
@@ -301,16 +304,14 @@ function buildTaskContextLookup(
 
   lookup.forEach(({ project }, taskId) => {
     const clientLabel = resolveClientLabel(project)
-    const projectHref =
-      project.client?.slug && project.slug
-        ? `/projects/${project.client.slug}/${project.slug}/board`
-        : null
+    const projectHref = buildProjectHref(project)
 
     map.set(taskId, {
       clientLabel,
       projectLabel: project.name,
       projectHref,
       layout: 'stacked',
+      projectType: project.type,
     })
   })
 
@@ -322,13 +323,35 @@ function resolveClientLabel(project: ProjectWithRelations): string {
     return project.client.name
   }
 
-  if (project.is_personal) {
+  if (project.type === 'PERSONAL') {
     return 'Personal'
   }
 
-  if (project.is_internal) {
+  if (project.type === 'INTERNAL') {
     return 'Internal'
   }
 
   return 'Unassigned'
+}
+
+function buildProjectHref(project: ProjectWithRelations): string | null {
+  if (!project.slug) {
+    return null
+  }
+
+  if (project.type === 'INTERNAL') {
+    return `/projects/${PROJECT_SPECIAL_SEGMENTS.INTERNAL}/${project.slug}/board`
+  }
+
+  if (project.type === 'PERSONAL') {
+    return `/projects/${PROJECT_SPECIAL_SEGMENTS.PERSONAL}/${project.slug}/board`
+  }
+
+  const clientSlug = project.client?.slug ?? null
+
+  if (!clientSlug) {
+    return null
+  }
+
+  return `/projects/${clientSlug}/${project.slug}/board`
 }
