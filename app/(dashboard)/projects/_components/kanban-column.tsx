@@ -5,6 +5,7 @@ import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { BoardDropPlaceholder } from '@/components/board/drop-placeholder'
 import type { BoardColumnId } from '@/lib/projects/board/board-constants'
 import { cn } from '@/lib/utils'
 import type { TaskWithRelations } from '@/lib/types'
@@ -123,7 +124,7 @@ export function KanbanColumn({
 
             return (
               <Fragment key={task.id}>
-                {shouldShowPlaceholder ? <TaskDropPlaceholder /> : null}
+                {shouldShowPlaceholder ? <BoardDropPlaceholder /> : null}
                 <TaskCard
                   task={task}
                   assignees={renderAssignees(task)}
@@ -140,19 +141,10 @@ export function KanbanColumn({
           {showPlaceholder &&
           dropIndicatorIndex !== null &&
           dropIndicatorIndex >= tasks.length ? (
-            <TaskDropPlaceholder key={`${columnId}-placeholder`} />
+            <BoardDropPlaceholder key={`${columnId}-placeholder`} />
           ) : null}
         </SortableContext>
       </div>
     </div>
-  )
-}
-
-function TaskDropPlaceholder() {
-  return (
-    <div
-      aria-hidden
-      className='pointer-events-none min-h-24 w-full rounded-lg opacity-0'
-    />
   )
 }

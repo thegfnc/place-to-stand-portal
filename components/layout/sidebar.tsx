@@ -12,6 +12,7 @@ import {
   Users,
   Home as HomeIcon,
   ListTodo,
+  Handshake,
 } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
@@ -49,6 +50,17 @@ const NAV_GROUPS: NavGroup[] = [
         href: '/my-tasks',
         label: 'My Tasks',
         icon: ListTodo,
+      },
+    ],
+  },
+  {
+    title: 'Sales',
+    roles: ['ADMIN', 'CLIENT'],
+    items: [
+      {
+        href: '/leads',
+        label: 'Leads',
+        icon: Handshake,
       },
     ],
   },

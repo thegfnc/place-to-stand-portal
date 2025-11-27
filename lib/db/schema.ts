@@ -47,6 +47,7 @@ export const leadStatus = pgEnum('lead_status', [
   'ON_ICE',
   'CLOSED_WON',
   'CLOSED_LOST',
+  'UNQUALIFIED',
 ])
 
 export const clients = pgTable(
@@ -777,6 +778,7 @@ export const leads = pgTable(
     contactEmail: text('contact_email'),
     contactPhone: text('contact_phone'),
     notes: jsonb('notes').default({}).notNull(),
+    rank: text().default('zzzzzzzz').notNull(),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
       .default(sql`timezone('utc'::text, now())`)
       .notNull(),

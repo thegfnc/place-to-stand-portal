@@ -15,7 +15,7 @@ import {
   type ReorderPlan,
 } from './dnd-helpers'
 import type { TaskLookup } from './types'
-import { useRecentlyMovedTask } from './use-recently-moved-task'
+import { useRecentlyMovedItem } from '@/lib/dnd/use-recently-moved-item'
 
 type UseBoardDnDArgs = {
   canManageTasks: boolean
@@ -41,11 +41,11 @@ export const useBoardDnDState = ({
     useState<BoardColumnId | null>(null)
   const [dropPreview, setDropPreview] = useState<DropPreview | null>(null)
   const {
-    recentlyMovedTaskId,
-    setRecentlyMovedTaskId,
+    recentlyMovedId: recentlyMovedTaskId,
+    setRecentlyMovedId: setRecentlyMovedTaskId,
     scheduleReset: scheduleRecentlyMovedReset,
     clearTimer: clearRecentlyMovedTimer,
-  } = useRecentlyMovedTask()
+  } = useRecentlyMovedItem()
 
   const getReorderPlan = useCallback(
     (event: DragComputeEvent): ReorderPlan | null => {

@@ -29,6 +29,20 @@
       "when": 1763441645143,
       "tag": "0003_crm-phase-3-project-type",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1764198060565,
+      "tag": "0004_crm-phase-5-leads-rank",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1764204763450,
+      "tag": "0005_add-unqualified-lead-status",
+      "breakpoints": true
     }
   ]
 }

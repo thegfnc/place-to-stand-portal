@@ -120,14 +120,16 @@ function CardContent({
           >
             {context.clientLabel ? (
               context.clientHref ? (
-                <Link
-                  href={context.clientHref}
-                  className='hover:text-foreground inline-flex items-center gap-1 underline-offset-4 transition hover:underline'
-                  onClick={event => event.stopPropagation()}
-                >
-                  {renderProjectTypeIcon(context?.projectType, 'h-3.5 w-3.5')}
-                  {context.clientLabel}
-                </Link>
+                <div className='flex items-center gap-1'>
+                  <Link
+                    href={context.clientHref}
+                    className='hover:text-foreground inline-flex items-center gap-1 underline-offset-4 transition hover:underline'
+                    onClick={event => event.stopPropagation()}
+                  >
+                    {renderProjectTypeIcon(context?.projectType, 'h-3.5 w-3.5')}
+                    {context.clientLabel}
+                  </Link>
+                </div>
               ) : (
                 <span className='inline-flex items-center gap-1'>
                   {renderProjectTypeIcon(context?.projectType, 'h-3.5 w-3.5')}
