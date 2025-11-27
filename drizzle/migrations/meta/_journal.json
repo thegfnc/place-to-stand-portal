@@ -43,6 +43,13 @@
       "when": 1764204763450,
       "tag": "0005_add-unqualified-lead-status",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1764218215929,
+      "tag": "0006_leads-contact-updates",
+      "breakpoints": true
     }
   ]
 }

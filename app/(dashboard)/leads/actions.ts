@@ -9,7 +9,9 @@ import { assertAdmin } from '@/lib/auth/permissions'
 import { db } from '@/lib/db'
 import { leads } from '@/lib/db/schema'
 import {
+  LEAD_SOURCE_TYPES,
   LEAD_STATUS_VALUES,
+  type LeadSourceTypeValue,
   type LeadStatusValue,
 } from '@/lib/leads/constants'
 import { serializeLeadNotes } from '@/lib/leads/notes'
@@ -18,17 +20,24 @@ import { normalizeRank } from '@/lib/rank'
 
 const saveLeadSchema = z.object({
   id: z.string().uuid().optional(),
-  name: z.string().trim().min(1, 'Lead name is required').max(160),
-  status: z.enum(LEAD_STATUS_VALUES).optional(),
-  source: z
+  contactName: z
     .string()
     .trim()
-    .max(160, 'Source must be 160 characters or fewer')
+    .min(1, 'Contact name is required')
+    .max(160),
+  status: z.enum(LEAD_STATUS_VALUES).optional(),
+  sourceType: z.enum(LEAD_SOURCE_TYPES).optional().nullable(),
+  sourceDetail: z
+    .string()
+    .trim()
+    .max(160, 'Source info must be 160 characters or fewer')
     .optional()
     .nullable(),
-  ownerId: z.string().uuid().optional().nullable(),
+  assigneeId: z.string().uuid().optional().nullable(),
   contactEmail: z.string().trim().max(160).optional().nullable(),
   contactPhone: z.string().trim().max(40).optional().nullable(),
+  companyName: z.string().trim().max(160).optional().nullable(),
+  companyWebsite: z.string().trim().max(255).optional().nullable(),
   notes: z.string().optional().nullable(),
 })
 
@@ -81,12 +90,15 @@ export async function saveLead(input: SaveLeadInput): Promise<LeadActionResult> 
       const rank = await resolveNextLeadRank(normalized.status)
 
       await db.insert(leads).values({
-        name: normalized.name,
+        contactName: normalized.contactName,
         status: normalized.status,
-        source: normalized.source,
-        ownerId: normalized.ownerId,
+        sourceType: normalized.sourceType,
+        sourceDetail: normalized.sourceDetail,
+        assigneeId: normalized.assigneeId,
         contactEmail: normalized.contactEmail,
         contactPhone: normalized.contactPhone,
+        companyName: normalized.companyName,
+        companyWebsite: normalized.companyWebsite,
         notes: serializeLeadNotes(normalized.notes),
         rank,
         createdAt: timestamp,
@@ -118,12 +130,15 @@ export async function saveLead(input: SaveLeadInput): Promise<LeadActionResult> 
       await db
         .update(leads)
         .set({
-          name: normalized.name,
+        contactName: normalized.contactName,
           status: normalized.status,
-          source: normalized.source,
-          ownerId: normalized.ownerId,
+        sourceType: normalized.sourceType,
+        sourceDetail: normalized.sourceDetail,
+        assigneeId: normalized.assigneeId,
           contactEmail: normalized.contactEmail,
           contactPhone: normalized.contactPhone,
+        companyName: normalized.companyName,
+        companyWebsite: normalized.companyWebsite,
           notes: serializeLeadNotes(normalized.notes),
           rank,
           updatedAt: timestamp,
@@ -236,22 +251,28 @@ function normalizeLeadPayload(
   payload: SaveLeadInput
 ): {
   id?: string
-  name: string
+    contactName: string
   status: LeadStatusValue
-  source: string | null
-  ownerId: string | null
+    sourceType: LeadSourceTypeValue | null
+    sourceDetail: string | null
+    assigneeId: string | null
   contactEmail: string | null
   contactPhone: string | null
+    companyName: string | null
+    companyWebsite: string | null
   notes: string | null
 } {
   return {
     id: payload.id,
-    name: payload.name.trim(),
+    contactName: payload.contactName.trim(),
     status: payload.status ?? 'NEW_OPPORTUNITIES',
-    source: normalizeOptionalString(payload.source, 160),
-    ownerId: payload.ownerId ?? null,
+    sourceType: payload.sourceType ?? null,
+    sourceDetail: normalizeOptionalString(payload.sourceDetail, 160),
+    assigneeId: payload.assigneeId ?? null,
     contactEmail: normalizeEmail(payload.contactEmail),
     contactPhone: normalizeOptionalString(payload.contactPhone, 40),
+    companyName: normalizeOptionalString(payload.companyName, 160),
+    companyWebsite: normalizeOptionalString(payload.companyWebsite, 255),
     notes: (payload.notes ?? '').trim() || null,
   }
 }
@@ -295,6 +316,6 @@ function normalizeEmail(value: string | null | undefined): string | null {
 }
 
 function revalidateLeadsPath() {
-  revalidatePath('/leads')
+  revalidatePath('/leads/board')
 }
 

@@ -8,7 +8,7 @@ import { AppShellHeader } from '@/components/layout/app-shell'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { DisabledFieldTooltip } from '@/components/ui/disabled-field-tooltip'
-import type { LeadBoardColumnData, LeadOwnerOption } from '@/lib/leads/types'
+import type { LeadAssigneeOption, LeadBoardColumnData } from '@/lib/leads/types'
 import type { LeadRecord } from '@/lib/leads/types'
 
 import { LeadsHeader } from './leads-header'
@@ -17,13 +17,13 @@ import { LeadSheet } from './lead-sheet'
 
 type LeadsWorkspaceProps = {
   initialColumns: LeadBoardColumnData[]
-  owners: LeadOwnerOption[]
+  assignees: LeadAssigneeOption[]
   canManage: boolean
 }
 
 export function LeadsWorkspace({
   initialColumns,
-  owners,
+  assignees,
   canManage,
 }: LeadsWorkspaceProps) {
   const router = useRouter()
@@ -75,7 +75,7 @@ export function LeadsWorkspace({
           open={sheetOpen}
           onOpenChange={handleSheetOpenChange}
           lead={editingLead}
-          owners={owners}
+          assignees={assignees}
           onSuccess={handleSheetSuccess}
         />
       ) : null}

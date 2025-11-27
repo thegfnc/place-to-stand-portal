@@ -132,7 +132,7 @@ function MetricRow({ label, value, tone = 'default' }: MetricRowProps) {
   return (
     <div
       className={cn(
-        'flex min-w-[160px] flex-1 items-center justify-between gap-1 rounded-md border px-3 py-2 md:flex-col md:items-start',
+        'flex min-w-[200px] flex-1 items-center justify-between gap-1 rounded-md border px-3 py-2 md:flex-col md:items-start',
         tone === 'destructive'
           ? 'border-destructive/40 bg-destructive/10 text-destructive'
           : 'border-border bg-background text-foreground'

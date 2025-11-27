@@ -1,14 +1,8 @@
 'use client'
 
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-  useTransition,
-} from 'react'
+import { useCallback, useEffect, useMemo, useState, useTransition } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useForm } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import { z } from 'zod'
 
 import { TaskSheetHeader } from '@/app/(dashboard)/projects/_components/task-sheet/task-sheet-header'
@@ -38,19 +32,19 @@ import { useToast } from '@/components/ui/use-toast'
 import { useSheetFormControls } from '@/lib/hooks/use-sheet-form-controls'
 import { useUnsavedChangesWarning } from '@/lib/hooks/use-unsaved-changes-warning'
 import {
+  LEAD_SOURCE_LABELS,
+  LEAD_SOURCE_TYPES,
   LEAD_STATUS_LABELS,
   LEAD_STATUS_VALUES,
+  type LeadSourceTypeValue,
   type LeadStatusValue,
 } from '@/lib/leads/constants'
-import type { LeadOwnerOption, LeadRecord } from '@/lib/leads/types'
+import type { LeadAssigneeOption, LeadRecord } from '@/lib/leads/types'
 
 import { archiveLead, saveLead } from '../actions'
 
 const formSchema = z.object({
-  name: z.string().trim().min(1, 'Lead name is required').max(160),
-  status: z.enum(LEAD_STATUS_VALUES),
-  source: z.string().trim().max(160).optional().nullable(),
-  ownerId: z.string().uuid().optional().nullable(),
+  contactName: z.string().trim().min(1, 'Contact name is required').max(160),
   contactEmail: z
     .string()
     .trim()
@@ -58,6 +52,16 @@ const formSchema = z.object({
     .optional()
     .nullable(),
   contactPhone: z.string().trim().max(40).optional().nullable(),
+  companyName: z.string().trim().max(160).optional().nullable(),
+  companyWebsite: z
+    .union([z.string().trim().url('Enter a valid URL'), z.literal('')])
+    .transform(val => (val === '' ? null : val))
+    .optional()
+    .nullable(),
+  sourceType: z.enum(LEAD_SOURCE_TYPES).optional().nullable(),
+  sourceDetail: z.string().trim().max(160).optional().nullable(),
+  status: z.enum(LEAD_STATUS_VALUES),
+  assigneeId: z.string().uuid().optional().nullable(),
   notes: z.string().optional(),
 })
 
@@ -67,7 +71,7 @@ type LeadSheetProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   lead: LeadRecord | null
-  owners: LeadOwnerOption[]
+  assignees: LeadAssigneeOption[]
   onSuccess: () => void
 }
 
@@ -75,7 +79,7 @@ export function LeadSheet({
   open,
   onOpenChange,
   lead,
-  owners,
+  assignees,
   onSuccess,
 }: LeadSheetProps) {
   const isEditing = Boolean(lead)
@@ -86,12 +90,15 @@ export function LeadSheet({
 
   const defaultValues = useMemo<LeadFormValues>(
     () => ({
-      name: lead?.name ?? '',
-      status: lead?.status ?? 'NEW_OPPORTUNITIES',
-      source: lead?.source ?? '',
-      ownerId: lead?.ownerId ?? null,
+      contactName: lead?.contactName ?? '',
       contactEmail: lead?.contactEmail ?? '',
       contactPhone: lead?.contactPhone ?? '',
+      companyName: lead?.companyName ?? '',
+      companyWebsite: lead?.companyWebsite ?? '',
+      sourceType: lead?.sourceType ?? null,
+      sourceDetail: lead?.sourceDetail ?? '',
+      status: lead?.status ?? 'NEW_OPPORTUNITIES',
+      assigneeId: lead?.assigneeId ?? null,
       notes: lead?.notesHtml ?? '',
     }),
     [lead]
@@ -106,18 +113,37 @@ export function LeadSheet({
     form.reset(defaultValues)
   }, [defaultValues, form])
 
-  const ownerItems = useMemo(
-    () =>
-      owners.map(owner => ({
-        value: owner.id,
-        label: owner.name,
-        description: owner.email ?? undefined,
+  const assigneeItems = useMemo(
+    () => [
+      {
+        value: '',
+        label: 'Unassigned',
+        description: 'Leave unassigned for now.',
+      },
+      ...assignees.map(assignee => ({
+        value: assignee.id,
+        label: assignee.name,
+        description: assignee.email ?? undefined,
       })),
-    [owners]
+    ],
+    [assignees]
   )
 
   const submitDisabled = isSaving || isArchiving
   const historyKey = lead?.id ?? 'lead:new'
+  const selectedSourceType = useWatch({
+    control: form.control,
+    name: 'sourceType',
+  })
+
+  useEffect(() => {
+    if (!selectedSourceType) {
+      const currentDetail = form.getValues('sourceDetail')
+      if (currentDetail) {
+        form.setValue('sourceDetail', '')
+      }
+    }
+  }, [form, selectedSourceType])
 
   const handleFormSubmit = useCallback(
     (values: LeadFormValues) => {
@@ -145,10 +171,15 @@ export function LeadSheet({
 
         form.reset({
           ...values,
-          source: values.source ?? '',
-          ownerId: values.ownerId ?? null,
+          contactName: values.contactName ?? '',
           contactEmail: values.contactEmail ?? '',
           contactPhone: values.contactPhone ?? '',
+          companyName: values.companyName ?? '',
+          companyWebsite: values.companyWebsite ?? '',
+          sourceType: values.sourceType ?? null,
+          sourceDetail: values.sourceDetail ?? '',
+          status: values.status,
+          assigneeId: values.assigneeId ?? null,
           notes: values.notes ?? '',
         })
 
@@ -254,11 +285,11 @@ export function LeadSheet({
         <SheetContent className='flex w-full flex-col gap-6 overflow-y-auto pb-24 sm:max-w-[676px]'>
           <div className='flex flex-col gap-6'>
             <TaskSheetHeader
-              title={isEditing ? 'Lead details' : 'New lead'}
+              title={isEditing ? 'Edit lead' : 'New lead'}
               description={
                 isEditing
                   ? 'Keep this lead up to date so the pipeline stays accurate.'
-                  : 'Capture lead context, owners, and next steps to keep deals moving.'
+                  : 'Capture lead context, assignees, and next steps to keep deals moving.'
               }
             />
             <Form {...form}>
@@ -269,21 +300,144 @@ export function LeadSheet({
                 <div className='space-y-6'>
                   <FormField
                     control={form.control}
-                    name='name'
+                    name='contactName'
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Lead name</FormLabel>
+                        <FormLabel>Contact Name</FormLabel>
                         <FormControl>
                           <Input
                             {...field}
                             value={field.value ?? ''}
-                            placeholder='Acme Corp. Retainer'
+                            placeholder='Jordan Smith'
                           />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
+                  <div className='grid gap-4 sm:grid-cols-2'>
+                    <FormField
+                      control={form.control}
+                      name='contactEmail'
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Contact Email</FormLabel>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              value={field.value ?? ''}
+                              type='email'
+                              placeholder='name@org.com'
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name='contactPhone'
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Contact Phone</FormLabel>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              value={field.value ?? ''}
+                              placeholder='+1 (555) 123-4567'
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  <div className='grid gap-4 sm:grid-cols-2'>
+                    <FormField
+                      control={form.control}
+                      name='companyName'
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Company Name</FormLabel>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              value={field.value ?? ''}
+                              placeholder='Acme Corporation'
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name='companyWebsite'
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Company Website</FormLabel>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              value={field.value ?? ''}
+                              type='url'
+                              placeholder='https://acme.com'
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  <div className='grid gap-4 sm:grid-cols-2'>
+                    <FormField
+                      control={form.control}
+                      name='sourceType'
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Source</FormLabel>
+                          <Select
+                            value={field.value ?? undefined}
+                            onValueChange={(value: LeadSourceTypeValue) =>
+                              field.onChange(value)
+                            }
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder='Select source' />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {LEAD_SOURCE_TYPES.map(source => (
+                                <SelectItem key={source} value={source}>
+                                  {LEAD_SOURCE_LABELS[source]}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name='sourceDetail'
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Source Info</FormLabel>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              value={field.value ?? ''}
+                              placeholder='Referral name, site URL, or event title'
+                              disabled={!selectedSourceType}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
                   <FormField
                     control={form.control}
                     name='status'
@@ -315,30 +469,13 @@ export function LeadSheet({
                   />
                   <FormField
                     control={form.control}
-                    name='source'
+                    name='assigneeId'
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Source</FormLabel>
-                        <FormControl>
-                          <Input
-                            {...field}
-                            value={field.value ?? ''}
-                            placeholder='Referral, website, event...'
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name='ownerId'
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Owner</FormLabel>
+                        <FormLabel>Assignee</FormLabel>
                         <FormControl>
                           <SearchableCombobox
-                            items={ownerItems}
+                            items={assigneeItems}
                             value={field.value ?? ''}
                             onChange={value =>
                               field.onChange(value.length ? value : null)
@@ -347,50 +484,10 @@ export function LeadSheet({
                             searchPlaceholder='Search teammates'
                           />
                         </FormControl>
-                        <FormDescription>
-                          Assign a single owner to keep outreach accountable.
-                        </FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                  <div className='grid gap-4 sm:grid-cols-2'>
-                    <FormField
-                      control={form.control}
-                      name='contactEmail'
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Contact email</FormLabel>
-                          <FormControl>
-                            <Input
-                              {...field}
-                              value={field.value ?? ''}
-                              type='email'
-                              placeholder='name@org.com'
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name='contactPhone'
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Contact phone</FormLabel>
-                          <FormControl>
-                            <Input
-                              {...field}
-                              value={field.value ?? ''}
-                              placeholder='+1 (555) 123-4567'
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
                   <FormField
                     control={form.control}
                     name='notes'

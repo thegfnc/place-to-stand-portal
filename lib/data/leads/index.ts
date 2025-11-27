@@ -13,8 +13,8 @@ import {
   type LeadStatusValue,
 } from '@/lib/leads/constants'
 import type {
+  LeadAssigneeOption,
   LeadBoardColumnData,
-  LeadOwnerOption,
   LeadRecord,
 } from '@/lib/leads/types'
 import { fetchAdminUsers } from '@/lib/data/users'
@@ -49,14 +49,17 @@ export const fetchLeadsBoard = cache(
 
       bucket.push({
         id: row.id,
-        name: row.name,
+        contactName: row.contactName,
         status: row.status as LeadStatusValue,
-        source: row.source ?? null,
-        ownerId: row.ownerId ?? null,
-        ownerName: row.ownerName ?? null,
-        ownerEmail: row.ownerEmail ?? null,
+        sourceType: (row.sourceType as LeadRecord['sourceType']) ?? null,
+        sourceDetail: row.sourceDetail ?? null,
+        assigneeId: row.assigneeId ?? null,
+        assigneeName: row.assigneeName ?? null,
+        assigneeEmail: row.assigneeEmail ?? null,
         contactEmail: row.contactEmail ?? null,
         contactPhone: row.contactPhone ?? null,
+        companyName: row.companyName ?? null,
+        companyWebsite: row.companyWebsite ?? null,
         notesHtml: extractLeadNotes(row.notes),
         rank: row.rank,
         createdAt: row.createdAt,
@@ -99,24 +102,27 @@ export const fetchLeadById = cache(
     const lead = rows[0]
 
     return {
-      id: lead.id,
-      name: lead.name,
-      status: lead.status as LeadStatusValue,
-      source: lead.source ?? null,
-      ownerId: lead.ownerId ?? null,
-      ownerName: lead.ownerName ?? null,
-      ownerEmail: lead.ownerEmail ?? null,
-      contactEmail: lead.contactEmail ?? null,
-      contactPhone: lead.contactPhone ?? null,
-      notesHtml: extractLeadNotes(lead.notes),
-      rank: lead.rank,
-      createdAt: lead.createdAt,
-      updatedAt: lead.updatedAt,
+    id: lead.id,
+    contactName: lead.contactName,
+    status: lead.status as LeadStatusValue,
+    sourceType: (lead.sourceType as LeadRecord['sourceType']) ?? null,
+    sourceDetail: lead.sourceDetail ?? null,
+    assigneeId: lead.assigneeId ?? null,
+    assigneeName: lead.assigneeName ?? null,
+    assigneeEmail: lead.assigneeEmail ?? null,
+    contactEmail: lead.contactEmail ?? null,
+    contactPhone: lead.contactPhone ?? null,
+    companyName: lead.companyName ?? null,
+    companyWebsite: lead.companyWebsite ?? null,
+    notesHtml: extractLeadNotes(lead.notes),
+    rank: lead.rank,
+    createdAt: lead.createdAt,
+    updatedAt: lead.updatedAt,
     }
   }
 )
 
-export const fetchLeadOwners = cache(async (): Promise<LeadOwnerOption[]> => {
+export const fetchLeadAssignees = cache(async (): Promise<LeadAssigneeOption[]> => {
   const admins = await fetchAdminUsers()
 
   return admins.map(admin => ({
@@ -135,14 +141,17 @@ async function selectLeadRows({
 }) {
   const selection = {
     id: leads.id,
-    name: leads.name,
+    contactName: leads.contactName,
     status: leads.status,
-    source: leads.source,
-    ownerId: leads.ownerId,
-    ownerName: users.fullName,
-    ownerEmail: users.email,
+    sourceType: leads.sourceType,
+    sourceDetail: leads.sourceDetail,
+    assigneeId: leads.assigneeId,
+    assigneeName: users.fullName,
+    assigneeEmail: users.email,
     contactEmail: leads.contactEmail,
     contactPhone: leads.contactPhone,
+    companyName: leads.companyName,
+    companyWebsite: leads.companyWebsite,
     notes: leads.notes,
     rank: includeRank ? leads.rank : sql<string>`'zzzzzzzz'`,
     createdAt: leads.createdAt,
@@ -152,7 +161,7 @@ async function selectLeadRows({
   return db
     .select(selection)
     .from(leads)
-    .leftJoin(users, eq(users.id, leads.ownerId))
+    .leftJoin(users, eq(users.id, leads.assigneeId))
     .where(
       where ? and(where, isNull(leads.deletedAt)) : isNull(leads.deletedAt)
     )

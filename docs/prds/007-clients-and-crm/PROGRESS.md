@@ -42,7 +42,7 @@ This document tracks the progress of the implementation of the features outlined
 
 - [x] **Navigation** – Added the new “Sales” sidebar section with a Leads link (handshake icon) positioned above “Work”, visible to all authenticated users while management actions stay admin-gated.
 - [x] **Backend API** – Implemented Drizzle schema updates (rank column), lead query helpers, and server actions for create/update/delete plus drag-and-drop reordering with rank-based ordering.
-- [x] **Leads View (`/leads`)** – Built the Kanban board with DnD, per-column empty states, drag overlays, and optimistic updates backed by rank recalculation and `/leads` revalidation.
+- [x] **Leads View (`/leads/board`)** – Built the Kanban board with DnD, per-column empty states, drag overlays, and optimistic updates backed by rank recalculation and `/leads/board` revalidation.
 - [x] **Lead Management** – Added the sheet-based lead form (owners, contact info, RTE notes), delete confirmation, and optimistic sync via server actions + router refresh to keep the pipeline state consistent.
 
 ## Phase 6: Finalization & Verification

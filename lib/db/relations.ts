@@ -96,8 +96,8 @@ export const tasksRelations = relations(tasks, ({ one, many }) => ({
 }))
 
 export const leadsRelations = relations(leads, ({ one }) => ({
-  owner: one(users, {
-    fields: [leads.ownerId],
+  assignee: one(users, {
+    fields: [leads.assigneeId],
     references: [users.id],
   }),
 }))

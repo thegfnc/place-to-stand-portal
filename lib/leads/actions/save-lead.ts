@@ -26,18 +26,31 @@ export async function saveLead(
     return { error: message }
   }
 
-  const { id, name, status, source, ownerId, contactEmail, contactPhone, notes } =
-    parsed.data
+  const {
+    id,
+    contactName,
+    status,
+    sourceType,
+    sourceDetail,
+    assigneeId,
+    contactEmail,
+    contactPhone,
+    companyName,
+    companyWebsite,
+    notes,
+  } = parsed.data
 
-  const trimmedName = name.trim()
+  const trimmedContactName = contactName.trim()
 
-  if (!trimmedName) {
-    return { error: 'Lead name is required.' }
+  if (!trimmedContactName) {
+    return { error: 'Contact name is required.' }
   }
 
   const normalizedEmail = contactEmail?.trim() || null
   const normalizedPhone = contactPhone?.trim() || null
-  const normalizedSource = source?.trim() || null
+  const normalizedSourceDetail = sourceDetail?.trim() || null
+  const normalizedCompanyName = companyName?.trim() || null
+  const normalizedCompanyWebsite = companyWebsite?.trim() || null
   const normalizedNotes = notes ?? {}
 
   const isEditing = Boolean(id)
@@ -48,12 +61,15 @@ export async function saveLead(
       await db
         .update(leads)
         .set({
-          name: trimmedName,
+          contactName: trimmedContactName,
           status,
-          source: normalizedSource,
-          ownerId: ownerId || null,
+          sourceType: sourceType ?? null,
+          sourceDetail: normalizedSourceDetail,
+          assigneeId: assigneeId || null,
           contactEmail: normalizedEmail,
           contactPhone: normalizedPhone,
+          companyName: normalizedCompanyName,
+          companyWebsite: normalizedCompanyWebsite,
           notes: normalizedNotes,
           updatedAt: new Date().toISOString(),
         })
@@ -68,7 +84,7 @@ export async function saveLead(
         distinctId: user.id,
       })
 
-      revalidatePath('/leads')
+      revalidatePath('/leads/board')
 
       return { leadId: id }
     } else {
@@ -76,12 +92,15 @@ export async function saveLead(
       const inserted = await db
         .insert(leads)
         .values({
-          name: trimmedName,
+          contactName: trimmedContactName,
           status,
-          source: normalizedSource,
-          ownerId: ownerId || null,
+          sourceType: sourceType ?? null,
+          sourceDetail: normalizedSourceDetail,
+          assigneeId: assigneeId || null,
           contactEmail: normalizedEmail,
           contactPhone: normalizedPhone,
+          companyName: normalizedCompanyName,
+          companyWebsite: normalizedCompanyWebsite,
           notes: normalizedNotes,
         })
         .returning({ id: leads.id })
@@ -102,7 +121,7 @@ export async function saveLead(
         distinctId: user.id,
       })
 
-      revalidatePath('/leads')
+      revalidatePath('/leads/board')
 
       return { leadId }
     }

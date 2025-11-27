@@ -1,6 +1,6 @@
 import type { leads } from '@/lib/db/schema'
 import type { InferSelectModel } from 'drizzle-orm'
-import type { LeadStatusValue } from './lead-constants'
+import type { LeadSourceTypeValue, LeadStatusValue } from './lead-constants'
 
 /**
  * Lead record as selected from the database.
@@ -10,8 +10,8 @@ export type Lead = InferSelectModel<typeof leads>
 /**
  * Lead with the owner's information.
  */
-export type LeadWithOwner = Lead & {
-  owner: {
+export type LeadWithAssignee = Lead & {
+  assignee: {
     id: string
     fullName: string | null
     email: string
@@ -23,12 +23,15 @@ export type LeadWithOwner = Lead & {
  * Payload for creating a new lead.
  */
 export type CreateLeadPayload = {
-  name: string
+  contactName: string
   status?: LeadStatusValue
-  source?: string | null
-  ownerId?: string | null
+  sourceType?: LeadSourceTypeValue | null
+  sourceDetail?: string | null
+  assigneeId?: string | null
   contactEmail?: string | null
   contactPhone?: string | null
+  companyName?: string | null
+  companyWebsite?: string | null
   notes?: Record<string, unknown>
 }
 
@@ -37,12 +40,15 @@ export type CreateLeadPayload = {
  */
 export type UpdateLeadPayload = {
   id: string
-  name?: string
+  contactName?: string
   status?: LeadStatusValue
-  source?: string | null
-  ownerId?: string | null
+  sourceType?: LeadSourceTypeValue | null
+  sourceDetail?: string | null
+  assigneeId?: string | null
   contactEmail?: string | null
   contactPhone?: string | null
+  companyName?: string | null
+  companyWebsite?: string | null
   notes?: Record<string, unknown>
 }
 
@@ -53,4 +59,3 @@ export type LeadMutationResult = {
   error?: string
   leadId?: string
 }
-

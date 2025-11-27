@@ -86,7 +86,7 @@ This document outlines a phased development plan for implementing the features d
 2.  **Backend API:**
     - Create server actions to handle all CRUD operations for leads (Create, Read, Update, Delete).
     - The "Read" action should fetch all leads and group them by status for the Kanban view.
-3.  **Leads View (`/leads`):**
+3.  **Leads View (`/leads/board`):**
     - Build the Kanban board UI with the columns defined in the PRD (`New Opportunities`, `Active Opportunities`, etc.).
     - Implement drag-and-drop functionality to allow users to move leads between columns, which will update the lead's status.
 4.  **Lead Management:**

@@ -37,7 +37,7 @@ export async function deleteLead(leadId: string): Promise<LeadMutationResult> {
       distinctId: user.id,
     })
 
-    revalidatePath('/leads')
+    revalidatePath('/leads/board')
 
     return { leadId }
   } catch (error) {

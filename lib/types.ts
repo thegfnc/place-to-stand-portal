@@ -1,5 +1,6 @@
 import {
   clientBillingType,
+  leadSourceType,
   leadStatus,
   projectType,
   taskStatus,
@@ -12,6 +13,7 @@ export type ClientBillingTypeValue =
   (typeof clientBillingType.enumValues)[number]
 export type ProjectTypeValue = (typeof projectType.enumValues)[number]
 export type LeadStatusValue = (typeof leadStatus.enumValues)[number]
+export type LeadSourceTypeValue = (typeof leadSourceType.enumValues)[number]
 
 export type DbClient = {
   id: string
@@ -140,12 +142,15 @@ export type TaskWithRelations = DbTask & {
 
 export type DbLead = {
   id: string
-  name: string
+  contact_name: string
   status: LeadStatusValue
-  source: string | null
-  owner_id: string | null
+  source_type: LeadSourceTypeValue | null
+  source_detail: string | null
+  assignee_id: string | null
   contact_email: string | null
   contact_phone: string | null
+  company_name: string | null
+  company_website: string | null
   notes: Record<string, unknown>
   created_at: string
   updated_at: string

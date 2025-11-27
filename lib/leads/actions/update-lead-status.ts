@@ -44,7 +44,7 @@ export async function updateLeadStatus(
       distinctId: user.id,
     })
 
-    revalidatePath('/leads')
+    revalidatePath('/leads/board')
 
     return { leadId }
   } catch (error) {

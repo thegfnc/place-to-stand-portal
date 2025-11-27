@@ -50,6 +50,12 @@ export const leadStatus = pgEnum('lead_status', [
   'UNQUALIFIED',
 ])
 
+export const leadSourceType = pgEnum('lead_source_type', [
+  'REFERRAL',
+  'WEBSITE',
+  'EVENT',
+])
+
 export const clients = pgTable(
   'clients',
   {
@@ -771,12 +777,15 @@ export const leads = pgTable(
   'leads',
   {
     id: uuid().defaultRandom().primaryKey().notNull(),
-    name: text().notNull(),
+    contactName: text('contact_name').notNull(),
     status: leadStatus().default('NEW_OPPORTUNITIES').notNull(),
-    source: text(),
-    ownerId: uuid('owner_id'),
+    sourceType: leadSourceType('source_type'),
+    sourceDetail: text('source_detail'),
+    assigneeId: uuid('assignee_id'),
     contactEmail: text('contact_email'),
     contactPhone: text('contact_phone'),
+    companyName: text('company_name'),
+    companyWebsite: text('company_website'),
     notes: jsonb('notes').default({}).notNull(),
     rank: text().default('zzzzzzzz').notNull(),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
@@ -791,13 +800,13 @@ export const leads = pgTable(
     index('idx_leads_status')
       .using('btree', table.status.asc().nullsLast().op('enum_ops'))
       .where(sql`(deleted_at IS NULL)`),
-    index('idx_leads_owner')
-      .using('btree', table.ownerId.asc().nullsLast().op('uuid_ops'))
+    index('idx_leads_assignee')
+      .using('btree', table.assigneeId.asc().nullsLast().op('uuid_ops'))
       .where(sql`(deleted_at IS NULL)`),
     foreignKey({
-      columns: [table.ownerId],
+      columns: [table.assigneeId],
       foreignColumns: [users.id],
-      name: 'leads_owner_id_fkey',
+      name: 'leads_assignee_id_fkey',
     }),
     pgPolicy('Admins manage leads', {
       as: 'permissive',

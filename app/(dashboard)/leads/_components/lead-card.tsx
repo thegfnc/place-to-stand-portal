@@ -13,8 +13,14 @@ import { CSS } from '@dnd-kit/utilities'
 import { Mail, Phone, User } from 'lucide-react'
 
 import { Badge } from '@/components/ui/badge'
-import { cn } from '@/lib/utils'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
+import { getLeadSourceLabel } from '@/lib/leads/constants'
 import type { LeadRecord } from '@/lib/leads/types'
+import { cn } from '@/lib/utils'
 
 type LeadCardProps = {
   lead: LeadRecord
@@ -22,19 +28,6 @@ type LeadCardProps = {
   canManage: boolean
   onEditLead: (lead: LeadRecord) => void
   disableDropTransition?: boolean
-}
-
-const toPlainText = (value: string | null | undefined) => {
-  if (!value) {
-    return ''
-  }
-
-  return value
-    .replace(/<br\s*\/?>(\s|&nbsp;|\u00a0)*/gi, ' ')
-    .replace(/&nbsp;/gi, ' ')
-    .replace(/<[^>]*>/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
 }
 
 export const LeadCard = memo(function LeadCard({
@@ -132,56 +125,69 @@ export const LeadCard = memo(function LeadCard({
 })
 
 export function LeadCardContent({ lead }: { lead: LeadRecord }) {
-  const ownerDisplay = lead.ownerName ?? lead.ownerEmail ?? 'Unassigned'
-  const notesPreview = toPlainText(lead.notesHtml)
+  const assigneeDisplay =
+    lead.assigneeName ?? lead.assigneeEmail ?? 'Unassigned'
+  const companyDisplay = lead.companyName?.trim()
+  const sourceLabel = lead.sourceType
+    ? getLeadSourceLabel(lead.sourceType)
+    : null
+  const sourceDetail = lead.sourceDetail?.trim()
+  const showSourceTooltip = Boolean(sourceDetail && sourceLabel)
+
+  const badge = sourceLabel ? (
+    <Badge
+      variant='outline'
+      className='text-muted-foreground text-[10px] font-medium tracking-wide uppercase'
+    >
+      {sourceLabel}
+    </Badge>
+  ) : null
 
   return (
     <>
-      <div className='space-y-2'>
+      <div className='space-y-0.5'>
         <div className='flex items-start justify-between gap-3'>
           <h3 className='text-foreground line-clamp-2 text-sm leading-snug font-semibold'>
-            {lead.name}
+            {lead.contactName}
           </h3>
-          {lead.source ? (
-            <Badge
-              variant='outline'
-              className='text-muted-foreground text-[10px] font-medium tracking-wide uppercase'
-            >
-              {lead.source}
-            </Badge>
-          ) : null}
+          {showSourceTooltip && badge ? (
+            <Tooltip>
+              <TooltipTrigger asChild>{badge}</TooltipTrigger>
+              <TooltipContent side='top'>{sourceDetail}</TooltipContent>
+            </Tooltip>
+          ) : (
+            badge
+          )}
         </div>
-        {notesPreview ? (
-          <p className='text-muted-foreground line-clamp-3 text-xs'>
-            {notesPreview}
+        {companyDisplay ? (
+          <p className='text-muted-foreground text-xs font-medium'>
+            {companyDisplay}
           </p>
         ) : null}
       </div>
-      <div className='text-muted-foreground mt-4 space-y-2 text-xs'>
-        <div className='flex flex-wrap items-center gap-x-3 gap-y-2'>
-          <div className='inline-flex items-center gap-1'>
-            <User className='h-3.5 w-3.5' aria-hidden />
-            {ownerDisplay}
-          </div>
-        </div>
+      <div className='mt-5 space-y-2'>
         {lead.contactEmail ? (
-          <AnchorRow
-            icon={Mail}
-            value={lead.contactEmail}
-            href={`mailto:${lead.contactEmail}`}
-          />
-        ) : (
-          <p className='text-xs'>
-            Add an email address to keep outreach on track.
-          </p>
-        )}
-        {lead.contactPhone ? (
-          <AnchorRow
-            icon={Phone}
-            value={lead.contactPhone}
-            href={`tel:${lead.contactPhone}`}
-          />
+          <div className='text-muted-foreground flex flex-wrap items-center gap-2 text-xs'>
+            <AnchorRow
+              icon={Mail}
+              value={lead.contactEmail}
+              href={`mailto:${lead.contactEmail}`}
+            />
+          </div>
         ) : null}
+        {lead.contactPhone ? (
+          <div className='text-muted-foreground flex flex-wrap items-center gap-2 text-xs'>
+            <AnchorRow
+              icon={Phone}
+              value={lead.contactPhone}
+              href={`tel:${lead.contactPhone}`}
+            />
+          </div>
+        ) : null}
+        <div className='text-muted-foreground flex flex-wrap items-center gap-2 text-xs'>
+          <User className='h-3.5 w-3.5' aria-hidden />
+          <span>{assigneeDisplay}</span>
+        </div>
       </div>
     </>
   )
@@ -197,7 +203,7 @@ function AnchorRow({ icon: Icon, value, href }: AnchorRowProps) {
   return (
     <a
       href={href}
-      className='text-muted-foreground hover:text-foreground inline-flex items-center gap-2 transition'
+      className='text-muted-foreground hover:text-foreground flex items-center gap-2 text-xs transition'
       onClick={event => event.stopPropagation()}
       title={value}
     >
