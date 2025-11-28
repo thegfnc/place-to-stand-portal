@@ -72,12 +72,14 @@ type FetchAssignedTasksSummaryOptions = {
   userId: string
   role: UserRole
   limit?: number | null
+  includeCompletedStatuses?: boolean
 }
 
 async function loadAssignedTaskSummaries({
   userId,
   role,
   limit = DEFAULT_LIMIT,
+  includeCompletedStatuses = true,
 }: FetchAssignedTasksSummaryOptions): Promise<AssignedTaskSummaryResult> {
   const shouldScopeToUser = role !== 'ADMIN'
 
@@ -114,8 +116,11 @@ async function loadAssignedTaskSummaries({
     isNull(tasksTable.acceptedAt),
     ne(tasksTable.status, 'ARCHIVED'),
     ne(tasksTable.status, 'BACKLOG'),
-    ne(tasksTable.status, 'DONE'),
   ]
+
+  if (!includeCompletedStatuses) {
+    baseConditions.push(ne(tasksTable.status, 'DONE'))
+  }
 
   if (shouldScopeToUser) {
     let accessCondition: SQL<unknown> = or(

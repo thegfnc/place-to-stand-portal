@@ -14,6 +14,7 @@ export default async function HomePage() {
     userId: user.id,
     role: user.role,
     limit: 5,
+    includeCompletedStatuses: false,
   })
 
   return (
