@@ -114,12 +114,16 @@ async function loadAssignedTaskSummaries({
     isNull(tasksTable.acceptedAt),
     ne(tasksTable.status, 'ARCHIVED'),
     ne(tasksTable.status, 'BACKLOG'),
+    ne(tasksTable.status, 'DONE'),
   ]
 
   if (shouldScopeToUser) {
     let accessCondition: SQL<unknown> = or(
       eq(projectsTable.type, 'INTERNAL'),
-      and(eq(projectsTable.type, 'PERSONAL'), eq(projectsTable.createdBy, userId))
+      and(
+        eq(projectsTable.type, 'PERSONAL'),
+        eq(projectsTable.createdBy, userId)
+      )
     )!
 
     if (accessibleClientIds.length > 0) {
@@ -230,7 +234,8 @@ async function loadAssignedTaskSummaries({
 }
 
 export const fetchAssignedTasksSummary = cache(
-  (options: FetchAssignedTasksSummaryOptions) => loadAssignedTaskSummaries(options)
+  (options: FetchAssignedTasksSummaryOptions) =>
+    loadAssignedTaskSummaries(options)
 )
 
 export function listAssignedTaskSummaries(
