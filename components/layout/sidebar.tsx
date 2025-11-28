@@ -130,7 +130,7 @@ export function Sidebar({ user }: Props) {
   }, [theme, themeMounted])
 
   return (
-    <aside className='bg-background/90 hidden h-screen w-72 shrink-0 overflow-y-scroll border-r md:flex md:flex-col'>
+    <aside className='bg-background/90 hidden h-screen w-72 shrink-0 overflow-y-auto border-r md:flex md:flex-col'>
       <div className='flex flex-1 flex-col'>
         <div className='space-y-10 px-6 py-8'>
           <div suppressHydrationWarning>
