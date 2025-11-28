@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useState } from 'react'
+import { useCallback, useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Plus } from 'lucide-react'
 
@@ -19,25 +19,34 @@ type LeadsWorkspaceProps = {
   initialColumns: LeadBoardColumnData[]
   assignees: LeadAssigneeOption[]
   canManage: boolean
+  activeLeadId: string | null
 }
 
 export function LeadsWorkspace({
   initialColumns,
   assignees,
   canManage,
+  activeLeadId,
 }: LeadsWorkspaceProps) {
   const router = useRouter()
-  const [sheetOpen, setSheetOpen] = useState(false)
-  const [editingLead, setEditingLead] = useState<LeadRecord | null>(null)
+  const [isCreatingLead, setIsCreatingLead] = useState(false)
+  const [closingLeadId, setClosingLeadId] = useState<string | null>(null)
+  const [, startRefresh] = useTransition()
+  const leadLookup = useMemo(
+    () => buildLeadLookup(initialColumns),
+    [initialColumns]
+  )
+  const activeLead = activeLeadId ? leadLookup.get(activeLeadId) ?? null : null
 
   const handleCreateLead = useCallback(() => {
     if (!canManage) {
       return
     }
 
-    setEditingLead(null)
-    setSheetOpen(true)
-  }, [canManage])
+    setClosingLeadId(null)
+    setIsCreatingLead(true)
+    router.push('/leads/board', { scroll: false })
+  }, [canManage, router])
 
   const handleEditLead = useCallback(
     (lead: LeadRecord) => {
@@ -45,36 +54,63 @@ export function LeadsWorkspace({
         return
       }
 
-      setEditingLead(lead)
-      setSheetOpen(true)
+      setClosingLeadId(null)
+      setIsCreatingLead(false)
+      router.push(`/leads/board/${lead.id}`, { scroll: false })
     },
-    [canManage]
+    [canManage, router]
   )
 
   const handleSheetOpenChange = useCallback(
     (next: boolean) => {
-      setSheetOpen(next)
-      if (!next) {
-        setEditingLead(null)
+      if (next) {
+        setClosingLeadId(null)
+        return
       }
+
+      if (isCreatingLead) {
+        setIsCreatingLead(false)
+        startRefresh(() => {
+          router.refresh()
+        })
+        return
+      }
+
+      if (activeLeadId) {
+        setClosingLeadId(activeLeadId)
+        router.push('/leads/board', { scroll: false })
+      }
+      startRefresh(() => {
+        router.refresh()
+      })
     },
-    [setSheetOpen]
+    [activeLeadId, isCreatingLead, router, startRefresh]
   )
 
   const handleSheetSuccess = useCallback(() => {
-    router.refresh()
-  }, [router])
+    startRefresh(() => {
+      router.refresh()
+    })
+  }, [router, startRefresh])
+
+  const isRouteLeadOpen =
+    Boolean(activeLeadId) && activeLeadId !== closingLeadId
+  const isSheetOpen = isCreatingLead || isRouteLeadOpen
+  const sheetLead = isCreatingLead ? null : activeLead
+  const shouldRenderSheet = canManage && (isCreatingLead || Boolean(activeLead))
+  const boardActiveLeadId =
+    isCreatingLead || closingLeadId === activeLeadId ? null : activeLeadId
 
   return (
     <div className='flex h-full min-h-0 flex-col gap-6'>
       <AppShellHeader>
         <LeadsHeader />
       </AppShellHeader>
-      {canManage ? (
+      {shouldRenderSheet ? (
         <LeadSheet
-          open={sheetOpen}
+          open={isSheetOpen}
           onOpenChange={handleSheetOpenChange}
-          lead={editingLead}
+          lead={sheetLead}
           assignees={assignees}
           onSuccess={handleSheetSuccess}
         />
@@ -109,9 +145,22 @@ export function LeadsWorkspace({
             initialColumns={initialColumns}
             canManage={canManage}
             onEditLead={handleEditLead}
+            activeLeadId={boardActiveLeadId}
           />
         </TabsContent>
       </Tabs>
     </div>
   )
+}
+
+function buildLeadLookup(columns: LeadBoardColumnData[]) {
+  const map = new Map<string, LeadRecord>()
+
+  columns.forEach(column => {
+    column.leads.forEach(lead => {
+      map.set(lead.id, lead)
+    })
+  })
+
+  return map
 }

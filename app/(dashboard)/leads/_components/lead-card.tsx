@@ -28,6 +28,7 @@ type LeadCardProps = {
   canManage: boolean
   onEditLead: (lead: LeadRecord) => void
   disableDropTransition?: boolean
+  isActive?: boolean
 }
 
 export const LeadCard = memo(function LeadCard({
@@ -36,6 +37,7 @@ export const LeadCard = memo(function LeadCard({
   canManage,
   onEditLead,
   disableDropTransition = false,
+  isActive = false,
 }: LeadCardProps) {
   const {
     attributes,
@@ -114,8 +116,9 @@ export const LeadCard = memo(function LeadCard({
         'group bg-card focus-visible:ring-ring focus-visible:ring-offset-background rounded-lg border-y border-r border-l-4 border-l-amber-500 p-4 text-left shadow-sm transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none',
         canManage ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer',
         isDragging && 'ring-primary ring-2',
-        isDragging && 'border-primary/50 bg-primary/5 shadow-md',
-        !isDragging &&
+        (isActive || isDragging) && 'border-primary/50 bg-primary/5 shadow-md',
+        !isActive &&
+          !isDragging &&
           'hover:border-r-amber-500/50 hover:border-y-amber-500/50 hover:bg-amber-500/5 hover:shadow-md'
       )}
     >

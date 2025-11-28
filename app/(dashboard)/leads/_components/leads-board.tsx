@@ -36,12 +36,14 @@ type LeadsBoardProps = {
   initialColumns: LeadBoardColumnData[]
   canManage: boolean
   onEditLead: (lead: LeadRecord) => void
+  activeLeadId: string | null
 }
 
 export function LeadsBoard({
   initialColumns,
   canManage,
   onEditLead,
+  activeLeadId,
 }: LeadsBoardProps) {
   const { sensors } = useProjectsBoardSensors()
   const [columns, setColumns] = useState(() =>
@@ -416,6 +418,7 @@ export function LeadsBoard({
                     leads={column.leads}
                     canManage={canManage && !isPending}
                     onEditLead={onEditLead}
+                    activeLeadId={activeLeadId}
                     isDropTarget={dropPreview?.columnId === column.id}
                     dropIndicatorIndex={
                       dropPreview?.columnId === column.id ? dropPreview.index : null

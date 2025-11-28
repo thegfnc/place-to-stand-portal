@@ -24,6 +24,7 @@ type LeadColumnProps = {
   dropIndicatorIndex?: number | null
   draggingLeadId?: string | null
   recentlyMovedLeadId?: string | null
+  activeLeadId?: string | null
 }
 
 export function LeadColumn({
@@ -36,6 +37,7 @@ export function LeadColumn({
   dropIndicatorIndex = null,
   draggingLeadId = null,
   recentlyMovedLeadId = null,
+  activeLeadId = null,
 }: LeadColumnProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: columnId,
@@ -98,6 +100,7 @@ export function LeadColumn({
                   canManage={canManage}
                   onEditLead={onEditLead}
                   disableDropTransition={lead.id === recentlyMovedLeadId}
+                  isActive={lead.id === activeLeadId}
                 />
               </Fragment>
             )
