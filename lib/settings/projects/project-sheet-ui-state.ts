@@ -31,18 +31,20 @@ export const buildClientOptions = (clients: ClientRow[]): ClientOption[] =>
 export const deriveSubmitButtonState = (
   isPending: boolean,
   isEditing: boolean,
-  clientOptions: ClientOption[]
+  clientOptions: ClientOption[],
+  requiresClientSelection: boolean
 ): SubmitButtonState => {
-  const hasClients = clientOptions.length > 0 || isEditing
-  const disabled = isPending || !hasClients
+  const hasRequiredClients =
+    !requiresClientSelection || clientOptions.length > 0 || isEditing
+  const disabled = isPending || !hasRequiredClients
   let reason: string | null = null
 
   if (disabled) {
     reason = isPending
       ? PROJECT_SHEET_PENDING_REASON
-      : hasClients
-        ? null
-        : PROJECT_SHEET_MISSING_CLIENT_REASON
+      : requiresClientSelection && clientOptions.length === 0 && !isEditing
+        ? PROJECT_SHEET_MISSING_CLIENT_REASON
+        : null
   }
 
   let label = 'Create project'

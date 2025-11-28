@@ -4,10 +4,13 @@ import {
   CalendarDays,
   ChevronRight,
   FolderKanban,
+  User,
+  Users,
 } from 'lucide-react'
 
 import { Badge } from '@/components/ui/badge'
 import type { AssignedTaskSummary } from '@/lib/data/tasks'
+import type { ProjectTypeValue } from '@/lib/types'
 import {
   TASK_DUE_TONE_CLASSES,
   getTaskDueMeta,
@@ -17,6 +20,7 @@ import {
   getTaskStatusToken,
 } from '@/lib/projects/task-status'
 import { cn } from '@/lib/utils'
+import { PROJECT_SPECIAL_SEGMENTS } from '@/lib/projects/board/board-utils'
 
 type TaskListProps = {
   items: AssignedTaskSummary[]
@@ -41,9 +45,11 @@ function TaskListItem({ task }: { task: AssignedTaskSummary }) {
   const dueMeta = getTaskDueMeta(task.dueOn, { status: task.status })
   const linkMeta = getTaskLinkMeta(task)
   const projectLinkMeta = getProjectLinkMeta(task)
+  const clientLinkMeta = getClientLinkMeta(task)
   const statusToken = getTaskStatusToken(task.status)
   const statusLabel = getTaskStatusLabel(task.status)
   const hasTaskLink = Boolean(linkMeta.href)
+  const clientLabel = getClientDisplayName(task)
 
   return (
     <li className={cn('relative', hasTaskLink && 'group')}>
@@ -81,24 +87,36 @@ function TaskListItem({ task }: { task: AssignedTaskSummary }) {
               {statusLabel}
             </Badge>
             <div className='text-muted-foreground inline-flex items-center gap-3'>
-              <div className='flex items-center gap-1'>
-                <Building2 className='size-3.5' aria-hidden />
-                {task.client?.name ? `${task.client.name}` : ''}
-              </div>
-              <div className='flex items-center gap-1'>
-                <FolderKanban className='size-3.5' aria-hidden />
-                {projectLinkMeta.href ? (
-                  <Link
-                    href={projectLinkMeta.href}
-                    onClick={e => e.stopPropagation()}
-                    className='hover:text-foreground pointer-events-auto relative z-20 underline-offset-4 transition-colors hover:underline'
-                  >
-                    {task.project.name}
-                  </Link>
-                ) : (
-                  task.project.name
-                )}
-              </div>
+              {clientLinkMeta.href ? (
+                <Link
+                  href={clientLinkMeta.href}
+                  onClick={e => e.stopPropagation()}
+                  className='hover:text-foreground pointer-events-auto relative z-20 inline-flex items-center gap-1 underline-offset-4 transition hover:underline'
+                >
+                  {renderProjectTypeIcon(task.project.type, 'size-3.5')}
+                  {clientLabel}
+                </Link>
+              ) : (
+                <span className='inline-flex items-center gap-1'>
+                  {renderProjectTypeIcon(task.project.type, 'size-3.5')}
+                  {clientLabel}
+                </span>
+              )}
+              {projectLinkMeta.href ? (
+                <Link
+                  href={projectLinkMeta.href}
+                  onClick={e => e.stopPropagation()}
+                  className='hover:text-foreground pointer-events-auto relative z-20 inline-flex items-center gap-1 underline-offset-4 transition hover:underline'
+                >
+                  <FolderKanban className='size-3.5' aria-hidden />
+                  {task.project.name}
+                </Link>
+              ) : (
+                <span className='inline-flex items-center gap-1'>
+                  <FolderKanban className='size-3.5' aria-hidden />
+                  {task.project.name}
+                </span>
+              )}
               <div
                 className={cn(
                   'inline-flex items-center gap-1',
@@ -128,31 +146,85 @@ function TaskListItem({ task }: { task: AssignedTaskSummary }) {
 }
 
 function getTaskLinkMeta(task: AssignedTaskSummary): TaskLinkMeta {
-  const { client, project } = task
-
-  if (!project.slug || !client?.slug) {
-    return {
-      href: null,
-      reason:
-        "This task's project is missing a client or project slug. Update it in Settings -> Projects to enable quick navigation.",
-    }
-  }
-
   return {
-    href: `/projects/${client.slug}/${project.slug}/board/${task.id}`,
+    href: `/my-tasks/board/${task.id}`,
   }
 }
 
 function getProjectLinkMeta(task: AssignedTaskSummary): TaskLinkMeta {
   const { client, project } = task
+  const projectSlug = project.slug ?? null
 
-  if (!project.slug || !client?.slug) {
+  if (!projectSlug) {
+    return { href: null }
+  }
+
+  if (project.type === 'INTERNAL') {
     return {
-      href: null,
+      href: `/projects/${PROJECT_SPECIAL_SEGMENTS.INTERNAL}/${projectSlug}/board`,
     }
   }
 
-  return {
-    href: `/projects/${client.slug}/${project.slug}/board`,
+  if (project.type === 'PERSONAL') {
+    return {
+      href: `/projects/${PROJECT_SPECIAL_SEGMENTS.PERSONAL}/${projectSlug}/board`,
+    }
   }
+
+  const clientSlug = client?.slug ?? null
+
+  if (!clientSlug) {
+    return { href: null }
+  }
+
+  return {
+    href: `/projects/${clientSlug}/${projectSlug}/board`,
+  }
+}
+
+function getClientLinkMeta(task: AssignedTaskSummary): TaskLinkMeta {
+  const { client, project } = task
+
+  // Only link to client pages for CLIENT-type projects with a valid client
+  if (project.type !== 'CLIENT' || !client) {
+    return { href: null }
+  }
+
+  const clientSlug = client.slug
+  if (clientSlug) {
+    return { href: `/clients/${clientSlug}` }
+  }
+
+  return { href: `/clients/${client.id}` }
+}
+
+function getClientDisplayName(task: AssignedTaskSummary): string {
+  if (task.client?.name) {
+    return task.client.name
+  }
+
+  if (task.project.type === 'PERSONAL') {
+    return 'Personal'
+  }
+
+  if (task.project.type === 'INTERNAL') {
+    return 'Internal'
+  }
+
+  return 'Unassigned'
+}
+
+function renderProjectTypeIcon(
+  projectType: ProjectTypeValue,
+  className: string
+) {
+  if (projectType === 'INTERNAL') {
+    return <Users className={className} aria-hidden />
+  }
+
+  if (projectType === 'PERSONAL') {
+    return <User className={className} aria-hidden />
+  }
+
+  return <Building2 className={className} aria-hidden />
 }

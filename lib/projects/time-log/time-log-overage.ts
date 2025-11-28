@@ -9,6 +9,7 @@ type PendingAction = {
 
 export type UseTimeLogOverageOptions = {
   clientRemainingHours: number | null
+  enforceOverageCheck?: boolean
 }
 
 export type UseTimeLogOverageResult = {
@@ -25,7 +26,7 @@ export type UseTimeLogOverageResult = {
 export function useTimeLogOverage(
   options: UseTimeLogOverageOptions
 ): UseTimeLogOverageResult {
-  const { clientRemainingHours } = options
+  const { clientRemainingHours, enforceOverageCheck = true } = options
 
   const [pending, setPending] = useState<PendingAction | null>(null)
   const [isOpen, setIsOpen] = useState(false)
@@ -37,6 +38,10 @@ export function useTimeLogOverage(
 
   const requestConfirmation = useCallback(
     (hours: number, action: () => void) => {
+      if (!enforceOverageCheck) {
+        return false
+      }
+
       if (
         clientRemainingHours === null ||
         !Number.isFinite(hours) ||
@@ -50,7 +55,7 @@ export function useTimeLogOverage(
       setIsOpen(true)
       return true
     },
-    [clientRemainingHours]
+    [clientRemainingHours, enforceOverageCheck]
   )
 
   const confirm = useCallback(() => {

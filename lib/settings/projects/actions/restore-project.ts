@@ -45,7 +45,7 @@ export async function restoreProject(
         | {
             id: string
             name: string
-            clientId: string
+            clientId: string | null
             deletedAt: string | null
           }
         | undefined

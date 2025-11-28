@@ -5,6 +5,7 @@ import { ProjectsBoard } from '../../../projects-board'
 import { fetchProjectsWithRelations } from '@/lib/data/projects'
 import { fetchAdminUsers } from '@/lib/data/users'
 import { requireUser } from '@/lib/auth/session'
+import { getProjectClientSegment } from '@/lib/projects/board/board-utils'
 
 export const metadata: Metadata = {
   title: 'Projects | Place to Stand Portal',
@@ -53,9 +54,7 @@ export default async function ProjectTimeLogsRoute({ params }: PageProps) {
     redirect('/projects')
   }
 
-  const canonicalClientSlug = project.client_id
-    ? (project.client?.slug ?? clientSlugById.get(project.client_id) ?? null)
-    : null
+  const canonicalClientSlug = getProjectClientSegment(project, clientSlugById)
 
   if (!canonicalClientSlug) {
     redirect('/projects')

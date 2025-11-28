@@ -10,6 +10,7 @@ import { DisabledFieldTooltip } from '@/components/ui/disabled-field-tooltip'
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -25,6 +26,7 @@ import {
 } from '@/components/ui/select'
 import { SearchableCombobox } from '@/components/ui/searchable-combobox'
 import { PROJECT_STATUS_OPTIONS } from '@/lib/constants'
+import { PROJECT_TYPE_OPTIONS } from '@/lib/settings/projects/project-sheet-form'
 import type { ProjectSheetFormValues } from '@/lib/settings/projects/use-project-sheet-state'
 import type {
   ClientOption,
@@ -78,6 +80,7 @@ export function ProjectSheetForm(props: ProjectSheetFormProps) {
   })
 
   const firstFieldRef = useRef<HTMLInputElement>(null)
+  const projectType = form.watch('projectType')
 
   useEffect(() => {
     if (isSheetOpen && firstFieldRef.current) {
@@ -88,6 +91,16 @@ export function ProjectSheetForm(props: ProjectSheetFormProps) {
       return () => clearTimeout(timeoutId)
     }
   }, [isSheetOpen])
+
+  useEffect(() => {
+    if (projectType !== 'CLIENT') {
+      const currentClientId = form.getValues('clientId')
+      if (currentClientId) {
+        form.setValue('clientId', '', { shouldDirty: true })
+      }
+      form.clearErrors('clientId')
+    }
+  }, [form, projectType])
 
   return (
     <Form {...form}>
@@ -108,13 +121,14 @@ export function ProjectSheetForm(props: ProjectSheetFormProps) {
                 >
                   <Input
                     {...field}
-                    ref={(node) => {
+                    ref={node => {
                       firstFieldRef.current = node
                       if (typeof field.ref === 'function') {
                         field.ref(node)
                       } else if (field.ref) {
-                        ;(field.ref as React.MutableRefObject<HTMLInputElement | null>).current =
-                          node
+                        ;(
+                          field.ref as React.MutableRefObject<HTMLInputElement | null>
+                        ).current = node
                       }
                     }}
                     placeholder='Website redesign'
@@ -151,7 +165,48 @@ export function ProjectSheetForm(props: ProjectSheetFormProps) {
             )}
           />
         ) : null}
-        <div className='grid gap-4 sm:grid-cols-2'>
+        <div className='grid items-start gap-4 sm:grid-cols-2'>
+          <FormField
+            control={form.control}
+            name='projectType'
+            render={({ field }) => {
+              const selectedType =
+                PROJECT_TYPE_OPTIONS.find(
+                  option => option.value === field.value
+                ) ?? PROJECT_TYPE_OPTIONS[0]
+
+              return (
+                <FormItem>
+                  <FormLabel>Project type</FormLabel>
+                  <Select
+                    value={field.value ?? 'CLIENT'}
+                    onValueChange={field.onChange}
+                    disabled={fieldState.type.disabled}
+                  >
+                    <FormControl>
+                      <DisabledFieldTooltip
+                        disabled={fieldState.type.disabled}
+                        reason={fieldState.type.reason}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder='Select type' />
+                        </SelectTrigger>
+                      </DisabledFieldTooltip>
+                    </FormControl>
+                    <SelectContent align='start'>
+                      {PROJECT_TYPE_OPTIONS.map(option => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormDescription>{selectedType?.description}</FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )
+            }}
+          />
           <FormField
             control={form.control}
             name='clientId'
@@ -179,40 +234,40 @@ export function ProjectSheetForm(props: ProjectSheetFormProps) {
               </FormItem>
             )}
           />
-          <FormField
-            control={form.control}
-            name='status'
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Status</FormLabel>
-                <Select
-                  value={field.value ?? ''}
-                  onValueChange={field.onChange}
-                  disabled={fieldState.status.disabled}
-                >
-                  <FormControl>
-                    <DisabledFieldTooltip
-                      disabled={fieldState.status.disabled}
-                      reason={fieldState.status.reason}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder='Select status' />
-                      </SelectTrigger>
-                    </DisabledFieldTooltip>
-                  </FormControl>
-                  <SelectContent align='start'>
-                    {PROJECT_STATUS_OPTIONS.map(status => (
-                      <SelectItem key={status.value} value={status.value}>
-                        {status.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
         </div>
+        <FormField
+          control={form.control}
+          name='status'
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Status</FormLabel>
+              <Select
+                value={field.value ?? ''}
+                onValueChange={field.onChange}
+                disabled={fieldState.status.disabled}
+              >
+                <FormControl>
+                  <DisabledFieldTooltip
+                    disabled={fieldState.status.disabled}
+                    reason={fieldState.status.reason}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder='Select status' />
+                    </SelectTrigger>
+                  </DisabledFieldTooltip>
+                </FormControl>
+                <SelectContent align='start'>
+                  {PROJECT_STATUS_OPTIONS.map(status => (
+                    <SelectItem key={status.value} value={status.value}>
+                      {status.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
         <div className='grid gap-4 sm:grid-cols-2'>
           <FormField
@@ -262,7 +317,6 @@ export function ProjectSheetForm(props: ProjectSheetFormProps) {
             )}
           />
         </div>
-
 
         {feedback ? (
           <p className='border-destructive/40 bg-destructive/10 text-destructive rounded-md border px-3 py-2 text-sm'>

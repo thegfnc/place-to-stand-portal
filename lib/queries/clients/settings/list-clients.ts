@@ -89,6 +89,7 @@ function mapClientMetrics(rows: ClientMetricsResult[]): ClientsSettingsListItem[
     name: row.name,
     slug: row.slug,
     notes: row.notes,
+    billingType: row.billingType,
     createdBy: row.createdBy,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,

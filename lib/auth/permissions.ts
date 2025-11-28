@@ -66,7 +66,12 @@ export async function ensureClientAccessByProjectId(
   projectId: UUID
 ) {
   const project = await db
-    .select({ id: projects.id, clientId: projects.clientId })
+    .select({
+      id: projects.id,
+      clientId: projects.clientId,
+      type: projects.type,
+      createdBy: projects.createdBy,
+    })
     .from(projects)
     .where(and(eq(projects.id, projectId), isNull(projects.deletedAt)))
     .limit(1)
@@ -75,7 +80,27 @@ export async function ensureClientAccessByProjectId(
     throw new NotFoundError('Project not found')
   }
 
-  await ensureClientAccess(user, project[0].clientId)
+  const projectRecord = project[0]
+
+  if (projectRecord.type === 'PERSONAL') {
+    if (!isAdmin(user) && projectRecord.createdBy !== user.id) {
+      throw new ForbiddenError('Insufficient permissions to access project')
+    }
+    return
+  }
+
+  if (projectRecord.type === 'INTERNAL') {
+    return
+  }
+
+  if (projectRecord.clientId) {
+    await ensureClientAccess(user, projectRecord.clientId)
+    return
+  }
+
+  if (!isAdmin(user)) {
+    throw new ForbiddenError('Insufficient permissions to access project')
+  }
 }
 
 export async function ensureClientAccessByTaskId(

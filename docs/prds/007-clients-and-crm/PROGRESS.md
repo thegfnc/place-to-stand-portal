@@ -1,0 +1,52 @@
+# 007: Clients & CRM - Progress Log
+
+This document tracks the progress of the implementation of the features outlined in the [PRD](./index.md) and the [Development Plan](./PLAN.md).
+
+## Phase 1: Data Model & Backend Foundation
+
+- [x] **Update `projects` Table** – Change from `is_personal`/`is_internal` booleans to a `type` enum (`CLIENT`, `PERSONAL`, `INTERNAL`) and enforce the integrity check. Added the `project_type` enum, migrated existing rows via `0003_crm-phase-3-project-type.sql`, and replaced all consumers with the new `type` field.
+- [x] **Update `clients` Table** – introduced the `billing_type` enum (`prepaid` | `net_30`) with a default of `prepaid`.
+- [x] **Create `task_assignee_metadata` Table** – added the join table with composite primary key, cascading FKs, timestamps, and policies to prep per-user task ordering.
+- [x] **Create `leads` Table** – implemented the approved schema (without `estimated_value`), including the `lead_status` enum and soft-delete friendly fields.
+- [x] **Drizzle Migrations** – generated `0002_crm-phase-1.sql`. Applying the migration locally is blocked until a usable `DATABASE_URL` is available (current `.env.local` is unreadable in this environment).
+
+## Phase 2: "My Tasks" Feature Implementation
+
+- [x] **Backend API** – implemented `/api/my-tasks` (query) and `/api/my-tasks/reorder` (drag/drop persistence) backed by `task_assignee_metadata`.
+- [x] **Frontend Page** – added the `/my-tasks` route that loads the new client dashboard experience with Tabs + React Query state.
+- [x] **UI Implementation** – built the personalized Kanban board (with DnD + user-specific sort) and calendar view that reuses existing helpers for due-date display.
+- [x] **Homepage Widget** – wired the widget to the new query, added total count + "See all" CTA, and improved metadata display.
+- [x] **Board & Calendar Polish** – filtered backlog tasks from all My Tasks surfaces, reused the project board layout/columns (with contextual task cards), and enabled calendar drag/drop to persist due date changes via the shared task sheet APIs.
+
+## Phase 3: Project Configuration UI
+
+- [x] **UI Updates** – Added the “Project Type” selector to the sheet, surfaced helper copy for each option, and plumbed the new field through validation, form state, and server actions so edits persist to the enum.
+- [x] **Conditional Logic** – Client picker now disables/clears itself for Personal/Internal projects with explanatory tooltips and the submit button gating, ensuring only Client projects can link to clients.
+
+## Phase 4: Client Management Feature Implementation
+
+- [x] **Navigation** – Added "Clients" link to the "Work" section of the sidebar, positioned above "Projects". The link uses the existing `Building2` icon for consistency.
+- [x] **Client Landing Page (`/clients`)** – Created at `/app/(dashboard)/clients/page.tsx` with:
+  - Client data fetching via `fetchClientsWithMetrics` that includes project counts (total and active).
+  - Grid of client cards showing name, billing type, slug, and project metrics.
+  - Quick switcher header component (`ClientsLandingHeader`) with searchable combobox for easy navigation between clients.
+- [x] **Client Detail Page (`/clients/[clientSlug]`)** – Created at `/app/(dashboard)/clients/[clientSlug]/page.tsx` with:
+  - Support for both UUID and slug-based routing via `resolveClientIdentifier`.
+  - Client info section displaying name, slug, billing type, and creation date.
+  - Rich Text Editor for notes using the existing TipTap-based `RichTextEditor` component.
+  - Server action `updateClientNotes` for persisting notes changes.
+  - Projects grid showing all projects for the client with progress indicators, status badges, and links to the project board.
+  - Reused existing project card patterns from the projects landing page for visual consistency.
+
+## Phase 5: Sales & Leads Pipeline Implementation
+
+- [x] **Navigation** – Added the new “Sales” sidebar section with a Leads link (handshake icon) positioned above “Work”, visible to all authenticated users while management actions stay admin-gated.
+- [x] **Backend API** – Implemented Drizzle schema updates (rank column), lead query helpers, and server actions for create/update/delete plus drag-and-drop reordering with rank-based ordering.
+- [x] **Leads View (`/leads/board`)** – Built the Kanban board with DnD, per-column empty states, drag overlays, and optimistic updates backed by rank recalculation and `/leads/board` revalidation.
+- [x] **Lead Management** – Added the sheet-based lead form (owners, contact info, RTE notes), delete confirmation, and optimistic sync via server actions + router refresh to keep the pipeline state consistent.
+
+## Phase 6: Finalization & Verification
+
+- [ ] **Analytics**
+- [ ] **Documentation**
+- [ ] **Manual Testing**

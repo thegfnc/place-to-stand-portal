@@ -27,8 +27,14 @@ export type SearchableComboboxItem = {
   disabled?: boolean
 }
 
-type SearchableComboboxProps = {
+export type SearchableComboboxGroup = {
+  label: string
   items: SearchableComboboxItem[]
+}
+
+type SearchableComboboxProps = {
+  items?: SearchableComboboxItem[]
+  groups?: SearchableComboboxGroup[]
   value?: string | null
   onChange: (value: string) => void
   onBlur?: () => void
@@ -44,6 +50,7 @@ type SearchableComboboxProps = {
   ariaLabelledBy?: string
   ariaDescribedBy?: string
   ariaInvalid?: boolean
+  variant?: 'default' | 'heading'
 }
 
 const baseTriggerClasses =
@@ -57,7 +64,8 @@ export const SearchableCombobox = React.forwardRef<
 >(
   (
     {
-      items,
+      items = [],
+      groups,
       value,
       onChange,
       onBlur,
@@ -73,6 +81,7 @@ export const SearchableCombobox = React.forwardRef<
       ariaLabelledBy,
       ariaDescribedBy,
       ariaInvalid,
+      variant = 'default',
     },
     forwardedRef
   ) => {
@@ -100,9 +109,23 @@ export const SearchableCombobox = React.forwardRef<
       }
     }, [forwardedRef])
 
+    const resolvedGroups = React.useMemo(
+      () => groups?.filter(group => group.items.length > 0) ?? [],
+      [groups]
+    )
+
+    const flattenedItems = React.useMemo(() => {
+      if (resolvedGroups.length > 0) {
+        return resolvedGroups.flatMap(group => group.items)
+      }
+
+      return items
+    }, [items, resolvedGroups])
+
     const selectedItem = React.useMemo(
-      () => items.find(item => item.value === (value ?? '')) ?? null,
-      [items, value]
+      () =>
+        flattenedItems.find(item => item.value === (value ?? '')) ?? null,
+      [flattenedItems, value]
     )
 
     React.useEffect(() => {
@@ -173,12 +196,18 @@ export const SearchableCombobox = React.forwardRef<
               disabled={disabled}
               data-placeholder={selectedItem ? undefined : true}
               id={id}
-              className={cn(baseTriggerClasses, triggerClassName)}
+              className={cn(
+                baseTriggerClasses,
+                variant === 'heading' &&
+                  'h-auto cursor-pointer border-none bg-transparent py-3 px-2 -ml-2 text-2xl font-semibold tracking-tight shadow-none transition-colors hover:bg-accent/50 hover:text-accent-foreground data-[state=open]:bg-accent/50 dark:bg-transparent dark:hover:bg-accent/50 dark:data-[state=open]:bg-accent/50 text-left',
+                triggerClassName
+              )}
             >
               <span
                 className={cn(
-                  'line-clamp-1',
-                  selectedItem ? 'font-medium' : 'text-muted-foreground'
+                  variant !== 'heading' && 'line-clamp-1',
+                  selectedItem ? 'font-medium' : 'text-muted-foreground',
+                  variant === 'heading' && 'text-foreground font-semibold'
                 )}
               >
                 {selectedItem?.label ?? resolvedPlaceholder}
@@ -199,41 +228,84 @@ export const SearchableCombobox = React.forwardRef<
               />
               <CommandEmpty>{emptyMessage}</CommandEmpty>
               <CommandList className='max-h-[min(60vh,260px)] overflow-y-auto overscroll-contain'>
-                <CommandGroup>
-                  {items.map(item => {
-                    const searchValue = [item.label, ...(item.keywords ?? [])]
-                      .join(' ')
-                      .trim()
+                {resolvedGroups.length > 0 ? (
+                  resolvedGroups.map(group => (
+                    <CommandGroup key={group.label} heading={group.label}>
+                      {group.items.map(item => {
+                        const searchValue = [
+                          item.label,
+                          ...(item.keywords ?? []),
+                        ]
+                          .join(' ')
+                          .trim()
 
-                    return (
-                      <CommandItem
-                        key={item.value}
-                        value={
-                          searchValue.length > 0 ? searchValue : item.value
-                        }
-                        onSelect={() => handleSelect(item.value)}
-                        disabled={item.disabled}
-                      >
-                        <CheckIcon
-                          className={cn(
-                            'mr-2 size-4',
-                            selectedItem?.value === item.value
-                              ? 'opacity-100'
-                              : 'opacity-0'
-                          )}
-                        />
-                        <div className={itemWrapperClasses}>
-                          <span className='font-medium'>{item.label}</span>
-                          {item.description ? (
-                            <span className='text-muted-foreground text-xs'>
-                              {item.description}
-                            </span>
-                          ) : null}
-                        </div>
-                      </CommandItem>
-                    )
-                  })}
-                </CommandGroup>
+                        return (
+                          <CommandItem
+                            key={`${group.label}-${item.value}`}
+                            value={
+                              searchValue.length > 0 ? searchValue : item.value
+                            }
+                            onSelect={() => handleSelect(item.value)}
+                            disabled={item.disabled}
+                          >
+                            <CheckIcon
+                              className={cn(
+                                'mr-2 size-4',
+                                selectedItem?.value === item.value
+                                  ? 'opacity-100'
+                                  : 'opacity-0'
+                              )}
+                            />
+                            <div className={itemWrapperClasses}>
+                              <span className='font-medium'>{item.label}</span>
+                              {item.description ? (
+                                <span className='text-muted-foreground text-xs'>
+                                  {item.description}
+                                </span>
+                              ) : null}
+                            </div>
+                          </CommandItem>
+                        )
+                      })}
+                    </CommandGroup>
+                  ))
+                ) : (
+                  <CommandGroup>
+                    {flattenedItems.map(item => {
+                      const searchValue = [item.label, ...(item.keywords ?? [])]
+                        .join(' ')
+                        .trim()
+
+                      return (
+                        <CommandItem
+                          key={item.value}
+                          value={
+                            searchValue.length > 0 ? searchValue : item.value
+                          }
+                          onSelect={() => handleSelect(item.value)}
+                          disabled={item.disabled}
+                        >
+                          <CheckIcon
+                            className={cn(
+                              'mr-2 size-4',
+                              selectedItem?.value === item.value
+                                ? 'opacity-100'
+                                : 'opacity-0'
+                            )}
+                          />
+                          <div className={itemWrapperClasses}>
+                            <span className='font-medium'>{item.label}</span>
+                            {item.description ? (
+                              <span className='text-muted-foreground text-xs'>
+                                {item.description}
+                              </span>
+                            ) : null}
+                          </div>
+                        </CommandItem>
+                      )
+                    })}
+                  </CommandGroup>
+                )}
               </CommandList>
             </Command>
           </PopoverContent>

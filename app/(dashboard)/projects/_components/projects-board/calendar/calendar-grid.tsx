@@ -31,6 +31,7 @@ type CalendarGridProps = {
   renderAssignees: RenderAssigneeFn
   activeTaskId: string | null
   todayCellRef: RefObject<HTMLDivElement | null>
+  enableTaskCreation?: boolean
 }
 
 const EMPTY_TASKS: TaskWithRelations[] = []
@@ -46,6 +47,7 @@ export function CalendarGrid({
   renderAssignees,
   activeTaskId,
   todayCellRef,
+  enableTaskCreation = true,
 }: CalendarGridProps) {
   return (
     <div className='flex-1 px-4 py-6'>
@@ -75,6 +77,7 @@ export function CalendarGrid({
             renderAssignees={renderAssignees}
             activeTaskId={activeTaskId}
             todayCellRef={day.isToday ? todayCellRef : undefined}
+            enableTaskCreation={enableTaskCreation}
           />
         ))}
       </div>
@@ -92,6 +95,7 @@ type CalendarDayCellProps = {
   renderAssignees: RenderAssigneeFn
   todayCellRef?: RefObject<HTMLDivElement | null>
   activeTaskId: string | null
+  enableTaskCreation: boolean
 }
 
 function CalendarDayCell({
@@ -104,6 +108,7 @@ function CalendarDayCell({
   renderAssignees,
   todayCellRef,
   activeTaskId,
+  enableTaskCreation,
 }: CalendarDayCellProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: day.key,
@@ -156,7 +161,9 @@ function CalendarDayCell({
           {day.label}
         </span>
         {canManageTasks ? (
+          enableTaskCreation ? (
           addButton
+          ) : null
         ) : (
           <Tooltip>
             <TooltipTrigger asChild>{addButton}</TooltipTrigger>

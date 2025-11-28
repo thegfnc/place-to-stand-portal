@@ -33,6 +33,10 @@ export type ProjectsBoardProps = BaseProps & {
 
 export type ProjectsBoardHeaderProps = {
   projectItems: Array<{ value: string; label: string; keywords: string[] }>
+  projectGroups?: Array<{
+    label: string
+    items: Array<{ value: string; label: string; keywords: string[] }>
+  }>
   selectedProjectId: string | null
   onProjectChange: (projectId: string | null) => void
   onSelectNextProject: () => void
@@ -45,10 +49,13 @@ export type ProjectsBoardBurndownProps = {
   visible: boolean
   totalClientRemainingHours: number
   totalProjectLoggedHours: number
+  projectMonthToDateLoggedHours: number
   canLogTime: boolean
   addTimeLogDisabledReason: string | null
   onAddTimeLog: () => void
   viewTimeLogsHref: string | null
+  showProjectMonthToDate: boolean
+  showClientRemainingCard: boolean
 }
 
 export type ProjectsBoardViewModel = {
@@ -106,6 +113,8 @@ export function useProjectsBoardViewModel({
           boardState.activeProject.burndown.totalClientRemainingHours,
         totalProjectLoggedHours:
           boardState.activeProject.burndown.totalProjectLoggedHours,
+        projectMonthToDateLoggedHours:
+          boardState.activeProject.burndown.projectMonthToDateLoggedHours,
       },
     }
   }, [boardState.activeProject])
@@ -125,6 +134,7 @@ export function useProjectsBoardViewModel({
 
   const header = buildProjectsBoardHeader({
     projectItems: boardState.projectItems,
+    projectGroups: boardState.projectGroups,
     selectedProjectId: boardState.selectedProjectId,
     onProjectChange: boardState.handleProjectSelect,
     onSelectNextProject: boardState.handleSelectNextProject,
@@ -236,7 +246,9 @@ export function useProjectsBoardViewModel({
     canLogTime,
     addTimeLogDisabledReason,
     onAddTimeLog: () => timeLogDialogs.openCreateTimeLogDialog(),
-    viewTimeLogsHref: navigation.timeLogsDisabled ? null : navigation.timeLogsHref,
+    viewTimeLogsHref: navigation.timeLogsDisabled
+      ? null
+      : navigation.timeLogsHref,
   })
 
   return {

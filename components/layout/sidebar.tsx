@@ -9,8 +9,10 @@ import {
   FolderKanban,
   KanbanSquare,
   Building2,
-  Users2,
+  Users,
   Home as HomeIcon,
+  ListTodo,
+  Handshake,
 } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
@@ -44,12 +46,33 @@ const NAV_GROUPS: NavGroup[] = [
         label: 'Home',
         icon: HomeIcon,
       },
+      {
+        href: '/my-tasks/board',
+        label: 'My Tasks',
+        icon: ListTodo,
+      },
+    ],
+  },
+  {
+    title: 'Sales',
+    roles: ['ADMIN', 'CLIENT'],
+    items: [
+      {
+        href: '/leads/board',
+        label: 'Leads',
+        icon: Handshake,
+      },
     ],
   },
   {
     title: 'Work',
     roles: ['ADMIN', 'CLIENT'],
     items: [
+      {
+        href: '/clients',
+        label: 'Clients',
+        icon: Building2,
+      },
       {
         href: '/projects',
         label: 'Projects',
@@ -64,7 +87,7 @@ const NAV_GROUPS: NavGroup[] = [
       {
         href: '/settings/users',
         label: 'Users',
-        icon: Users2,
+        icon: Users,
       },
       {
         href: '/settings/clients',
@@ -107,7 +130,7 @@ export function Sidebar({ user }: Props) {
   }, [theme, themeMounted])
 
   return (
-    <aside className='bg-background/90 hidden w-72 shrink-0 border-r md:flex md:flex-col'>
+    <aside className='bg-background/90 hidden h-screen w-72 shrink-0 overflow-y-auto border-r md:flex md:flex-col'>
       <div className='flex flex-1 flex-col'>
         <div className='space-y-10 px-6 py-8'>
           <div suppressHydrationWarning>

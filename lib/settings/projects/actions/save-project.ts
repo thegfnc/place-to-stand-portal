@@ -37,7 +37,8 @@ export async function saveProject(
     return { error: message, fieldErrors }
   }
 
-  const { id, name, clientId, status, startsOn, endsOn, slug } = parsed.data
+  const { id, name, clientId, projectType, status, startsOn, endsOn, slug } =
+    parsed.data
 
   const trimmedName = name.trim()
   const providedSlug = slug?.trim() ?? null
@@ -53,6 +54,8 @@ export async function saveProject(
     return { error: 'Project name is required.' }
   }
 
+  const normalizedClientId =
+    projectType === 'CLIENT' ? clientId : null
   const mode = id ? 'edit' : 'create'
 
   const result = await trackSettingsServerInteraction(
@@ -78,8 +81,9 @@ export async function saveProject(
               .insert(projects)
               .values({
                 name: trimmedName,
-                clientId,
+                clientId: normalizedClientId,
                 status,
+                type: projectType,
                 startsOn: startsOn ?? null,
                 endsOn: endsOn ?? null,
                 createdBy: user.id,
@@ -128,7 +132,7 @@ export async function saveProject(
           targetType: 'PROJECT',
           targetId: insertedId,
           targetProjectId: insertedId,
-          targetClientId: clientId,
+          targetClientId: normalizedClientId,
           metadata: event.metadata,
         })
 
@@ -152,10 +156,11 @@ export async function saveProject(
             id: string
             name: string
             status: string
+            type: string
             startsOn: string | null
             endsOn: string | null
             slug: string | null
-            clientId: string
+            clientId: string | null
           }
         | undefined
 
@@ -169,6 +174,7 @@ export async function saveProject(
             endsOn: projects.endsOn,
             slug: projects.slug,
             clientId: projects.clientId,
+            type: projects.type,
           })
           .from(projects)
           .where(eq(projects.id, id))
@@ -189,8 +195,9 @@ export async function saveProject(
           .update(projects)
           .set({
             name: trimmedName,
-            clientId,
+            clientId: normalizedClientId,
             status,
+            type: projectType,
             startsOn: startsOn ?? null,
             endsOn: endsOn ?? null,
             slug: slugToUpdate,
@@ -218,6 +225,12 @@ export async function saveProject(
         changedFields.push('status')
         previousDetails.status = existingProject.status
         nextDetails.status = status
+      }
+
+      if (existingProject.type !== projectType) {
+        changedFields.push('type')
+        previousDetails.type = existingProject.type
+        nextDetails.type = projectType
       }
 
       const previousStartsOn = existingProject.startsOn ?? null
@@ -268,7 +281,7 @@ export async function saveProject(
           targetType: 'PROJECT',
           targetId: id,
           targetProjectId: id,
-          targetClientId: existingProject.clientId,
+          targetClientId: normalizedClientId,
           metadata: event.metadata,
         })
       }

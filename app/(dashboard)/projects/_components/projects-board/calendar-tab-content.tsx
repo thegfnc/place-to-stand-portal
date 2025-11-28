@@ -8,7 +8,6 @@ import { addMonths, format, startOfDay, startOfMonth } from 'date-fns'
 import { TabsContent } from '@/components/ui/tabs'
 import type { TaskWithRelations } from '@/lib/types'
 import { ProjectsBoardEmpty } from '../projects-board-empty'
-import { LoadingScrim } from './loading-scrim'
 import {
   FEEDBACK_CLASSES,
   NO_SELECTION_DESCRIPTION,
@@ -70,8 +69,6 @@ export function CalendarTabContent({
   onDragStart,
   onDragEnd,
   draggingTask,
-  scrimLocked,
-  isPending,
   activeSheetTaskId,
 }: CalendarTabContentProps) {
   const queryClient = useQueryClient()
@@ -217,8 +214,6 @@ export function CalendarTabContent({
     })
   }, [baseMonth, goToMonth, scrollTodayIntoView])
 
-  const queryInFlight = calendarQuery.isPending || calendarQuery.isFetching
-  const loadingVisible = !scrimLocked && (isPending || queryInFlight)
   const disabledReason = canManageTasks
     ? null
     : 'You need manage permissions to add tasks.'
@@ -321,7 +316,6 @@ export function CalendarTabContent({
                   />
                 </div>
               </div>
-              <LoadingScrim visible={loadingVisible} />
             </div>
           </div>
           <TaskDragOverlay

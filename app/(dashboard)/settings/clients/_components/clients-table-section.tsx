@@ -17,6 +17,17 @@ import {
 import { cn } from '@/lib/utils'
 import { getStatusBadgeToken } from '@/lib/constants'
 import type { ClientsTableClient } from '@/lib/settings/clients/use-clients-table-state'
+import {
+  CLIENT_BILLING_TYPE_SELECT_OPTIONS,
+  type ClientBillingTypeValue,
+} from '@/lib/settings/clients/billing-types'
+
+const BILLING_TYPE_LABELS = CLIENT_BILLING_TYPE_SELECT_OPTIONS.reduce<
+  Record<ClientBillingTypeValue, string>
+>((acc, option) => {
+  acc[option.value] = option.label
+  return acc
+}, {} as Record<ClientBillingTypeValue, string>)
 
 export type ClientsTableSectionProps = {
   clients: ClientsTableClient[]
@@ -53,7 +64,7 @@ export function ClientsTableSection({
         <TableHeader>
           <TableRow className='bg-muted/40'>
             <TableHead>Name</TableHead>
-            <TableHead>Slug</TableHead>
+            <TableHead>Billing type</TableHead>
             <TableHead>Active projects</TableHead>
             <TableHead>Status</TableHead>
             <TableHead className='w-32 text-right'>Actions</TableHead>
@@ -114,7 +125,7 @@ export function ClientsTableSection({
                   </div>
                 </TableCell>
                 <TableCell className='text-muted-foreground text-sm'>
-                  {client.slug ?? '—'}
+                  {BILLING_TYPE_LABELS[client.billing_type] ?? '—'}
                 </TableCell>
                 <TableCell className='text-sm'>{activeProjects}</TableCell>
                 <TableCell>

@@ -1,6 +1,9 @@
 import { sql } from 'drizzle-orm'
 
-import { clients, projects } from '@/lib/db/schema'
+import { clients, projects, users } from '@/lib/db/schema'
+import type { ProjectTypeValue } from '@/lib/types'
+import type { ProjectOwnerSummary } from '@/lib/settings/projects/project-sheet-form'
+export type { ProjectOwnerSummary } from '@/lib/settings/projects/project-sheet-form'
 import {
   type CursorDirection,
   type PageInfo,
@@ -13,6 +16,7 @@ export const projectFields = {
   clientId: projects.clientId,
   name: projects.name,
   status: projects.status,
+  type: projects.type,
   startsOn: projects.startsOn,
   endsOn: projects.endsOn,
   slug: projects.slug,
@@ -30,6 +34,7 @@ export type ProjectClientSummary = {
 
 export type ProjectsSettingsListItem = typeof projects.$inferSelect & {
   client: ProjectClientSummary | null
+  owner: ProjectOwnerSummary | null
 }
 
 export type ListProjectsForSettingsInput = {
@@ -53,6 +58,7 @@ export const projectGroupByColumns = [
   projects.status,
   projects.slug,
   projects.clientId,
+  projects.type,
   projects.createdBy,
   projects.startsOn,
   projects.endsOn,
@@ -62,6 +68,9 @@ export const projectGroupByColumns = [
   clients.id,
   clients.name,
   clients.deletedAt,
+  users.id,
+  users.fullName,
+  users.email,
 ] as const
 
 export const projectSelection = {
@@ -70,6 +79,7 @@ export const projectSelection = {
   status: projects.status,
   slug: projects.slug,
   clientId: projects.clientId,
+  type: projects.type,
   createdBy: projects.createdBy,
   startsOn: projects.startsOn,
   endsOn: projects.endsOn,
@@ -83,7 +93,8 @@ export type ProjectSelectionResult = {
   name: string
   status: string
   slug: string | null
-  clientId: string
+  clientId: string | null
+  type: ProjectTypeValue
   createdBy: string | null
   startsOn: string | null
   endsOn: string | null

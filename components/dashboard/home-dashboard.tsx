@@ -10,9 +10,14 @@ import { RecentActivityOverviewWidget } from './recent-activity-overview-widget'
 type HomeDashboardProps = {
   user: AppUser
   tasks: AssignedTaskSummary[]
+  totalTaskCount: number
 }
 
-export function HomeDashboard({ user, tasks }: HomeDashboardProps) {
+export function HomeDashboard({
+  user,
+  tasks,
+  totalTaskCount,
+}: HomeDashboardProps) {
   const displayName = getDisplayName(user)
 
   return (
@@ -29,9 +34,10 @@ export function HomeDashboard({ user, tasks }: HomeDashboardProps) {
         <MyTasksWidget
           tasks={tasks}
           role={user.role}
-          className='md:col-span-2 xl:col-span-5'
+          totalCount={totalTaskCount}
+          className='md:col-span-2 xl:col-span-6'
         />
-        <RecentActivityOverviewWidget className='md:col-span-2 xl:col-span-7' />
+        <RecentActivityOverviewWidget className='md:col-span-2 xl:col-span-6' />
       </div>
     </div>
   )

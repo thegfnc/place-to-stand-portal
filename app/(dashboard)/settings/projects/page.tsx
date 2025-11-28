@@ -8,12 +8,10 @@ import {
   type ProjectsSettingsListItem,
   type ProjectsSettingsResult,
 } from '@/lib/queries/projects'
-import type { DbClient, DbProject } from '@/lib/types'
-
-type ProjectRow = DbProject
-type ClientRow = Pick<DbClient, 'id' | 'name' | 'deleted_at'>
-
-type ProjectWithClient = ProjectRow & { client: ClientRow | null }
+import type {
+  ClientRow,
+  ProjectWithClient,
+} from '@/lib/settings/projects/project-sheet-form'
 
 export const metadata: Metadata = {
   title: 'Projects | Settings',
@@ -23,13 +21,16 @@ type ProjectsSettingsPageProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>
 }
 
-function mapProjectToTableRow(project: ProjectsSettingsListItem): ProjectWithClient {
+function mapProjectToTableRow(
+  project: ProjectsSettingsListItem
+): ProjectWithClient {
   return {
     id: project.id,
     name: project.name,
     status: project.status,
     slug: project.slug,
     client_id: project.clientId,
+    type: project.type,
     created_by: project.createdBy,
     starts_on: project.startsOn,
     ends_on: project.endsOn,
@@ -41,6 +42,13 @@ function mapProjectToTableRow(project: ProjectsSettingsListItem): ProjectWithCli
           id: project.client.id,
           name: project.client.name,
           deleted_at: project.client.deletedAt,
+        }
+      : null,
+    owner: project.owner
+      ? {
+          id: project.owner.id,
+          fullName: project.owner.fullName,
+          email: project.owner.email,
         }
       : null,
   }
@@ -70,19 +78,19 @@ export default async function ProjectsSettingsPage({
     typeof params.q === 'string'
       ? params.q
       : Array.isArray(params.q)
-        ? params.q[0] ?? ''
+        ? (params.q[0] ?? '')
         : ''
   const cursor =
     typeof params.cursor === 'string'
       ? params.cursor
       : Array.isArray(params.cursor)
-        ? params.cursor[0] ?? null
+        ? (params.cursor[0] ?? null)
         : null
   const directionParam =
     typeof params.dir === 'string'
       ? params.dir
       : Array.isArray(params.dir)
-        ? params.dir[0] ?? null
+        ? (params.dir[0] ?? null)
         : null
   const direction =
     directionParam === 'backward' ? 'backward' : ('forward' as const)
@@ -108,9 +116,8 @@ export default async function ProjectsSettingsPage({
     deleted_at: client.deletedAt,
   }))
 
-  const hydratedProjects: ProjectWithClient[] = result.items.map(
-    mapProjectToTableRow
-  )
+  const hydratedProjects: ProjectWithClient[] =
+    result.items.map(mapProjectToTableRow)
 
   return (
     <>
@@ -118,7 +125,7 @@ export default async function ProjectsSettingsPage({
         <div className='flex flex-col'>
           <h1 className='text-2xl font-semibold tracking-tight'>Projects</h1>
           <p className='text-muted-foreground text-sm'>
-            Review active projects with quick insight into timing and client.
+            Review active projects with quick insight into timing and owner.
           </p>
         </div>
       </AppShellHeader>

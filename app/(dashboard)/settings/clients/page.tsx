@@ -31,6 +31,7 @@ function mapClientToTableRow(client: ClientsSettingsListItem): ClientRow & {
     name: client.name,
     slug: client.slug,
     notes: client.notes,
+    billing_type: client.billingType,
     created_by: client.createdBy,
     created_at: client.createdAt,
     updated_at: client.updatedAt,

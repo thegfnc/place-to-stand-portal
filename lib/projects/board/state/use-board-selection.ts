@@ -11,9 +11,29 @@ const resolveInitialProjectId = (
   activeProjectId: string | null
 ) => activeProjectId ?? projects[0]?.id ?? null
 
-const buildProjectLabel = (project: ProjectWithRelations) => {
-  const clientName = project.client?.name ?? 'Unassigned'
-  return `${clientName} / ${project.name}`
+type ProjectGroupKey = 'client' | 'internal' | 'personal'
+
+const PROJECT_GROUP_ORDER: ReadonlyArray<ProjectGroupKey> = [
+  'client',
+  'internal',
+  'personal',
+] as const
+
+const PROJECT_GROUP_LABELS: Record<ProjectGroupKey, string> = {
+  client: 'Client Projects',
+  internal: 'Internal Projects',
+  personal: 'Personal Projects',
+}
+
+type ProjectSelectionItem = {
+  value: string
+  label: string
+  keywords: string[]
+}
+
+type ProjectSelectionGroup = {
+  label: string
+  items: ProjectSelectionItem[]
 }
 
 type BoardSelectionArgs = {
@@ -40,26 +60,58 @@ export const useBoardSelectionState = ({
     () => resolveInitialProjectId(projects, activeProjectId)
   )
 
-  const sortedProjects = useMemo(
-    () =>
-      [...projects].sort((a, b) =>
-        buildProjectLabel(a).localeCompare(buildProjectLabel(b))
-      ),
-    [projects]
-  )
+  const { projectItems, projectGroups } = useMemo(() => {
+    const groupedItems: Record<ProjectGroupKey, ProjectSelectionItem[]> = {
+      client: [],
+      internal: [],
+      personal: [],
+    }
 
-  const projectItems = useMemo(
-    () =>
-      sortedProjects.map(project => {
-        const clientName = project.client?.name ?? 'Unassigned'
-        return {
-          value: project.id,
-          label: `${clientName} / ${project.name}`,
-          keywords: [clientName, project.name],
-        }
-      }),
-    [sortedProjects]
-  )
+    projects.forEach(project => {
+      const destination: ProjectGroupKey =
+        project.type === 'INTERNAL'
+          ? 'internal'
+          : project.type === 'PERSONAL'
+            ? 'personal'
+            : 'client'
+
+      const clientName = project.client?.name ?? 'Unassigned'
+      const labelPrefix =
+        destination === 'client'
+          ? clientName
+          : destination === 'internal'
+            ? 'Internal'
+            : 'Personal'
+
+      groupedItems[destination].push({
+        value: project.id,
+        label: `${labelPrefix} / ${project.name}`,
+        keywords: [clientName, project.name, labelPrefix],
+      })
+    })
+
+    const groups: ProjectSelectionGroup[] = PROJECT_GROUP_ORDER.map(key => {
+      const items = groupedItems[key].sort((a, b) =>
+        a.label.localeCompare(b.label)
+      )
+      return items.length > 0
+        ? {
+            label: PROJECT_GROUP_LABELS[key],
+            items,
+          }
+        : null
+    }).filter((group): group is ProjectSelectionGroup => Boolean(group))
+
+    const flattenedItems =
+      groups.length > 0
+        ? groups.flatMap(group => group.items)
+        : ([] as ProjectSelectionItem[])
+
+    return {
+      projectItems: flattenedItems,
+      projectGroups: groups,
+    }
+  }, [projects])
 
   const projectSequence = useMemo(
     () => projectItems.map(item => item.value),
@@ -200,6 +252,7 @@ export const useBoardSelectionState = ({
   return {
     selectedProjectId,
     projectItems,
+    projectGroups,
     handleProjectSelect,
     handleSelectNextProject,
     handleSelectPreviousProject,

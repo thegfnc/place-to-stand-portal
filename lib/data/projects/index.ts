@@ -46,3 +46,31 @@ export const fetchProjectsWithRelations = cache(
     })
   }
 )
+
+export async function fetchProjectsWithRelationsByIds(
+  projectIds: string[]
+): Promise<ProjectWithRelations[]> {
+  if (!projectIds.length) {
+    return []
+  }
+
+  const baseProjects = await fetchBaseProjects(projectIds)
+  const relations = await fetchProjectRelations({
+    projectIds: baseProjects.projectIds,
+    clientIds: baseProjects.clientIds,
+    shouldScopeToUser: false,
+  })
+
+  const timeLogSummaries = await getTimeLogSummariesForProjects(
+    baseProjects.projectIds
+  )
+
+  return assembleProjectsWithRelations({
+    projects: baseProjects.projects,
+    projectClientLookup: baseProjects.projectClientLookup,
+    options: {},
+    shouldScopeToUser: false,
+    relations,
+    timeLogSummaries,
+  })
+}

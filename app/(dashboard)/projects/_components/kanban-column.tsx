@@ -5,6 +5,7 @@ import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { BoardDropPlaceholder } from '@/components/board/drop-placeholder'
 import type { BoardColumnId } from '@/lib/projects/board/board-constants'
 import { cn } from '@/lib/utils'
 import type { TaskWithRelations } from '@/lib/types'
@@ -13,7 +14,12 @@ import {
   getTaskStatusToken,
 } from '@/lib/projects/task-status'
 
-import { TaskCard } from '../task-card'
+import { TaskCard, type TaskContextDetails } from '../task-card'
+
+type TaskCardOptions = {
+  context?: TaskContextDetails
+  hideAssignees?: boolean
+}
 
 type KanbanColumnProps = {
   columnId: BoardColumnId
@@ -30,6 +36,7 @@ type KanbanColumnProps = {
   dropIndicatorIndex?: number | null
   draggingTask?: TaskWithRelations | null
   recentlyMovedTaskId?: string | null
+  getTaskCardOptions?: (task: TaskWithRelations) => TaskCardOptions | undefined
 }
 
 export function KanbanColumn({
@@ -45,6 +52,7 @@ export function KanbanColumn({
   dropIndicatorIndex = null,
   draggingTask = null,
   recentlyMovedTaskId = null,
+  getTaskCardOptions,
 }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: columnId,
@@ -112,9 +120,11 @@ export function KanbanColumn({
             const shouldShowPlaceholder =
               showPlaceholder && dropIndicatorIndex === index
 
+            const cardOptions = getTaskCardOptions?.(task) ?? {}
+
             return (
               <Fragment key={task.id}>
-                {shouldShowPlaceholder ? <TaskDropPlaceholder /> : null}
+                {shouldShowPlaceholder ? <BoardDropPlaceholder /> : null}
                 <TaskCard
                   task={task}
                   assignees={renderAssignees(task)}
@@ -122,6 +132,8 @@ export function KanbanColumn({
                   draggable={canManage}
                   isActive={task.id === activeTaskId}
                   disableDropTransition={task.id === recentlyMovedTaskId}
+                  context={cardOptions.context}
+                  hideAssignees={cardOptions.hideAssignees}
                 />
               </Fragment>
             )
@@ -129,19 +141,10 @@ export function KanbanColumn({
           {showPlaceholder &&
           dropIndicatorIndex !== null &&
           dropIndicatorIndex >= tasks.length ? (
-            <TaskDropPlaceholder key={`${columnId}-placeholder`} />
+            <BoardDropPlaceholder key={`${columnId}-placeholder`} />
           ) : null}
         </SortableContext>
       </div>
     </div>
-  )
-}
-
-function TaskDropPlaceholder() {
-  return (
-    <div
-      aria-hidden
-      className='pointer-events-none min-h-24 w-full rounded-lg opacity-0'
-    />
   )
 }

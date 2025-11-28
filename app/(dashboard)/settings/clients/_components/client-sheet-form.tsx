@@ -10,19 +10,27 @@ import { DisabledFieldTooltip } from '@/components/ui/disabled-field-tooltip'
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 
 import { useSheetFormControls } from '@/lib/hooks/use-sheet-form-controls'
 import type {
   ClientMemberOption,
   UseClientSheetStateReturn,
 } from '@/lib/settings/clients/use-client-sheet-state'
+import { CLIENT_BILLING_TYPE_SELECT_OPTIONS } from '@/lib/settings/clients/billing-types'
 import type { ClientSheetFormValues } from '@/lib/settings/clients/client-sheet-schema'
 
 import { ClientMemberPicker } from './client-member-picker'
@@ -129,13 +137,14 @@ export function ClientSheetForm({
                 >
                   <Input
                     {...field}
-                    ref={(node) => {
+                    ref={node => {
                       firstFieldRef.current = node
                       if (typeof field.ref === 'function') {
                         field.ref(node)
                       } else if (field.ref) {
-                        ;(field.ref as React.MutableRefObject<HTMLInputElement | null>).current =
-                          node
+                        ;(
+                          field.ref as React.MutableRefObject<HTMLInputElement | null>
+                        ).current = node
                       }
                     }}
                     placeholder='Acme Corp'
@@ -174,27 +183,48 @@ export function ClientSheetForm({
         ) : null}
         <FormField
           control={form.control}
-          name='notes'
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Notes (optional)</FormLabel>
-              <FormControl>
-                <DisabledFieldTooltip
+          name='billingType'
+          render={({ field }) => {
+            const selectedBillingType =
+              CLIENT_BILLING_TYPE_SELECT_OPTIONS.find(
+                option => option.value === field.value
+              ) ?? CLIENT_BILLING_TYPE_SELECT_OPTIONS[0]
+
+            return (
+              <FormItem>
+                <FormLabel>Billing Type</FormLabel>
+                <Select
+                  value={field.value ?? selectedBillingType.value}
+                  onValueChange={field.onChange}
                   disabled={isPending}
-                  reason={isPending ? pendingReason : null}
                 >
-                  <Textarea
-                    {...field}
-                    value={field.value ?? ''}
-                    placeholder='Context or points of contact'
-                    disabled={isPending}
-                    rows={4}
-                  />
-                </DisabledFieldTooltip>
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
+                  <FormControl>
+                    <DisabledFieldTooltip
+                      disabled={isPending}
+                      reason={isPending ? pendingReason : null}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder='Select billing type' />
+                      </SelectTrigger>
+                    </DisabledFieldTooltip>
+                  </FormControl>
+                  <SelectContent align='start'>
+                    {CLIENT_BILLING_TYPE_SELECT_OPTIONS.map(option => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {selectedBillingType.description ? (
+                  <FormDescription>
+                    {selectedBillingType.description}
+                  </FormDescription>
+                ) : null}
+                <FormMessage />
+              </FormItem>
+            )
+          }}
         />
         <div className='space-y-2'>
           <FormLabel>Client users</FormLabel>

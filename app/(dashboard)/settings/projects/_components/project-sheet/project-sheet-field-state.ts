@@ -8,17 +8,22 @@ export type DisabledFieldState = {
 
 export type ProjectSheetFieldState = {
   name: DisabledFieldState
+  type: DisabledFieldState
   slug: DisabledFieldState
   status: DisabledFieldState
   date: DisabledFieldState
   client: DisabledFieldState
 }
 
+const PROJECT_SHEET_CLIENT_TYPE_REASON =
+  'Personal and internal projects do not require a client.'
+
 export function createProjectSheetFieldState(args: {
   isPending: boolean
   hasClients: boolean
+  requiresClientSelection: boolean
 }): ProjectSheetFieldState {
-  const { isPending, hasClients } = args
+  const { isPending, hasClients, requiresClientSelection } = args
   const pendingReason = isPending ? PROJECT_SHEET_PENDING_REASON : null
 
   const sharedPendingState: DisabledFieldState = {
@@ -26,17 +31,31 @@ export function createProjectSheetFieldState(args: {
     reason: pendingReason,
   }
 
-  const clientField: DisabledFieldState = {
-    disabled: isPending || !hasClients,
-    reason: isPending
-      ? pendingReason
-      : !hasClients
-        ? PROJECT_SHEET_MISSING_CLIENT_REASON
-        : null,
-  }
+  const clientField: DisabledFieldState = (() => {
+    if (isPending) {
+      return { disabled: true, reason: pendingReason }
+    }
+
+    if (!requiresClientSelection) {
+      return {
+        disabled: true,
+        reason: PROJECT_SHEET_CLIENT_TYPE_REASON,
+      }
+    }
+
+    if (!hasClients) {
+      return {
+        disabled: true,
+        reason: PROJECT_SHEET_MISSING_CLIENT_REASON,
+      }
+    }
+
+    return { disabled: false, reason: null }
+  })()
 
   return {
     name: sharedPendingState,
+    type: sharedPendingState,
     slug: sharedPendingState,
     status: sharedPendingState,
     date: sharedPendingState,

@@ -56,7 +56,7 @@ export function assembleProjectsWithRelations({
 
   const scopedProjects =
     shouldScopeToUser && options.forUserId
-      ? scopeProjects(projects, accessibleClientIds)
+      ? scopeProjects(projects, accessibleClientIds, options.forUserId)
       : projects
 
   return scopedProjects.map(project => ({
@@ -216,9 +216,18 @@ function buildAcceptedTasksLookup(
 
 function scopeProjects(
   projects: DbProject[],
-  accessibleClientIds: Set<string>
+  accessibleClientIds: Set<string>,
+  currentUserId: string
 ): DbProject[] {
   return projects.filter(project => {
+    if (project.type === 'INTERNAL') {
+      return true
+    }
+
+    if (project.type === 'PERSONAL') {
+      return project.created_by !== null && project.created_by === currentUserId
+    }
+
     if (project.client_id && accessibleClientIds.has(project.client_id)) {
       return true
     }
@@ -239,6 +248,8 @@ function buildProjectBurndown(
     ? (purchasedHoursByClient.get(clientId) ?? 0)
     : 0
   const totalProjectLoggedHours = projectLogSummary?.totalHours ?? 0
+  const projectMonthToDateLoggedHours =
+    projectLogSummary?.monthToDateHours ?? 0
   const totalClientLoggedHours = clientId
     ? (timeLogTotalsByClient.get(clientId) ?? 0)
     : 0
@@ -251,6 +262,7 @@ function buildProjectBurndown(
     totalClientLoggedHours,
     totalClientRemainingHours,
     totalProjectLoggedHours,
+    projectMonthToDateLoggedHours,
     lastLogAt,
   }
 }

@@ -35,6 +35,7 @@ export type RawHourBlock = {
 
 export type TimeLogSummary = {
   totalHours: number
+  monthToDateHours: number
   lastLogAt: string | null
 }
 
@@ -43,5 +44,6 @@ export type ProjectBurndown = {
   totalClientLoggedHours: number
   totalClientRemainingHours: number
   totalProjectLoggedHours: number
+  projectMonthToDateLoggedHours: number
   lastLogAt: string | null
 }

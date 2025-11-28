@@ -15,6 +15,41 @@
       "when": 1763142979017,
       "tag": "0001_add_one_day_timeframe_to_cache_constraint",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1763401666840,
+      "tag": "0002_crm-phase-1",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1763441645143,
+      "tag": "0003_crm-phase-3-project-type",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1764198060565,
+      "tag": "0004_crm-phase-5-leads-rank",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1764204763450,
+      "tag": "0005_add-unqualified-lead-status",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1764218215929,
+      "tag": "0006_leads-contact-updates",
+      "breakpoints": true
     }
   ]
 }

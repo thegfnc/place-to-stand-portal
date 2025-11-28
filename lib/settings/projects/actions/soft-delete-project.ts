@@ -42,7 +42,7 @@ export async function softDeleteProject(
         | {
             id: string
             name: string
-            clientId: string
+            clientId: string | null
           }
         | undefined
 

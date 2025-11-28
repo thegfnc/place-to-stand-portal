@@ -3,6 +3,7 @@
 import { useMemo } from 'react'
 
 import type { ProjectWithRelations } from '@/lib/types'
+import { getProjectClientSegment } from '@/lib/projects/board/board-utils'
 
 export type ProjectsBoardNavigation = {
   boardHref: string
@@ -28,17 +29,17 @@ export function useProjectsBoardNavigation({
   clients,
 }: UseProjectsBoardNavigationArgs): ProjectsBoardNavigation {
   return useMemo(() => {
-    const clientSlug =
-      activeProject?.client?.slug ??
-      (activeProject?.client_id
-        ? (clients.find(client => client.id === activeProject.client_id)
-            ?.slug ?? null)
-        : null)
+    const clientSlugLookup = new Map(
+      clients.map(client => [client.id, client.slug ?? null])
+    )
+
+    const clientSegment =
+      activeProject && getProjectClientSegment(activeProject, clientSlugLookup)
 
     const projectSlug = activeProject?.slug ?? null
     const projectPathBase =
-      clientSlug && projectSlug
-        ? `/projects/${clientSlug}/${projectSlug}`
+      clientSegment && projectSlug
+        ? `/projects/${clientSegment}/${projectSlug}`
         : null
 
     const defaultHref = '/projects'

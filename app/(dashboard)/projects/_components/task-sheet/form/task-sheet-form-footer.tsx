@@ -15,6 +15,7 @@ export type TaskSheetFormFooterProps = {
   deleteDisabled: boolean
   deleteDisabledReason: string | null
   onRequestDelete: () => void
+  deleteAriaLabel?: string
 }
 
 export function TaskSheetFormFooter(props: TaskSheetFormFooterProps) {
@@ -30,7 +31,10 @@ export function TaskSheetFormFooter(props: TaskSheetFormFooterProps) {
     deleteDisabled,
     deleteDisabledReason,
     onRequestDelete,
+    deleteAriaLabel,
   } = props
+
+  const destructiveLabel = deleteAriaLabel ?? 'Archive task'
 
   return (
     <div className='border-border/40 bg-muted/95 supports-backdrop-filter:bg-muted/90 fixed right-0 bottom-0 z-50 w-full border-t shadow-lg backdrop-blur sm:max-w-[676px]'>
@@ -82,7 +86,8 @@ export function TaskSheetFormFooter(props: TaskSheetFormFooterProps) {
               variant='destructive'
               onClick={onRequestDelete}
               disabled={deleteDisabled}
-              aria-label='Delete task'
+              aria-label={destructiveLabel}
+              title={destructiveLabel}
             >
               <Archive className='h-4 w-4' />
             </Button>

@@ -16,6 +16,8 @@ import {
   jsonb,
   pgView,
   pgEnum,
+  integer,
+  primaryKey,
 } from 'drizzle-orm/pg-core'
 import { sql } from 'drizzle-orm'
 
@@ -29,6 +31,30 @@ export const taskStatus = pgEnum('task_status', [
   'ARCHIVED',
 ])
 export const userRole = pgEnum('user_role', ['ADMIN', 'CLIENT'])
+export const clientBillingType = pgEnum('client_billing_type', [
+  'prepaid',
+  'net_30',
+])
+export const projectType = pgEnum('project_type', [
+  'CLIENT',
+  'PERSONAL',
+  'INTERNAL',
+])
+export const leadStatus = pgEnum('lead_status', [
+  'NEW_OPPORTUNITIES',
+  'ACTIVE_OPPORTUNITIES',
+  'PROPOSAL_SENT',
+  'ON_ICE',
+  'CLOSED_WON',
+  'CLOSED_LOST',
+  'UNQUALIFIED',
+])
+
+export const leadSourceType = pgEnum('lead_source_type', [
+  'REFERRAL',
+  'WEBSITE',
+  'EVENT',
+])
 
 export const clients = pgTable(
   'clients',
@@ -37,6 +63,9 @@ export const clients = pgTable(
     name: text().notNull(),
     slug: text(),
     notes: text(),
+    billingType: clientBillingType('billing_type')
+      .default('prepaid')
+      .notNull(),
     createdBy: uuid('created_by'),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
       .default(sql`timezone('utc'::text, now())`)
@@ -122,6 +151,53 @@ export const taskAssignees = pgTable(
       withCheck: sql`is_admin()`,
     }),
     pgPolicy('Users view task assignees', {
+      as: 'permissive',
+      for: 'select',
+      to: ['public'],
+    }),
+  ]
+)
+
+export const taskAssigneeMetadata = pgTable(
+  'task_assignee_metadata',
+  {
+    taskId: uuid('task_id').notNull(),
+    userId: uuid('user_id').notNull(),
+    sortOrder: integer('sort_order').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+    deletedAt: timestamp('deleted_at', { withTimezone: true, mode: 'string' }),
+  },
+  table => [
+    index('idx_task_assignee_metadata_user')
+      .using('btree', table.userId.asc().nullsLast().op('uuid_ops'))
+      .where(sql`(deleted_at IS NULL)`),
+    foreignKey({
+      columns: [table.taskId],
+      foreignColumns: [tasks.id],
+      name: 'task_assignee_metadata_task_id_fkey',
+    }).onDelete('cascade'),
+    foreignKey({
+      columns: [table.userId],
+      foreignColumns: [users.id],
+      name: 'task_assignee_metadata_user_id_fkey',
+    }).onDelete('cascade'),
+    primaryKey({
+      name: 'task_assignee_metadata_pkey',
+      columns: [table.taskId, table.userId],
+    }),
+    pgPolicy('Admins manage task assignee metadata', {
+      as: 'permissive',
+      for: 'all',
+      to: ['public'],
+      using: sql`is_admin()`,
+      withCheck: sql`is_admin()`,
+    }),
+    pgPolicy('Users view task assignee metadata', {
       as: 'permissive',
       for: 'select',
       to: ['public'],
@@ -261,7 +337,7 @@ export const projects = pgTable(
   'projects',
   {
     id: uuid().defaultRandom().primaryKey().notNull(),
-    clientId: uuid('client_id').notNull(),
+    clientId: uuid('client_id'),
     name: text().notNull(),
     status: text().default('active').notNull(),
     startsOn: date('starts_on'),
@@ -275,6 +351,7 @@ export const projects = pgTable(
       .notNull(),
     deletedAt: timestamp('deleted_at', { withTimezone: true, mode: 'string' }),
     slug: text(),
+    type: projectType('type').default('CLIENT').notNull(),
   },
   table => [
     index('idx_projects_client')
@@ -317,6 +394,16 @@ export const projects = pgTable(
       for: 'select',
       to: ['public'],
     }),
+    check(
+      'projects_type_client_check',
+      sql`(
+        (type = 'CLIENT' AND client_id IS NOT NULL)
+        OR (
+          type IN ('PERSONAL', 'INTERNAL')
+          AND client_id IS NULL
+        )
+      )`
+    ),
   ]
 )
 
@@ -679,6 +766,56 @@ export const tasks = pgTable(
       to: ['public'],
     }),
     pgPolicy('Users view tasks', {
+      as: 'permissive',
+      for: 'select',
+      to: ['public'],
+    }),
+  ]
+)
+
+export const leads = pgTable(
+  'leads',
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    contactName: text('contact_name').notNull(),
+    status: leadStatus().default('NEW_OPPORTUNITIES').notNull(),
+    sourceType: leadSourceType('source_type'),
+    sourceDetail: text('source_detail'),
+    assigneeId: uuid('assignee_id'),
+    contactEmail: text('contact_email'),
+    contactPhone: text('contact_phone'),
+    companyName: text('company_name'),
+    companyWebsite: text('company_website'),
+    notes: jsonb('notes').default({}).notNull(),
+    rank: text().default('zzzzzzzz').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+    deletedAt: timestamp('deleted_at', { withTimezone: true, mode: 'string' }),
+  },
+  table => [
+    index('idx_leads_status')
+      .using('btree', table.status.asc().nullsLast().op('enum_ops'))
+      .where(sql`(deleted_at IS NULL)`),
+    index('idx_leads_assignee')
+      .using('btree', table.assigneeId.asc().nullsLast().op('uuid_ops'))
+      .where(sql`(deleted_at IS NULL)`),
+    foreignKey({
+      columns: [table.assigneeId],
+      foreignColumns: [users.id],
+      name: 'leads_assignee_id_fkey',
+    }),
+    pgPolicy('Admins manage leads', {
+      as: 'permissive',
+      for: 'all',
+      to: ['public'],
+      using: sql`is_admin()`,
+      withCheck: sql`is_admin()`,
+    }),
+    pgPolicy('Users view leads', {
       as: 'permissive',
       for: 'select',
       to: ['public'],

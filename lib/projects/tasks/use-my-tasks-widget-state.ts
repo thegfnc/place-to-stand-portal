@@ -13,11 +13,16 @@ type UseMyTasksWidgetStateOptions = {
 export function useMyTasksWidgetState({
   initialTasks,
 }: UseMyTasksWidgetStateOptions) {
-  const [items, setItems] = useState(() => sortAssignedTasks(initialTasks))
+  const [items, setItems] = useState(() => buildVisibleTasks(initialTasks))
 
   useEffect(() => {
-    setItems(sortAssignedTasks(initialTasks))
+    setItems(buildVisibleTasks(initialTasks))
   }, [initialTasks])
 
   return { items }
+}
+
+function buildVisibleTasks(tasks: AssignedTaskSummary[]) {
+  const filtered = tasks.filter(task => task.status !== 'DONE')
+  return sortAssignedTasks(filtered)
 }

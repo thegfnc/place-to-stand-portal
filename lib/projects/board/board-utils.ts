@@ -12,6 +12,39 @@ type BoardLookups = {
   clientSlugLookup: ClientSlugLookupMap
 }
 
+export const PROJECT_SPECIAL_SEGMENTS = {
+  INTERNAL: 'internal',
+  PERSONAL: 'personal',
+} as const
+
+export const getProjectClientSegment = (
+  project: ProjectWithRelations,
+  clientSlugLookup?: ClientSlugLookupMap
+) => {
+  if (project.type === 'INTERNAL') {
+    return PROJECT_SPECIAL_SEGMENTS.INTERNAL
+  }
+
+  if (project.type === 'PERSONAL') {
+    return PROJECT_SPECIAL_SEGMENTS.PERSONAL
+  }
+
+  const clientId = project.client_id ?? null
+  if (!clientId) {
+    return null
+  }
+
+  if (project.client?.slug) {
+    return project.client.slug
+  }
+
+  if (clientSlugLookup?.has(clientId)) {
+    return clientSlugLookup.get(clientId) ?? null
+  }
+
+  return null
+}
+
 export const areTaskCollectionsEqual = (
   a: TaskWithRelations[] | undefined,
   b: TaskWithRelations[]
@@ -114,16 +147,13 @@ export const buildBoardPath = (
   }
 
   const projectSlug = project.slug ?? null
-  const clientId = project.client_id ?? null
-  const clientSlug =
-    project.client?.slug ??
-    (clientId ? (lookups.clientSlugLookup.get(clientId) ?? null) : null)
+  const clientSegment = getProjectClientSegment(project, lookups.clientSlugLookup)
 
-  if (!projectSlug || !clientSlug) {
+  if (!projectSlug || !clientSegment) {
     return null
   }
 
-  const rootPath = `/projects/${clientSlug}/${projectSlug}`
+  const rootPath = `/projects/${clientSegment}/${projectSlug}`
 
   if (view === 'activity') {
     return `${rootPath}/activity`

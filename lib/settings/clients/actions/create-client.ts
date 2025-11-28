@@ -3,6 +3,7 @@ import { clientCreatedEvent } from '@/lib/activity/events'
 import { assertAdmin } from '@/lib/auth/permissions'
 import { db } from '@/lib/db'
 import { clients } from '@/lib/db/schema'
+import type { ClientBillingTypeValue } from '@/lib/types'
 import {
   generateUniqueClientSlug,
   syncClientMembers,
@@ -18,6 +19,7 @@ import {
 type CreateClientPayload = {
   name: string
   providedSlug: string | null
+  billingType: ClientBillingTypeValue
   notes: string | null
   memberIds: string[]
 }
@@ -30,7 +32,7 @@ export async function createClient(
 ): Promise<ClientMutationResult> {
   const { user } = context
   assertAdmin(user)
-  const { name, providedSlug, notes, memberIds } = payload
+  const { name, providedSlug, billingType, notes, memberIds } = payload
 
   const baseSlug = providedSlug
     ? toClientSlug(providedSlug)
@@ -43,11 +45,12 @@ export async function createClient(
       const inserted = await db
         .insert(clients)
         .values({
-        name,
-        slug: slugCandidate,
-        notes,
+          name,
+          slug: slugCandidate,
+          billingType,
+          notes,
           createdBy: user.id,
-      })
+        })
         .returning({ id: clients.id })
 
       const clientId = inserted[0]?.id
@@ -83,14 +86,12 @@ export async function createClient(
       return buildMutationResult({})
     } catch (error) {
       if (!isUniqueViolation(error)) {
-      console.error('Failed to create client', error)
-      return buildMutationResult({
+        console.error('Failed to create client', error)
+        return buildMutationResult({
           error:
-            error instanceof Error
-              ? error.message
-              : 'Unable to create client.',
-      })
-    }
+            error instanceof Error ? error.message : 'Unable to create client.',
+        })
+      }
 
       slugCandidate = await generateUniqueClientSlug(baseSlug)
       attempt += 1

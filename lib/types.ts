@@ -1,13 +1,26 @@
-import { taskStatus, userRole } from '@/lib/db/schema'
+import {
+  clientBillingType,
+  leadSourceType,
+  leadStatus,
+  projectType,
+  taskStatus,
+  userRole,
+} from '@/lib/db/schema'
 
 export type UserRoleValue = (typeof userRole.enumValues)[number]
 export type TaskStatusValue = (typeof taskStatus.enumValues)[number]
+export type ClientBillingTypeValue =
+  (typeof clientBillingType.enumValues)[number]
+export type ProjectTypeValue = (typeof projectType.enumValues)[number]
+export type LeadStatusValue = (typeof leadStatus.enumValues)[number]
+export type LeadSourceTypeValue = (typeof leadSourceType.enumValues)[number]
 
 export type DbClient = {
   id: string
   name: string
   slug: string | null
   notes: string | null
+  billing_type: ClientBillingTypeValue
   created_by: string | null
   created_at: string
   updated_at: string
@@ -24,9 +37,10 @@ export type DbClientMember = {
 
 export type DbProject = {
   id: string
-  client_id: string
+  client_id: string | null
   name: string
   status: string
+  type: ProjectTypeValue
   starts_on: string | null
   ends_on: string | null
   created_by: string | null
@@ -126,6 +140,24 @@ export type TaskWithRelations = DbTask & {
   attachments?: DbTaskAttachment[]
 }
 
+export type DbLead = {
+  id: string
+  contact_name: string
+  status: LeadStatusValue
+  source_type: LeadSourceTypeValue | null
+  source_detail: string | null
+  assignee_id: string | null
+  contact_email: string | null
+  contact_phone: string | null
+  company_name: string | null
+  company_website: string | null
+  notes: Record<string, unknown>
+  created_at: string
+  updated_at: string
+  deleted_at: string | null
+  rank: string
+}
+
 export type TaskCommentAuthor = {
   id: string
   full_name: string | null
@@ -145,6 +177,7 @@ export type ProjectBurndownSummary = {
   totalClientLoggedHours: number
   totalClientRemainingHours: number
   totalProjectLoggedHours: number
+  projectMonthToDateLoggedHours: number
   lastLogAt: string | null
 }
 

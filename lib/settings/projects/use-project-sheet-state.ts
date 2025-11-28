@@ -1,7 +1,12 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState, useTransition } from 'react'
-import { useForm, type Resolver, type UseFormReturn } from 'react-hook-form'
+import {
+  useForm,
+  useWatch,
+  type Resolver,
+  type UseFormReturn,
+} from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 
 import {
@@ -56,6 +61,8 @@ export type UseProjectSheetStateReturn = {
   feedback: string | null
   isEditing: boolean
   isPending: boolean
+  projectType: ProjectSheetFormValues['projectType']
+  requiresClientSelection: boolean
   clientOptions: ClientOption[]
   submitButton: SubmitButtonState
   deleteButton: DeleteButtonState
@@ -98,6 +105,12 @@ export function useProjectSheetState({
   })
 
   const hasUnsavedChanges = form.formState.isDirty
+  const projectType =
+    useWatch({
+      control: form.control,
+      name: 'projectType',
+    }) ?? 'CLIENT'
+  const requiresClientSelection = projectType === 'CLIENT'
 
   const { requestConfirmation: confirmDiscard, dialog: unsavedChangesDialog } =
     useUnsavedChangesWarning({ isDirty: hasUnsavedChanges })
@@ -215,7 +228,8 @@ export function useProjectSheetState({
 
           form.reset({
             name: payload.name,
-            clientId: payload.clientId,
+            projectType: payload.projectType,
+            clientId: payload.clientId ?? '',
             status: payload.status,
             startsOn: payload.startsOn ?? '',
             endsOn: payload.endsOn ?? '',
@@ -341,8 +355,14 @@ export function useProjectSheetState({
   ])
 
   const submitButton = useMemo(
-    () => deriveSubmitButtonState(isPending, isEditing, clientOptions),
-    [clientOptions, isEditing, isPending]
+    () =>
+      deriveSubmitButtonState(
+        isPending,
+        isEditing,
+        clientOptions,
+        requiresClientSelection
+      ),
+    [clientOptions, isEditing, isPending, requiresClientSelection]
   )
 
   const deleteButton = useMemo(
@@ -355,6 +375,8 @@ export function useProjectSheetState({
     feedback,
     isEditing,
     isPending,
+    projectType,
+    requiresClientSelection,
     clientOptions,
     submitButton,
     deleteButton,

@@ -5,6 +5,7 @@ import {
   generateUniqueProjectSlugDrizzle,
   projectSlugExistsDrizzle,
 } from '@/lib/queries/projects'
+import { PROJECT_TYPE_ENUM_VALUES } from './project-sheet-form'
 
 const DEFAULT_SLUG = 'project'
 
@@ -12,7 +13,14 @@ export const projectSchema = z
   .object({
     id: z.string().uuid().optional(),
     name: z.string().min(1, 'Project name is required'),
-    clientId: z.string().uuid('Select a client'),
+    projectType: z.enum(PROJECT_TYPE_ENUM_VALUES),
+    clientId: z
+      .string()
+      .uuid('Select a client')
+      .or(z.literal(''))
+      .or(z.null())
+      .optional()
+      .transform(value => (value ? value : null)),
     status: z.enum(PROJECT_STATUS_ENUM_VALUES),
     startsOn: z.string().nullable().optional(),
     endsOn: z.string().nullable().optional(),
@@ -42,6 +50,24 @@ export const projectSchema = z
           message: 'End date must be on or after the start date.',
         })
       }
+    }
+    const requiresClient = data.projectType === 'CLIENT'
+    const hasClient = Boolean(data.clientId)
+
+    if (requiresClient && !hasClient) {
+      ctx.addIssue({
+        path: ['clientId'],
+        code: z.ZodIssueCode.custom,
+        message: 'Select a client for client projects.',
+      })
+    }
+
+    if (!requiresClient && hasClient) {
+      ctx.addIssue({
+        path: ['clientId'],
+        code: z.ZodIssueCode.custom,
+        message: 'Personal and internal projects cannot be linked to clients.',
+      })
     }
   })
 

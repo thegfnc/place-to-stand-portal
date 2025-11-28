@@ -192,8 +192,6 @@ export function ProjectsBoardTabs(props: ProjectsBoardTabsProps) {
         onDragOver={onDragOver}
         onDragEnd={onDragEnd}
         draggingTask={draggingTask}
-        scrimLocked={scrimLocked}
-        isPending={isPending}
         boardViewportRef={boardViewportRef}
         onBoardScroll={onBoardScroll}
         activeSheetTaskId={activeSheetTaskId}

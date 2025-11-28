@@ -1,9 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-export const useRecentlyMovedTask = () => {
-  const [recentlyMovedTaskId, setRecentlyMovedTaskId] = useState<string | null>(
-    null
-  )
+export const useRecentlyMovedItem = () => {
+  const [recentlyMovedId, setRecentlyMovedId] = useState<string | null>(null)
   const timerRef = useRef<number | null>(null)
 
   const clearTimer = useCallback(() => {
@@ -17,7 +15,7 @@ export const useRecentlyMovedTask = () => {
     clearTimer()
 
     timerRef.current = window.setTimeout(() => {
-      setRecentlyMovedTaskId(null)
+      setRecentlyMovedId(null)
       timerRef.current = null
     }, 150)
   }, [clearTimer])
@@ -29,9 +27,11 @@ export const useRecentlyMovedTask = () => {
   }, [clearTimer])
 
   return {
-    recentlyMovedTaskId,
-    setRecentlyMovedTaskId,
+    recentlyMovedId,
+    setRecentlyMovedId,
     scheduleReset,
     clearTimer,
   }
 }
+
+

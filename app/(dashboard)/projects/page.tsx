@@ -36,10 +36,18 @@ export default async function ProjectsPage() {
   return (
     <>
       <AppShellHeader>
-        <ProjectsLandingHeader projects={sortableProjects} clients={clients} />
+        <ProjectsLandingHeader
+          projects={sortableProjects}
+          clients={clients}
+          currentUserId={user.id}
+        />
       </AppShellHeader>
       <div className='space-y-6'>
-        <ProjectsLanding projects={sortableProjects} clients={clients} />
+        <ProjectsLanding
+          projects={sortableProjects}
+          clients={clients}
+          currentUserId={user.id}
+        />
       </div>
     </>
   )

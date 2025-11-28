@@ -10,7 +10,6 @@ import {
 } from '@dnd-kit/core'
 
 import { TabsContent } from '@/components/ui/tabs'
-import { LoadingScrim } from './loading-scrim'
 import { KanbanColumn } from '../kanban-column'
 import { ProjectsBoardEmpty } from '../projects-board-empty'
 import { TaskDragOverlay } from '../task-drag-overlay'
@@ -51,8 +50,6 @@ export type BoardTabContentProps = {
   onDragOver: DndContextProps['onDragOver']
   onDragEnd: DndContextProps['onDragEnd']
   draggingTask: TaskWithRelations | null
-  scrimLocked: boolean
-  isPending: boolean
   boardViewportRef: RefObject<HTMLDivElement | null>
   onBoardScroll: UIEventHandler<HTMLDivElement>
   activeSheetTaskId: string | null
@@ -76,8 +73,6 @@ export function BoardTabContent(props: BoardTabContentProps) {
     onDragOver,
     onDragEnd,
     draggingTask,
-    scrimLocked,
-    isPending,
     boardViewportRef,
     onBoardScroll,
     activeSheetTaskId,
@@ -258,8 +253,6 @@ export function BoardTabContent(props: BoardTabContentProps) {
     return null
   }
 
-  const loadingVisible = isPending && !scrimLocked
-
   return (
     <TabsContent
       value='board'
@@ -324,7 +317,6 @@ export function BoardTabContent(props: BoardTabContentProps) {
               </DndContext>
             </div>
           </div>
-          <LoadingScrim visible={loadingVisible} />
         </div>
       )}
     </TabsContent>

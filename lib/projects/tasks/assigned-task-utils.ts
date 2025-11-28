@@ -33,7 +33,25 @@ export function sortAssignedTasks(
   return copy
 }
 
-function compareAssignedTasks(a: AssignedTaskSummary, b: AssignedTaskSummary) {
+export function compareAssignedTasks(
+  a: AssignedTaskSummary,
+  b: AssignedTaskSummary
+) {
+  const orderA = a.sortOrder ?? null
+  const orderB = b.sortOrder ?? null
+
+  if (orderA !== null && orderB !== null && orderA !== orderB) {
+    return orderA - orderB
+  }
+
+  if (orderA !== null && orderB === null) {
+    return -1
+  }
+
+  if (orderA === null && orderB !== null) {
+    return 1
+  }
+
   const dueA = getDueTimestamp(a.dueOn)
   const dueB = getDueTimestamp(b.dueOn)
 

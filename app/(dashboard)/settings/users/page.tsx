@@ -41,13 +41,13 @@ export default async function UsersSettingsPage({
     typeof params.cursor === 'string'
       ? params.cursor
       : Array.isArray(params.cursor)
-        ? params.cursor[0] ?? null
+        ? (params.cursor[0] ?? null)
         : null
   const directionParam =
     typeof params.dir === 'string'
       ? params.dir
       : Array.isArray(params.dir)
-        ? params.dir[0] ?? null
+        ? (params.dir[0] ?? null)
         : null
   const direction =
     directionParam === 'backward' ? 'backward' : ('forward' as const)
@@ -82,12 +82,9 @@ export default async function UsersSettingsPage({
     <>
       <AppShellHeader>
         <div className='flex flex-col'>
-          <h1 className='text-2xl font-semibold tracking-tight'>
-            Team members
-          </h1>
+          <h1 className='text-2xl font-semibold tracking-tight'>Users</h1>
           <p className='text-muted-foreground text-sm'>
-            Invite administrators, contractors, and clients to collaborate
-            inside the portal.
+            Manage users and their roles.
           </p>
         </div>
       </AppShellHeader>
