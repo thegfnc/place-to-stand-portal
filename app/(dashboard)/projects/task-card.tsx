@@ -271,13 +271,13 @@ export function TaskCard({
         }
       }}
       className={cn(
-        'group bg-card rounded-lg border p-4 text-left shadow-sm transition',
+        'group bg-card rounded-lg border-y border-r border-l-4 border-l-violet-500 p-4 text-left shadow-sm transition',
         draggable ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer',
         isDragging && 'ring-primary ring-2',
         (isActive || isDragging) && 'border-primary/50 bg-primary/5 shadow-md',
         !isActive &&
           !isDragging &&
-          'hover:border-primary/40 hover:bg-primary/5 hover:shadow-md'
+          'hover:border-r-violet-500/50 hover:border-y-violet-500/50 hover:bg-violet-500/5 hover:shadow-md'
       )}
     >
       <CardContent
@@ -302,7 +302,7 @@ export function TaskCardPreview({
   hideAssignees?: boolean
 }) {
   return (
-    <div className='bg-card w-80 rounded-lg border p-4 shadow-sm'>
+    <div className='bg-card border-l-violet-500 w-80 rounded-lg border-y border-r border-l-4 p-4 shadow-sm'>
       <CardContent
         task={task}
         assignees={assignees}

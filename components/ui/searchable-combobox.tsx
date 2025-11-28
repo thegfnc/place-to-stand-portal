@@ -1,7 +1,7 @@
 'use client'
 
 import * as React from 'react'
-import { CheckIcon, ChevronsUpDownIcon } from 'lucide-react'
+import { CheckIcon, ChevronDown, ChevronsUpDownIcon } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -50,6 +50,7 @@ type SearchableComboboxProps = {
   ariaLabelledBy?: string
   ariaDescribedBy?: string
   ariaInvalid?: boolean
+  variant?: 'default' | 'heading'
 }
 
 const baseTriggerClasses =
@@ -80,6 +81,7 @@ export const SearchableCombobox = React.forwardRef<
       ariaLabelledBy,
       ariaDescribedBy,
       ariaInvalid,
+      variant = 'default',
     },
     forwardedRef
   ) => {
@@ -194,12 +196,18 @@ export const SearchableCombobox = React.forwardRef<
               disabled={disabled}
               data-placeholder={selectedItem ? undefined : true}
               id={id}
-              className={cn(baseTriggerClasses, triggerClassName)}
+              className={cn(
+                baseTriggerClasses,
+                variant === 'heading' &&
+                  'h-auto cursor-pointer border-none bg-transparent py-3 px-2 -ml-2 text-2xl font-semibold tracking-tight shadow-none transition-colors hover:bg-accent/50 hover:text-accent-foreground data-[state=open]:bg-accent/50 dark:bg-transparent dark:hover:bg-accent/50 dark:data-[state=open]:bg-accent/50 text-left',
+                triggerClassName
+              )}
             >
               <span
                 className={cn(
-                  'line-clamp-1',
-                  selectedItem ? 'font-medium' : 'text-muted-foreground'
+                  variant !== 'heading' && 'line-clamp-1',
+                  selectedItem ? 'font-medium' : 'text-muted-foreground',
+                  variant === 'heading' && 'text-foreground font-semibold'
                 )}
               >
                 {selectedItem?.label ?? resolvedPlaceholder}

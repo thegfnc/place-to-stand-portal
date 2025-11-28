@@ -64,7 +64,7 @@ export function ClientsLandingHeader({
 
   return (
     <div className='flex w-full flex-wrap items-center gap-3'>
-      <div className='flex flex-1 items-center gap-3 py-2.5'>
+      <div className='flex flex-1 items-center gap-3'>
         <div className='min-w-[400px] space-y-2'>
           <Label htmlFor='clients-client-select' className='sr-only'>
             Client Selector
@@ -74,10 +74,11 @@ export function ClientsLandingHeader({
             items={clientItems}
             value={selectedClientId ?? ''}
             onChange={value => handleClientSelect(value || null)}
-            placeholder='Select a client'
+            placeholder='Select a client...'
             searchPlaceholder='Search clients...'
             disabled={clientItems.length === 0}
-            ariaLabel='Select client'
+            ariaLabel='Select a client'
+            variant='heading'
           />
         </div>
         <div className='flex gap-2'>

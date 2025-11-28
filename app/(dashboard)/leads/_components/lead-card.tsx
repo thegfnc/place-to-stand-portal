@@ -111,12 +111,12 @@ export const LeadCard = memo(function LeadCard({
         }
       }}
       className={cn(
-        'group bg-card focus-visible:ring-ring focus-visible:ring-offset-background rounded-lg border p-4 text-left shadow-sm transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none',
+        'group bg-card focus-visible:ring-ring focus-visible:ring-offset-background rounded-lg border-y border-r border-l-4 border-l-amber-500 p-4 text-left shadow-sm transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none',
         canManage ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer',
         isDragging && 'ring-primary ring-2',
         isDragging && 'border-primary/50 bg-primary/5 shadow-md',
         !isDragging &&
-          'hover:border-primary/40 hover:bg-primary/5 hover:shadow-md'
+          'hover:border-r-amber-500/50 hover:border-y-amber-500/50 hover:bg-amber-500/5 hover:shadow-md'
       )}
     >
       <LeadCardContent lead={lead} />
@@ -184,7 +184,7 @@ export function LeadCardContent({ lead }: { lead: LeadRecord }) {
             />
           </div>
         ) : null}
-        <div className='text-muted-foreground flex flex-wrap items-center gap-2 text-xs'>
+        <div className='text-muted-foreground flex flex-wrap items-center gap-1 text-xs'>
           <User className='h-3.5 w-3.5' aria-hidden />
           <span>{assigneeDisplay}</span>
         </div>
@@ -203,21 +203,21 @@ function AnchorRow({ icon: Icon, value, href }: AnchorRowProps) {
   return (
     <a
       href={href}
-      className='text-muted-foreground hover:text-foreground flex items-center gap-2 text-xs transition'
+      className='hover:text-foreground inline-flex items-center gap-1 underline-offset-4 transition hover:underline font-mono font-medium'
       onClick={event => event.stopPropagation()}
       title={value}
     >
       <Icon className='h-3.5 w-3.5 shrink-0' aria-hidden />
-      <span className='truncate font-mono text-[11px] font-medium'>
+
         {value}
-      </span>
+
     </a>
   )
 }
 
 export function LeadCardPreview({ lead }: { lead: LeadRecord }) {
   return (
-    <div className='bg-card w-80 rounded-lg border p-4 shadow-sm'>
+    <div className='bg-card border-l-amber-500 w-80 rounded-lg border-y border-r border-l-4 p-4 shadow-sm'>
       <LeadCardContent lead={lead} />
     </div>
   )

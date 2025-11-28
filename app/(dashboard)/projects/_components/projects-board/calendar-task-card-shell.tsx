@@ -32,14 +32,14 @@ export const CalendarTaskCardShell = forwardRef<
     <div
       ref={ref}
       className={cn(
-        'bg-card rounded-md border px-2 py-1 text-left text-xs shadow-sm transition',
+        'bg-card rounded-md border-y border-r border-l-4 border-l-violet-500 px-2 py-1 text-left text-xs shadow-sm transition',
         canManageTasks
           ? 'cursor-grab active:cursor-grabbing'
           : 'cursor-pointer',
         (isActive || isDragging) && 'border-primary/50 bg-primary/5 shadow-md',
         !isActive &&
           !isDragging &&
-          'hover:border-primary/40 hover:bg-primary/5 hover:shadow-md',
+          'hover:border-r-violet-500/50 hover:border-y-violet-500/50 hover:bg-violet-500/5 hover:shadow-md',
         isDragging && 'ring-primary ring-2',
         hideWhileDragging && isDragging && 'pointer-events-none opacity-0',
         className

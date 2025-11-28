@@ -37,56 +37,47 @@ export function ClientsLanding({ clients }: ClientsLandingProps) {
   }
 
   return (
-    <section className='bg-card/50 text-card-foreground overflow-hidden rounded-xl border shadow-sm'>
-      <div className='bg-muted flex items-center gap-3 border-b px-6 py-4'>
-        <div className='bg-background flex h-8 w-8 items-center justify-center rounded-md border shadow-sm'>
-          <Building2 className='text-muted-foreground h-4 w-4' />
-        </div>
-        <h2 className='text-lg font-semibold tracking-tight'>All Clients</h2>
-        <Badge variant='secondary'>{clients.length}</Badge>
-      </div>
-      <div className='p-6'>
-        <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-3'>
-          {clients.map(client => (
-            <Link key={client.id} href={getClientHref(client)}>
-              <Card className='border-card-foreground/20 hover:border-card-foreground/40 flex h-full cursor-pointer flex-col justify-between transition hover:shadow-md'>
-                <CardHeader>
-                  <div className='flex items-start justify-between gap-2'>
-                    <div className='flex min-w-0 flex-1 items-center gap-2'>
-                      <Building2 className='text-muted-foreground mt-0.5 h-5 w-5 shrink-0' />
-                      <CardTitle className='line-clamp-2'>
-                        {client.name}
-                      </CardTitle>
-                    </div>
-                    <Badge variant='outline' className='text-xs'>
-                      {getBillingTypeLabel(client.billingType)}
-                    </Badge>
+    <div className='space-y-6'>
+      <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-3'>
+        {clients.map(client => (
+          <Link key={client.id} href={getClientHref(client)}>
+            <Card className='border-l-4 border-l-blue-500 border-y-border border-r-border hover:border-r-blue-500/50 hover:border-y-blue-500/50 flex h-full cursor-pointer flex-col justify-between shadow-sm transition-all hover:shadow-md'>
+              <CardHeader>
+                <div className='flex items-start justify-between gap-2'>
+                  <div className='flex min-w-0 flex-1 items-center gap-2'>
+                    <Building2 className='text-blue-500 mt-0.5 h-5 w-5 shrink-0' />
+                    <CardTitle className='line-clamp-2'>
+                      {client.name}
+                    </CardTitle>
                   </div>
-                  {client.slug ? (
-                    <CardDescription className='text-muted-foreground text-xs'>
-                      /{client.slug}
-                    </CardDescription>
-                  ) : null}
-                </CardHeader>
-                <CardContent>
-                  <div className='flex items-center gap-2 text-sm'>
-                    <FolderKanban className='text-muted-foreground h-4 w-4' />
-                    <span className='text-muted-foreground'>
-                      {client.activeProjectCount} active project
-                      {client.activeProjectCount !== 1 ? 's' : ''}
+                  <Badge variant='outline' className='text-xs'>
+                    {getBillingTypeLabel(client.billingType)}
+                  </Badge>
+                </div>
+                {client.slug ? (
+                  <CardDescription className='text-muted-foreground text-xs'>
+                    /{client.slug}
+                  </CardDescription>
+                ) : null}
+              </CardHeader>
+              <CardContent>
+                <div className='flex items-center gap-2 text-sm'>
+                  <FolderKanban className='text-muted-foreground h-4 w-4' />
+                  <span className='text-muted-foreground'>
+                    {client.activeProjectCount} active project
+                    {client.activeProjectCount !== 1 ? 's' : ''}
+                  </span>
+                  {client.projectCount > client.activeProjectCount ? (
+                    <span className='text-muted-foreground/60'>
+                      ({client.projectCount} total)
                     </span>
-                    {client.projectCount > client.activeProjectCount ? (
-                      <span className='text-muted-foreground/60'>
-                        ({client.projectCount} total)
-                      </span>
-                    ) : null}
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
-          ))}
-        </div>
+                  ) : null}
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+        ))}
       </div>
-    </section>
+    </div>
   )
 }
