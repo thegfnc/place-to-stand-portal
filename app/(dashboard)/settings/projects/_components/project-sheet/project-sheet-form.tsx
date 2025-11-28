@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef } from 'react'
 import type React from 'react'
 import { Redo2, Trash2, Undo2 } from 'lucide-react'
-import type { UseFormReturn } from 'react-hook-form'
+import { useWatch, type UseFormReturn } from 'react-hook-form'
 
 import { Button } from '@/components/ui/button'
 import { DisabledFieldTooltip } from '@/components/ui/disabled-field-tooltip'
@@ -80,7 +80,11 @@ export function ProjectSheetForm(props: ProjectSheetFormProps) {
   })
 
   const firstFieldRef = useRef<HTMLInputElement>(null)
-  const projectType = form.watch('projectType')
+  const projectType =
+    useWatch({
+      control: form.control,
+      name: 'projectType',
+    }) ?? 'CLIENT'
 
   useEffect(() => {
     if (isSheetOpen && firstFieldRef.current) {
