@@ -1,6 +1,7 @@
 import type { leads } from '@/lib/db/schema'
 import type { InferSelectModel } from 'drizzle-orm'
-import type { LeadSourceTypeValue, LeadStatusValue } from './lead-constants'
+import type { LeadStatusValue } from './lead-constants'
+import type { LeadSourceTypeValue } from './constants'
 
 /**
  * Lead record as selected from the database.
