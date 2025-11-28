@@ -168,11 +168,11 @@ export function ProjectsLanding({
 
     return (
       <Link key={project.id} href={href}>
-        <Card className='border-l-4 border-l-emerald-500 border-y-border border-r-border hover:border-r-emerald-500/50 hover:border-y-emerald-500/50 flex h-full cursor-pointer flex-col justify-between shadow-sm transition-all hover:shadow-md'>
+        <Card className='border-y-border border-r-border flex h-full cursor-pointer flex-col justify-between border-l-4 border-l-emerald-500 shadow-sm transition-all hover:border-y-emerald-500/50 hover:border-r-emerald-500/50 hover:shadow-md'>
           <CardHeader>
             <div className='flex items-start justify-between gap-2'>
               <div className='flex min-w-0 flex-1 items-center gap-2'>
-                <FolderKanban className='text-emerald-500 mt-0.5 h-5 w-5 shrink-0' />
+                <FolderKanban className='mt-0.5 h-5 w-5 shrink-0 text-emerald-500' />
                 <CardTitle className='line-clamp-2'>{project.name}</CardTitle>
               </div>
               <Badge className={cn('text-xs', statusToken)}>
@@ -209,7 +209,7 @@ export function ProjectsLanding({
 
   const clientSectionContent =
     clientSections.length > 0 ? (
-      <div className='space-y-10'>
+      <div className='mb-10 space-y-10'>
         {clientSections.map(({ client, projects: clientProjects }) => (
           <div key={client.id} className='space-y-4'>
             <div className='flex items-center gap-2'>
@@ -220,7 +220,7 @@ export function ProjectsLanding({
                       ? `/clients/${client.slug}`
                       : `/clients/${client.id}`
                   }
-                  className='hover:underline underline-offset-4'
+                  className='underline-offset-4 hover:underline'
                 >
                   {client.name}
                 </Link>
@@ -253,7 +253,6 @@ export function ProjectsLanding({
         internalProjects.length > 0
           ? renderProjectGrid(internalProjects)
           : renderSectionEmptyState('There are no internal projects yet.'),
-      className: 'bg-muted/30 p-6 -mx-6 rounded-xl',
     },
     {
       key: 'personal',
@@ -266,12 +265,11 @@ export function ProjectsLanding({
           : renderSectionEmptyState(
               'You have not created any personal projects yet.'
             ),
-      className: 'bg-muted/60 p-6 -mx-6 rounded-xl',
     },
   ]
 
   return (
-    <div className='space-y-12 pb-10'>
+    <div className='mb-14 space-y-24'>
       {sectionConfigs.map(
         ({ key, title, icon: Icon, count, content, className }) => (
           <div key={key} className={cn('space-y-6', className)}>
