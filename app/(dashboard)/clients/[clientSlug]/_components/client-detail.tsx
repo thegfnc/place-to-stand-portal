@@ -284,12 +284,13 @@ function ClientOverviewActions({
             type='button'
             variant='outline'
             size='sm'
-            className='gap-2'
+            className='gap-2 aspect-square'
             onClick={() => setSheetOpen(true)}
             disabled={isPending}
+            aria-label='Edit client'
+            title='Edit client'
           >
             <Pencil className='h-4 w-4' />
-            Edit client
           </Button>
         </DisabledFieldTooltip>
         <DisabledFieldTooltip disabled={isPending} reason={disabledReason}>
@@ -297,12 +298,13 @@ function ClientOverviewActions({
             type='button'
             variant='destructive'
             size='sm'
-            className='gap-2'
+            className='gap-2 aspect-square'
             onClick={() => setConfirmOpen(true)}
             disabled={isPending}
+            aria-label='Archive client'
+            title='Archive client'
           >
             <Archive className='h-4 w-4' />
-            Archive
           </Button>
         </DisabledFieldTooltip>
       </div>
