@@ -7,7 +7,6 @@ import type { LucideIcon } from 'lucide-react'
 import {
   Clock3,
   FolderKanban,
-  KanbanSquare,
   Building2,
   Users,
   Home as HomeIcon,
@@ -76,7 +75,7 @@ const NAV_GROUPS: NavGroup[] = [
       {
         href: '/projects',
         label: 'Projects',
-        icon: KanbanSquare,
+        icon: FolderKanban,
       },
     ],
   },

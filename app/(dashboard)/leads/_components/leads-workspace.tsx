@@ -1,6 +1,13 @@
 'use client'
 
-import { useCallback, useMemo, useState, useTransition } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+} from 'react'
 import { useRouter } from 'next/navigation'
 import { Plus } from 'lucide-react'
 
@@ -14,6 +21,8 @@ import type { LeadRecord } from '@/lib/leads/types'
 import { LeadsHeader } from './leads-header'
 import { LeadsBoard } from './leads-board'
 import { LeadSheet } from './lead-sheet'
+
+const LEAD_SHEET_CLOSE_MS = 320
 
 type LeadsWorkspaceProps = {
   initialColumns: LeadBoardColumnData[]
@@ -31,6 +40,8 @@ export function LeadsWorkspace({
   const router = useRouter()
   const [isCreatingLead, setIsCreatingLead] = useState(false)
   const [closingLeadId, setClosingLeadId] = useState<string | null>(null)
+  const [isSheetClosing, setIsSheetClosing] = useState(false)
+  const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [, startRefresh] = useTransition()
   const leadLookup = useMemo(
     () => buildLeadLookup(initialColumns),
@@ -38,15 +49,33 @@ export function LeadsWorkspace({
   )
   const activeLead = activeLeadId ? leadLookup.get(activeLeadId) ?? null : null
 
+  const cancelPendingClose = useCallback(() => {
+    if (closeTimeoutRef.current) {
+      clearTimeout(closeTimeoutRef.current)
+      closeTimeoutRef.current = null
+    }
+    setIsSheetClosing(false)
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      if (closeTimeoutRef.current) {
+        clearTimeout(closeTimeoutRef.current)
+        closeTimeoutRef.current = null
+      }
+    }
+  }, [])
+
   const handleCreateLead = useCallback(() => {
     if (!canManage) {
       return
     }
 
+    cancelPendingClose()
     setClosingLeadId(null)
     setIsCreatingLead(true)
     router.push('/leads/board', { scroll: false })
-  }, [canManage, router])
+  }, [canManage, cancelPendingClose, router])
 
   const handleEditLead = useCallback(
     (lead: LeadRecord) => {
@@ -54,19 +83,35 @@ export function LeadsWorkspace({
         return
       }
 
+      cancelPendingClose()
       setClosingLeadId(null)
       setIsCreatingLead(false)
       router.push(`/leads/board/${lead.id}`, { scroll: false })
     },
-    [canManage, router]
+    [canManage, cancelPendingClose, router]
   )
+
+  const beginSheetClose = useCallback(() => {
+    if (closeTimeoutRef.current) {
+      clearTimeout(closeTimeoutRef.current)
+    }
+
+    setIsSheetClosing(true)
+    closeTimeoutRef.current = setTimeout(() => {
+      setIsSheetClosing(false)
+      closeTimeoutRef.current = null
+    }, LEAD_SHEET_CLOSE_MS)
+  }, [])
 
   const handleSheetOpenChange = useCallback(
     (next: boolean) => {
       if (next) {
+        cancelPendingClose()
         setClosingLeadId(null)
         return
       }
+
+      beginSheetClose()
 
       if (isCreatingLead) {
         setIsCreatingLead(false)
@@ -84,7 +129,14 @@ export function LeadsWorkspace({
         router.refresh()
       })
     },
-    [activeLeadId, isCreatingLead, router, startRefresh]
+    [
+      activeLeadId,
+      beginSheetClose,
+      cancelPendingClose,
+      isCreatingLead,
+      router,
+      startRefresh,
+    ]
   )
 
   const handleSheetSuccess = useCallback(() => {
@@ -97,7 +149,7 @@ export function LeadsWorkspace({
     Boolean(activeLeadId) && activeLeadId !== closingLeadId
   const isSheetOpen = isCreatingLead || isRouteLeadOpen
   const sheetLead = isCreatingLead ? null : activeLead
-  const shouldRenderSheet = canManage && (isCreatingLead || Boolean(activeLead))
+  const shouldRenderSheet = canManage && (isSheetOpen || isSheetClosing)
   const boardActiveLeadId =
     isCreatingLead || closingLeadId === activeLeadId ? null : activeLeadId
 

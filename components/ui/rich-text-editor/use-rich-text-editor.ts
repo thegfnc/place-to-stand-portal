@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import type { Editor as TipTapEditor } from '@tiptap/core'
 import { useEditor } from '@tiptap/react'
 import { StarterKit } from '@tiptap/starter-kit'
@@ -168,6 +168,8 @@ export function useRichTextEditor({
   placeholder,
   disabled = false,
 }: UseRichTextEditorArgs): UseRichTextEditorReturn {
+  const lastEmittedValueRef = useRef(value || '')
+
   const editor = useEditor(
     {
       extensions: buildExtensions(placeholder),
@@ -184,11 +186,22 @@ export function useRichTextEditor({
         },
       },
       onUpdate: ({ editor: instance }) => {
-        onChange(instance.getHTML())
+        const html = instance.getHTML()
+        const normalized = isContentEmpty(html) ? '' : html
+        if (normalized === lastEmittedValueRef.current) {
+          return
+        }
+
+        lastEmittedValueRef.current = normalized
+        onChange(normalized)
       },
     },
     [placeholder]
   )
+
+  useEffect(() => {
+    lastEmittedValueRef.current = value || ''
+  }, [value])
 
   useEffect(() => {
     if (!editor) return

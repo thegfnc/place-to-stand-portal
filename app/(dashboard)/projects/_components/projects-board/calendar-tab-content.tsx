@@ -184,7 +184,7 @@ export function CalendarTabContent({
       top: targetScrollTop,
       behavior: 'smooth',
     })
-  }, [])
+  }, [containerRef, headerRef, todayCellRef])
 
   const prefetchMonth = useCallback(
     (month: Date) => {
