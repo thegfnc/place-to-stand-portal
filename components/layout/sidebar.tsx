@@ -90,11 +90,6 @@ const NAV_GROUPS: NavGroup[] = [
         icon: Users,
       },
       {
-        href: '/settings/clients',
-        label: 'Clients',
-        icon: Building2,
-      },
-      {
         href: '/settings/projects',
         label: 'Projects',
         icon: FolderKanban,

@@ -177,6 +177,13 @@ export const SearchableCombobox = React.forwardRef<
       }
     }, [contentWidth])
 
+    const selectedTextClasses =
+      variant === 'heading' ? 'text-foreground font-semibold' : 'font-medium'
+    const placeholderTextClasses =
+      variant === 'heading'
+        ? 'text-foreground/60 font-semibold'
+        : 'text-muted-foreground'
+
     return (
       <div className={cn('w-full', className)}>
         <input type='hidden' name={name} value={value ?? ''} />
@@ -199,15 +206,14 @@ export const SearchableCombobox = React.forwardRef<
               className={cn(
                 baseTriggerClasses,
                 variant === 'heading' &&
-                  'h-auto cursor-pointer border-none bg-transparent py-3 px-2 -ml-2 text-2xl font-semibold tracking-tight shadow-none transition-colors hover:bg-accent/50 hover:text-accent-foreground data-[state=open]:bg-accent/50 dark:bg-transparent dark:hover:bg-accent/50 dark:data-[state=open]:bg-accent/50 text-left',
+                  'h-auto cursor-pointer border-none bg-transparent py-2 px-2 -ml-2 text-3xl font-semibold tracking-tight shadow-none transition-colors hover:bg-accent/50 hover:text-accent-foreground data-[state=open]:bg-accent/50 dark:bg-transparent dark:hover:bg-accent/50 dark:data-[state=open]:bg-accent/50 text-left',
                 triggerClassName
               )}
             >
               <span
                 className={cn(
                   variant !== 'heading' && 'line-clamp-1',
-                  selectedItem ? 'font-medium' : 'text-muted-foreground',
-                  variant === 'heading' && 'text-foreground font-semibold'
+                  selectedItem ? selectedTextClasses : placeholderTextClasses
                 )}
               >
                 {selectedItem?.label ?? resolvedPlaceholder}

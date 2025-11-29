@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 
-import { saveClient } from '@/app/(dashboard)/settings/clients/actions'
+import { saveClient } from '@/app/(dashboard)/clients/actions'
 import { useUnsavedChangesWarning } from '@/lib/hooks/use-unsaved-changes-warning'
 import {
   finishSettingsInteraction,

@@ -6,9 +6,9 @@ import { Sheet, SheetContent } from '@/components/ui/sheet'
 import type { UseClientSheetStateArgs } from '@/lib/settings/clients/use-client-sheet-state'
 import { useClientSheetState } from '@/lib/settings/clients/use-client-sheet-state'
 
-import { ClientMemberRemovalDialog } from './_components/client-member-removal-dialog'
-import { ClientSheetForm } from './_components/client-sheet-form'
-import { ClientSheetHeader } from './_components/client-sheet-header'
+import { ClientMemberRemovalDialog } from './client-sheet/client-member-removal-dialog'
+import { ClientSheetForm } from './client-sheet/client-sheet-form'
+import { ClientSheetHeader } from './client-sheet/client-sheet-header'
 
 type ClientSheetProps = UseClientSheetStateArgs
 

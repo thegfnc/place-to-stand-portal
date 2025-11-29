@@ -1,9 +1,12 @@
 'use client'
 
+import { useState, useTransition } from 'react'
 import Link from 'next/link'
-import { Building2, Calendar, FolderKanban } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { Archive, Building2, Calendar, FolderKanban, Pencil } from 'lucide-react'
 import { format } from 'date-fns'
 
+import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
   Card,
@@ -12,25 +15,48 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { DisabledFieldTooltip } from '@/components/ui/disabled-field-tooltip'
 import { Progress } from '@/components/ui/progress'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { useToast } from '@/components/ui/use-toast'
+import { softDeleteClient } from '@/app/(dashboard)/clients/actions'
 import { getProjectStatusLabel, getProjectStatusToken } from '@/lib/constants'
 import { formatProjectDateRange } from '@/lib/settings/projects/project-formatters'
-import { getBillingTypeLabel } from '@/lib/settings/clients/billing-types'
-import { cn } from '@/lib/utils'
 import type {
   ClientDetail as ClientDetailType,
   ClientProject,
 } from '@/lib/data/clients'
+import { getBillingTypeLabel } from '@/lib/settings/clients/billing-types'
+import { PENDING_REASON } from '@/lib/settings/clients/client-sheet-constants'
+import type {
+  ClientRow,
+  ClientUserSummary,
+} from '@/lib/settings/clients/client-sheet-utils'
+import { cn } from '@/lib/utils'
 
+import { ClientSheet } from '../../_components/clients-sheet'
 import { ClientNotesSection } from './client-notes-section'
 
+type HydratedClientDetail = ClientDetailType & { resolvedId: string }
+
 type ClientDetailProps = {
-  client: ClientDetailType
+  client: HydratedClientDetail
   projects: ClientProject[]
+  canManageClients: boolean
+  clientUsers: ClientUserSummary[]
+  clientMembers: Record<string, ClientUserSummary[]>
+  clientRow: ClientRow
 }
 
-export function ClientDetail({ client, projects }: ClientDetailProps) {
+export function ClientDetail({
+  client,
+  projects,
+  canManageClients,
+  clientUsers,
+  clientMembers,
+  clientRow,
+}: ClientDetailProps) {
   const activeProjects = projects.filter(
     p => p.status.toLowerCase() === 'active'
   )
@@ -41,9 +67,19 @@ export function ClientDetail({ client, projects }: ClientDetailProps) {
   return (
     <div className='space-y-6'>
       <Tabs defaultValue='overview' className='w-full'>
-        <TabsList>
-          <TabsTrigger value='overview'>Overview</TabsTrigger>
-        </TabsList>
+        <div className='flex flex-wrap items-center gap-4'>
+          <TabsList>
+            <TabsTrigger value='overview'>Overview</TabsTrigger>
+          </TabsList>
+          {canManageClients ? (
+            <ClientOverviewActions
+              client={client}
+              clientRow={clientRow}
+              clientUsers={clientUsers}
+              clientMembers={clientMembers}
+            />
+          ) : null}
+        </div>
 
         <TabsContent value='overview' className='mt-6 space-y-8'>
           {/* Client Info Card */}
@@ -188,5 +224,106 @@ function ProjectCard({ project, clientSlug }: ProjectCardProps) {
         </CardContent>
       </Card>
     </Link>
+  )
+}
+
+type ClientOverviewActionsProps = {
+  client: HydratedClientDetail
+  clientRow: ClientRow
+  clientUsers: ClientUserSummary[]
+  clientMembers: Record<string, ClientUserSummary[]>
+}
+
+function ClientOverviewActions({
+  client,
+  clientRow,
+  clientUsers,
+  clientMembers,
+}: ClientOverviewActionsProps) {
+  const router = useRouter()
+  const { toast } = useToast()
+  const [sheetOpen, setSheetOpen] = useState(false)
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [isPending, startTransition] = useTransition()
+
+  const handleSheetComplete = () => {
+    setSheetOpen(false)
+    router.refresh()
+  }
+
+  const handleConfirmArchive = () => {
+    startTransition(async () => {
+      const result = await softDeleteClient({ id: clientRow.id })
+
+      if (result.error) {
+        toast({
+          title: 'Unable to archive client',
+          description: result.error,
+          variant: 'destructive',
+        })
+        return
+      }
+
+      toast({
+        title: 'Client archived',
+        description: `${client.name} is hidden from selectors but history remains accessible.`,
+      })
+      setConfirmOpen(false)
+      router.push('/clients')
+      router.refresh()
+    })
+  }
+
+  const disabledReason = isPending ? PENDING_REASON : null
+
+  return (
+    <>
+      <div className='flex flex-wrap items-center gap-2 ml-auto'>
+        <DisabledFieldTooltip disabled={isPending} reason={disabledReason}>
+          <Button
+            type='button'
+            variant='outline'
+            size='sm'
+            className='gap-2'
+            onClick={() => setSheetOpen(true)}
+            disabled={isPending}
+          >
+            <Pencil className='h-4 w-4' />
+            Edit client
+          </Button>
+        </DisabledFieldTooltip>
+        <DisabledFieldTooltip disabled={isPending} reason={disabledReason}>
+          <Button
+            type='button'
+            variant='destructive'
+            size='sm'
+            className='gap-2'
+            onClick={() => setConfirmOpen(true)}
+            disabled={isPending}
+          >
+            <Archive className='h-4 w-4' />
+            Archive
+          </Button>
+        </DisabledFieldTooltip>
+      </div>
+      <ClientSheet
+        open={sheetOpen}
+        onOpenChange={setSheetOpen}
+        onComplete={handleSheetComplete}
+        client={clientRow}
+        allClientUsers={clientUsers}
+        clientMembers={clientMembers}
+      />
+      <ConfirmDialog
+        open={confirmOpen}
+        title='Archive client?'
+        description={`${client.name} will be hidden from selectors and reporting.`}
+        confirmLabel='Archive'
+        confirmVariant='destructive'
+        confirmDisabled={isPending}
+        onCancel={() => setConfirmOpen(false)}
+        onConfirm={handleConfirmArchive}
+      />
+    </>
   )
 }

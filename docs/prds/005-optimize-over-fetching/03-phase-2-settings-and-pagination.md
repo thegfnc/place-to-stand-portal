@@ -10,7 +10,9 @@ This phase focuses on eliminating the "snapshot" pattern in settings pages and i
   - `lib/queries/clients.ts` -> `getClientsSettingsSnapshot`
   - `lib/queries/projects.ts` -> `getProjectsSettingsSnapshot`
   - `lib/queries/hour-blocks.ts` -> `getHourBlocksSettingsSnapshot`
-  - `app/(dashboard)/settings/clients/page.tsx`
+  - `app/(dashboard)/clients/page.tsx`
+  - `app/(dashboard)/clients/archive/page.tsx`
+  - `app/(dashboard)/clients/activity/page.tsx`
   - `app/(dashboard)/settings/projects/page.tsx`
   - `app/(dashboard)/settings/hour-blocks/page.tsx`
 

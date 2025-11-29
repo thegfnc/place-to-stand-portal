@@ -8,7 +8,7 @@ import {
   destroyClient,
   restoreClient,
   softDeleteClient,
-} from '@/app/(dashboard)/settings/clients/actions'
+} from '@/app/(dashboard)/clients/actions'
 
 import type { ClientRow } from './client-sheet-utils'
 

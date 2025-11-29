@@ -20,7 +20,12 @@ import type {
   ClientMutationContext,
   ClientMutationResult,
 } from '@/lib/settings/clients/actions'
-const CLIENT_SETTINGS_PATH = '/settings/clients'
+
+const CLIENT_ROUTES_TO_REVALIDATE = [
+  '/clients',
+  '/clients/archive',
+  '/clients/activity',
+]
 
 export async function saveClient(
   input: ClientInput
@@ -58,7 +63,9 @@ async function runClientMutation<TInput>(
   const { didMutate, ...result } = mutationResult
 
   if (didMutate) {
-    revalidatePath(CLIENT_SETTINGS_PATH)
+    for (const path of CLIENT_ROUTES_TO_REVALIDATE) {
+      revalidatePath(path)
+    }
   }
 
   return result

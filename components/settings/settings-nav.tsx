@@ -7,7 +7,6 @@ import { cn } from "@/lib/utils";
 
 const TABS = [
   { href: "/settings/users", label: "Users" },
-  { href: "/settings/clients", label: "Clients" },
   { href: "/settings/projects", label: "Projects" },
   { href: "/settings/hour-blocks", label: "Hour Blocks" },
 ];

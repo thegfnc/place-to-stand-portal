@@ -55,7 +55,7 @@ export function MyTasksWidget({
             {visibleCount} of {totalCount} tasks
           </p>
           <Button asChild size='sm' variant='outline'>
-            <Link href='/my-tasks' aria-label='View all assigned tasks'>
+            <Link href='/my-tasks/board' aria-label='View all assigned tasks'>
               See all
             </Link>
           </Button>

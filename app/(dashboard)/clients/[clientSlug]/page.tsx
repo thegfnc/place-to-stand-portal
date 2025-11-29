@@ -2,14 +2,21 @@ import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 
 import { AppShellHeader } from '@/components/layout/app-shell'
+import { isAdmin } from '@/lib/auth/permissions'
 import { requireUser } from '@/lib/auth/session'
 import {
   fetchClientsWithMetrics,
   fetchProjectsForClient,
   resolveClientIdentifier,
 } from '@/lib/data/clients'
+import { buildMembersByClient, listClientUsers } from '@/lib/queries/clients'
+import type { ClientRow } from '@/lib/settings/clients/client-sheet-utils'
 
 import { ClientsLandingHeader } from '../_components/clients-landing-header'
+import {
+  normalizeClientMembersMap,
+  normalizeClientUsers,
+} from '../_lib/client-user-helpers'
 import { ClientDetail } from './_components/client-detail'
 
 type Params = Promise<{ clientSlug: string }>
@@ -50,10 +57,33 @@ export default async function ClientDetailPage({
     notFound()
   }
 
-  const [allClients, projects] = await Promise.all([
+  const canManageClients = isAdmin(user)
+
+  const managementDataPromise: Promise<
+    | [
+        Awaited<ReturnType<typeof listClientUsers>>,
+        Awaited<ReturnType<typeof buildMembersByClient>>,
+      ]
+    | null
+  > = canManageClients
+    ? Promise.all([
+        listClientUsers(),
+        buildMembersByClient([client.resolvedId]),
+      ])
+    : Promise.resolve(null)
+
+  const [allClients, projects, managementData] = await Promise.all([
     fetchClientsWithMetrics(user),
     fetchProjectsForClient(user, client.resolvedId),
+    managementDataPromise,
   ])
+
+  const clientUsers = managementData
+    ? normalizeClientUsers(managementData[0])
+    : []
+  const clientMembers = managementData
+    ? normalizeClientMembersMap(managementData[1])
+    : {}
 
   return (
     <>
@@ -64,9 +94,32 @@ export default async function ClientDetailPage({
         />
       </AppShellHeader>
       <div className='space-y-6'>
-        <ClientDetail client={client} projects={projects} />
+        <ClientDetail
+          client={client}
+          projects={projects}
+          canManageClients={canManageClients}
+          clientUsers={clientUsers}
+          clientMembers={clientMembers}
+          clientRow={mapClientDetailToRow(client)}
+        />
       </div>
     </>
   )
+}
+
+function mapClientDetailToRow(
+  client: Awaited<ReturnType<typeof resolveClientIdentifier>>
+): ClientRow {
+  return {
+    id: client.resolvedId,
+    name: client.name,
+    slug: client.slug,
+    notes: client.notes,
+    billing_type: client.billingType,
+    created_by: null,
+    created_at: client.createdAt,
+    updated_at: client.updatedAt,
+    deleted_at: client.deletedAt,
+  }
 }
 

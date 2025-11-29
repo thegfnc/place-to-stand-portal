@@ -114,7 +114,7 @@ Add a `billing_type` field to the `clients` table:
 
 ## 4. Clients View
 
-A new dedicated section for managing clients, replacing the current functionality in `/settings/clients`.
+A new dedicated section for managing clients, replacing the legacy `/settings/clients` route and consolidating everything under `/clients`.
 
 ### 4.1. Requirements
 
@@ -128,7 +128,7 @@ A new dedicated section for managing clients, replacing the current functionalit
   - Each card should show relevant information, mirroring the design of the project cards.
 - **Client Detail Page (`/clients/[clientId]`):**
   - **Overview Tab:** A single tab to start.
-  - **Client Information:** Display the fields currently managed in the `/settings/clients` sheet form.
+  - **Client Information:** Display the fields currently managed in the client sheet form within `/clients`.
   - **Notes Field:** The `notes` text area should be upgraded to use the full Rich Text Editor (RTE) component.
   - **Projects Grid:** Below the client details, display a grid of projects associated with that client, reusing the existing project card component from the `/projects` page.
 
