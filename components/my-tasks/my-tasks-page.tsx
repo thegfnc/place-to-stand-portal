@@ -52,6 +52,14 @@ export function MyTasksPage({
   const reorderMutation = useMyTasksReorderMutation()
   const [isSheetOpen, setIsSheetOpen] = useState(Boolean(activeTaskId))
   const [, startRefresh] = useTransition()
+  const boardScrollStorageKey = useMemo(
+    () => `my-tasks-board:${user.id}`,
+    [user.id]
+  )
+  const calendarScrollStorageKey = useMemo(
+    () => `my-tasks-calendar:${user.id}`,
+    [user.id]
+  )
 
   const taskLookup = useMemo(() => buildTaskLookup(projects), [projects])
   const sanitizedEntries = useMemo(
@@ -216,6 +224,7 @@ export function MyTasksPage({
               onReorder={handleReorder}
               isPending={reorderMutation.isPending}
               activeTaskId={activeTaskId}
+              scrollStorageKey={boardScrollStorageKey}
             />
           )}
         </TabsContent>
@@ -230,6 +239,7 @@ export function MyTasksPage({
             onOpenTask={handleOpenTask}
             activeTaskId={activeTaskId}
             onDueDateChange={handleDueDateChange}
+            scrollStorageKey={calendarScrollStorageKey}
           />
         </TabsContent>
       </Tabs>

@@ -8,6 +8,7 @@ import { CalendarHeader } from '@/app/(dashboard)/projects/_components/projects-
 import { CalendarGrid } from '@/app/(dashboard)/projects/_components/projects-board/calendar/calendar-grid'
 import { TaskDragOverlay } from '@/app/(dashboard)/projects/_components/task-drag-overlay'
 import { useProjectsBoardSensors } from '@/app/(dashboard)/projects/_hooks/use-projects-board-sensors'
+import { useScrollPersistence } from '@/hooks/use-scroll-persistence'
 import type { RenderAssigneeFn } from '@/lib/projects/board/board-selectors'
 import { useCalendarNavigation } from '@/lib/projects/calendar/use-calendar-navigation'
 import {
@@ -28,6 +29,7 @@ type MyTasksCalendarProps = {
   onOpenTask: (taskId: string) => void
   activeTaskId: string | null
   onDueDateChange: (taskId: string, dueOn: string | null) => void
+  scrollStorageKey?: string | null
 }
 
 export function MyTasksCalendar({
@@ -37,6 +39,7 @@ export function MyTasksCalendar({
   onOpenTask,
   activeTaskId,
   onDueDateChange,
+  scrollStorageKey,
 }: MyTasksCalendarProps) {
   const today = useMemo(() => startOfDay(new Date()), [])
   const baseMonth = useMemo(() => startOfMonth(today), [today])
@@ -77,7 +80,11 @@ export function MyTasksCalendar({
   )
 
   const headerRef = useRef<HTMLDivElement | null>(null)
-  const containerRef = useRef<HTMLDivElement | null>(null)
+  const { viewportRef: containerRef, handleScroll: handleContainerScroll } =
+    useScrollPersistence({
+      storageKey: scrollStorageKey ?? null,
+      axis: 'y',
+    })
   const todayCellRef = useRef<HTMLDivElement | null>(null)
 
   const disabledReason = 'Use the project board to add tasks.'
@@ -146,6 +153,7 @@ export function MyTasksCalendar({
         <div
           ref={containerRef}
           className='bg-card absolute inset-0 overflow-y-auto rounded-xl border'
+          onScroll={handleContainerScroll}
         >
           <div className='flex min-h-0 flex-1 flex-col'>
             <CalendarHeader

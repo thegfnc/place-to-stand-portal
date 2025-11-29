@@ -22,6 +22,7 @@ import {
 } from 'react'
 
 import { useProjectsBoardSensors } from '@/app/(dashboard)/projects/_hooks/use-projects-board-sensors'
+import { useScrollPersistence } from '@/hooks/use-scroll-persistence'
 import type { LeadBoardColumnData, LeadRecord } from '@/lib/leads/types'
 import type { LeadStatusValue } from '@/lib/leads/constants'
 import { useToast } from '@/components/ui/use-toast'
@@ -46,6 +47,8 @@ export function LeadsBoard({
   activeLeadId,
 }: LeadsBoardProps) {
   const { sensors } = useProjectsBoardSensors()
+  const { viewportRef: boardViewportRef, handleScroll: handleBoardScroll } =
+    useScrollPersistence({ storageKey: 'leads-board', axis: 'x' })
   const [columns, setColumns] = useState(() =>
     cloneColumns(initialColumns)
   )
@@ -388,7 +391,11 @@ export function LeadsBoard({
       ) : (
         <div className='relative min-h-0 flex-1'>
         <div className='absolute inset-0 overflow-hidden'>
-          <div className='h-full min-h-0 overflow-x-auto'>
+          <div
+            ref={boardViewportRef}
+            className='h-full min-h-0 overflow-x-auto'
+            onScroll={handleBoardScroll}
+          >
             <DndContext
               sensors={sensors}
               onDragStart={event => {

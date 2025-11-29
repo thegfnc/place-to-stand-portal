@@ -30,6 +30,7 @@ import {
 import { useCalendarNavigation } from '@/lib/projects/calendar/use-calendar-navigation'
 import { CalendarHeader } from './calendar/calendar-header'
 import { CalendarGrid } from './calendar/calendar-grid'
+import { useScrollPersistence } from '@/hooks/use-scroll-persistence'
 
 type CalendarTabContentProps = {
   isActive: boolean
@@ -147,7 +148,14 @@ export function CalendarTabContent({
     [rangeStart]
   )
 
-  const containerRef = useRef<HTMLDivElement | null>(null)
+  const calendarScrollKey = projectId
+    ? `project-calendar-scroll:${projectId}`
+    : null
+  const { viewportRef: containerRef, handleScroll: handleContainerScroll } =
+    useScrollPersistence({
+      storageKey: calendarScrollKey,
+      axis: 'y',
+    })
   const headerRef = useRef<HTMLDivElement | null>(null)
   const todayCellRef = useRef<HTMLDivElement | null>(null)
 
@@ -287,6 +295,7 @@ export function CalendarTabContent({
             <div
               ref={containerRef}
               className='bg-card absolute inset-0 overflow-y-auto rounded-xl border'
+                onScroll={handleContainerScroll}
             >
               <div className='flex min-h-0 flex-1 flex-col'>
                 <CalendarHeader

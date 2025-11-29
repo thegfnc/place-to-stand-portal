@@ -11,6 +11,7 @@ import {
 import { KanbanColumn } from '@/app/(dashboard)/projects/_components/kanban-column'
 import { TaskDragOverlay } from '@/app/(dashboard)/projects/_components/task-drag-overlay'
 import { useProjectsBoardSensors } from '@/app/(dashboard)/projects/_hooks/use-projects-board-sensors'
+import { useScrollPersistence } from '@/hooks/use-scroll-persistence'
 import type { ProjectWithRelations, TaskWithRelations } from '@/lib/types'
 import type { RenderAssigneeFn } from '@/lib/projects/board/board-selectors'
 import {
@@ -42,6 +43,7 @@ type MyTasksBoardProps = {
   onReorder: (update: MyTasksBoardReorderUpdate) => void
   isPending: boolean
   activeTaskId: string | null
+  scrollStorageKey?: string | null
 }
 
 type TaskRow = {
@@ -67,8 +69,14 @@ export function MyTasksBoard({
   onReorder,
   isPending,
   activeTaskId,
+  scrollStorageKey,
 }: MyTasksBoardProps) {
   const { sensors } = useProjectsBoardSensors()
+  const { viewportRef: boardViewportRef, handleScroll: handleBoardScroll } =
+    useScrollPersistence({
+      storageKey: scrollStorageKey ?? null,
+      axis: 'x',
+    })
   const [draggingTask, setDraggingTask] = useState<TaskWithRelations | null>(
     null
   )
@@ -156,7 +164,11 @@ export function MyTasksBoard({
     <div className='flex min-h-0 flex-1 flex-col'>
       <div className='relative min-h-0 flex-1'>
         <div className='absolute inset-0 overflow-hidden'>
-          <div className='h-full min-h-0 overflow-x-auto'>
+          <div
+            ref={boardViewportRef}
+            className='h-full min-h-0 overflow-x-auto'
+            onScroll={handleBoardScroll}
+          >
             <DndContext
               sensors={sensors}
               onDragStart={handleDragStart}
