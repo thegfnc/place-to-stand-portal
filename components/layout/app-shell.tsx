@@ -9,11 +9,13 @@ import {
   useState,
   type ReactNode,
 } from 'react'
+import { usePathname } from 'next/navigation'
 
 import type { AppUser } from '@/lib/auth/session'
 
 import { Sidebar } from './sidebar'
 import { UserMenu } from './user-menu'
+import { NAV_GROUPS } from './navigation-config'
 
 interface Props {
   user: AppUser
@@ -52,6 +54,20 @@ export function AppShellHeader({ children }: { children: ReactNode }) {
 
 export function AppShell({ user, children }: Props) {
   const [headerContent, setHeaderContent] = useState<ReactNode>(null)
+  const pathname = usePathname()
+
+  const currentNav = useMemo(() => {
+    for (const group of NAV_GROUPS) {
+      for (const item of group.items) {
+        if (pathname === item.href || pathname.startsWith(item.href + '/')) {
+          return item
+        }
+      }
+    }
+    return null
+  }, [pathname])
+
+  const Icon = currentNav?.icon
 
   const setHeader = useCallback((content: ReactNode) => {
     setHeaderContent(content)
@@ -75,6 +91,11 @@ export function AppShell({ user, children }: Props) {
       <HeaderContext.Provider value={headerContextValue}>
         <div className='flex min-h-screen flex-1 flex-col'>
           <header className='bg-background flex flex-wrap items-center gap-4 border-b px-4 py-4 sm:px-6'>
+            {Icon && (
+              <div className='bg-muted flex items-center justify-center rounded-md border p-2'>
+                <Icon className='text-muted-foreground h-5 w-5' />
+              </div>
+            )}
             <div className='min-w-0 flex-1'>{headerContent}</div>
             <div className='md:hidden'>
               <UserMenu user={user} />
