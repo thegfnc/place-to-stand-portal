@@ -57,9 +57,14 @@ export function AppShell({ user, children }: Props) {
   const pathname = usePathname()
 
   const currentNav = useMemo(() => {
+    const matchesPath = (target: string) =>
+      pathname === target || pathname.startsWith(target + '/')
+
     for (const group of NAV_GROUPS) {
       for (const item of group.items) {
-        if (pathname === item.href || pathname.startsWith(item.href + '/')) {
+        const matchTargets = [item.href, ...(item.matchHrefs ?? [])]
+
+        if (matchTargets.some(matchesPath)) {
           return item
         }
       }

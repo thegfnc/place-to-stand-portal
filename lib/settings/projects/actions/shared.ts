@@ -3,7 +3,9 @@
 import { revalidatePath } from 'next/cache'
 
 export async function revalidateProjectSettings() {
-  revalidatePath('/settings/projects')
+  revalidatePath('/projects')
+  revalidatePath('/projects/archive')
+  revalidatePath('/projects/activity')
 }
 
 export async function revalidateProjectDetailRoutes() {

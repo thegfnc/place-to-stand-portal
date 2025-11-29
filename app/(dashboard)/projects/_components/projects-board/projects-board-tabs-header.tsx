@@ -1,9 +1,14 @@
 import Link from 'next/link'
+import { Archive, Pencil } from 'lucide-react'
 
+import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
+import { DisabledFieldTooltip } from '@/components/ui/disabled-field-tooltip'
 import { Label } from '@/components/ui/label'
 import { TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { startBoardTabInteraction } from '@/lib/projects/board/board-tab-interaction'
+
+import type { ProjectActionControls } from './projects-board-tabs'
 
 export type ProjectsBoardTabsHeaderProps = {
   initialTab:
@@ -26,6 +31,7 @@ export type ProjectsBoardTabsHeaderProps = {
   timeLogsDisabled: boolean
   onlyAssignedToMe: boolean
   onAssignedFilterChange: (checked: boolean) => void
+  projectActions: ProjectActionControls
 }
 
 export function ProjectsBoardTabsHeader(props: ProjectsBoardTabsHeaderProps) {
@@ -44,6 +50,7 @@ export function ProjectsBoardTabsHeader(props: ProjectsBoardTabsHeaderProps) {
     timeLogsDisabled,
     onlyAssignedToMe,
     onAssignedFilterChange,
+    projectActions,
   } = props
 
   return (
@@ -185,18 +192,54 @@ export function ProjectsBoardTabsHeader(props: ProjectsBoardTabsHeaderProps) {
         </TabsTrigger>
       </TabsList>
       {initialTab === 'board' || initialTab === 'calendar' ? (
-        <Label
-          htmlFor='projects-board-assigned-filter'
-          className='text-muted-foreground bg-background/80 flex w-full cursor-pointer justify-end rounded-md border p-2 sm:w-auto'
-        >
-          <Checkbox
-            id='projects-board-assigned-filter'
-            checked={onlyAssignedToMe}
-            onCheckedChange={value => onAssignedFilterChange(value === true)}
-            className='h-4 w-4'
-          />
-          <span>Only show tasks assigned to me</span>
-        </Label>
+        <div className='flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center sm:gap-3'>
+          <Label
+            htmlFor='projects-board-assigned-filter'
+            className='text-muted-foreground bg-background/80 flex w-full cursor-pointer justify-end rounded-md border p-2 sm:w-auto'
+          >
+            <Checkbox
+              id='projects-board-assigned-filter'
+              checked={onlyAssignedToMe}
+              onCheckedChange={value => onAssignedFilterChange(value === true)}
+              className='mr-2 h-4 w-4'
+            />
+            <span>Only show tasks assigned to me</span>
+          </Label>
+          {projectActions ? (
+            <div className='flex items-center justify-end gap-2 sm:justify-start'>
+              <DisabledFieldTooltip
+                disabled={!projectActions.canEdit}
+                reason={projectActions.editDisabledReason}
+              >
+                <Button
+                  variant='outline'
+                  size='icon'
+                  onClick={projectActions.onEdit}
+                  disabled={!projectActions.canEdit}
+                  title='Edit project'
+                  aria-label='Edit project'
+                >
+                  <Pencil className='h-4 w-4' />
+                </Button>
+              </DisabledFieldTooltip>
+              <DisabledFieldTooltip
+                disabled={!projectActions.canArchive}
+                reason={projectActions.archiveDisabledReason}
+              >
+                <Button
+                  variant='destructive'
+                  size='icon'
+                  onClick={projectActions.onArchive}
+                  disabled={!projectActions.canArchive}
+                  title='Archive project'
+                  aria-label='Archive project'
+                >
+                  <Archive className='h-4 w-4' />
+                </Button>
+              </DisabledFieldTooltip>
+            </div>
+          ) : null}
+        </div>
       ) : null}
     </div>
   )

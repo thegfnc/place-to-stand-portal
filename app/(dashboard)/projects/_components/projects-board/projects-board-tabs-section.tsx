@@ -99,6 +99,7 @@ export type ProjectsBoardTabsSectionProps = {
   review: ReviewProps
   drop: DropProps
   timeLogs: TimeLogsProps
+  projectActions: ProjectsBoardTabsProps['projectActions']
 }
 
 export function ProjectsBoardTabsSection({
@@ -112,6 +113,7 @@ export function ProjectsBoardTabsSection({
   review,
   drop,
   timeLogs,
+  projectActions,
 }: ProjectsBoardTabsSectionProps) {
   return (
     <ProjectsBoardTabs
@@ -125,6 +127,7 @@ export function ProjectsBoardTabsSection({
       {...review}
       {...drop}
       {...timeLogs}
+      projectActions={projectActions}
     />
   )
 }

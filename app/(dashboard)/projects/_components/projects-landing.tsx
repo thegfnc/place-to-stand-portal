@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useMemo } from 'react'
 import type { ReactNode } from 'react'
-import { Building2, FolderKanban, UserRound, Users } from 'lucide-react'
+import { FolderKanban, UserRound, Users } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
 import { Badge } from '@/components/ui/badge'
@@ -213,7 +213,7 @@ export function ProjectsLanding({
         {clientSections.map(({ client, projects: clientProjects }) => (
           <div key={client.id} className='space-y-4'>
             <div className='flex items-center gap-2'>
-              <h3 className='text-sm font-semibold'>
+              <h3 className='text-base font-semibold'>
                 <Link
                   href={
                     client.slug
@@ -237,13 +237,6 @@ export function ProjectsLanding({
     )
 
   const sectionConfigs: (SectionConfig & { className?: string })[] = [
-    {
-      key: 'client',
-      title: 'Client Projects',
-      icon: Building2,
-      count: clientProjectCount,
-      content: clientSectionContent,
-    },
     {
       key: 'internal',
       title: 'Internal Projects',
@@ -270,6 +263,7 @@ export function ProjectsLanding({
 
   return (
     <div className='mb-14 space-y-24'>
+      <div>{clientSectionContent}</div>
       {sectionConfigs.map(
         ({ key, title, icon: Icon, count, content, className }) => (
           <div key={key} className={cn('space-y-6', className)}>

@@ -19,6 +19,15 @@ import { ProjectsBoardTabsHeader } from './projects-board-tabs-header'
 import type { ProjectsBoardActiveProject } from './board-tab-content'
 import { TimeLogsTabContent } from './time-logs-tab-content'
 
+export type ProjectActionControls = {
+  canEdit: boolean
+  canArchive: boolean
+  editDisabledReason: string | null
+  archiveDisabledReason: string | null
+  onEdit: () => void
+  onArchive: () => void
+} | null
+
 export type ProjectsBoardTabsProps = {
   initialTab:
     | 'board'
@@ -88,6 +97,7 @@ export type ProjectsBoardTabsProps = {
   currentUserRole: UserRole
   canLogTime: boolean
   onEditTimeLogEntry: (entry: TimeLogEntry) => void
+  projectActions: ProjectActionControls
 }
 
 export function ProjectsBoardTabs(props: ProjectsBoardTabsProps) {
@@ -154,6 +164,7 @@ export function ProjectsBoardTabs(props: ProjectsBoardTabsProps) {
     currentUserRole,
     canLogTime,
     onEditTimeLogEntry,
+    projectActions,
   } = props
 
   useEffect(() => {
@@ -177,6 +188,7 @@ export function ProjectsBoardTabs(props: ProjectsBoardTabsProps) {
         timeLogsDisabled={timeLogsDisabled}
         onlyAssignedToMe={onlyAssignedToMe}
         onAssignedFilterChange={onAssignedFilterChange}
+        projectActions={projectActions}
       />
       <BoardTabContent
         isActive={initialTab === 'board'}

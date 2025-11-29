@@ -10,14 +10,17 @@ import {
 } from 'lucide-react'
 import type { UserRole } from '@/lib/auth/session'
 
+export type NavItem = {
+  href: string
+  label: string
+  icon: LucideIcon
+  matchHrefs?: string[]
+}
+
 export type NavGroup = {
   title?: string | null
   roles: UserRole[]
-  items: Array<{
-    href: string
-    label: string
-    icon: LucideIcon
-  }>
+  items: NavItem[]
 }
 
 export const NAV_GROUPS: NavGroup[] = [
@@ -34,6 +37,7 @@ export const NAV_GROUPS: NavGroup[] = [
         href: '/my-tasks/board',
         label: 'My Tasks',
         icon: ListTodo,
+        matchHrefs: ['/my-tasks', '/my-tasks/calendar'],
       },
     ],
   },
@@ -72,11 +76,6 @@ export const NAV_GROUPS: NavGroup[] = [
         href: '/settings/users',
         label: 'Users',
         icon: Users,
-      },
-      {
-        href: '/settings/projects',
-        label: 'Projects',
-        icon: FolderKanban,
       },
       {
         href: '/settings/hour-blocks',
