@@ -185,7 +185,7 @@ export function LeadsWorkspace({
               onClick={handleCreateLead}
             >
               <Plus className='h-4 w-4' />
-              New Lead
+              Add lead
             </Button>
           </DisabledFieldTooltip>
         </div>

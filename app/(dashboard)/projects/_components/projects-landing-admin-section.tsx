@@ -65,6 +65,7 @@ export function ProjectsLandingAdminSection({
           >
             <Button
               type="button"
+              size='sm'
               onClick={openCreate}
               disabled={createDisabled}
               className="gap-2"

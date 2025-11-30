@@ -31,7 +31,7 @@ export function ClientsAddButton({
 
   return (
     <div className={cn(className)}>
-      <Button type='button' onClick={() => setOpen(true)} className='gap-2'>
+      <Button size='sm' type='button' onClick={() => setOpen(true)} className='gap-2'>
         <Plus className='h-4 w-4' />
         Add client
       </Button>
