@@ -7,9 +7,7 @@ import {
   type MyTasksView,
 } from '@/components/my-tasks/my-tasks-page'
 import { requireUser } from '@/lib/auth/session'
-import {
-  fetchProjectsWithRelationsByIds,
-} from '@/lib/data/projects'
+import { fetchProjectsWithRelations } from '@/lib/data/projects'
 import { fetchAdminUsers } from '@/lib/data/users'
 import { listAssignedTaskSummaries } from '@/lib/data/tasks'
 
@@ -39,31 +37,37 @@ export default async function MyTasksViewRoute({ params }: PageProps) {
     redirect(`/my-tasks/${DEFAULT_VIEW}${suffix}`)
   }
 
-  const [assignedSummaries, admins] = await Promise.all([
+  const [assignedSummaries, admins, accessibleProjects] = await Promise.all([
     listAssignedTaskSummaries({
       userId: user.id,
       role: user.role,
       limit: null,
     }),
     fetchAdminUsers(),
+    fetchProjectsWithRelations({
+      forUserId: user.id,
+      forRole: user.role,
+    }),
   ])
 
-  const assignedProjectIds = Array.from(
-    new Set(
-      assignedSummaries.items
-        .map(item => item.project.id)
-        .filter((id): id is string => Boolean(id))
-    )
+  const projectLookup = new Map(
+    accessibleProjects.map(project => [project.id, project])
   )
-
-  const projects = await fetchProjectsWithRelationsByIds(assignedProjectIds)
-  const projectIdSet = new Set(projects.map(project => project.id))
+  const includedProjectIds = new Set<string>()
 
   const initialEntries: MyTasksInitialEntry[] = []
 
+  const relevantProjects: typeof accessibleProjects = []
+
   assignedSummaries.items.forEach(item => {
-    if (!projectIdSet.has(item.project.id)) {
+    const project = projectLookup.get(item.project.id)
+    if (!project) {
       return
+    }
+
+    if (!includedProjectIds.has(project.id)) {
+      includedProjectIds.add(project.id)
+      relevantProjects.push(project)
     }
 
     initialEntries.push({
@@ -73,8 +77,8 @@ export default async function MyTasksViewRoute({ params }: PageProps) {
     })
   })
 
-  const relevantProjects = projects.filter(project =>
-    initialEntries.some(entry => entry.projectId === project.id)
+  const selectionProjects = accessibleProjects.filter(
+    project => !project.deleted_at
   )
 
   return (
@@ -82,6 +86,7 @@ export default async function MyTasksViewRoute({ params }: PageProps) {
       user={user}
       admins={admins}
       projects={relevantProjects}
+      projectSelectionProjects={selectionProjects}
       initialEntries={initialEntries}
       activeTaskId={activeTaskId}
       view={viewParam}

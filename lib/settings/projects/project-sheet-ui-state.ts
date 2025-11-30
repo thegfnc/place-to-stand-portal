@@ -24,8 +24,8 @@ export const PROJECT_SHEET_MISSING_CLIENT_REASON =
 export const buildClientOptions = (clients: ClientRow[]): ClientOption[] =>
   clients.map(client => ({
     value: client.id,
-    label: client.deleted_at ? `${client.name} (Deleted)` : client.name,
-    keywords: client.deleted_at ? [client.name, 'deleted'] : [client.name],
+    label: client.deleted_at ? `${client.name} (Archived)` : client.name,
+    keywords: client.deleted_at ? [client.name, 'archived'] : [client.name],
   }))
 
 export const deriveSubmitButtonState = (
@@ -57,6 +57,9 @@ export const deriveSubmitButtonState = (
   return { disabled, reason, label }
 }
 
+const PROJECT_SHEET_ARCHIVE_DISABLED_REASON =
+  'Archiving disabled while editing another project.'
+
 export const deriveDeleteButtonState = (
   isEditing: boolean,
   isPending: boolean,
@@ -70,9 +73,7 @@ export const deriveDeleteButtonState = (
   const reason = disabled
     ? isPending
       ? PROJECT_SHEET_PENDING_REASON
-      : project?.deleted_at
-        ? 'This project is already deleted.'
-        : null
+      : PROJECT_SHEET_ARCHIVE_DISABLED_REASON
     : null
 
   return { disabled, reason }

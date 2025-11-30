@@ -2,18 +2,14 @@ import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
-import { SearchableCombobox } from '@/components/ui/searchable-combobox'
+import {
+  SearchableCombobox,
+  type SearchableComboboxGroup,
+  type SearchableComboboxItem,
+} from '@/components/ui/searchable-combobox'
 
-export type BoardHeaderItem = {
-  value: string
-  label: string
-  keywords: string[]
-}
-
-export type BoardHeaderItemGroup = {
-  label: string
-  items: BoardHeaderItem[]
-}
+export type BoardHeaderItem = SearchableComboboxItem
+export type BoardHeaderItemGroup = SearchableComboboxGroup
 
 type ProjectsBoardHeaderProps = {
   projectItems: BoardHeaderItem[]

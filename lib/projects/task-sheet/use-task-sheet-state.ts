@@ -1,6 +1,13 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState, useTransition } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+} from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import type { UseFormReturn } from 'react-hook-form'
 
@@ -23,7 +30,15 @@ import {
   TASK_STATUSES,
   UNASSIGNED_ASSIGNEE_VALUE,
 } from './task-sheet-constants'
-import { getDisabledReason, normalizeRichTextContent } from './task-sheet-utils'
+import {
+  buildAssigneeItems,
+  buildProjectItems,
+  getDisabledReason,
+  normalizeRichTextContent,
+} from './task-sheet-utils'
+import type {
+  ProjectSelectionItems,
+} from './task-sheet-utils'
 import type { TaskSheetFormValues } from './task-sheet-schema'
 import { useTaskSheetForm } from './hooks/use-task-sheet-form'
 import {
@@ -36,12 +51,15 @@ export type { AttachmentItem } from './hooks/use-task-attachments'
 export type UseTaskSheetStateArgs = {
   open: boolean
   onOpenChange: (open: boolean) => void
-  project: ProjectWithRelations
   task?: TaskWithRelations
   canManage: boolean
   admins: DbUser[]
   defaultStatus: BoardColumnId
   defaultDueOn: string | null
+  projects: ProjectWithRelations[]
+  projectSelectionProjects?: ProjectWithRelations[]
+  defaultProjectId: string | null
+  defaultAssigneeId: string | null
 }
 
 type UseTaskSheetStateReturn = {
@@ -49,9 +67,11 @@ type UseTaskSheetStateReturn = {
   feedback: string | null
   isPending: boolean
   isDeleteDialogOpen: boolean
-  assigneeItems: ReturnType<typeof useTaskSheetForm>['assigneeItems']
+  assigneeItems: ReturnType<typeof buildAssigneeItems>
+  projectItems: ProjectSelectionItems['items']
+  projectGroups: ProjectSelectionItems['groups']
   sheetTitle: string
-  projectName: string
+  projectName: string | null
   deleteDisabled: boolean
   deleteDisabledReason: string | null
   submitDisabled: boolean
@@ -78,12 +98,15 @@ type UseTaskSheetStateReturn = {
 export const useTaskSheetState = ({
   open,
   onOpenChange,
-  project,
   task,
   canManage,
   admins,
   defaultStatus,
   defaultDueOn,
+  projects,
+  projectSelectionProjects,
+  defaultProjectId,
+  defaultAssigneeId,
 }: UseTaskSheetStateArgs): UseTaskSheetStateReturn => {
   const router = useRouter()
   const pathname = usePathname()
@@ -94,19 +117,23 @@ export const useTaskSheetState = ({
   const pendingRefreshRef = useRef(false)
   const previousPathnameRef = useRef(pathname)
 
+  const selectionProjects = projectSelectionProjects ?? projects
+
+  const projectLookup = useMemo(() => {
+    return new Map(selectionProjects.map(project => [project.id, project]))
+  }, [selectionProjects])
+
   const {
     form,
     defaultValues,
-    assigneeItems,
     sheetTitle,
-    projectName,
     editorKey,
   } = useTaskSheetForm({
     task,
-    project,
-    admins,
     defaultStatus,
     defaultDueOn,
+    defaultProjectId,
+    defaultAssigneeId,
   })
   const {
     attachmentItems,
@@ -202,7 +229,7 @@ export const useTaskSheetState = ({
         const attachmentsPayload = buildSubmissionPayload()
         const result = await saveTask({
           id: task?.id,
-          projectId: project.id,
+          projectId: values.projectId,
           title: values.title.trim(),
           description: normalizedDescription,
           status: values.status,
@@ -243,7 +270,6 @@ export const useTaskSheetState = ({
       buildSubmissionPayload,
       canManage,
       onOpenChange,
-      project.id,
       router,
       resetFormState,
       task,
@@ -311,12 +337,34 @@ export const useTaskSheetState = ({
     ? 'Please wait for uploads to finish.'
     : resolveDisabledReason(submitDisabled)
 
+  const selectedProjectId = form.watch('projectId') ?? ''
+  const selectedProject = selectedProjectId
+    ? projectLookup.get(selectedProjectId)
+    : null
+  const { items: projectItems, groups: projectGroups } = useMemo(
+    () => buildProjectItems({ projects: selectionProjects }),
+    [selectionProjects]
+  )
+  const watchedAssigneeId = form.watch('assigneeId') ?? null
+  const assigneeItems = useMemo(
+    () =>
+      buildAssigneeItems({
+        admins,
+        members: selectedProject?.members ?? [],
+        currentAssigneeId: watchedAssigneeId,
+      }),
+    [admins, selectedProject, watchedAssigneeId]
+  )
+  const projectName = selectedProject?.name ?? null
+
   return {
     form,
     feedback,
     isPending,
     isDeleteDialogOpen,
     assigneeItems,
+    projectItems,
+    projectGroups,
     sheetTitle,
     projectName,
     deleteDisabled,

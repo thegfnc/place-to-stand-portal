@@ -17,6 +17,7 @@ export const useClientSheetState = ({
   open,
   onOpenChange,
   onComplete,
+  onArchived,
   client,
   allClientUsers,
   clientMembers,
@@ -47,6 +48,7 @@ export const useClientSheetState = ({
     setFeedback,
     onOpenChange,
     onComplete,
+    onArchived,
     toast,
   })
 

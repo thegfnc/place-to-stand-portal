@@ -4,6 +4,10 @@ import type {
   TaskWithRelations,
 } from '@/lib/types'
 import type { UserRole } from '@/lib/auth/session'
+import type {
+  SearchableComboboxGroup,
+  SearchableComboboxItem,
+} from '@/components/ui/searchable-combobox'
 
 import type { BoardColumnId } from '../board-constants'
 import type { useBoardDnDState } from '../state/use-board-dnd'
@@ -29,11 +33,8 @@ export type ProjectsBoardState = {
   isPending: boolean
   feedback: string | null
   selectedProjectId: string | null
-  projectItems: Array<{ value: string; label: string; keywords: string[] }>
-  projectGroups: Array<{
-    label: string
-    items: Array<{ value: string; label: string; keywords: string[] }>
-  }>
+  projectItems: SearchableComboboxItem[]
+  projectGroups: SearchableComboboxGroup[]
   canSelectNextProject: boolean
   canSelectPreviousProject: boolean
   activeProject: ProjectWithRelations | null

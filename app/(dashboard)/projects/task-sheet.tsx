@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useRef, useState, type DragEvent } from 'react'
+import { useCallback, useMemo, useRef, useState, type DragEvent } from 'react'
 
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { Sheet, SheetContent } from '@/components/ui/sheet'
@@ -23,7 +23,6 @@ import type { BoardColumnId } from '@/lib/projects/board/board-constants'
 type TaskSheetProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
-  project: ProjectWithRelations
   task?: TaskWithRelations
   canManage: boolean
   admins: DbUser[]
@@ -31,6 +30,10 @@ type TaskSheetProps = {
   currentUserRole: UserRole
   defaultStatus: BoardColumnId
   defaultDueOn: string | null
+  projects: ProjectWithRelations[]
+  projectSelectionProjects?: ProjectWithRelations[]
+  defaultProjectId: string | null
+  defaultAssigneeId: string | null
 }
 
 export function TaskSheet(props: TaskSheetProps) {
@@ -40,6 +43,8 @@ export function TaskSheet(props: TaskSheetProps) {
     isPending,
     isDeleteDialogOpen,
     assigneeItems,
+    projectItems,
+    projectGroups,
     sheetTitle,
     projectName,
     deleteDisabled,
@@ -63,7 +68,19 @@ export function TaskSheet(props: TaskSheetProps) {
     acceptedAttachmentTypes,
     maxAttachmentSize,
     attachmentsDisabledReason,
-  } = useTaskSheetState(props)
+  } = useTaskSheetState({
+    open: props.open,
+    onOpenChange: props.onOpenChange,
+    task: props.task,
+    canManage: props.canManage,
+    admins: props.admins,
+    defaultStatus: props.defaultStatus,
+    defaultDueOn: props.defaultDueOn,
+    projects: props.projects,
+    projectSelectionProjects: props.projectSelectionProjects,
+    defaultProjectId: props.defaultProjectId,
+    defaultAssigneeId: props.defaultAssigneeId,
+  })
 
   const [isDragActive, setIsDragActive] = useState(false)
   const dragCounterRef = useRef(0)
@@ -161,6 +178,24 @@ export function TaskSheet(props: TaskSheetProps) {
     [dropDisabled, handleAttachmentUpload, hasDraggedFiles]
   )
 
+  const taskProject = useMemo(() => {
+    if (!props.task) {
+      return null
+    }
+    return props.projects.find(project => project.id === props.task?.project_id)
+  }, [props.projects, props.task])
+
+  const taskPanelProjectId = props.task?.project_id ?? null
+  const taskPanelClientId = taskProject?.client?.id ?? null
+
+  const headerDescription = projectName ? (
+    <>
+      Task belongs to <span className='font-medium'>{projectName}</span>.
+    </>
+  ) : (
+    'Select a project so we know where to track this task.'
+  )
+
   return (
     <>
       <Sheet open={props.open} onOpenChange={handleSheetOpenChange}>
@@ -172,15 +207,7 @@ export function TaskSheet(props: TaskSheetProps) {
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
           >
-            <TaskSheetHeader
-              title={sheetTitle}
-              description={
-                <>
-                  Task belongs to{' '}
-                  <span className='font-medium'>{projectName}</span>.
-                </>
-              }
-            />
+            <TaskSheetHeader title={sheetTitle} description={headerDescription} />
             <TaskSheetForm
               form={form}
               onSubmit={handleFormSubmit}
@@ -188,6 +215,8 @@ export function TaskSheet(props: TaskSheetProps) {
               isPending={isPending}
               canManage={props.canManage}
               assigneeItems={assigneeItems}
+              projectItems={projectItems}
+              projectGroups={projectGroups}
               resolveDisabledReason={resolveDisabledReason}
               taskStatuses={taskStatuses}
               unassignedValue={unassignedValue}
@@ -209,7 +238,7 @@ export function TaskSheet(props: TaskSheetProps) {
               attachmentsDisabledReason={attachmentsDisabledReason}
               isDragActive={!dropDisabled && isDragActive}
             />
-            {props.task ? (
+            {props.task && taskPanelProjectId ? (
               <div className='px-6'>
                 <Tabs defaultValue='comments' className='w-full'>
                   <TabsList className='grid w-full grid-cols-2'>
@@ -219,18 +248,18 @@ export function TaskSheet(props: TaskSheetProps) {
                   <TabsContent value='comments' className='mt-6'>
                     <TaskCommentsPanel
                       taskId={props.task.id}
-                      projectId={props.project.id}
+                      projectId={taskPanelProjectId}
                       currentUserId={props.currentUserId}
                       canComment
                       taskTitle={props.task.title}
-                      clientId={props.project.client?.id ?? null}
+                      clientId={taskPanelClientId}
                     />
                   </TabsContent>
                   <TabsContent value='activity' className='mt-6'>
                     <TaskActivityPanel
                       taskId={props.task.id}
-                      projectId={props.project.id}
-                      clientId={props.project.client?.id ?? null}
+                      projectId={taskPanelProjectId}
+                      clientId={taskPanelClientId}
                     />
                   </TabsContent>
                 </Tabs>

@@ -28,7 +28,12 @@ import type {
   ClientProject,
 } from '@/lib/data/clients'
 import { getBillingTypeLabel } from '@/lib/settings/clients/billing-types'
-import { PENDING_REASON } from '@/lib/settings/clients/client-sheet-constants'
+import {
+  ARCHIVE_CLIENT_CONFIRM_LABEL,
+  ARCHIVE_CLIENT_DIALOG_TITLE,
+  PENDING_REASON,
+  getArchiveClientDialogDescription,
+} from '@/lib/settings/clients/client-sheet-constants'
 import type {
   ClientRow,
   ClientUserSummary,
@@ -251,6 +256,11 @@ function ClientOverviewActions({
     router.refresh()
   }
 
+  const handleSheetArchived = () => {
+    router.push('/clients')
+    router.refresh()
+  }
+
   const handleConfirmArchive = () => {
     startTransition(async () => {
       const result = await softDeleteClient({ id: clientRow.id })
@@ -283,28 +293,13 @@ function ClientOverviewActions({
           <Button
             type='button'
             variant='outline'
-            size='sm'
-            className='gap-2 aspect-square'
             onClick={() => setSheetOpen(true)}
             disabled={isPending}
             aria-label='Edit client'
             title='Edit client'
           >
             <Pencil className='h-4 w-4' />
-          </Button>
-        </DisabledFieldTooltip>
-        <DisabledFieldTooltip disabled={isPending} reason={disabledReason}>
-          <Button
-            type='button'
-            variant='destructive'
-            size='sm'
-            className='gap-2 aspect-square'
-            onClick={() => setConfirmOpen(true)}
-            disabled={isPending}
-            aria-label='Archive client'
-            title='Archive client'
-          >
-            <Archive className='h-4 w-4' />
+            Edit client
           </Button>
         </DisabledFieldTooltip>
       </div>
@@ -312,15 +307,16 @@ function ClientOverviewActions({
         open={sheetOpen}
         onOpenChange={setSheetOpen}
         onComplete={handleSheetComplete}
+        onArchived={handleSheetArchived}
         client={clientRow}
         allClientUsers={clientUsers}
         clientMembers={clientMembers}
       />
       <ConfirmDialog
         open={confirmOpen}
-        title='Archive client?'
-        description={`${client.name} will be hidden from selectors and reporting.`}
-        confirmLabel='Archive'
+        title={ARCHIVE_CLIENT_DIALOG_TITLE}
+        description={getArchiveClientDialogDescription(client.name)}
+        confirmLabel={ARCHIVE_CLIENT_CONFIRM_LABEL}
         confirmVariant='destructive'
         confirmDisabled={isPending}
         onCancel={() => setConfirmOpen(false)}

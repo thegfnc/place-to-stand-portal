@@ -47,6 +47,10 @@ export function LeadsWorkspace({
     () => buildLeadLookup(initialColumns),
     [initialColumns]
   )
+  const totalLeads = useMemo(
+    () => initialColumns.reduce((sum, column) => sum + column.leads.length, 0),
+    [initialColumns]
+  )
   const activeLead = activeLeadId ? leadLookup.get(activeLeadId) ?? null : null
 
   const cancelPendingClose = useCallback(() => {
@@ -174,20 +178,25 @@ export function LeadsWorkspace({
               Board
             </TabsTrigger>
           </TabsList>
-          <DisabledFieldTooltip
-            disabled={!canManage}
-            reason='Admin access is required to create leads.'
-          >
-            <Button
-              type='button'
-              size='sm'
+          <div className='flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-6'>
+            <span className='text-muted-foreground text-sm'>
+              Total leads: {totalLeads}
+            </span>
+            <DisabledFieldTooltip
               disabled={!canManage}
-              onClick={handleCreateLead}
+              reason='Admin access is required to create leads.'
             >
-              <Plus className='h-4 w-4' />
-              Add lead
-            </Button>
-          </DisabledFieldTooltip>
+              <Button
+                type='button'
+                size='sm'
+                disabled={!canManage}
+                onClick={handleCreateLead}
+              >
+                <Plus className='h-4 w-4' />
+                Add lead
+              </Button>
+            </DisabledFieldTooltip>
+          </div>
         </div>
         <TabsContent
           value='board'

@@ -310,7 +310,7 @@ export function useProjectSheetState({
           })
           setFeedback(result.error)
           toast({
-            title: 'Unable to delete project',
+            title: 'Unable to archive project',
             description: result.error,
             variant: 'destructive',
           })
@@ -323,7 +323,7 @@ export function useProjectSheetState({
         })
 
         toast({
-          title: 'Project deleted',
+          title: 'Project archived',
           description: 'You can still find it in historical reporting.',
         })
 
@@ -335,9 +335,9 @@ export function useProjectSheetState({
           targetId: project.id,
           error: error instanceof Error ? error.message : 'Unknown error',
         })
-        setFeedback('We could not delete this project. Please try again.')
+        setFeedback('We could not archive this project. Please try again.')
         toast({
-          title: 'Unable to delete project',
+          title: 'Unable to archive project',
           description:
             error instanceof Error ? error.message : 'Unknown error.',
           variant: 'destructive',

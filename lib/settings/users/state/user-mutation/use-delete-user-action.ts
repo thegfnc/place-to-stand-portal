@@ -46,7 +46,7 @@ export function useDeleteUserAction({
 
   const notifySelfDeleteBlocked = useCallback(() => {
     toast({
-      title: 'Cannot delete your own account',
+      title: 'Cannot archive your own account',
       description: 'Switch to another administrator before removing your access.',
       variant: 'destructive',
     })

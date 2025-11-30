@@ -20,6 +20,7 @@ export type UseClientSheetStateArgs = {
   open: boolean
   onOpenChange: (open: boolean) => void
   onComplete: () => void
+  onArchived?: () => void
   client: ClientRow | null
   allClientUsers: ClientUserSummary[]
   clientMembers: Record<string, ClientUserSummary[]>
@@ -74,6 +75,7 @@ export type ClientDeletionStateArgs = {
   setFeedback: (value: string | null) => void
   onOpenChange: (open: boolean) => void
   onComplete: () => void
+  onArchived?: () => void
   toast: ToastFn
 }
 

@@ -10,6 +10,7 @@ import {
 import { Input } from '@/components/ui/input'
 import {
   SearchableCombobox,
+  type SearchableComboboxGroup,
   type SearchableComboboxItem,
 } from '@/components/ui/searchable-combobox'
 import {
@@ -40,6 +41,8 @@ export type TaskSheetFormFieldsProps = {
   taskStatuses: Array<{ value: string; label: string }>
   assigneeItems: SearchableComboboxItem[]
   unassignedValue: string
+  projectItems: SearchableComboboxItem[]
+  projectGroups: SearchableComboboxGroup[]
   editorKey: string
   attachments: AttachmentItem[]
   onSelectFiles: (files: FileList | null) => void
@@ -63,6 +66,8 @@ export function TaskSheetFormFields(props: TaskSheetFormFieldsProps) {
     taskStatuses,
     assigneeItems,
     unassignedValue,
+    projectItems,
+    projectGroups,
     editorKey,
     attachments,
     onSelectFiles,
@@ -186,43 +191,77 @@ export function TaskSheetFormFields(props: TaskSheetFormFieldsProps) {
           }}
         />
       </div>
-      <FormField
-        control={form.control}
-        name='assigneeId'
-        render={({ field }) => {
-          const disabled = isPending || !canManage
-          const reason = resolveDisabledReason(disabled)
-          const selectedValue = field.value ?? unassignedValue
+      <div className='grid gap-4 sm:grid-cols-2'>
+        <FormField
+          control={form.control}
+          name='assigneeId'
+          render={({ field }) => {
+            const disabled = isPending || !canManage
+            const reason = resolveDisabledReason(disabled)
+            const selectedValue = field.value ?? unassignedValue
 
-          return (
-            <FormItem>
-              <FormLabel>Assignee</FormLabel>
-              <FormControl>
-                <DisabledFieldTooltip disabled={disabled} reason={reason}>
-                  <SearchableCombobox
-                    items={assigneeItems}
-                    value={selectedValue}
-                    onChange={next => {
-                      if (next === unassignedValue) {
-                        field.onChange(null)
-                        return
-                      }
-                      field.onChange(next)
-                    }}
-                    onBlur={field.onBlur}
-                    name={field.name}
-                    placeholder='Select assignee'
-                    searchPlaceholder='Search collaborators...'
-                    emptyMessage='No eligible collaborators found.'
-                    disabled={disabled}
-                  />
-                </DisabledFieldTooltip>
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )
-        }}
-      />
+            return (
+              <FormItem>
+                <FormLabel>Assignee</FormLabel>
+                <FormControl>
+                  <DisabledFieldTooltip disabled={disabled} reason={reason}>
+                    <SearchableCombobox
+                      items={assigneeItems}
+                      value={selectedValue}
+                      onChange={next => {
+                        if (next === unassignedValue) {
+                          field.onChange(null)
+                          return
+                        }
+                        field.onChange(next)
+                      }}
+                      onBlur={field.onBlur}
+                      name={field.name}
+                      placeholder='Select assignee'
+                      searchPlaceholder='Search collaborators...'
+                      emptyMessage='No eligible collaborators found.'
+                      disabled={disabled}
+                    />
+                  </DisabledFieldTooltip>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )
+          }}
+        />
+        <FormField
+          control={form.control}
+          name='projectId'
+          render={({ field }) => {
+            const disabled = isPending || !canManage
+            const reason = resolveDisabledReason(disabled)
+            const selectedValue = field.value ?? ''
+
+            return (
+              <FormItem>
+                <FormLabel>Project</FormLabel>
+                <FormControl>
+                  <DisabledFieldTooltip disabled={disabled} reason={reason}>
+                    <SearchableCombobox
+                      items={projectItems}
+                      groups={projectGroups}
+                      value={selectedValue}
+                      onChange={field.onChange}
+                      onBlur={field.onBlur}
+                      name={field.name}
+                      placeholder='Select project'
+                      searchPlaceholder='Search projects...'
+                      emptyMessage='No projects found.'
+                      disabled={disabled}
+                    />
+                  </DisabledFieldTooltip>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )
+          }}
+        />
+      </div>
       <FormField
         control={form.control}
         name='description'

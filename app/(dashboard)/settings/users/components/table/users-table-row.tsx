@@ -32,8 +32,8 @@ export function UsersTableRow({
   const { user } = row
   const deleteTitle =
     row.deleteDisabled && row.deleteDisabledReason === selfDeleteReason
-      ? 'Cannot delete your own account'
-      : 'Delete user'
+      ? 'Cannot archive your own account'
+      : 'Archive user'
   const showEdit = mode === 'active'
   const showSoftDelete = mode === 'active'
   const showRestore = mode === 'archive'
@@ -105,11 +105,11 @@ export function UsersTableRow({
                 size='icon'
                 onClick={row.onRequestDelete}
                 title={deleteTitle}
-                aria-label='Delete user'
+                aria-label='Archive user'
                 disabled={row.deleteDisabled}
               >
                 <Archive className='h-4 w-4' />
-                <span className='sr-only'>Delete</span>
+                <span className='sr-only'>Archive</span>
               </Button>
             </DisabledFieldTooltip>
           ) : null}

@@ -13,6 +13,10 @@ export const taskSheetFormSchema = z.object({
     'ARCHIVED',
   ] as const),
   dueOn: z.string().optional(),
+  projectId: z
+    .string()
+    .min(1, 'Project is required')
+    .uuid('Select a project'),
   assigneeId: z.string().uuid().optional().nullable(),
 })
 

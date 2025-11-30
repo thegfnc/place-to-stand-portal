@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef } from 'react'
 import type React from 'react'
-import { Redo2, Trash2, Undo2 } from 'lucide-react'
+import { Archive, Redo2, Undo2 } from 'lucide-react'
 import { useWatch, type UseFormReturn } from 'react-hook-form'
 
 import { Button } from '@/components/ui/button'
@@ -376,8 +376,12 @@ export function ProjectSheetForm(props: ProjectSheetFormProps) {
                   variant='destructive'
                   onClick={onRequestDelete}
                   disabled={deleteButton.disabled}
+                  aria-label='Click to archive this project'
+                  title='Click to archive this project'
+                  className='gap-2'
+                  size='icon'
                 >
-                  <Trash2 className='h-4 w-4' />
+                  <Archive className='h-4 w-4' />
                 </Button>
               </DisabledFieldTooltip>
             ) : null}

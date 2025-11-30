@@ -1,11 +1,10 @@
 'use client'
 
 import { useCallback, useEffect, useRef } from 'react'
-import { Redo2, Trash2, Undo2 } from 'lucide-react'
+import { Archive, Redo2, Undo2 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { DisabledFieldTooltip } from '@/components/ui/disabled-field-tooltip'
-import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import {
   Form,
   FormControl,
@@ -32,6 +31,7 @@ import type {
   ClientRow,
   HourBlockWithClient,
 } from '@/lib/settings/hour-blocks/hour-block-form'
+import { HourBlockArchiveDialog } from './_components/hour-block-archive-dialog'
 
 type Props = {
   open: boolean
@@ -261,10 +261,14 @@ export function HourBlockSheet({
                       <Button
                         type='button'
                         variant='destructive'
+                        size='icon'
+                        title='Archive hour block'
+                        aria-label='Archive hour block'
                         onClick={handleRequestDelete}
                         disabled={deleteButton.disabled}
                       >
-                        <Trash2 className='h-4 w-4' />
+                        <Archive className='h-4 w-4' />
+                        <span className='sr-only'>Archive</span>
                       </Button>
                     </DisabledFieldTooltip>
                   ) : null}
@@ -274,12 +278,8 @@ export function HourBlockSheet({
           </Form>
         </SheetContent>
       </Sheet>
-      <ConfirmDialog
+      <HourBlockArchiveDialog
         open={isDeleteDialogOpen}
-        title='Delete hour block?'
-        description='Deleting this block hides it from active reporting while keeping historical data intact.'
-        confirmLabel='Delete'
-        confirmVariant='destructive'
         confirmDisabled={isPending}
         onCancel={handleCancelDelete}
         onConfirm={handleConfirmDelete}

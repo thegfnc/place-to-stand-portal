@@ -1,12 +1,16 @@
 import { formatISO, parseISO } from 'date-fns'
 
-import type { SearchableComboboxItem } from '@/components/ui/searchable-combobox'
+import type {
+  SearchableComboboxGroup,
+  SearchableComboboxItem,
+} from '@/components/ui/searchable-combobox'
 import type {
   DbUser,
   ProjectWithRelations,
   TaskWithRelations,
 } from '@/lib/types'
 import type { BoardColumnId } from '@/lib/projects/board/board-constants'
+import { buildProjectSelectionOptions } from '@/lib/projects/project-selection-utils'
 
 import {
   MANAGE_PERMISSION_REASON,
@@ -28,6 +32,17 @@ type CreateDefaultValuesArgs = {
   currentAssigneeId: string | null
   defaultStatus: BoardColumnId
   defaultDueOn: string | null
+  defaultProjectId: string | null
+  defaultAssigneeId: string | null
+}
+
+type BuildProjectItemsArgs = {
+  projects: ProjectWithRelations[]
+}
+
+export type ProjectSelectionItems = {
+  items: SearchableComboboxItem[]
+  groups: SearchableComboboxGroup[]
 }
 
 const tidyRole = (role: string | null | undefined) => {
@@ -190,17 +205,25 @@ export const buildAssigneeItems = ({
   ]
 }
 
+export const buildProjectItems = ({
+  projects,
+}: BuildProjectItemsArgs): ProjectSelectionItems =>
+  buildProjectSelectionOptions({ projects })
+
 export const createDefaultValues = ({
   task,
   currentAssigneeId,
   defaultStatus,
   defaultDueOn,
+  defaultProjectId,
+  defaultAssigneeId,
 }: CreateDefaultValuesArgs): TaskSheetFormValues => ({
   title: task?.title ?? '',
   description: task?.description ?? null,
   status: task?.status ?? defaultStatus,
   dueOn: toDateInputValue(task?.due_on ?? defaultDueOn ?? null),
-  assigneeId: currentAssigneeId ?? null,
+  projectId: task?.project_id ?? defaultProjectId ?? '',
+  assigneeId: currentAssigneeId ?? defaultAssigneeId ?? null,
 })
 
 export const getDisabledReason = (

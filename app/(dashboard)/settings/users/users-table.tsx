@@ -231,6 +231,7 @@ export function UsersSettingsTable({
         onComplete={sheet.onComplete}
         user={sheet.selectedUser}
         currentUserId={currentUserId}
+        assignments={assignments}
       />
     </div>
   )

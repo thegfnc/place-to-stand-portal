@@ -88,6 +88,7 @@ export function TaskSheetFormFooter(props: TaskSheetFormFooterProps) {
               disabled={deleteDisabled}
               aria-label={destructiveLabel}
               title={destructiveLabel}
+              size='icon'
             >
               <Archive className='h-4 w-4' />
             </Button>

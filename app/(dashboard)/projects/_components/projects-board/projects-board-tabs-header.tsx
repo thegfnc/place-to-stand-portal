@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Archive, Pencil } from 'lucide-react'
+import { Pencil } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -213,28 +213,13 @@ export function ProjectsBoardTabsHeader(props: ProjectsBoardTabsHeaderProps) {
               >
                 <Button
                   variant='outline'
-                  size='icon'
                   onClick={projectActions.onEdit}
                   disabled={!projectActions.canEdit}
                   title='Edit project'
                   aria-label='Edit project'
                 >
                   <Pencil className='h-4 w-4' />
-                </Button>
-              </DisabledFieldTooltip>
-              <DisabledFieldTooltip
-                disabled={!projectActions.canArchive}
-                reason={projectActions.archiveDisabledReason}
-              >
-                <Button
-                  variant='destructive'
-                  size='icon'
-                  onClick={projectActions.onArchive}
-                  disabled={!projectActions.canArchive}
-                  title='Archive project'
-                  aria-label='Archive project'
-                >
-                  <Archive className='h-4 w-4' />
+                  Edit project
                 </Button>
               </DisabledFieldTooltip>
             </div>

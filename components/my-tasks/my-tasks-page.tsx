@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 
 import { AppShellHeader } from '@/components/layout/app-shell'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Button } from '@/components/ui/button'
+import { DisabledFieldTooltip } from '@/components/ui/disabled-field-tooltip'
 import type { AppUser } from '@/lib/auth/session'
 import type {
   DbUser,
@@ -17,10 +19,12 @@ import { PROJECT_SPECIAL_SEGMENTS } from '@/lib/projects/board/board-utils'
 import { ProjectsBoardEmpty } from '@/app/(dashboard)/projects/_components/projects-board-empty'
 import { TaskSheet } from '@/app/(dashboard)/projects/task-sheet'
 import { useMyTasksReorderMutation } from '@/lib/projects/tasks/use-my-tasks-data'
+import type { MyTaskStatus } from '@/lib/projects/tasks/my-tasks-constants'
 
 import { MyTasksBoard } from './my-tasks-board'
 import type { MyTasksBoardReorderUpdate, TaskLookup } from './my-tasks-board'
 import { MyTasksCalendar } from './my-tasks-calendar'
+import { Plus } from 'lucide-react'
 
 export type MyTasksInitialEntry = {
   taskId: string
@@ -34,6 +38,7 @@ type MyTasksPageProps = {
   user: AppUser
   admins: DbUser[]
   projects: ProjectWithRelations[]
+  projectSelectionProjects: ProjectWithRelations[]
   initialEntries: MyTasksInitialEntry[]
   activeTaskId: string | null
   view: MyTasksView
@@ -43,6 +48,7 @@ export function MyTasksPage({
   user,
   admins,
   projects,
+  projectSelectionProjects,
   initialEntries,
   activeTaskId,
   view,
@@ -51,6 +57,10 @@ export function MyTasksPage({
   const [currentView, setCurrentView] = useState<MyTasksView>(view)
   const reorderMutation = useMyTasksReorderMutation()
   const [isSheetOpen, setIsSheetOpen] = useState(Boolean(activeTaskId))
+  const [createTaskContext, setCreateTaskContext] = useState<
+    | { status: MyTaskStatus; assigneeId: string; projectId: string | null }
+    | null
+  >(null)
   const [, startRefresh] = useTransition()
   const boardScrollStorageKey = useMemo(
     () => `my-tasks-board:${user.id}`,
@@ -75,8 +85,11 @@ export function MyTasksPage({
   }, [sanitizedEntries])
 
   useEffect(() => {
+    if (createTaskContext) {
+      return
+    }
     setIsSheetOpen(Boolean(activeTaskId))
-  }, [activeTaskId])
+  }, [activeTaskId, createTaskContext])
 
   useEffect(() => {
     setCurrentView(view)
@@ -126,6 +139,28 @@ export function MyTasksPage({
   const activeTaskMeta = activeTaskId
     ? (taskLookup.get(activeTaskId) ?? null)
     : null
+  const editingTaskMeta = createTaskContext ? null : activeTaskMeta
+  const shouldKeepTaskSheetMounted = Boolean(
+    editingTaskMeta || createTaskContext || isSheetOpen
+  )
+  const [shouldRenderTaskSheet, setShouldRenderTaskSheet] = useState(
+    shouldKeepTaskSheetMounted
+  )
+
+  useEffect(() => {
+    if (shouldKeepTaskSheetMounted) {
+      setShouldRenderTaskSheet(true)
+      return
+    }
+
+    const timeout = setTimeout(() => {
+      setShouldRenderTaskSheet(false)
+    }, 300)
+
+    return () => {
+      clearTimeout(timeout)
+    }
+  }, [shouldKeepTaskSheetMounted])
 
   const buildViewPath = useCallback(
     (targetView: MyTasksView, taskId?: string | null) => {
@@ -155,6 +190,13 @@ export function MyTasksPage({
     (open: boolean) => {
       if (!open) {
         setIsSheetOpen(false)
+        if (createTaskContext) {
+          setCreateTaskContext(null)
+          startRefresh(() => {
+            router.refresh()
+          })
+          return
+        }
         router.push(buildViewPath(currentView), { scroll: false })
         startRefresh(() => {
           router.refresh()
@@ -164,7 +206,7 @@ export function MyTasksPage({
 
       setIsSheetOpen(true)
     },
-    [buildViewPath, currentView, router, startRefresh]
+    [buildViewPath, createTaskContext, currentView, router, startRefresh]
   )
 
   const handleReorder = useCallback(
@@ -181,6 +223,26 @@ export function MyTasksPage({
   )
 
   const canManageTasks = user.role === 'ADMIN'
+  const totalTaskCount = entries.length
+  const creationDisabledReason = canManageTasks
+    ? null
+    : 'Admin access is required to create tasks.'
+
+  const handleStartCreateTask = useCallback(
+    (status: MyTaskStatus = 'ON_DECK') => {
+      if (!canManageTasks) {
+        return
+      }
+
+      setCreateTaskContext({
+        status,
+        assigneeId: user.id,
+        projectId: null,
+      })
+      setIsSheetOpen(true)
+    },
+    [canManageTasks, user.id]
+  )
 
   return (
     <div className='flex h-full min-h-0 flex-col gap-6'>
@@ -204,6 +266,25 @@ export function MyTasksPage({
               Calendar
             </TabsTrigger>
           </TabsList>
+          <div className='flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-6'>
+            <span className='text-muted-foreground text-sm'>
+              Total tasks: {totalTaskCount}
+            </span>
+            <DisabledFieldTooltip
+              disabled={!canManageTasks}
+              reason={creationDisabledReason}
+            >
+              <Button
+                type='button'
+                size='sm'
+                onClick={() => handleStartCreateTask('ON_DECK')}
+                disabled={!canManageTasks}
+              >
+                <Plus className='h-4 w-4' />
+                Add task
+              </Button>
+            </DisabledFieldTooltip>
+          </div>
         </div>
         <TabsContent
           value='board'
@@ -225,6 +306,8 @@ export function MyTasksPage({
               isPending={reorderMutation.isPending}
               activeTaskId={activeTaskId}
               scrollStorageKey={boardScrollStorageKey}
+              onCreateTask={handleStartCreateTask}
+              canCreateTasks={canManageTasks}
             />
           )}
         </TabsContent>
@@ -243,18 +326,23 @@ export function MyTasksPage({
           />
         </TabsContent>
       </Tabs>
-      {activeTaskMeta ? (
+      {shouldRenderTaskSheet ? (
         <TaskSheet
           open={isSheetOpen}
           onOpenChange={handleSheetChange}
-          project={activeTaskMeta.project}
-          task={activeTaskMeta.task}
+          task={editingTaskMeta?.task}
           canManage={canManageTasks}
           admins={admins}
           currentUserId={user.id}
           currentUserRole={user.role}
-          defaultStatus='ON_DECK'
+          defaultStatus={createTaskContext?.status ?? 'ON_DECK'}
           defaultDueOn={null}
+          projects={projects}
+          projectSelectionProjects={projectSelectionProjects}
+          defaultProjectId={
+            createTaskContext?.projectId ?? editingTaskMeta?.project.id ?? null
+          }
+          defaultAssigneeId={createTaskContext?.assigneeId ?? null}
         />
       ) : null}
     </div>

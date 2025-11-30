@@ -4,6 +4,10 @@ import { useCallback, useMemo } from 'react'
 
 import type { ProjectsBoardTabsSectionProps } from '../_components/projects-board/projects-board-tabs-section'
 import type { ProjectsBoardDialogsProps } from '../_components/projects-board-dialogs'
+import type {
+  SearchableComboboxGroup,
+  SearchableComboboxItem,
+} from '@/components/ui/searchable-combobox'
 import { buildProjectsBoardBurndown } from './builders/build-projects-board-burndown'
 import { buildProjectsBoardDialogs } from './builders/build-projects-board-dialogs'
 import { buildProjectsBoardHeader } from './builders/build-projects-board-header'
@@ -32,11 +36,8 @@ export type ProjectsBoardProps = BaseProps & {
 }
 
 export type ProjectsBoardHeaderProps = {
-  projectItems: Array<{ value: string; label: string; keywords: string[] }>
-  projectGroups?: Array<{
-    label: string
-    items: Array<{ value: string; label: string; keywords: string[] }>
-  }>
+  projectItems: SearchableComboboxItem[]
+  projectGroups?: SearchableComboboxGroup[]
   selectedProjectId: string | null
   onProjectChange: (projectId: string | null) => void
   onSelectNextProject: () => void
@@ -239,6 +240,7 @@ export function useProjectsBoardViewModel({
       mode: timeLogDialogs.mode,
       editingEntry: timeLogDialogs.editingEntry,
     },
+    projects: props.projects,
   })
 
   const burndown = buildProjectsBoardBurndown({

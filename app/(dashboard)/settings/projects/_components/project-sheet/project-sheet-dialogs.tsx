@@ -20,9 +20,9 @@ export function ProjectSheetDialogs(props: ProjectSheetDialogsProps) {
     <>
       <ConfirmDialog
         open={isDeleteDialogOpen}
-        title='Delete project?'
-        description='Deleting this project hides it from active views but keeps the history intact.'
-        confirmLabel='Delete'
+        title='Archive project?'
+        description='Archiving this project hides it from active views but keeps the history intact.'
+        confirmLabel='Archive'
         confirmVariant='destructive'
         confirmDisabled={isPending}
         onCancel={onCancelDelete}

@@ -166,6 +166,13 @@ export const SearchableCombobox = React.forwardRef<
 
     const resolvedPlaceholder = placeholder ?? searchPlaceholder
 
+    const stopScrollPropagation = React.useCallback(
+      (event: React.SyntheticEvent) => {
+        event.stopPropagation()
+      },
+      []
+    )
+
     const contentStyle = React.useMemo<React.CSSProperties>(() => {
       const maxHeight =
         'min(320px, var(--radix-popover-content-available-height))'
@@ -233,7 +240,11 @@ export const SearchableCombobox = React.forwardRef<
                 className='h-9'
               />
               <CommandEmpty>{emptyMessage}</CommandEmpty>
-              <CommandList className='max-h-[min(60vh,260px)] overflow-y-auto overscroll-contain'>
+              <CommandList
+                className='max-h-[min(60vh,260px)] overflow-y-auto overscroll-contain'
+                onWheel={stopScrollPropagation}
+                onTouchMove={stopScrollPropagation}
+              >
                 {resolvedGroups.length > 0 ? (
                   resolvedGroups.map(group => (
                     <CommandGroup key={group.label} heading={group.label}>

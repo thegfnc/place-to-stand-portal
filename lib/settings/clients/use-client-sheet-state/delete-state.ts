@@ -17,6 +17,7 @@ export function useClientDeletionState({
   setFeedback,
   onOpenChange,
   onComplete,
+  onArchived,
   toast,
 }: ClientDeletionStateArgs): DeletionState {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
@@ -70,12 +71,17 @@ export function useClientDeletionState({
         })
 
         toast({
-          title: 'Client deleted',
+          title: 'Client archived',
           description: `${client.name} is hidden from selectors but remains available for history.`,
         })
 
         onOpenChange(false)
-        onComplete()
+
+        if (onArchived) {
+          onArchived()
+        } else {
+          onComplete()
+        }
       } catch (error) {
         finishSettingsInteraction(interaction, {
           status: 'error',
@@ -88,6 +94,7 @@ export function useClientDeletionState({
   }, [
     client,
     isPending,
+    onArchived,
     onComplete,
     onOpenChange,
     setFeedback,

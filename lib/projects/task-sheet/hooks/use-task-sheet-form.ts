@@ -4,14 +4,10 @@ import { useMemo } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm, type UseFormReturn } from 'react-hook-form'
 
-import type {
-  DbUser,
-  ProjectWithRelations,
-  TaskWithRelations,
-} from '@/lib/types'
+import type { TaskWithRelations } from '@/lib/types'
 import type { BoardColumnId } from '@/lib/projects/board/board-constants'
 
-import { buildAssigneeItems, createDefaultValues } from '../task-sheet-utils'
+import { createDefaultValues } from '../task-sheet-utils'
 import {
   taskSheetFormSchema,
   type TaskSheetFormValues,
@@ -19,27 +15,25 @@ import {
 
 export type UseTaskSheetFormArgs = {
   task?: TaskWithRelations
-  project: ProjectWithRelations
-  admins: DbUser[]
   defaultStatus: BoardColumnId
   defaultDueOn: string | null
+  defaultProjectId: string | null
+  defaultAssigneeId: string | null
 }
 
 export type UseTaskSheetFormReturn = {
   form: UseFormReturn<TaskSheetFormValues>
   defaultValues: TaskSheetFormValues
-  assigneeItems: ReturnType<typeof buildAssigneeItems>
   sheetTitle: string
-  projectName: string
   editorKey: string
 }
 
 export const useTaskSheetForm = ({
   task,
-  project,
-  admins,
   defaultStatus,
   defaultDueOn,
+  defaultProjectId,
+  defaultAssigneeId,
 }: UseTaskSheetFormArgs): UseTaskSheetFormReturn => {
   const currentAssigneeId = task?.assignees[0]?.user_id ?? null
 
@@ -50,24 +44,23 @@ export const useTaskSheetForm = ({
         currentAssigneeId,
         defaultStatus,
         defaultDueOn,
+        defaultProjectId,
+        defaultAssigneeId,
       }),
-    [task, currentAssigneeId, defaultStatus, defaultDueOn]
+    [
+      task,
+      currentAssigneeId,
+      defaultStatus,
+      defaultDueOn,
+      defaultProjectId,
+      defaultAssigneeId,
+    ]
   )
 
   const form = useForm<TaskSheetFormValues>({
     resolver: zodResolver(taskSheetFormSchema),
     defaultValues,
   })
-
-  const assigneeItems = useMemo(
-    () =>
-      buildAssigneeItems({
-        admins,
-        members: project.members,
-        currentAssigneeId,
-      }),
-    [admins, currentAssigneeId, project.members]
-  )
 
   const sheetTitle = useMemo(() => (task ? 'Edit task' : 'Add task'), [task])
 
@@ -76,9 +69,7 @@ export const useTaskSheetForm = ({
   return {
     form,
     defaultValues,
-    assigneeItems,
     sheetTitle,
-    projectName: project.name,
     editorKey,
   }
 }

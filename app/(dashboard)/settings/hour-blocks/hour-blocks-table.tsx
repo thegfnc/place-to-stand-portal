@@ -15,6 +15,7 @@ import type {
 import { useHourBlocksTableState } from '@/lib/settings/hour-blocks/use-hour-blocks-table-state'
 import type { PageInfo } from '@/lib/pagination/cursor'
 
+import { HourBlockArchiveDialog } from './_components/hour-block-archive-dialog'
 import { HourBlocksTableSection } from './_components/hour-blocks-table-section'
 import { HourBlockSheet } from './hour-block-sheet'
 
@@ -109,12 +110,8 @@ export function HourBlocksSettingsTable({
 
   return (
     <div className='space-y-6'>
-      <ConfirmDialog
+      <HourBlockArchiveDialog
         open={deleteDialog.open}
-        title='Archive hour block?'
-        description='Archiving this block hides it from active tracking while retaining historical activity.'
-        confirmLabel='Archive'
-        confirmVariant='destructive'
         confirmDisabled={isPending}
         onCancel={deleteDialog.onCancel}
         onConfirm={deleteDialog.onConfirm}

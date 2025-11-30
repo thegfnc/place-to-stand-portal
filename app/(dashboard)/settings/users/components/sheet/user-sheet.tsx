@@ -1,7 +1,7 @@
 'use client'
 
-import { useCallback } from 'react'
-import { Redo2, Trash2, Undo2 } from 'lucide-react'
+import { useCallback, useMemo } from 'react'
+import { Archive, Redo2, Undo2 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
@@ -19,6 +19,7 @@ import type { UserSheetProps } from './types'
 import { UserSheetFormFields } from './user-sheet-form-fields'
 import { useUserSheetState } from './use-user-sheet-state'
 import { useSheetFormControls } from '@/lib/hooks/use-sheet-form-controls'
+import { buildDeleteDialogDescription } from '@/lib/settings/users/state/constants'
 
 export function UserSheet(props: UserSheetProps) {
   const {
@@ -59,6 +60,11 @@ export function UserSheet(props: UserSheetProps) {
     onSave: handleSave,
     historyKey: props.user?.id ?? 'user:new',
   })
+
+  const deleteDialogDescription = useMemo(
+    () => buildDeleteDialogDescription(props.user, props.assignments),
+    [props.assignments, props.user]
+  )
 
   return (
     <>
@@ -142,11 +148,13 @@ export function UserSheet(props: UserSheetProps) {
                       <Button
                         type='button'
                         variant='destructive'
+                        size='icon'
                         onClick={handleRequestDelete}
                         disabled={deleteDisabled}
-                        aria-label='Delete user'
+                        aria-label='Archive user'
+                        title='Archive user'
                       >
-                        <Trash2 className='h-4 w-4' />
+                        <Archive className='h-4 w-4' />
                       </Button>
                     </DisabledFieldTooltip>
                   ) : null}
@@ -158,9 +166,9 @@ export function UserSheet(props: UserSheetProps) {
       </Sheet>
       <ConfirmDialog
         open={isDeleteDialogOpen}
-        title='Delete user?'
-        description='Deleting this user removes their access but keeps historical records intact.'
-        confirmLabel='Delete'
+        title='Archive user?'
+        description={deleteDialogDescription}
+        confirmLabel='Archive'
         confirmVariant='destructive'
         confirmDisabled={isPending}
         onCancel={handleCancelDelete}

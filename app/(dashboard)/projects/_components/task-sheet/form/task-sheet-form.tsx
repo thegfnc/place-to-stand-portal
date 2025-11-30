@@ -7,7 +7,10 @@ import { Form } from '@/components/ui/form'
 import { useSheetFormControls } from '@/lib/hooks/use-sheet-form-controls'
 import type { TaskSheetFormValues } from '@/lib/projects/task-sheet/task-sheet-schema'
 import type { AttachmentItem } from '@/lib/projects/task-sheet/use-task-sheet-state'
-import type { SearchableComboboxItem } from '@/components/ui/searchable-combobox'
+import type {
+  SearchableComboboxGroup,
+  SearchableComboboxItem,
+} from '@/components/ui/searchable-combobox'
 
 import { TaskSheetFormFields } from './task-sheet-form-fields'
 import { TaskSheetFormFooter } from './task-sheet-form-footer'
@@ -19,6 +22,8 @@ type TaskSheetFormProps = {
   isPending: boolean
   canManage: boolean
   assigneeItems: SearchableComboboxItem[]
+  projectItems: SearchableComboboxItem[]
+  projectGroups: SearchableComboboxGroup[]
   resolveDisabledReason: (disabled: boolean) => string | null
   taskStatuses: Array<{ value: string; label: string }>
   unassignedValue: string
@@ -49,6 +54,8 @@ export function TaskSheetForm(props: TaskSheetFormProps) {
     isPending,
     canManage,
     assigneeItems,
+    projectItems,
+    projectGroups,
     resolveDisabledReason,
     taskStatuses,
     unassignedValue,
@@ -126,6 +133,8 @@ export function TaskSheetForm(props: TaskSheetFormProps) {
           resolveDisabledReason={resolveDisabledReason}
           taskStatuses={taskStatuses}
           assigneeItems={[...assigneeItems]}
+          projectItems={projectItems}
+          projectGroups={projectGroups}
           unassignedValue={unassignedValue}
           editorKey={editorKey}
           attachments={attachments}

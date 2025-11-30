@@ -41,12 +41,14 @@ export type ProjectsBoardDialogsProps = {
   activeProject: ProjectWithRelations | null
   sheetState: SheetState
   timeLogState: TimeLogState
+  projects: ProjectWithRelations[]
 }
 
 export function ProjectsBoardDialogs({
   activeProject,
   sheetState,
   timeLogState,
+  projects,
 }: ProjectsBoardDialogsProps) {
   if (!activeProject) {
     return null
@@ -85,7 +87,6 @@ export function ProjectsBoardDialogs({
       <TaskSheet
         open={open}
         onOpenChange={onOpenChange}
-        project={activeProject}
         task={task}
         canManage={canManage}
         admins={admins}
@@ -93,6 +94,9 @@ export function ProjectsBoardDialogs({
         currentUserRole={currentUserRole}
         defaultStatus={defaultStatus}
         defaultDueOn={defaultDueOn}
+        projects={projects}
+        defaultProjectId={activeProject.id}
+        defaultAssigneeId={null}
       />
 
       <ProjectTimeLogDialog

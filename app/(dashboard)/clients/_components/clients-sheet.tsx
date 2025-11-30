@@ -3,6 +3,12 @@
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { Sheet, SheetContent } from '@/components/ui/sheet'
 
+import {
+  ARCHIVE_CLIENT_CONFIRM_LABEL,
+  ARCHIVE_CLIENT_DIALOG_TITLE,
+  getArchiveClientDialogDescription,
+} from '@/lib/settings/clients/client-sheet-constants'
+
 import type { UseClientSheetStateArgs } from '@/lib/settings/clients/use-client-sheet-state'
 import { useClientSheetState } from '@/lib/settings/clients/use-client-sheet-state'
 
@@ -82,9 +88,9 @@ export function ClientSheet(props: ClientSheetProps) {
       </Sheet>
       <ConfirmDialog
         open={isDeleteDialogOpen}
-        title='Delete client?'
-        description='Deleting this client hides it from selectors and reporting. Existing projects stay linked.'
-        confirmLabel='Delete'
+        title={ARCHIVE_CLIENT_DIALOG_TITLE}
+        description={getArchiveClientDialogDescription(clientDisplayName)}
+        confirmLabel={ARCHIVE_CLIENT_CONFIRM_LABEL}
         confirmVariant='destructive'
         confirmDisabled={isPending}
         onCancel={handleCancelDelete}

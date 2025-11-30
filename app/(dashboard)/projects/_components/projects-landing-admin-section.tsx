@@ -50,6 +50,23 @@ export function ProjectsLandingAdminSection({
   const createDisabledReason = createDisabled
     ? "Add a client before creating a project."
     : null
+  const visibleProjectCount = useMemo(() => {
+    return projects.filter(project => {
+      if (project.deleted_at) {
+        return false
+      }
+      if (project.type === 'PERSONAL') {
+        return project.created_by === currentUserId
+      }
+      return true
+    }).length
+  }, [projects, currentUserId])
+  const totalProjectsLabel = useMemo(() => {
+    if (totalProjectCount === visibleProjectCount) {
+      return String(visibleProjectCount)
+    }
+    return `${visibleProjectCount} / ${totalProjectCount}`
+  }, [totalProjectCount, visibleProjectCount])
 
   return (
     <div className="space-y-6">
@@ -57,7 +74,7 @@ export function ProjectsLandingAdminSection({
         <ProjectsTabsNav activeTab="projects" className="flex-1 sm:flex-none" />
         <div className="ml-auto flex items-center gap-6">
           <span className="text-muted-foreground whitespace-nowrap text-sm">
-            Total projects: {totalProjectCount}
+            Total projects: {totalProjectsLabel}
           </span>
           <DisabledFieldTooltip
             disabled={createDisabled}

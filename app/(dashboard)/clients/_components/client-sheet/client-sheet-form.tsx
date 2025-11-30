@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import type React from 'react'
-import { Redo2, Trash2, Undo2 } from 'lucide-react'
+import { Archive, Redo2, Undo2 } from 'lucide-react'
 import type { UseFormReturn } from 'react-hook-form'
 
 import { Button } from '@/components/ui/button'
@@ -291,8 +291,11 @@ export function ClientSheetForm({
                   variant='destructive'
                   onClick={onRequestDelete}
                   disabled={deleteDisabled}
+                  aria-label='Archive client'
+                  title='Archive client'
+                  size='icon'
                 >
-                  <Trash2 className='h-4 w-4' />
+                  <Archive className='h-4 w-4' />
                 </Button>
               </DisabledFieldTooltip>
             ) : null}

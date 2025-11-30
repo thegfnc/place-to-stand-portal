@@ -32,6 +32,7 @@ type KanbanColumnProps = {
   onEditTask: (task: TaskWithRelations) => void
   activeTaskId: string | null
   onCreateTask?: (status: BoardColumnId) => void
+  enableCreateButton?: boolean
   isDropTarget?: boolean
   dropIndicatorIndex?: number | null
   draggingTask?: TaskWithRelations | null
@@ -48,6 +49,7 @@ export function KanbanColumn({
   onEditTask,
   activeTaskId,
   onCreateTask,
+  enableCreateButton,
   isDropTarget = false,
   dropIndicatorIndex = null,
   draggingTask = null,
@@ -71,6 +73,9 @@ export function KanbanColumn({
     dropIndicatorIndex !== null &&
     draggingTask !== null &&
     !draggingTaskVisibleInColumn
+
+  const canShowCreateButton =
+    typeof enableCreateButton === 'boolean' ? enableCreateButton : canManage
 
   return (
     <div
@@ -96,7 +101,7 @@ export function KanbanColumn({
           </span>
         </div>
         <div className='flex items-center gap-2'>
-          {canManage && onCreateTask ? (
+          {canShowCreateButton && onCreateTask ? (
             <Button
               type='button'
               size='icon'
