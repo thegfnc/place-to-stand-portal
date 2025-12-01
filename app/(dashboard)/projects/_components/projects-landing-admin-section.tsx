@@ -21,7 +21,6 @@ export type ProjectsLandingAdminSectionProps = {
   landingClients: Array<{ id: string; name: string; slug: string | null }>
   clients: ClientRow[]
   currentUserId: string
-  totalProjectCount: number
 }
 
 export function ProjectsLandingAdminSection({
@@ -29,7 +28,6 @@ export function ProjectsLandingAdminSection({
   landingClients,
   clients,
   currentUserId,
-  totalProjectCount,
 }: ProjectsLandingAdminSectionProps) {
   const router = useRouter()
   const { toast } = useToast()
@@ -62,11 +60,8 @@ export function ProjectsLandingAdminSection({
     }).length
   }, [projects, currentUserId])
   const totalProjectsLabel = useMemo(() => {
-    if (totalProjectCount === visibleProjectCount) {
-      return String(visibleProjectCount)
-    }
-    return `${visibleProjectCount} / ${totalProjectCount}`
-  }, [totalProjectCount, visibleProjectCount])
+    return String(visibleProjectCount)
+  }, [visibleProjectCount])
 
   return (
     <div className="space-y-6">

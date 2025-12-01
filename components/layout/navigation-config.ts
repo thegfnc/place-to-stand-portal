@@ -7,6 +7,7 @@ import {
   Home as HomeIcon,
   ListTodo,
   Handshake,
+  Plug,
 } from 'lucide-react'
 import type { UserRole } from '@/lib/auth/session'
 
@@ -81,6 +82,11 @@ export const NAV_GROUPS: NavGroup[] = [
         href: '/settings/hour-blocks',
         label: 'Hour Blocks',
         icon: Clock3,
+      },
+      {
+        href: '/settings/integrations',
+        label: 'Integrations',
+        icon: Plug,
       },
     ],
   },
