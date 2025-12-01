@@ -21,6 +21,7 @@ export type ProjectsLandingAdminSectionProps = {
   landingClients: Array<{ id: string; name: string; slug: string | null }>
   clients: ClientRow[]
   currentUserId: string
+  totalProjectCount: number
 }
 
 export function ProjectsLandingAdminSection({
@@ -28,6 +29,7 @@ export function ProjectsLandingAdminSection({
   landingClients,
   clients,
   currentUserId,
+  totalProjectCount,
 }: ProjectsLandingAdminSectionProps) {
   const router = useRouter()
   const { toast } = useToast()
@@ -48,20 +50,10 @@ export function ProjectsLandingAdminSection({
   const createDisabledReason = createDisabled
     ? "Add a client before creating a project."
     : null
-  const visibleProjectCount = useMemo(() => {
-    return projects.filter(project => {
-      if (project.deleted_at) {
-        return false
-      }
-      if (project.type === 'PERSONAL') {
-        return project.created_by === currentUserId
-      }
-      return true
-    }).length
-  }, [projects, currentUserId])
+
   const totalProjectsLabel = useMemo(() => {
-    return String(visibleProjectCount)
-  }, [visibleProjectCount])
+    return String(totalProjectCount)
+  }, [totalProjectCount])
 
   return (
     <div className="space-y-6">

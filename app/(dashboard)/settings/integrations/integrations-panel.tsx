@@ -1,6 +1,6 @@
 'use client'
 
-import { siGoogle, siGithub } from 'simple-icons/icons'
+import { siGithub } from 'simple-icons/icons'
 import { Button } from '@/components/ui/button'
 import {
   Card,
