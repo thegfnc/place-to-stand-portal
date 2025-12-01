@@ -86,5 +86,3 @@ export function isOpenLeadStatus(status: LeadStatusValue): boolean {
 export function isClosedLeadStatus(status: LeadStatusValue): boolean {
   return status === 'CLOSED_WON' || status === 'CLOSED_LOST'
 }
-
-
