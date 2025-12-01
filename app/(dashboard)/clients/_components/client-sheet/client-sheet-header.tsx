@@ -18,7 +18,7 @@ export function ClientSheetHeader({
   description,
 }: ClientSheetHeaderProps) {
   return (
-    <SheetHeader className='px-6 pt-6'>
+    <SheetHeader className='border-b-2 border-b-blue-500/60 px-6 pt-4'>
       <SheetTitle>{title}</SheetTitle>
       <SheetDescription>{description}</SheetDescription>
     </SheetHeader>

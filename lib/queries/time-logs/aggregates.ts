@@ -41,7 +41,7 @@ export async function getTimeLogSummariesForProjects(
     return new Map()
   }
 
-  const startOfCurrentMonth = sql`DATE_TRUNC('month', timezone('utc', now()))::date`
+  const startOfCurrentMonth = sql`DATE_TRUNC('month', timezone('America/Los_Angeles', now()))::date`
 
   const rows = (await db
     .select({

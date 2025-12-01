@@ -5,7 +5,6 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm, useWatch } from 'react-hook-form'
 import { z } from 'zod'
 
-import { TaskSheetHeader } from '@/app/(dashboard)/projects/_components/task-sheet/task-sheet-header'
 import { TaskSheetFormFooter } from '@/app/(dashboard)/projects/_components/task-sheet/form/task-sheet-form-footer'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import {
@@ -27,7 +26,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Sheet, SheetContent } from '@/components/ui/sheet'
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet'
 import { useToast } from '@/components/ui/use-toast'
 import { useSheetFormControls } from '@/lib/hooks/use-sheet-form-controls'
 import { useUnsavedChangesWarning } from '@/lib/hooks/use-unsaved-changes-warning'
@@ -284,14 +289,14 @@ export function LeadSheet({
       <Sheet open={open} onOpenChange={handleSheetOpenChange}>
         <SheetContent className='flex w-full flex-col gap-6 overflow-y-auto pb-24 sm:max-w-[676px]'>
           <div className='flex flex-col gap-6'>
-            <TaskSheetHeader
-              title={isEditing ? 'Edit lead' : 'New lead'}
-              description={
-                isEditing
+            <SheetHeader className='border-b-2 border-b-amber-500/60 px-6 pt-4'>
+              <SheetTitle>{isEditing ? 'Edit lead' : 'New lead'}</SheetTitle>
+              <SheetDescription>
+                {isEditing
                   ? 'Keep this lead up to date so the pipeline stays accurate.'
-                  : 'Capture lead context, assignees, and next steps to keep deals moving.'
-              }
-            />
+                  : 'Capture lead context, assignees, and next steps to keep deals moving.'}
+              </SheetDescription>
+            </SheetHeader>
             <Form {...form}>
               <form
                 className='flex flex-1 flex-col gap-6 px-6 pb-4'
