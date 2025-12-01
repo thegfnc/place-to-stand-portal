@@ -51,9 +51,8 @@ import { archiveLead, saveLead } from '../actions'
 const formSchema = z.object({
   contactName: z.string().trim().min(1, 'Contact name is required').max(160),
   contactEmail: z
-    .string()
-    .trim()
-    .email('Enter a valid email address')
+    .union([z.string().trim().email('Enter a valid email address'), z.literal('')])
+    .transform(val => (val === '' ? null : val))
     .optional()
     .nullable(),
   contactPhone: z.string().trim().max(40).optional().nullable(),
