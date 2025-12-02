@@ -65,9 +65,17 @@ export function Sidebar({ user }: Props) {
                   <div className='space-y-1'>
                     {group.items.map(item => {
                       const Icon = item.icon
-                      const isActive =
-                        pathname === item.href ||
-                        pathname.startsWith(item.href + '/')
+                      const matchCandidates = [
+                        item.href,
+                        ...(item.matchHrefs ?? []),
+                      ]
+                      const isActive = matchCandidates.some(matchHref => {
+                        if (!matchHref) return false
+                        return (
+                          pathname === matchHref ||
+                          pathname.startsWith(`${matchHref}/`)
+                        )
+                      })
 
                       return (
                         <Link

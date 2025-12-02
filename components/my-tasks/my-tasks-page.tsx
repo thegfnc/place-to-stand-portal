@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState, useTransition } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 
 import { AppShellHeader } from '@/components/layout/app-shell'
@@ -54,7 +55,6 @@ export function MyTasksPage({
   view,
 }: MyTasksPageProps) {
   const router = useRouter()
-  const [currentView, setCurrentView] = useState<MyTasksView>(view)
   const reorderMutation = useMyTasksReorderMutation()
   const [isSheetOpen, setIsSheetOpen] = useState(Boolean(activeTaskId))
   const [createTaskContext, setCreateTaskContext] = useState<
@@ -90,10 +90,6 @@ export function MyTasksPage({
     }
     setIsSheetOpen(Boolean(activeTaskId))
   }, [activeTaskId, createTaskContext])
-
-  useEffect(() => {
-    setCurrentView(view)
-  }, [view])
 
   const memberDirectory = useMemo(
     () => buildMemberDirectory(projects, admins),
@@ -170,20 +166,11 @@ export function MyTasksPage({
     []
   )
 
-  const handleTabChange = useCallback(
-    (nextValue: string) => {
-      const nextView = nextValue as MyTasksView
-      setCurrentView(nextView)
-      router.push(buildViewPath(nextView, activeTaskId), { scroll: false })
-    },
-    [activeTaskId, buildViewPath, router]
-  )
-
   const handleOpenTask = useCallback(
     (taskId: string) => {
-      router.push(buildViewPath(currentView, taskId), { scroll: false })
+      router.push(buildViewPath(view, taskId), { scroll: false })
     },
-    [buildViewPath, currentView, router]
+    [buildViewPath, router, view]
   )
 
   const handleSheetChange = useCallback(
@@ -197,7 +184,7 @@ export function MyTasksPage({
           })
           return
         }
-        router.push(buildViewPath(currentView), { scroll: false })
+        router.push(buildViewPath(view), { scroll: false })
         startRefresh(() => {
           router.refresh()
         })
@@ -206,7 +193,7 @@ export function MyTasksPage({
 
       setIsSheetOpen(true)
     },
-    [buildViewPath, createTaskContext, currentView, router, startRefresh]
+    [buildViewPath, createTaskContext, router, startRefresh, view]
   )
 
   const handleReorder = useCallback(
@@ -252,18 +239,22 @@ export function MyTasksPage({
           <p className='text-muted-foreground text-sm'>{description}</p>
         </div>
       </AppShellHeader>
-      <Tabs
-        value={currentView}
-        onValueChange={handleTabChange}
-        className='flex min-h-0 flex-1 flex-col gap-3'
-      >
+      <Tabs value={view} className='flex min-h-0 flex-1 flex-col gap-3'>
         <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
           <TabsList className='bg-muted/40 h-10 w-full justify-start gap-2 rounded-lg p-1 sm:w-auto'>
-            <TabsTrigger value='board' className='px-3 py-1.5 text-sm'>
-              Board
+            <TabsTrigger value='board' className='px-3 py-1.5 text-sm' asChild>
+              <Link href={buildViewPath('board', activeTaskId)} prefetch>
+                Board
+              </Link>
             </TabsTrigger>
-            <TabsTrigger value='calendar' className='px-3 py-1.5 text-sm'>
-              Calendar
+            <TabsTrigger
+              value='calendar'
+              className='px-3 py-1.5 text-sm'
+              asChild
+            >
+              <Link href={buildViewPath('calendar', activeTaskId)} prefetch>
+                Calendar
+              </Link>
             </TabsTrigger>
           </TabsList>
           <div className='flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-6'>
