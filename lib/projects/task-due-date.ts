@@ -1,4 +1,10 @@
-import { differenceInCalendarDays, format, isToday, parseISO } from 'date-fns'
+import {
+  differenceInCalendarDays,
+  format,
+  isToday,
+  isTomorrow,
+  parseISO,
+} from 'date-fns'
 
 export const TASK_DUE_TONE_CLASSES = {
   default: 'text-muted-foreground',
@@ -43,6 +49,10 @@ export function getTaskDueMeta(
 
   if (isToday(parsed)) {
     return { label: 'Due today', tone: 'caution' }
+  }
+
+  if (isTomorrow(parsed)) {
+    return { label: 'Due tomorrow', tone: 'caution' }
   }
 
   const daysUntilDue = differenceInCalendarDays(parsed, new Date())
