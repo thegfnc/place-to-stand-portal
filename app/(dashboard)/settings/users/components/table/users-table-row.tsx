@@ -99,6 +99,7 @@ export function UsersTableRow({
             <DisabledFieldTooltip
               disabled={row.deleteDisabled}
               reason={row.deleteDisabledReason}
+              className='w-auto'
             >
               <Button
                 variant='destructive'
@@ -117,6 +118,7 @@ export function UsersTableRow({
             <DisabledFieldTooltip
               disabled={row.destroyDisabled}
               reason={row.destroyDisabledReason}
+              className='w-auto'
             >
               <Button
                 variant='destructive'
