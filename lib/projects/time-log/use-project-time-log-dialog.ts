@@ -202,6 +202,8 @@ export function useProjectTimeLogDialog(
       }
     : undefined
 
+  const existingEntryHours = timeLogEntry?.hours ?? null
+
   const editTaskIds = useMemo(() => {
     if (!timeLogEntry?.linked_tasks) {
       return []
@@ -359,7 +361,18 @@ export function useProjectTimeLogDialog(
 
       setFormErrors({})
 
-      if (requestConfirmation(parsedHours, runMutation)) {
+      const previousHours =
+        isEditMode && typeof existingEntryHours === 'number'
+          ? existingEntryHours
+          : 0
+
+      if (
+        requestConfirmation({
+          nextHours: parsedHours,
+          previousHours,
+          action: runMutation,
+        })
+      ) {
         return
       }
 
@@ -371,10 +384,12 @@ export function useProjectTimeLogDialog(
       hoursInput,
       isMutating,
       loggedOnInput,
+      isEditMode,
       requestConfirmation,
       runMutation,
       selectedUserId,
       setFormErrors,
+      existingEntryHours,
     ]
   )
 
