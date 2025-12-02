@@ -25,18 +25,17 @@ export default async function ProjectsPage() {
     forRole: user.role,
   })
   const landingClients = buildLandingClients(projects)
+  const visibleProjectCount = countVisibleProjects(projects, user.id)
 
   if (!isAdmin(user)) {
     return renderProjectLanding({ user, projects, landingClients })
   }
 
-  const managementResult: ProjectsSettingsResult = await listProjectsForSettings(
-    user,
-    {
+  const managementResult: ProjectsSettingsResult =
+    await listProjectsForSettings(user, {
       status: 'active',
       limit: 1,
-    }
-  )
+    })
 
   const clientRows: ClientRow[] = managementResult.clients.map(client => ({
     id: client.id,
@@ -58,7 +57,7 @@ export default async function ProjectsPage() {
         landingClients={landingClients}
         clients={clientRows}
         currentUserId={user.id}
-        totalProjectCount={managementResult.totalCount}
+        totalProjectCount={visibleProjectCount}
       />
     </>
   )
@@ -97,7 +96,9 @@ function renderProjectLanding({
   )
 }
 
-function buildLandingClients(projects: ProjectWithRelations[]): LandingClient[] {
+function buildLandingClients(
+  projects: ProjectWithRelations[]
+): LandingClient[] {
   const map = new Map<string, LandingClient>()
 
   projects.forEach(project => {
@@ -111,4 +112,17 @@ function buildLandingClients(projects: ProjectWithRelations[]): LandingClient[] 
   })
 
   return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name))
+}
+
+function countVisibleProjects(
+  projects: ProjectWithRelations[],
+  currentUserId: string
+): number {
+  return projects.filter(project => {
+    if (project.type !== 'PERSONAL') {
+      return true
+    }
+
+    return project.created_by === currentUserId
+  }).length
 }
