@@ -144,6 +144,7 @@ export function UserSheet(props: UserSheetProps) {
                     <DisabledFieldTooltip
                       disabled={deleteDisabled}
                       reason={deleteDisabledReason}
+                      className='w-auto'
                     >
                       <Button
                         type='button'
