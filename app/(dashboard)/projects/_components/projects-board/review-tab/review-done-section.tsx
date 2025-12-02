@@ -78,6 +78,7 @@ export function ReviewDoneSection({
           <DisabledFieldTooltip
             disabled={acceptAllDisabled || isAcceptingDone}
             reason={acceptAllDisabledReason}
+            className='w-auto'
           >
             <Button
               type='button'
