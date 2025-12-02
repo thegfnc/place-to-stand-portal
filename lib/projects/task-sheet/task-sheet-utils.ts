@@ -38,6 +38,7 @@ type CreateDefaultValuesArgs = {
 
 type BuildProjectItemsArgs = {
   projects: ProjectWithRelations[]
+  currentUserId?: string
 }
 
 export type ProjectSelectionItems = {
@@ -52,7 +53,6 @@ const tidyRole = (role: string | null | undefined) => {
 
 export const formatRoleLabel = (role: string | null | undefined) =>
   tidyRole(role) ?? 'Unknown role'
-
 
 export const toDateInputValue = (value: string | null | undefined) => {
   if (!value) return ''
@@ -166,8 +166,8 @@ export const buildAssigneeItems = ({
       value: member.user_id,
       label,
       description: descriptionParts.join(' • '),
-      keywords: [user.email, 'admin'].filter(
-        (keyword): keyword is string => Boolean(keyword)
+      keywords: [user.email, 'admin'].filter((keyword): keyword is string =>
+        Boolean(keyword)
       ),
     })
     seen.add(member.user_id)
@@ -207,8 +207,9 @@ export const buildAssigneeItems = ({
 
 export const buildProjectItems = ({
   projects,
+  currentUserId,
 }: BuildProjectItemsArgs): ProjectSelectionItems =>
-  buildProjectSelectionOptions({ projects })
+  buildProjectSelectionOptions({ projects, currentUserId })
 
 export const createDefaultValues = ({
   task,

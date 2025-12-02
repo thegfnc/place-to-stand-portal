@@ -22,6 +22,7 @@ type BoardSelectionArgs = {
   ) => void
   setFeedback: Dispatch<SetStateAction<string | null>>
   currentView: 'board' | 'calendar' | 'activity' | 'backlog' | 'review'
+  currentUserId: string
 }
 
 export const useBoardSelectionState = ({
@@ -31,14 +32,15 @@ export const useBoardSelectionState = ({
   navigateToProject,
   setFeedback,
   currentView,
+  currentUserId,
 }: BoardSelectionArgs) => {
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(
     () => resolveInitialProjectId(projects, activeProjectId)
   )
 
   const { items: projectItems, groups: projectGroups } = useMemo(
-    () => buildProjectSelectionOptions({ projects }),
-    [projects]
+    () => buildProjectSelectionOptions({ projects, currentUserId }),
+    [currentUserId, projects]
   )
 
   const projectSequence = useMemo(
@@ -50,7 +52,9 @@ export const useBoardSelectionState = ({
     if (!selectedProjectId) {
       return -1
     }
-    return projectSequence.findIndex(projectId => projectId === selectedProjectId)
+    return projectSequence.findIndex(
+      projectId => projectId === selectedProjectId
+    )
   }, [projectSequence, selectedProjectId])
 
   const canSelectNextProject =
@@ -151,12 +155,7 @@ export const useBoardSelectionState = ({
     }
 
     selectAndNavigate(nextProjectId)
-  }, [
-    canSelectNextProject,
-    projectSequence,
-    selectAndNavigate,
-    sequenceIndex,
-  ])
+  }, [canSelectNextProject, projectSequence, selectAndNavigate, sequenceIndex])
 
   const handleSelectPreviousProject = useCallback(() => {
     if (!canSelectPreviousProject) {

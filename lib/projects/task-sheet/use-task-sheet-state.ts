@@ -36,9 +36,7 @@ import {
   getDisabledReason,
   normalizeRichTextContent,
 } from './task-sheet-utils'
-import type {
-  ProjectSelectionItems,
-} from './task-sheet-utils'
+import type { ProjectSelectionItems } from './task-sheet-utils'
 import type { TaskSheetFormValues } from './task-sheet-schema'
 import { useTaskSheetForm } from './hooks/use-task-sheet-form'
 import {
@@ -60,6 +58,7 @@ export type UseTaskSheetStateArgs = {
   projectSelectionProjects?: ProjectWithRelations[]
   defaultProjectId: string | null
   defaultAssigneeId: string | null
+  currentUserId: string
 }
 
 type UseTaskSheetStateReturn = {
@@ -107,6 +106,7 @@ export const useTaskSheetState = ({
   projectSelectionProjects,
   defaultProjectId,
   defaultAssigneeId,
+  currentUserId,
 }: UseTaskSheetStateArgs): UseTaskSheetStateReturn => {
   const router = useRouter()
   const pathname = usePathname()
@@ -123,12 +123,7 @@ export const useTaskSheetState = ({
     return new Map(selectionProjects.map(project => [project.id, project]))
   }, [selectionProjects])
 
-  const {
-    form,
-    defaultValues,
-    sheetTitle,
-    editorKey,
-  } = useTaskSheetForm({
+  const { form, defaultValues, sheetTitle, editorKey } = useTaskSheetForm({
     task,
     defaultStatus,
     defaultDueOn,
@@ -342,8 +337,8 @@ export const useTaskSheetState = ({
     ? projectLookup.get(selectedProjectId)
     : null
   const { items: projectItems, groups: projectGroups } = useMemo(
-    () => buildProjectItems({ projects: selectionProjects }),
-    [selectionProjects]
+    () => buildProjectItems({ projects: selectionProjects, currentUserId }),
+    [currentUserId, selectionProjects]
   )
   const watchedAssigneeId = form.watch('assigneeId') ?? null
   const assigneeItems = useMemo(

@@ -80,6 +80,7 @@ export function TaskSheet(props: TaskSheetProps) {
     projectSelectionProjects: props.projectSelectionProjects,
     defaultProjectId: props.defaultProjectId,
     defaultAssigneeId: props.defaultAssigneeId,
+    currentUserId: props.currentUserId,
   })
 
   const [isDragActive, setIsDragActive] = useState(false)
@@ -207,7 +208,10 @@ export function TaskSheet(props: TaskSheetProps) {
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
           >
-            <TaskSheetHeader title={sheetTitle} description={headerDescription} />
+            <TaskSheetHeader
+              title={sheetTitle}
+              description={headerDescription}
+            />
             <TaskSheetForm
               form={form}
               onSubmit={handleFormSubmit}

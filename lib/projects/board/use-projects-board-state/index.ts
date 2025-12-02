@@ -73,6 +73,7 @@ export const useProjectsBoardState = ({
     navigateToProject,
     setFeedback,
     currentView,
+    currentUserId,
   })
 
   const {

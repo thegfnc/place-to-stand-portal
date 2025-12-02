@@ -1,4 +1,7 @@
-import type { SearchableComboboxGroup, SearchableComboboxItem } from '@/components/ui/searchable-combobox'
+import type {
+  SearchableComboboxGroup,
+  SearchableComboboxItem,
+} from '@/components/ui/searchable-combobox'
 import type { ProjectWithRelations } from '@/lib/types'
 
 const PROJECT_GROUP_LABELS = {
@@ -17,6 +20,7 @@ const PROJECT_GROUP_ORDER: ReadonlyArray<ProjectGroupKey> = [
 
 type BuildProjectSelectionOptionsArgs = {
   projects: ProjectWithRelations[]
+  currentUserId?: string
 }
 
 export type ProjectSelectionOptions = {
@@ -49,8 +53,26 @@ const formatProjectLabel = (project: ProjectWithRelations) => {
   return `${clientName} / ${project.name}`
 }
 
+const filterProjectsForSelection = (
+  projects: ProjectWithRelations[],
+  currentUserId?: string
+) => {
+  if (!currentUserId) {
+    return projects
+  }
+
+  return projects.filter(project => {
+    if (project.type !== 'PERSONAL') {
+      return true
+    }
+
+    return project.created_by !== null && project.created_by === currentUserId
+  })
+}
+
 export const buildProjectSelectionOptions = ({
   projects,
+  currentUserId,
 }: BuildProjectSelectionOptionsArgs): ProjectSelectionOptions => {
   const groupedItems: Record<ProjectGroupKey, SearchableComboboxItem[]> = {
     client: [],
@@ -58,7 +80,7 @@ export const buildProjectSelectionOptions = ({
     personal: [],
   }
 
-  projects
+  filterProjectsForSelection(projects, currentUserId)
     .filter(project => !project.deleted_at)
     .forEach(project => {
       const key = resolveGroupKey(project)
@@ -89,8 +111,8 @@ export const buildProjectSelectionOptions = ({
         : null
     })
 
-  const groups = maybeGroups.filter(
-    (group): group is SearchableComboboxGroup => Boolean(group)
+  const groups = maybeGroups.filter((group): group is SearchableComboboxGroup =>
+    Boolean(group)
   )
 
   const items = groups.length > 0 ? groups.flatMap(group => group.items) : []
