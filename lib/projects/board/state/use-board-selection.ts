@@ -4,7 +4,7 @@ import type { Dispatch, SetStateAction, TransitionStartFunction } from 'react'
 import type { ProjectWithRelations } from '@/lib/types'
 import { buildProjectSelectionOptions } from '@/lib/projects/project-selection-utils'
 
-import { NO_PROJECTS_MESSAGE } from '../board-constants'
+import { NO_PROJECTS_MESSAGE, type BoardView } from '../board-constants'
 import type { NavigateOptions } from './types'
 
 const resolveInitialProjectId = (
@@ -21,7 +21,7 @@ type BoardSelectionArgs = {
     options?: NavigateOptions
   ) => void
   setFeedback: Dispatch<SetStateAction<string | null>>
-  currentView: 'board' | 'calendar' | 'activity' | 'backlog' | 'review'
+  currentView: BoardView
   currentUserId: string
 }
 

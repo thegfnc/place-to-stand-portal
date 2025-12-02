@@ -14,6 +14,7 @@ import type { useBoardDnDState } from '../state/use-board-dnd'
 import type { useBoardNavigation } from '../state/use-board-navigation'
 import type { useBoardSheetState } from '../state/use-board-sheet-state'
 import type { useCalendarDnDState } from '../../calendar/state/use-calendar-dnd-state'
+import type { BoardView } from '../board-constants'
 
 export type UseProjectsBoardStateArgs = {
   projects: ProjectWithRelations[]
@@ -24,7 +25,7 @@ export type UseProjectsBoardStateArgs = {
   activeClientId: string | null
   activeProjectId: string | null
   activeTaskId: string | null
-  currentView: 'board' | 'calendar' | 'activity' | 'backlog' | 'review'
+  currentView: BoardView
 }
 
 export type MemberDirectoryEntry = { name: string }

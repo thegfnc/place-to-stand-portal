@@ -1,6 +1,10 @@
 import type { ProjectWithRelations, TaskWithRelations } from '@/lib/types'
 
-import type { BoardColumnId } from './board-constants'
+import {
+  BOARD_VIEW_SEGMENTS,
+  type BoardColumnId,
+  type BoardView,
+} from './board-constants'
 
 type ProjectsByClientMap = Map<string, ProjectWithRelations[]>
 type ProjectLookupMap = Map<string, ProjectWithRelations>
@@ -136,7 +140,7 @@ export const buildBoardPath = (
   lookups: BoardLookups,
   options: {
     taskId?: string | null
-    view?: 'board' | 'calendar' | 'activity' | 'backlog' | 'review'
+    view?: BoardView
   } = {}
 ) => {
   const { taskId = null, view = 'board' } = options
@@ -147,7 +151,10 @@ export const buildBoardPath = (
   }
 
   const projectSlug = project.slug ?? null
-  const clientSegment = getProjectClientSegment(project, lookups.clientSlugLookup)
+  const clientSegment = getProjectClientSegment(
+    project,
+    lookups.clientSlugLookup
+  )
 
   if (!projectSlug || !clientSegment) {
     return null
@@ -156,25 +163,19 @@ export const buildBoardPath = (
   const rootPath = `/projects/${clientSegment}/${projectSlug}`
 
   if (view === 'activity') {
-    return `${rootPath}/activity`
+    return `${rootPath}/${BOARD_VIEW_SEGMENTS.activity}`
   }
 
-  if (view === 'review') {
-    const reviewPath = `${rootPath}/review`
-    return taskId ? `${reviewPath}/${taskId}` : reviewPath
+  if (view === 'timeLogs') {
+    return `${rootPath}/${BOARD_VIEW_SEGMENTS.timeLogs}`
   }
 
-  if (view === 'backlog') {
-    const backlogPath = `${rootPath}/backlog`
-    return taskId ? `${backlogPath}/${taskId}` : backlogPath
+  if (view === 'review' || view === 'backlog' || view === 'calendar') {
+    const basePath = `${rootPath}/${BOARD_VIEW_SEGMENTS[view]}`
+    return taskId ? `${basePath}/${taskId}` : basePath
   }
 
-  if (view === 'calendar') {
-    const calendarPath = `${rootPath}/calendar`
-    return taskId ? `${calendarPath}/${taskId}` : calendarPath
-  }
-
-  const boardPath = `${rootPath}/board`
+  const boardPath = `${rootPath}/${BOARD_VIEW_SEGMENTS.board}`
   return taskId ? `${boardPath}/${taskId}` : boardPath
 }
 

@@ -57,10 +57,11 @@ export function MyTasksPage({
   const router = useRouter()
   const reorderMutation = useMyTasksReorderMutation()
   const [isSheetOpen, setIsSheetOpen] = useState(Boolean(activeTaskId))
-  const [createTaskContext, setCreateTaskContext] = useState<
-    | { status: MyTaskStatus; assigneeId: string; projectId: string | null }
-    | null
-  >(null)
+  const [createTaskContext, setCreateTaskContext] = useState<{
+    status: MyTaskStatus
+    assigneeId: string
+    projectId: string | null
+  } | null>(null)
   const [, startRefresh] = useTransition()
   const boardScrollStorageKey = useMemo(
     () => `my-tasks-board:${user.id}`,

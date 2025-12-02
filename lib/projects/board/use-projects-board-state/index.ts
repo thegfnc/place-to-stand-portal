@@ -3,7 +3,7 @@ import { usePathname, useRouter } from 'next/navigation'
 
 import type { TaskWithRelations } from '@/lib/types'
 
-import { BOARD_COLUMNS } from '../board-constants'
+import { BOARD_COLUMNS, getBoardViewFromPathname } from '../board-constants'
 import {
   createClientSlugLookup,
   createProjectLookup,
@@ -37,6 +37,7 @@ export const useProjectsBoardState = ({
   const pathname = usePathname()
   const [isPending, startTransition] = useTransition()
   const [feedback, setFeedback] = useState<string | null>(null)
+  const routeView = getBoardViewFromPathname(pathname)
 
   const projectLookup = useMemo(() => createProjectLookup(projects), [projects])
   const projectsByClientId = useMemo(
@@ -72,7 +73,7 @@ export const useProjectsBoardState = ({
     startTransition,
     navigateToProject,
     setFeedback,
-    currentView,
+    currentView: routeView ?? currentView,
     currentUserId,
   })
 

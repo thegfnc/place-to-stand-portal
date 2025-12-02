@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { TransitionStartFunction } from 'react'
 
-import type { BoardColumnId } from '@/lib/projects/board/board-constants'
+import type {
+  BoardColumnId,
+  BoardView,
+} from '@/lib/projects/board/board-constants'
 import type { ProjectWithRelations, TaskWithRelations } from '@/lib/types'
 
 import { startClientInteraction } from '@/lib/posthog/client'
@@ -37,7 +40,7 @@ type UseBoardSheetStateArgs = {
     options?: NavigateOptions
   ) => void
   startTransition: TransitionStartFunction
-  currentView: 'board' | 'calendar' | 'activity' | 'backlog' | 'review'
+  currentView: BoardView
 }
 
 export const useBoardSheetState = ({
@@ -246,13 +249,7 @@ export const useBoardSheetState = ({
     }
 
     previousSheetOpenRef.current = isSheetOpen
-  }, [
-    currentView,
-    isSheetOpen,
-    routeTaskId,
-    selectedProjectId,
-    sheetTask,
-  ])
+  }, [currentView, isSheetOpen, routeTaskId, selectedProjectId, sheetTask])
 
   return {
     isSheetOpen,

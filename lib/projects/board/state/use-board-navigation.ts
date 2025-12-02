@@ -4,7 +4,11 @@ import type { Dispatch, SetStateAction } from 'react'
 import type { ProjectWithRelations } from '@/lib/types'
 import { beginBoardTabSwitch } from '@/lib/posthog/board-tab-switch'
 
-import { BOARD_BASE_PATH, MISSING_SLUG_MESSAGE } from '../board-constants'
+import {
+  BOARD_BASE_PATH,
+  MISSING_SLUG_MESSAGE,
+  getBoardViewFromPathname,
+} from '../board-constants'
 import { buildBoardPath } from '../board-utils'
 import type { NavigateOptions } from './types'
 
@@ -34,18 +38,7 @@ export const useBoardNavigation = ({
     (projectId: string | null, options: NavigateOptions = {}) => {
       const { taskId = null, replace = false, view = 'board' } = options
 
-      const boardViews = new Set(['board', 'calendar', 'backlog', 'activity', 'review'])
-
-      const currentView = (() => {
-        const segments = pathname.split('?')[0]?.split('/').filter(Boolean) ?? []
-        for (let index = segments.length - 1; index >= 0; index -= 1) {
-          const segment = segments[index]
-          if (boardViews.has(segment)) {
-            return segment
-          }
-        }
-        return null
-      })()
+      const currentView = getBoardViewFromPathname(pathname)
 
       if (!projectId) {
         if (pathname !== BOARD_BASE_PATH) {
@@ -80,13 +73,11 @@ export const useBoardNavigation = ({
         return
       }
 
-      if (boardViews.has(view)) {
-        beginBoardTabSwitch({
-          fromView: currentView,
-          toView: view,
-          projectId,
-        })
-      }
+      beginBoardTabSwitch({
+        fromView: currentView,
+        toView: view,
+        projectId,
+      })
 
       const redirect = replace ? router.replace : router.push
       redirect.call(router, path, { scroll: false })

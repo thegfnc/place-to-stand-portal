@@ -34,3 +34,42 @@ export const MISSING_SLUG_MESSAGE =
   'This project is missing a slug. Update it in Settings -> Projects.'
 
 export const NO_PROJECTS_MESSAGE = 'No projects are available yet.'
+
+export const BOARD_VIEW_SEGMENTS = {
+  board: 'board',
+  calendar: 'calendar',
+  backlog: 'backlog',
+  activity: 'activity',
+  review: 'review',
+  timeLogs: 'time-logs',
+} as const
+
+export type BoardView = keyof typeof BOARD_VIEW_SEGMENTS
+
+const BOARD_VIEW_ENTRIES = Object.entries(BOARD_VIEW_SEGMENTS) as Array<
+  [BoardView, string]
+>
+
+const BOARD_VIEW_SEGMENT_MAP = new Map<string, BoardView>(
+  BOARD_VIEW_ENTRIES.map(([view, segment]) => [segment, view])
+)
+
+const BOARD_VIEW_SET = new Set<BoardView>(
+  BOARD_VIEW_ENTRIES.map(([view]) => view)
+)
+
+export const isBoardView = (value: string): value is BoardView =>
+  BOARD_VIEW_SET.has(value as BoardView)
+
+export const getBoardViewFromPathname = (
+  pathname: string
+): BoardView | null => {
+  const segments = pathname.split('?')[0]?.split('/').filter(Boolean) ?? []
+  for (let index = segments.length - 1; index >= 0; index -= 1) {
+    const match = BOARD_VIEW_SEGMENT_MAP.get(segments[index]) ?? null
+    if (match) {
+      return match
+    }
+  }
+  return null
+}
