@@ -2,6 +2,12 @@
 
 - Supabase storage expects a private `user-avatars` bucket. Create it once with authenticated access before enabling avatar uploads in the portal.
 
+## Lead intake webhook
+
+- Incoming marketing-site leads should be POSTed to `/api/integrations/leads-intake` with a `Bearer` token that matches `LEADS_INTAKE_TOKEN`.
+- Generate a token with `openssl rand -hex 32` (or a similar secret generator) and store it both in this app (`LEADS_INTAKE_TOKEN`) and the marketing site (`PORTAL_LEADS_TOKEN`).
+- Requests must provide JSON in the shape `{ name, email, company?, website?, message?, sourceDetail? }`. Records are inserted into the `NEW_OPPORTUNITIES` column with a `WEBSITE` source and appear on `/leads/board` immediately.
+
 ## Database migrations
 
 - The current schema lives in `lib/db/schema.ts` (with relations in `lib/db/relations.ts`). Keep these definitions in sync with the database.
