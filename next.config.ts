@@ -5,6 +5,7 @@ const nextConfig: NextConfig = {
   cacheComponents: false,
   reactCompiler: true,
   reactStrictMode: true,
+  output: 'standalone', // Required for Docker production builds
 }
 
 const shouldUploadSourceMaps =
