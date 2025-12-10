@@ -186,8 +186,13 @@ export const fetchProjectsForClient = cache(
     const taskCounts = await db
       .select({
         projectId: tasks.projectId,
-        total: sql<number>`count(*) filter (where ${tasks.status} != 'ARCHIVED')`.as('total'),
-        done: sql<number>`count(*) filter (where ${tasks.status} = 'DONE')`.as('done'),
+        total:
+          sql<number>`count(*) filter (where ${tasks.status} != 'ARCHIVED')`.as(
+            'total'
+          ),
+        done: sql<number>`count(*) filter (where ${tasks.status} = 'DONE')`.as(
+          'done'
+        ),
       })
       .from(tasks)
       .where(and(inArray(tasks.projectId, projectIds), isNull(tasks.deletedAt)))
@@ -210,6 +215,34 @@ export const fetchProjectsForClient = cache(
     }))
   }
 )
+
+export async function fetchClientsByIds(
+  clientIds: string[]
+): Promise<ClientDetail[]> {
+  if (!clientIds.length) {
+    return []
+  }
+
+  const rows = await db
+    .select({
+      id: clients.id,
+      name: clients.name,
+      slug: clients.slug,
+      notes: clients.notes,
+      billingType: clients.billingType,
+      createdAt: clients.createdAt,
+      updatedAt: clients.updatedAt,
+      deletedAt: clients.deletedAt,
+    })
+    .from(clients)
+    .where(and(inArray(clients.id, clientIds), isNull(clients.deletedAt)))
+
+  const lookup = new Map(rows.map(row => [row.id, row]))
+
+  return clientIds
+    .map(id => lookup.get(id))
+    .filter((row): row is ClientDetail => Boolean(row))
+}
 
 /**
  * Resolves a client identifier (slug or UUID) to the client record.
@@ -237,4 +270,3 @@ export const resolveClientIdentifier = cache(
     return { ...client, resolvedId: client.id }
   }
 )
-

@@ -101,6 +101,7 @@ export default async function ClientDetailPage({
           clientUsers={clientUsers}
           clientMembers={clientMembers}
           clientRow={mapClientDetailToRow(client)}
+          currentUserId={user.id}
         />
       </div>
     </>
@@ -122,4 +123,3 @@ function mapClientDetailToRow(
     deleted_at: client.deletedAt,
   }
 }
-

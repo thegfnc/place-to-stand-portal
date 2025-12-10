@@ -39,6 +39,8 @@ import type {
   ClientUserSummary,
 } from '@/lib/settings/clients/client-sheet-utils'
 import { cn } from '@/lib/utils'
+import { ViewLogger } from '@/components/activity/view-logger'
+import { ActivityVerbs } from '@/lib/activity/types'
 
 import { ClientSheet } from '../../_components/clients-sheet'
 import { ClientNotesSection } from './client-notes-section'
@@ -52,6 +54,7 @@ type ClientDetailProps = {
   clientUsers: ClientUserSummary[]
   clientMembers: Record<string, ClientUserSummary[]>
   clientRow: ClientRow
+  currentUserId: string
 }
 
 export function ClientDetail({
@@ -61,6 +64,7 @@ export function ClientDetail({
   clientUsers,
   clientMembers,
   clientRow,
+  currentUserId,
 }: ClientDetailProps) {
   const activeProjects = projects.filter(
     p => p.status.toLowerCase() === 'active'
@@ -71,6 +75,15 @@ export function ClientDetail({
 
   return (
     <div className='space-y-6'>
+      <ViewLogger
+        actorId={currentUserId}
+        verb={ActivityVerbs.CLIENT_VIEWED}
+        summary={`Viewed client "${client.name}"`}
+        targetType='CLIENT'
+        targetId={client.id}
+        targetClientId={client.id}
+        metadata={{ hasSlug: Boolean(client.slug) }}
+      />
       <Tabs defaultValue='overview' className='w-full'>
         <div className='flex flex-wrap items-center gap-4'>
           <TabsList>
@@ -288,7 +301,7 @@ function ClientOverviewActions({
 
   return (
     <>
-      <div className='flex flex-wrap items-center gap-2 ml-auto'>
+      <div className='ml-auto flex flex-wrap items-center gap-2'>
         <DisabledFieldTooltip disabled={isPending} reason={disabledReason}>
           <Button
             type='button'
