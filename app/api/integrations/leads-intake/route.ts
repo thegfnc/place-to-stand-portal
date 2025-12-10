@@ -114,7 +114,7 @@ async function upsertLeadFromPayload(payload: IntakePayload) {
 function buildNotesHtml(message: string) {
   const escaped = escapeHtml(message)
   const withBreaks = escaped.replace(/\r?\n/g, '<br />')
-  return `<p>${withBreaks}</p>`
+  return `<p><strong>Customer message via contact form:</strong></p><p>${withBreaks}</p>`
 }
 
 function escapeHtml(value: string) {
