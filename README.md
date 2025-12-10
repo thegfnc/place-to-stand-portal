@@ -2,6 +2,84 @@
 
 - Supabase storage expects a private `user-avatars` bucket. Create it once with authenticated access before enabling avatar uploads in the portal.
 
+## Local Docker Development
+
+### Prerequisites
+- Docker and Docker Compose installed
+- Copy `.env.example` to `.env` and fill in required values
+
+### Quick Start
+
+```bash
+# Start all services (PostgreSQL + Next.js app)
+docker compose up -d
+
+# View logs
+docker compose logs -f app
+
+# Stop services
+docker compose down
+```
+
+The application will be available at http://localhost:3000
+
+### Services
+
+| Service | Port | Description |
+|---------|------|-------------|
+| `app` | 3000 | Next.js application |
+| `db` | 54322 | PostgreSQL database |
+
+### Environment Variables
+
+The Docker setup reads from your `.env` file. Required variables:
+- `NEXT_PUBLIC_SUPABASE_URL` - Supabase URL (or `http://host.docker.internal:54321` for local Supabase)
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` - Supabase anonymous key
+- `SUPABASE_SERVICE_ROLE_KEY` - Supabase service role key
+- `OAUTH_TOKEN_ENCRYPTION_KEY` - Base64-encoded encryption key (32+ chars)
+
+Optional (for full functionality):
+- `RESEND_API_KEY`, `RESEND_AUDIENCE_ID` - Email service
+- `NEXT_PUBLIC_POSTHOG_KEY` - Analytics
+- `AI_GATEWAY_API_KEY` - AI features
+
+### Using with Supabase Local
+
+If you're running Supabase locally via `supabase start`, the Docker app can connect to it:
+
+```bash
+# Start Supabase local stack first
+supabase start
+
+# Then start the Docker services
+docker compose up -d
+```
+
+The app uses `host.docker.internal` to reach services on your host machine.
+
+### Development Workflow
+
+```bash
+# Rebuild after dependency changes
+docker compose build app
+
+# Run database migrations
+docker compose exec app npm run db:migrate
+
+# Access the app container shell
+docker compose exec app sh
+```
+
+### Production Build
+
+```bash
+# Build production image
+docker build --target production -t pts-portal .
+
+# Run production container
+docker run -p 3000:3000 --env-file .env pts-portal
+```
+
 ## Database migrations
 
 - The current schema lives in `lib/db/schema.ts` (with relations in `lib/db/relations.ts`). Keep these definitions in sync with the database.
