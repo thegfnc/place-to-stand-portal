@@ -38,7 +38,7 @@ export function MyTasksWidget({
   return (
     <section
       className={cn(
-        'bg-card flex h-full flex-col overflow-hidden rounded-xl border shadow-sm',
+        'bg-card flex flex-col overflow-hidden rounded-xl border shadow-sm',
         className
       )}
       aria-labelledby='my-tasks-heading'

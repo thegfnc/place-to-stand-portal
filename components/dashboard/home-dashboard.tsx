@@ -42,23 +42,27 @@ export function HomeDashboard({
             : 'Welcome back. Here is what needs your attention.'}
         </p>
       </AppShellHeader>
-      <div className='columns-1 gap-6 md:columns-2 xl:columns-2'>
-        <MyTasksWidget
-          tasks={tasks}
-          role={user.role}
-          totalCount={totalTaskCount}
-          className='mb-6 break-inside-avoid-column'
-        />
-        <RecentlyViewedWidget
-          projects={recentProjects}
-          clients={recentClients}
-          className='mb-6 break-inside-avoid-column'
-        />
-        <HoursWidget
-          initialSnapshot={initialHoursSnapshot}
-          className='mb-6 break-inside-avoid-column'
-        />
-        <RecentActivityOverviewWidget className='mb-6 break-inside-avoid-column' />
+      <div className='grid grid-cols-1 gap-6 md:grid-cols-2'>
+        <div>
+          <MyTasksWidget
+            tasks={tasks}
+            role={user.role}
+            totalCount={totalTaskCount}
+            className='mb-6'
+          />
+          <RecentlyViewedWidget
+            projects={recentProjects}
+            clients={recentClients}
+            className='mb-6'
+          />
+        </div>
+        <div>
+          <HoursWidget
+            initialSnapshot={initialHoursSnapshot}
+            className='mb-6'
+          />
+          <RecentActivityOverviewWidget className='mb-6' />
+        </div>
       </div>
     </div>
   )
