@@ -132,10 +132,10 @@ export function HoursWidget({ initialSnapshot, className }: HoursWidgetProps) {
       <header className='flex flex-wrap items-center justify-between gap-3 border-b px-5 py-4'>
         <div>
           <h2 id='hours-widget-heading' className='text-base font-semibold'>
-            Hours Snapshot
+            Monthly Hours Snapshot
           </h2>
           <p className='text-muted-foreground text-xs'>
-            Monthly hours logged for you and the company.
+            Hours logged for you and the company.
           </p>
         </div>
         <div className='flex items-center gap-2'>
@@ -184,9 +184,12 @@ export function HoursWidget({ initialSnapshot, className }: HoursWidgetProps) {
       </header>
       <div className='flex flex-1 flex-col gap-4 px-5 py-4'>
         <div className='grid gap-4 sm:grid-cols-2'>
-          <StatCard label='My hours' value={formatHours(snapshot.myHours)} />
           <StatCard
-            label='Company hours'
+            label='My hours logged'
+            value={formatHours(snapshot.myHours)}
+          />
+          <StatCard
+            label='Total hours logged'
             value={formatHours(snapshot.companyHours)}
           />
         </div>
