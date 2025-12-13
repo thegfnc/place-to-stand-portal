@@ -49,13 +49,13 @@ export function HomeDashboard({
           totalCount={totalTaskCount}
           className='mb-6 break-inside-avoid-column'
         />
-        <HoursWidget
-          initialSnapshot={initialHoursSnapshot}
-          className='mb-6 break-inside-avoid-column'
-        />
         <RecentlyViewedWidget
           projects={recentProjects}
           clients={recentClients}
+          className='mb-6 break-inside-avoid-column'
+        />
+        <HoursWidget
+          initialSnapshot={initialHoursSnapshot}
           className='mb-6 break-inside-avoid-column'
         />
         <RecentActivityOverviewWidget className='mb-6 break-inside-avoid-column' />
