@@ -27,6 +27,7 @@ yarn-error.log*
 # local env files
 .env*.local
 .env
+env.local
 
 # vercel
 .vercel
@@ -39,3 +40,5 @@ next-env.d.ts
 supabase/seed.sql
 
 .env.local
+# Ignore local OAuth client secrets
+client_secret_*.json

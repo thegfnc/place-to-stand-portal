@@ -1,6 +1,9 @@
 'use client'
 
 import { siGithub, siSupabase, siVercel } from 'simple-icons/icons'
+import { useMutation, useQuery } from '@tanstack/react-query'
+import { useState } from 'react'
+import { toast } from '@/components/ui/use-toast'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -67,6 +70,38 @@ function GoogleIcon({ className }: { className?: string }) {
 }
 
 export function IntegrationsPanel() {
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: ['googleIntegrationStatus'],
+    queryFn: async () => {
+      const res = await fetch('/api/integrations/google/status')
+      if (!res.ok) throw new Error('Failed to fetch Google status')
+      return (await res.json()) as {
+        connected: boolean
+        email?: string
+        status?: string
+        connectedAt?: string
+        lastSyncAt?: string
+      }
+    },
+  })
+
+  const [isRedirecting, setIsRedirecting] = useState(false)
+  const disconnect = useMutation({
+    mutationFn: async () => {
+      const res = await fetch('/api/integrations/google/disconnect', {
+        method: 'POST',
+      })
+      if (!res.ok) throw new Error('Failed to disconnect')
+    },
+    onSuccess: async () => {
+      toast({ title: 'Google disconnected' })
+      await refetch()
+    },
+    onError: (err: unknown) => {
+      toast({ title: 'Disconnect failed', description: String(err) })
+    },
+  })
+
   return (
     <div className='relative'>
       <div className='grid gap-6'>
@@ -84,20 +119,56 @@ export function IntegrationsPanel() {
             </div>
           </CardHeader>
           <CardContent>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span>
-                    <Button variant='outline' disabled>
-                      Connect Google Account
-                    </Button>
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Coming soon</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            <div className='flex items-center justify-between'>
+              <div className='text-sm text-muted-foreground'>
+                {isLoading ? (
+                  'Checking status…'
+                ) : data?.connected ? (
+                  <span>Connected as {data.email}</span>
+                ) : (
+                  <span>Not connected</span>
+                )}
+              </div>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span>
+                      {data?.connected ? (
+                        <Button
+                          variant='outline'
+                          disabled={disconnect.isPending}
+                          onClick={() => disconnect.mutate()}
+                        >
+                          {disconnect.isPending ? 'Disconnecting…' : 'Disconnect'}
+                        </Button>
+                      ) : (
+                        <Button
+                          variant='outline'
+                          disabled={isLoading || isRedirecting}
+                          onClick={() => {
+                            setIsRedirecting(true)
+                            window.location.href = '/api/auth/google'
+                          }}
+                        >
+                          {isLoading || isRedirecting
+                            ? 'Preparing…'
+                            : 'Connect Google Account'}
+                        </Button>
+                      )}
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>
+                      {isLoading
+                        ? 'Loading status'
+                        : data?.connected
+                        ? 'Disconnect your Google account'
+                        : 'Connect your Google account'}
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
           </CardContent>
         </Card>
 
