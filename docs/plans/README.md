@@ -2,7 +2,7 @@
 
 ## Master Plan Index
 
-This project is divided into **4 phases** with **20 individual tasks**. Each task is documented in its own file and sized for a junior engineer to complete.
+This project is divided into **5 phases** with **29 individual tasks**. Each task is documented in its own file and sized for a junior engineer to complete.
 
 ### Dependency Graph
 
@@ -34,6 +34,17 @@ Phase 4: GitHub Integration
 ├── 4.3-repo-linking-ui.md (depends: 4.2)
 ├── 4.4-pr-suggestions-ai.md (depends: 3.2, 4.2)
 ├── 4.5-pr-suggestions-ui.md (depends: 4.4)
+ 
+Phase 5: Threads & Unified Ingestion
+├── 5.1-threads-and-messages-schema.md (depends: 2.1, 2.3)
+├── 5.2-message-ingestion-api.md (depends: 5.1)
+├── 5.3-email-processing-workers.md (depends: 1.4, 2.3, 5.1)
+├── 5.4-threads-ui.md (depends: 5.1, 5.2)
+├── 5.5-leads-to-client-conversion.md (depends: PRD 007)
+├── 5.6-identity-linking-and-compose.md (depends: 1.3, 2.1)
+ ├── 5.7-attachments-and-storage-policy.md (depends: 5.1)
+ ├── 5.8-search-and-indexing.md (depends: 5.1)
+ ├── 5.9-privacy-and-retention.md (depends: 5.1, 5.7)
 ```
 
 ### Parallelization Opportunities
@@ -47,7 +58,7 @@ Phase 4: GitHub Integration
 
 ### Task Files Location
 
-All task files are in: `/Users/damonbodine/.claude/plans/tasks/`
+All task files are in: `docs/plans/tasks/`
 
 ### Quick Reference
 
@@ -73,3 +84,12 @@ All task files are in: `/Users/damonbodine/.claude/plans/tasks/`
 | 4.3 | `4.3-repo-linking-ui.md` | Medium | 4.2 |
 | 4.4 | `4.4-pr-suggestions-ai.md` | High | 3.2, 4.2 |
 | 4.5 | `4.5-pr-suggestions-ui.md` | Medium | 4.4 |
+| 5.1 | `5.1-threads-and-messages-schema.md` | High | 2.1, 2.3 |
+| 5.2 | `5.2-message-ingestion-api.md` | High | 5.1 |
+| 5.3 | `5.3-email-processing-workers.md` | High | 1.4, 2.3, 5.1 |
+| 5.4 | `5.4-threads-ui.md` | Medium | 5.1, 5.2 |
+| 5.5 | `5.5-leads-to-client-conversion.md` | Medium | PRD 007 |
+| 5.6 | `5.6-identity-linking-and-compose.md` | Medium | 1.3, 2.1 |
+| 5.7 | `5.7-attachments-and-storage-policy.md` | Low | 5.1 |
+| 5.8 | `5.8-search-and-indexing.md` | Low | 5.1 |
+| 5.9 | `5.9-privacy-and-retention.md` | Medium | 5.1, 5.7 |

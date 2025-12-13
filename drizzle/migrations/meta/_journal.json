@@ -50,6 +50,20 @@
       "when": 1764218215929,
       "tag": "0006_leads-contact-updates",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1765401619293,
+      "tag": "0007_oauth_schema",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1765595585777,
+      "tag": "0008_client_contacts",
+      "breakpoints": true
     }
   ]
 }
