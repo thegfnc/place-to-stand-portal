@@ -2,7 +2,8 @@
 
 import { siGithub, siSupabase, siVercel } from 'simple-icons/icons'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { toast } from '@/components/ui/use-toast'
 import { Button } from '@/components/ui/button'
 import {
@@ -69,7 +70,29 @@ function GoogleIcon({ className }: { className?: string }) {
   )
 }
 
+const OAUTH_MESSAGES: Record<string, { title: string; description?: string; variant?: 'destructive' }> = {
+  google_connected: { title: 'Connected', description: 'Google account connected successfully.' },
+  access_denied: { title: 'Access Denied', description: 'You denied access to your Google account.', variant: 'destructive' },
+  invalid_request: { title: 'Invalid Request', description: 'OAuth request failed. Please try again.', variant: 'destructive' },
+  invalid_state: { title: 'Security Error', description: 'State validation failed. Please try again.', variant: 'destructive' },
+  oauth_failed: { title: 'Connection Failed', description: 'Failed to connect Google account.', variant: 'destructive' },
+}
+
 export function IntegrationsPanel() {
+  const searchParams = useSearchParams()
+
+  useEffect(() => {
+    const success = searchParams.get('success')
+    const error = searchParams.get('error')
+    const key = success || error
+
+    if (key && OAUTH_MESSAGES[key]) {
+      const msg = OAUTH_MESSAGES[key]
+      toast({ title: msg.title, description: msg.description, variant: msg.variant })
+      window.history.replaceState({}, '', '/settings/integrations')
+    }
+  }, [searchParams])
+
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['googleIntegrationStatus'],
     queryFn: async () => {

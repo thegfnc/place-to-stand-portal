@@ -27,6 +27,8 @@ import type {
   ClientDetail as ClientDetailType,
   ClientProject,
 } from '@/lib/data/clients'
+import type { ClientContact } from '@/lib/types/client-contacts'
+import type { LinkedEmailForClient } from '@/lib/queries/emails'
 import { getBillingTypeLabel } from '@/lib/settings/clients/billing-types'
 import {
   ARCHIVE_CLIENT_CONFIRM_LABEL,
@@ -43,6 +45,8 @@ import { ViewLogger } from '@/components/activity/view-logger'
 import { ActivityVerbs } from '@/lib/activity/types'
 
 import { ClientSheet } from '../../_components/clients-sheet'
+import { ClientContactsSection } from './client-contacts-section'
+import { ClientEmailsSection } from './client-emails-section'
 import { ClientNotesSection } from './client-notes-section'
 
 type HydratedClientDetail = ClientDetailType & { resolvedId: string }
@@ -50,6 +54,8 @@ type HydratedClientDetail = ClientDetailType & { resolvedId: string }
 type ClientDetailProps = {
   client: HydratedClientDetail
   projects: ClientProject[]
+  contacts: ClientContact[]
+  linkedEmails: LinkedEmailForClient[]
   canManageClients: boolean
   clientUsers: ClientUserSummary[]
   clientMembers: Record<string, ClientUserSummary[]>
@@ -60,6 +66,8 @@ type ClientDetailProps = {
 export function ClientDetail({
   client,
   projects,
+  contacts,
+  linkedEmails,
   canManageClients,
   clientUsers,
   clientMembers,
@@ -178,6 +186,16 @@ export function ClientDetail({
               )}
             </div>
           </section>
+
+          {/* Contacts Section */}
+          <ClientContactsSection
+            clientId={client.resolvedId}
+            contacts={contacts}
+            canManage={canManageClients}
+          />
+
+          {/* Linked Emails Section */}
+          <ClientEmailsSection emails={linkedEmails} isAdmin={canManageClients} />
 
           {/* Notes Section */}
           <ClientNotesSection
