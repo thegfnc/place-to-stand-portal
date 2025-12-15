@@ -1,10 +1,10 @@
 import 'server-only'
 
-import { and, eq, isNull, inArray } from 'drizzle-orm'
+import { and, desc, eq, isNull, inArray } from 'drizzle-orm'
 
 import type { AppUser } from '@/lib/auth/session'
 import { db } from '@/lib/db'
-import { emailLinks, emailMetadata } from '@/lib/db/schema'
+import { clients, emailLinks, emailMetadata, projects } from '@/lib/db/schema'
 import {
   ensureClientAccess,
   ensureClientAccessByProjectId,
@@ -172,4 +172,188 @@ export async function listEmailMetadataForDirectory(
     .limit(filters.limit ?? 50)
 
   return emails
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Emails with Links (for UI)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type EmailWithLinks = {
+  id: string
+  subject: string | null
+  snippet: string | null
+  fromEmail: string
+  fromName: string | null
+  toEmails: string[]
+  ccEmails: string[]
+  receivedAt: string
+  isRead: boolean
+  hasAttachments: boolean
+  links: Array<{
+    id: string
+    source: string
+    confidence: string | null
+    client: { id: string; name: string } | null
+    project: { id: string; name: string } | null
+  }>
+}
+
+export async function getEmailsWithLinks(
+  userId: string,
+  options: { limit?: number; offset?: number } = {}
+): Promise<EmailWithLinks[]> {
+  const { limit = 50, offset = 0 } = options
+
+  // Fetch emails
+  const emails = await db
+    .select()
+    .from(emailMetadata)
+    .where(and(eq(emailMetadata.userId, userId), isNull(emailMetadata.deletedAt)))
+    .orderBy(desc(emailMetadata.receivedAt))
+    .limit(limit)
+    .offset(offset)
+
+  if (emails.length === 0) return []
+
+  const emailIds = emails.map(e => e.id)
+
+  // Fetch all links for these emails
+  const links = await db
+    .select({
+      id: emailLinks.id,
+      emailMetadataId: emailLinks.emailMetadataId,
+      clientId: emailLinks.clientId,
+      projectId: emailLinks.projectId,
+      source: emailLinks.source,
+      confidence: emailLinks.confidence,
+    })
+    .from(emailLinks)
+    .where(and(inArray(emailLinks.emailMetadataId, emailIds), isNull(emailLinks.deletedAt)))
+
+  // Fetch client/project names
+  const clientIds = [...new Set(links.map(l => l.clientId).filter(Boolean))] as string[]
+  const projectIds = [...new Set(links.map(l => l.projectId).filter(Boolean))] as string[]
+
+  const [clientRows, projectRows] = await Promise.all([
+    clientIds.length > 0
+      ? db.select({ id: clients.id, name: clients.name }).from(clients).where(inArray(clients.id, clientIds))
+      : [],
+    projectIds.length > 0
+      ? db.select({ id: projects.id, name: projects.name }).from(projects).where(inArray(projects.id, projectIds))
+      : [],
+  ])
+
+  const clientMap = new Map(clientRows.map(c => [c.id, c]))
+  const projectMap = new Map(projectRows.map(p => [p.id, p]))
+
+  // Build the result
+  return emails.map(email => ({
+    id: email.id,
+    subject: email.subject,
+    snippet: email.snippet,
+    fromEmail: email.fromEmail,
+    fromName: email.fromName,
+    toEmails: email.toEmails,
+    ccEmails: email.ccEmails,
+    receivedAt: email.receivedAt,
+    isRead: email.isRead,
+    hasAttachments: email.hasAttachments,
+    links: links
+      .filter(l => l.emailMetadataId === email.id)
+      .map(l => ({
+        id: l.id,
+        source: l.source,
+        confidence: l.confidence,
+        client: l.clientId ? clientMap.get(l.clientId) ?? null : null,
+        project: l.projectId ? projectMap.get(l.projectId) ?? null : null,
+      })),
+  }))
+}
+
+export type LinkedEmailForClient = {
+  id: string
+  subject: string | null
+  fromEmail: string
+  fromName: string | null
+  receivedAt: string
+  source: string
+}
+
+export async function getLinkedEmailsForClient(clientId: string, limit = 20): Promise<LinkedEmailForClient[]> {
+  const rows = await db
+    .select({
+      id: emailMetadata.id,
+      subject: emailMetadata.subject,
+      fromEmail: emailMetadata.fromEmail,
+      fromName: emailMetadata.fromName,
+      receivedAt: emailMetadata.receivedAt,
+      source: emailLinks.source,
+    })
+    .from(emailLinks)
+    .innerJoin(emailMetadata, eq(emailMetadata.id, emailLinks.emailMetadataId))
+    .where(and(eq(emailLinks.clientId, clientId), isNull(emailLinks.deletedAt), isNull(emailMetadata.deletedAt)))
+    .orderBy(desc(emailMetadata.receivedAt))
+    .limit(limit)
+
+  return rows
+}
+
+export async function getEmailWithLinksById(userId: string, emailId: string): Promise<EmailWithLinks | null> {
+  const results = await getEmailsWithLinks(userId, { limit: 1 })
+
+  // Need to fetch specific email
+  const [email] = await db
+    .select()
+    .from(emailMetadata)
+    .where(and(eq(emailMetadata.id, emailId), eq(emailMetadata.userId, userId), isNull(emailMetadata.deletedAt)))
+    .limit(1)
+
+  if (!email) return null
+
+  // Get links
+  const links = await db
+    .select({
+      id: emailLinks.id,
+      clientId: emailLinks.clientId,
+      projectId: emailLinks.projectId,
+      source: emailLinks.source,
+      confidence: emailLinks.confidence,
+    })
+    .from(emailLinks)
+    .where(and(eq(emailLinks.emailMetadataId, emailId), isNull(emailLinks.deletedAt)))
+
+  const clientIds = links.map(l => l.clientId).filter(Boolean) as string[]
+  const projectIds = links.map(l => l.projectId).filter(Boolean) as string[]
+
+  const [clientRows, projectRows] = await Promise.all([
+    clientIds.length > 0
+      ? db.select({ id: clients.id, name: clients.name }).from(clients).where(inArray(clients.id, clientIds))
+      : [],
+    projectIds.length > 0
+      ? db.select({ id: projects.id, name: projects.name }).from(projects).where(inArray(projects.id, projectIds))
+      : [],
+  ])
+
+  const clientMap = new Map(clientRows.map(c => [c.id, c]))
+  const projectMap = new Map(projectRows.map(p => [p.id, p]))
+
+  return {
+    id: email.id,
+    subject: email.subject,
+    snippet: email.snippet,
+    fromEmail: email.fromEmail,
+    fromName: email.fromName,
+    toEmails: email.toEmails,
+    ccEmails: email.ccEmails,
+    receivedAt: email.receivedAt,
+    isRead: email.isRead,
+    hasAttachments: email.hasAttachments,
+    links: links.map(l => ({
+      id: l.id,
+      source: l.source,
+      confidence: l.confidence,
+      client: l.clientId ? clientMap.get(l.clientId) ?? null : null,
+      project: l.projectId ? projectMap.get(l.projectId) ?? null : null,
+    })),
+  }
 }
