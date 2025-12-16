@@ -1013,6 +1013,15 @@ export const emailLinkSource = pgEnum('email_link_source', [
   'MANUAL_LINK',
 ])
 
+// AI task suggestion workflow
+export const suggestionStatus = pgEnum('suggestion_status', [
+  'PENDING', // Awaiting user review
+  'APPROVED', // User approved, task created
+  'REJECTED', // User rejected
+  'MODIFIED', // User approved with modifications
+  'EXPIRED', // Auto-expired after X days
+])
+
 export const emailMetadata = pgTable(
   'email_metadata',
   {
@@ -1166,6 +1175,140 @@ export const emailLinks = pgTable(
           WHERE created_by = auth.uid() AND deleted_at IS NULL
         )
       )`,
+    }),
+  ]
+)
+
+// AI-generated task suggestions from emails
+export const taskSuggestions = pgTable(
+  'task_suggestions',
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    emailMetadataId: uuid('email_metadata_id').notNull(),
+    projectId: uuid('project_id'), // Suggested project (can be overridden)
+    suggestedTitle: text('suggested_title').notNull(),
+    suggestedDescription: text('suggested_description'),
+    suggestedDueDate: date('suggested_due_date'),
+    suggestedPriority: text('suggested_priority'), // HIGH, MEDIUM, LOW
+    suggestedAssignees: uuid('suggested_assignees').array().default([]),
+    confidence: numeric({ precision: 3, scale: 2 }).notNull(), // 0.00-1.00
+    reasoning: text(), // AI's explanation for the suggestion
+    status: suggestionStatus().default('PENDING').notNull(),
+    reviewedBy: uuid('reviewed_by'),
+    reviewedAt: timestamp('reviewed_at', { withTimezone: true, mode: 'string' }),
+    reviewNotes: text('review_notes'),
+    createdTaskId: uuid('created_task_id'), // Link to created task if approved
+    aiModelVersion: text('ai_model_version'),
+    promptTokens: integer('prompt_tokens'),
+    completionTokens: integer('completion_tokens'),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+    deletedAt: timestamp('deleted_at', { withTimezone: true, mode: 'string' }),
+  },
+  table => [
+    // Index for pending suggestions (main query)
+    index('idx_task_suggestions_pending')
+      .using('btree', table.status.asc().nullsLast())
+      .where(sql`(deleted_at IS NULL AND status = 'PENDING')`),
+    // Index for email lookup
+    index('idx_task_suggestions_email')
+      .using('btree', table.emailMetadataId.asc().nullsLast().op('uuid_ops'))
+      .where(sql`(deleted_at IS NULL)`),
+    // Index for project lookup
+    index('idx_task_suggestions_project')
+      .using('btree', table.projectId.asc().nullsLast().op('uuid_ops'))
+      .where(sql`(deleted_at IS NULL AND project_id IS NOT NULL)`),
+    // Foreign keys
+    foreignKey({
+      columns: [table.emailMetadataId],
+      foreignColumns: [emailMetadata.id],
+      name: 'task_suggestions_email_metadata_id_fkey',
+    }).onDelete('cascade'),
+    foreignKey({
+      columns: [table.projectId],
+      foreignColumns: [projects.id],
+      name: 'task_suggestions_project_id_fkey',
+    }),
+    foreignKey({
+      columns: [table.reviewedBy],
+      foreignColumns: [users.id],
+      name: 'task_suggestions_reviewed_by_fkey',
+    }),
+    foreignKey({
+      columns: [table.createdTaskId],
+      foreignColumns: [tasks.id],
+      name: 'task_suggestions_created_task_id_fkey',
+    }),
+    // Constraint: confidence must be between 0 and 1
+    check(
+      'task_suggestions_confidence_range',
+      sql`confidence >= 0 AND confidence <= 1`
+    ),
+    // RLS Policies
+    pgPolicy('Admins manage task suggestions', {
+      as: 'permissive',
+      for: 'all',
+      to: ['public'],
+      using: sql`is_admin()`,
+      withCheck: sql`is_admin()`,
+    }),
+    pgPolicy('Users view own task suggestions', {
+      as: 'permissive',
+      for: 'select',
+      to: ['public'],
+      using: sql`(
+        email_metadata_id IN (
+          SELECT id FROM email_metadata WHERE user_id = auth.uid()
+        )
+      )`,
+    }),
+  ]
+)
+
+// Feedback on AI suggestions for model improvement
+export const suggestionFeedback = pgTable(
+  'suggestion_feedback',
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    taskSuggestionId: uuid('task_suggestion_id').notNull(),
+    feedbackType: text('feedback_type').notNull(), // 'title_changed', 'rejected_not_actionable', etc.
+    originalValue: text('original_value'),
+    correctedValue: text('corrected_value'),
+    createdBy: uuid('created_by').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+  },
+  table => [
+    index('idx_suggestion_feedback_suggestion')
+      .using('btree', table.taskSuggestionId.asc().nullsLast().op('uuid_ops')),
+    foreignKey({
+      columns: [table.taskSuggestionId],
+      foreignColumns: [taskSuggestions.id],
+      name: 'suggestion_feedback_task_suggestion_id_fkey',
+    }).onDelete('cascade'),
+    foreignKey({
+      columns: [table.createdBy],
+      foreignColumns: [users.id],
+      name: 'suggestion_feedback_created_by_fkey',
+    }),
+    // RLS: admins manage, users view own feedback
+    pgPolicy('Admins manage suggestion feedback', {
+      as: 'permissive',
+      for: 'all',
+      to: ['public'],
+      using: sql`is_admin()`,
+      withCheck: sql`is_admin()`,
+    }),
+    pgPolicy('Users view own suggestion feedback', {
+      as: 'permissive',
+      for: 'select',
+      to: ['public'],
+      using: sql`created_by = auth.uid()`,
     }),
   ]
 )

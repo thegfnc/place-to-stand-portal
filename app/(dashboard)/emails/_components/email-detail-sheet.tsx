@@ -48,14 +48,17 @@ export function EmailDetailSheet({ email, onClose, onUpdate, isAdmin }: Props) {
   }, [])
 
   // Load suggestions when email changes
+  const emailId = email?.id
   useEffect(() => {
-    if (!email) return
-    setSuggestions([])
-    fetch(`/api/emails/${email.id}/suggestions`)
+    if (!emailId) {
+      setSuggestions([])
+      return
+    }
+    fetch(`/api/emails/${emailId}/suggestions`)
       .then(r => r.json())
       .then(data => setSuggestions(data.suggestions || []))
-      .catch(() => {})
-  }, [email?.id])
+      .catch(() => setSuggestions([]))
+  }, [emailId])
 
   const handleLink = async (clientId: string) => {
     if (!email || !clientId) return
