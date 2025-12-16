@@ -28,25 +28,42 @@ export const CalendarTaskCardShell = forwardRef<
   },
   ref
 ) {
+  const isCompleted = task.status === 'DONE' || task.status === 'ARCHIVED'
+
   return (
     <div
       ref={ref}
       className={cn(
-        'bg-card rounded-md border-y border-r border-l-4 border-l-violet-500 px-2 py-1 text-left text-xs shadow-sm transition',
+        'bg-card rounded-md border-y border-r border-l-4 px-2 py-1 text-left text-xs shadow-sm transition',
+        isCompleted
+          ? 'border-l-muted-foreground/30 opacity-65'
+          : 'border-l-violet-500',
         canManageTasks
           ? 'cursor-grab active:cursor-grabbing'
           : 'cursor-pointer',
         (isActive || isDragging) && 'border-primary/50 bg-primary/5 shadow-md',
         !isActive &&
           !isDragging &&
-          'hover:border-r-violet-500/50 hover:border-y-violet-500/50 hover:bg-violet-500/5 hover:shadow-md',
+          !isCompleted &&
+          'hover:border-y-violet-500/50 hover:border-r-violet-500/50 hover:bg-violet-500/5 hover:shadow-md',
+        !isActive &&
+          !isDragging &&
+          isCompleted &&
+          'hover:border-r-muted-foreground/30 hover:border-y-muted-foreground/30 hover:bg-muted/20 hover:shadow-md',
         isDragging && 'ring-primary ring-2',
         hideWhileDragging && isDragging && 'pointer-events-none opacity-0',
         className
       )}
       {...rest}
     >
-      <p className='line-clamp-2 font-medium'>{task.title}</p>
+      <p
+        className={cn(
+          'line-clamp-2 font-medium',
+          isCompleted && 'line-through'
+        )}
+      >
+        {task.title}
+      </p>
       <div className='text-muted-foreground mt-1 flex flex-wrap items-center gap-2 text-[11px]'>
         <span>{primaryAssignee}</span>
       </div>

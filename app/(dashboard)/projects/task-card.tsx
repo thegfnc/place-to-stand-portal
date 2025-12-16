@@ -87,11 +87,17 @@ function CardContent({
   const dueMeta = task.due_on
     ? getTaskDueMeta(task.due_on, { status: task.status })
     : null
+  const isCompleted = task.status === 'DONE' || task.status === 'ARCHIVED'
 
   return (
     <>
       <div className='space-y-2'>
-        <h3 className='text-foreground line-clamp-2 text-sm leading-snug font-semibold'>
+        <h3
+          className={cn(
+            'text-foreground line-clamp-2 text-sm leading-snug font-semibold',
+            isCompleted && 'line-through'
+          )}
+        >
           {task.title}
         </h3>
         {descriptionPreview ? (
@@ -241,9 +247,10 @@ export function TaskCard({
     return rest
   }, [attributes])
 
+  const isCompleted = task.status === 'DONE' || task.status === 'ARCHIVED'
   const shouldDisableTransition = disableDropTransition && !isDragging
   const style: CSSProperties = {
-    opacity: isDragging ? 0 : 1,
+    opacity: isDragging ? 0 : isCompleted ? 0.65 : 1,
     transform: transform ? CSS.Transform.toString(transform) : undefined,
     transition: shouldDisableTransition
       ? 'none'
@@ -271,13 +278,19 @@ export function TaskCard({
         }
       }}
       className={cn(
-        'group bg-card rounded-lg border-y border-r border-l-4 border-l-violet-500 p-4 text-left shadow-sm transition',
+        'group bg-card rounded-lg border-y border-r border-l-4 p-4 text-left shadow-sm transition',
+        isCompleted ? 'border-l-muted-foreground/30' : 'border-l-violet-500',
         draggable ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer',
         isDragging && 'ring-primary ring-2',
         (isActive || isDragging) && 'border-primary/50 bg-primary/5 shadow-md',
         !isActive &&
           !isDragging &&
-          'hover:border-r-violet-500/50 hover:border-y-violet-500/50 hover:bg-violet-500/5 hover:shadow-md'
+          !isCompleted &&
+          'hover:border-y-violet-500/50 hover:border-r-violet-500/50 hover:bg-violet-500/5 hover:shadow-md',
+        !isActive &&
+          !isDragging &&
+          isCompleted &&
+          'hover:border-r-muted-foreground/30 hover:border-y-muted-foreground/30 hover:bg-muted/20 hover:shadow-md'
       )}
     >
       <CardContent
@@ -301,8 +314,16 @@ export function TaskCardPreview({
   context?: TaskContextDetails
   hideAssignees?: boolean
 }) {
+  const isCompleted = task.status === 'DONE' || task.status === 'ARCHIVED'
   return (
-    <div className='bg-card border-l-violet-500 w-80 rounded-lg border-y border-r border-l-4 p-4 shadow-sm'>
+    <div
+      className={cn(
+        'bg-card w-80 rounded-lg border-y border-r border-l-4 p-4 shadow-sm',
+        isCompleted
+          ? 'border-l-muted-foreground/30 opacity-65'
+          : 'border-l-violet-500'
+      )}
+    >
       <CardContent
         task={task}
         assignees={assignees}
