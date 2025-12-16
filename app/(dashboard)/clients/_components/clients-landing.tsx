@@ -65,8 +65,20 @@ export function ClientsLanding({ clients }: ClientsLandingProps) {
                 <div className='space-y-2'>
                   {client.billingType === 'prepaid' && (
                     <div className='flex items-center gap-2 text-sm'>
-                      <Clock className='text-muted-foreground h-4 w-4' />
-                      <span className='text-muted-foreground'>
+                      <Clock
+                        className={`h-4 w-4 ${
+                          client.hoursRemaining > 0 ? 'text-emerald-600' : ''
+                        }`}
+                      />
+                      <span
+                        className={
+                          client.hoursRemaining > 0
+                            ? 'font-medium text-emerald-600'
+                            : client.hoursRemaining === 0
+                              ? 'text-muted-foreground'
+                              : 'font-medium text-red-600'
+                        }
+                      >
                         {formatHours(client.hoursRemaining)} hours remaining
                       </span>
                       <span className='text-muted-foreground/60'>
