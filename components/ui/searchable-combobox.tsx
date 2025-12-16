@@ -1,8 +1,9 @@
 'use client'
 
 import * as React from 'react'
-import { CheckIcon, ChevronsUpDownIcon } from 'lucide-react'
+import { CheckIcon, ChevronsUpDownIcon, User } from 'lucide-react'
 
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import {
@@ -25,6 +26,8 @@ export type SearchableComboboxItem = {
   description?: string
   keywords?: string[]
   disabled?: boolean
+  avatarUrl?: string | null
+  userId?: string
 }
 
 export type SearchableComboboxGroup = {
@@ -217,14 +220,30 @@ export const SearchableCombobox = React.forwardRef<
                 triggerClassName
               )}
             >
-              <span
-                className={cn(
-                  variant !== 'heading' && 'line-clamp-1',
-                  selectedItem ? selectedTextClasses : placeholderTextClasses
-                )}
-              >
-                {selectedItem?.label ?? resolvedPlaceholder}
-              </span>
+              <div className='flex items-center gap-2 min-w-0 flex-1'>
+                {selectedItem?.userId ? (
+                  <Avatar className='h-5 w-5 shrink-0'>
+                    {selectedItem.avatarUrl && (
+                      <AvatarImage
+                        src={`/api/storage/user-avatar/${selectedItem.userId}`}
+                      />
+                    )}
+                    <AvatarFallback className='text-[9px]'>
+                      {selectedItem.label.slice(0, 2).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                ) : selectedItem ? (
+                  <User className='h-5 w-5 shrink-0 text-muted-foreground' />
+                ) : null}
+                <span
+                  className={cn(
+                    variant !== 'heading' && 'line-clamp-1',
+                    selectedItem ? selectedTextClasses : placeholderTextClasses
+                  )}
+                >
+                  {selectedItem?.label ?? resolvedPlaceholder}
+                </span>
+              </div>
               <ChevronsUpDownIcon className='size-4 shrink-0 opacity-50' />
             </Button>
           </PopoverTrigger>
@@ -273,6 +292,20 @@ export const SearchableCombobox = React.forwardRef<
                                   : 'opacity-0'
                               )}
                             />
+                            {item.userId ? (
+                              <Avatar className='mr-2 h-5 w-5'>
+                                {item.avatarUrl && (
+                                  <AvatarImage
+                                    src={`/api/storage/user-avatar/${item.userId}`}
+                                  />
+                                )}
+                                <AvatarFallback className='text-[9px]'>
+                                  {item.label.slice(0, 2).toUpperCase()}
+                                </AvatarFallback>
+                              </Avatar>
+                            ) : (
+                              <User className='mr-2 h-5 w-5 text-muted-foreground' />
+                            )}
                             <div className={itemWrapperClasses}>
                               <span className='font-medium'>{item.label}</span>
                               {item.description ? (
@@ -310,6 +343,20 @@ export const SearchableCombobox = React.forwardRef<
                                 : 'opacity-0'
                             )}
                           />
+                          {item.userId ? (
+                            <Avatar className='mr-2 h-5 w-5'>
+                              {item.avatarUrl && (
+                                <AvatarImage
+                                  src={`/api/storage/user-avatar/${item.userId}`}
+                                />
+                              )}
+                              <AvatarFallback className='text-[9px]'>
+                                {item.label.slice(0, 2).toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                          ) : (
+                            <User className='mr-2 h-5 w-5 text-muted-foreground' />
+                          )}
                           <div className={itemWrapperClasses}>
                             <span className='font-medium'>{item.label}</span>
                             {item.description ? (

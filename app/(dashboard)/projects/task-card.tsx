@@ -20,6 +20,7 @@ import {
   Users,
 } from 'lucide-react'
 
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { cn } from '@/lib/utils'
 import type { ProjectTypeValue, TaskWithRelations } from '@/lib/types'
 import {
@@ -30,6 +31,7 @@ import {
 type AssigneeInfo = {
   id: string
   name: string
+  avatarUrl: string | null
 }
 
 type TaskContextDetails = {
@@ -109,8 +111,22 @@ function CardContent({
       <div className='mt-4 space-y-2'>
         {!hideAssignees ? (
           <div className='text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-2 text-xs'>
-            <div className='inline-flex items-center gap-1'>
-              <User className='h-3.5 w-3.5' /> {assignedSummary}
+            <div className='inline-flex items-center gap-1.5'>
+              {assignees.length > 0 && assignees[0] ? (
+                <Avatar className='h-4 w-4'>
+                  {assignees[0].avatarUrl && (
+                    <AvatarImage
+                      src={`/api/storage/user-avatar/${assignees[0].id}`}
+                    />
+                  )}
+                  <AvatarFallback className='text-[8px]'>
+                    {assignees[0].name.slice(0, 2).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+              ) : (
+                <User className='h-3.5 w-3.5' />
+              )}
+              <span>{assignedSummary}</span>
             </div>
           </div>
         ) : null}

@@ -366,7 +366,10 @@ function buildMemberDirectory(
   projects: ProjectWithRelations[],
   admins: DbUser[]
 ) {
-  const directory = new Map<string, { name: string }>()
+  const directory = new Map<
+    string,
+    { name: string; avatarUrl: string | null }
+  >()
 
   projects.forEach(project => {
     project.members.forEach(member => {
@@ -375,14 +378,14 @@ function buildMemberDirectory(
         user.full_name?.trim() ||
         user.email?.split('@')[0] ||
         'Unassigned member'
-      directory.set(user.id, { name })
+      directory.set(user.id, { name, avatarUrl: user.avatar_url })
     })
   })
 
   admins.forEach(admin => {
     const name =
       admin.full_name?.trim() || admin.email?.split('@')[0] || 'Administrator'
-    directory.set(admin.id, { name })
+    directory.set(admin.id, { name, avatarUrl: admin.avatar_url })
   })
 
   return directory

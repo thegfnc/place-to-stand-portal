@@ -9,7 +9,7 @@ type TaskDragOverlayProps = {
   draggingTask: TaskWithRelations | null
   renderAssignees: (
     task: TaskWithRelations
-  ) => Array<{ id: string; name: string }>
+  ) => Array<{ id: string; name: string; avatarUrl: string | null }>
   variant?: 'board' | 'calendar'
   getTaskCardOptions?: (
     task: TaskWithRelations

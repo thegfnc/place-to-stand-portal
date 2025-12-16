@@ -128,6 +128,8 @@ export function LeadSheet({
         value: assignee.id,
         label: assignee.name,
         description: assignee.email ?? undefined,
+        userId: assignee.id,
+        avatarUrl: assignee.avatarUrl,
       })),
     ],
     [assignees]

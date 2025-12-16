@@ -139,6 +139,7 @@ export const useProjectsBoardState = ({
       activeProject.members.forEach(member => {
         directory.set(member.user_id, {
           name: member.user.full_name ?? member.user.email,
+          avatarUrl: member.user.avatar_url,
         })
       })
     }
@@ -147,6 +148,7 @@ export const useProjectsBoardState = ({
       if (!directory.has(admin.id)) {
         directory.set(admin.id, {
           name: admin.full_name ?? admin.email,
+          avatarUrl: admin.avatar_url,
         })
       }
     })

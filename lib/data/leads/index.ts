@@ -56,6 +56,7 @@ export const fetchLeadsBoard = cache(
         assigneeId: row.assigneeId ?? null,
         assigneeName: row.assigneeName ?? null,
         assigneeEmail: row.assigneeEmail ?? null,
+        assigneeAvatarUrl: row.assigneeAvatarUrl ?? null,
         contactEmail: row.contactEmail ?? null,
         contactPhone: row.contactPhone ?? null,
         companyName: row.companyName ?? null,
@@ -110,6 +111,7 @@ export const fetchLeadById = cache(
     assigneeId: lead.assigneeId ?? null,
     assigneeName: lead.assigneeName ?? null,
     assigneeEmail: lead.assigneeEmail ?? null,
+    assigneeAvatarUrl: lead.assigneeAvatarUrl ?? null,
     contactEmail: lead.contactEmail ?? null,
     contactPhone: lead.contactPhone ?? null,
     companyName: lead.companyName ?? null,
@@ -129,6 +131,7 @@ export const fetchLeadAssignees = cache(async (): Promise<LeadAssigneeOption[]> 
     id: admin.id,
     name: admin.full_name ?? admin.email,
     email: admin.email,
+    avatarUrl: admin.avatar_url,
   }))
 })
 
@@ -148,6 +151,7 @@ async function selectLeadRows({
     assigneeId: leads.assigneeId,
     assigneeName: users.fullName,
     assigneeEmail: users.email,
+    assigneeAvatarUrl: users.avatarUrl,
     contactEmail: leads.contactEmail,
     contactPhone: leads.contactPhone,
     companyName: leads.companyName,

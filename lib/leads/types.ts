@@ -9,6 +9,7 @@ export type LeadRecord = {
   assigneeId: string | null
   assigneeName: string | null
   assigneeEmail: string | null
+  assigneeAvatarUrl: string | null
   contactEmail: string | null
   contactPhone: string | null
   companyName: string | null
@@ -30,4 +31,5 @@ export type LeadAssigneeOption = {
   id: string
   name: string
   email: string | null
+  avatarUrl: string | null
 }

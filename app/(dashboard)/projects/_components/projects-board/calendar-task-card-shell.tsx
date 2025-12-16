@@ -1,11 +1,15 @@
 import { forwardRef, type ComponentPropsWithoutRef } from 'react'
+import { User } from 'lucide-react'
 
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { cn } from '@/lib/utils'
 import type { TaskWithRelations } from '@/lib/types'
 
 type CalendarTaskCardShellProps = {
   task: TaskWithRelations
   primaryAssignee: string
+  primaryAssigneeId?: string | null
+  primaryAssigneeAvatarUrl?: string | null
   canManageTasks: boolean
   isActive?: boolean
   isDragging?: boolean
@@ -19,6 +23,8 @@ export const CalendarTaskCardShell = forwardRef<
   {
     task,
     primaryAssignee,
+    primaryAssigneeId,
+    primaryAssigneeAvatarUrl,
     canManageTasks,
     isActive = false,
     isDragging = false,
@@ -64,7 +70,19 @@ export const CalendarTaskCardShell = forwardRef<
       >
         {task.title}
       </p>
-      <div className='text-muted-foreground mt-1 flex flex-wrap items-center gap-2 text-[11px]'>
+      <div className='text-muted-foreground mt-1 flex flex-wrap items-center gap-1.5 text-[11px]'>
+        {primaryAssigneeId ? (
+          <Avatar className='h-3.5 w-3.5'>
+            {primaryAssigneeAvatarUrl && (
+              <AvatarImage src={`/api/storage/user-avatar/${primaryAssigneeId}`} />
+            )}
+            <AvatarFallback className='text-[7px]'>
+              {primaryAssignee.slice(0, 2).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+        ) : (
+          <User className='h-3 w-3' />
+        )}
         <span>{primaryAssignee}</span>
       </div>
     </div>
@@ -73,7 +91,7 @@ export const CalendarTaskCardShell = forwardRef<
 
 export type CalendarTaskCardPreviewProps = {
   task: TaskWithRelations
-  assignees: Array<{ id: string; name: string }>
+  assignees: Array<{ id: string; name: string; avatarUrl: string | null }>
 }
 
 export function CalendarTaskCardPreview({
@@ -81,11 +99,15 @@ export function CalendarTaskCardPreview({
   assignees,
 }: CalendarTaskCardPreviewProps) {
   const primaryAssignee = assignees[0]?.name ?? 'Unassigned'
+  const primaryAssigneeId = assignees[0]?.id ?? null
+  const primaryAssigneeAvatarUrl = assignees[0]?.avatarUrl ?? null
 
   return (
     <CalendarTaskCardShell
       task={task}
       primaryAssignee={primaryAssignee}
+      primaryAssigneeId={primaryAssigneeId}
+      primaryAssigneeAvatarUrl={primaryAssigneeAvatarUrl}
       canManageTasks
       className='pointer-events-none'
     />

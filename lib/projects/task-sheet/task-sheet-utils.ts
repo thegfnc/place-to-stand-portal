@@ -142,8 +142,10 @@ export const buildAssigneeItems = ({
     eligibleItems.push({
       value: admin.id,
       label,
-      description: `${formatRoleLabel(admin.role)} • ${admin.email}`,
+      description: `${admin.email}`,
       keywords: [admin.email, 'admin'],
+      userId: admin.id,
+      avatarUrl: admin.avatar_url,
     })
     seen.add(admin.id)
   })
@@ -169,6 +171,8 @@ export const buildAssigneeItems = ({
       keywords: [user.email, 'admin'].filter((keyword): keyword is string =>
         Boolean(keyword)
       ),
+      userId: member.user_id,
+      avatarUrl: user.avatar_url,
     })
     seen.add(member.user_id)
   })
@@ -187,6 +191,9 @@ export const buildAssigneeItems = ({
         currentMember?.user.email ?? currentAdmin?.email ?? 'unavailable',
       ],
       disabled: true,
+      userId: currentAssigneeId,
+      avatarUrl:
+        currentMember?.user.avatar_url ?? currentAdmin?.avatar_url ?? null,
     })
   }
 

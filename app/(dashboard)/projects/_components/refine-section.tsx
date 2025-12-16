@@ -27,7 +27,7 @@ type RefineSectionProps = {
   canManage: boolean
   renderAssignees: (
     task: TaskWithRelations
-  ) => Array<{ id: string; name: string }>
+  ) => Array<{ id: string; name: string; avatarUrl: string | null }>
   onEditTask: (task: TaskWithRelations) => void
   activeTaskId: string | null
   onCreateTask?: (status: BoardColumnId) => void

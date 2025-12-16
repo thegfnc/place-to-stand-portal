@@ -28,7 +28,7 @@ export type UseProjectsBoardStateArgs = {
   currentView: BoardView
 }
 
-export type MemberDirectoryEntry = { name: string }
+export type MemberDirectoryEntry = { name: string; avatarUrl: string | null }
 
 export type ProjectsBoardState = {
   isPending: boolean

@@ -12,6 +12,7 @@ import { defaultAnimateLayoutChanges, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { Mail, Phone, User } from 'lucide-react'
 
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import {
   Tooltip,
@@ -187,8 +188,21 @@ export function LeadCardContent({ lead }: { lead: LeadRecord }) {
             />
           </div>
         ) : null}
-        <div className='text-muted-foreground flex flex-wrap items-center gap-1 text-xs'>
-          <User className='h-3.5 w-3.5' aria-hidden />
+        <div className='text-muted-foreground flex flex-wrap items-center gap-1.5 text-xs'>
+          {lead.assigneeId ? (
+            <Avatar className='h-4 w-4'>
+              {lead.assigneeAvatarUrl && (
+                <AvatarImage
+                  src={`/api/storage/user-avatar/${lead.assigneeId}`}
+                />
+              )}
+              <AvatarFallback className='text-[8px]'>
+                {assigneeDisplay.slice(0, 2).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+          ) : (
+            <User className='h-3.5 w-3.5' aria-hidden />
+          )}
           <span>{assigneeDisplay}</span>
         </div>
       </div>
