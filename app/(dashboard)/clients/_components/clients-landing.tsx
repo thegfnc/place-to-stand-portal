@@ -12,16 +12,15 @@ type ClientsLandingProps = {
   clients: ClientWithMetrics[]
 }
 
+const HOURS_FORMATTER = new Intl.NumberFormat('en-US', {
+  maximumFractionDigits: 2,
+  minimumFractionDigits: 0,
+})
+
 function formatHours(hours: number): string {
-  // Remove unnecessary trailing zeros
-  const rounded = Math.round(hours * 100) / 100
-  if (rounded === Math.floor(rounded)) {
-    // Whole number, no decimals needed
-    return rounded.toString()
-  }
-  const str = rounded.toFixed(2)
-  // If it ends in 0, remove it (e.g., 6.50 -> 6.5)
-  return str.replace(/\.?0+$/, '')
+  // Use a real number formatter instead of regex trimming to avoid edge cases
+  // and stay consistent with other dashboard widgets.
+  return HOURS_FORMATTER.format(hours)
 }
 
 export function ClientsLanding({ clients }: ClientsLandingProps) {
@@ -67,7 +66,11 @@ export function ClientsLanding({ clients }: ClientsLandingProps) {
                     <div className='flex items-center gap-2 text-sm'>
                       <Clock
                         className={`h-4 w-4 ${
-                          client.hoursRemaining > 0 ? 'text-emerald-600' : ''
+                          client.hoursRemaining > 0
+                            ? 'text-emerald-600'
+                            : client.hoursRemaining === 0
+                              ? 'text-muted-foreground'
+                              : 'text-red-600'
                         }`}
                       />
                       <span
