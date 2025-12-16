@@ -1,21 +1,27 @@
 'use client'
 
 import Link from 'next/link'
-import { Building2, FolderKanban } from 'lucide-react'
+import { Building2, Clock, FolderKanban } from 'lucide-react'
 
 import { Badge } from '@/components/ui/badge'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import type { ClientWithMetrics } from '@/lib/data/clients'
 import { getBillingTypeLabel } from '@/lib/settings/clients/billing-types'
 
 type ClientsLandingProps = {
   clients: ClientWithMetrics[]
+}
+
+function formatHours(hours: number): string {
+  // Remove unnecessary trailing zeros
+  const rounded = Math.round(hours * 100) / 100
+  if (rounded === Math.floor(rounded)) {
+    // Whole number, no decimals needed
+    return rounded.toString()
+  }
+  const str = rounded.toFixed(2)
+  // If it ends in 0, remove it (e.g., 6.50 -> 6.5)
+  return str.replace(/\.?0+$/, '')
 }
 
 export function ClientsLanding({ clients }: ClientsLandingProps) {
@@ -41,11 +47,11 @@ export function ClientsLanding({ clients }: ClientsLandingProps) {
       <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-3'>
         {clients.map(client => (
           <Link key={client.id} href={getClientHref(client)}>
-            <Card className='border-l-4 border-l-blue-500 border-y-border border-r-border hover:border-r-blue-500/50 hover:border-y-blue-500/50 flex h-full cursor-pointer flex-col justify-between shadow-sm transition-all hover:shadow-md'>
+            <Card className='border-y-border border-r-border flex h-full cursor-pointer flex-col justify-between border-l-4 border-l-blue-500 shadow-sm transition-all hover:border-y-blue-500/50 hover:border-r-blue-500/50 hover:shadow-md'>
               <CardHeader>
                 <div className='flex items-start justify-between gap-2'>
                   <div className='flex min-w-0 flex-1 items-center gap-2'>
-                    <Building2 className='text-blue-500 mt-0.5 h-5 w-5 shrink-0' />
+                    <Building2 className='mt-0.5 h-5 w-5 shrink-0 text-blue-500' />
                     <CardTitle className='line-clamp-2'>
                       {client.name}
                     </CardTitle>
@@ -54,24 +60,32 @@ export function ClientsLanding({ clients }: ClientsLandingProps) {
                     {getBillingTypeLabel(client.billingType)}
                   </Badge>
                 </div>
-                {client.slug ? (
-                  <CardDescription className='text-muted-foreground text-xs'>
-                    /{client.slug}
-                  </CardDescription>
-                ) : null}
               </CardHeader>
               <CardContent>
-                <div className='flex items-center gap-2 text-sm'>
-                  <FolderKanban className='text-muted-foreground h-4 w-4' />
-                  <span className='text-muted-foreground'>
-                    {client.activeProjectCount} active project
-                    {client.activeProjectCount !== 1 ? 's' : ''}
-                  </span>
-                  {client.projectCount > client.activeProjectCount ? (
-                    <span className='text-muted-foreground/60'>
-                      ({client.projectCount} total)
+                <div className='space-y-2'>
+                  {client.billingType === 'prepaid' && (
+                    <div className='flex items-center gap-2 text-sm'>
+                      <Clock className='text-muted-foreground h-4 w-4' />
+                      <span className='text-muted-foreground'>
+                        {formatHours(client.hoursRemaining)} hours remaining
+                      </span>
+                      <span className='text-muted-foreground/60'>
+                        ({formatHours(client.totalHoursPurchased)} total)
+                      </span>
+                    </div>
+                  )}
+                  <div className='flex items-center gap-2 text-sm'>
+                    <FolderKanban className='text-muted-foreground h-4 w-4' />
+                    <span className='text-muted-foreground'>
+                      {client.activeProjectCount} active project
+                      {client.activeProjectCount !== 1 ? 's' : ''}
                     </span>
-                  ) : null}
+                    {client.projectCount > client.activeProjectCount ? (
+                      <span className='text-muted-foreground/60'>
+                        ({client.projectCount} total)
+                      </span>
+                    ) : null}
+                  </div>
                 </div>
               </CardContent>
             </Card>

@@ -189,7 +189,7 @@ export function HoursWidget({ initialSnapshot, className }: HoursWidgetProps) {
             value={formatHours(snapshot.myHours)}
           />
           <StatCard
-            label='Total hours logged'
+            label='Company hours logged'
             value={formatHours(snapshot.companyHours)}
           />
         </div>
