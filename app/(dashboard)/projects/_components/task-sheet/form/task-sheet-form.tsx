@@ -12,7 +12,7 @@ import type {
   SearchableComboboxItem,
 } from '@/components/ui/searchable-combobox'
 
-import { TaskSheetFormFields } from './task-sheet-form-fields'
+import { TaskSheetFormFields, type TaskSheetFormFieldsProps } from './task-sheet-form-fields'
 import { TaskSheetFormFooter } from './task-sheet-form-footer'
 
 type TaskSheetFormProps = {
@@ -25,7 +25,7 @@ type TaskSheetFormProps = {
   projectItems: SearchableComboboxItem[]
   projectGroups: SearchableComboboxGroup[]
   resolveDisabledReason: (disabled: boolean) => string | null
-  taskStatuses: Array<{ value: string; label: string }>
+  taskStatuses: TaskSheetFormFieldsProps['taskStatuses']
   unassignedValue: string
   editorKey: string
   isEditing: boolean
