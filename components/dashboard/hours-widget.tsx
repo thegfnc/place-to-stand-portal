@@ -251,8 +251,8 @@ function shiftMonth(cursor: CursorLike, delta: number) {
 function formatHours(value: number) {
   return `${value.toLocaleString(undefined, {
     minimumFractionDigits: 0,
-    maximumFractionDigits: 1,
-  })}h`
+    maximumFractionDigits: 2,
+  })}`
 }
 
 function compareMonthCursor(a: CursorLike, b: CursorLike) {
