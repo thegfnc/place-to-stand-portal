@@ -1,4 +1,5 @@
 import { formatISO, parseISO } from 'date-fns'
+import { User } from 'lucide-react'
 
 import type {
   SearchableComboboxGroup,
@@ -206,6 +207,7 @@ export const buildAssigneeItems = ({
       label: 'Unassigned',
       description: 'No collaborator assigned yet.',
       keywords: ['unassigned'],
+      icon: User,
     },
     ...eligibleItems,
     ...fallbackItems,

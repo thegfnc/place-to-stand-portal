@@ -28,6 +28,7 @@ export type SearchableComboboxItem = {
   disabled?: boolean
   avatarUrl?: string | null
   userId?: string
+  icon?: React.ComponentType<{ className?: string }>
 }
 
 export type SearchableComboboxGroup = {
@@ -232,8 +233,8 @@ export const SearchableCombobox = React.forwardRef<
                       {selectedItem.label.slice(0, 2).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
-                ) : selectedItem ? (
-                  <User className='h-5 w-5 shrink-0 text-muted-foreground' />
+                ) : selectedItem?.icon ? (
+                  <selectedItem.icon className='h-5 w-5 shrink-0 text-muted-foreground' />
                 ) : null}
                 <span
                   className={cn(
@@ -303,9 +304,9 @@ export const SearchableCombobox = React.forwardRef<
                                   {item.label.slice(0, 2).toUpperCase()}
                                 </AvatarFallback>
                               </Avatar>
-                            ) : (
-                              <User className='mr-2 h-5 w-5 text-muted-foreground' />
-                            )}
+                            ) : item.icon ? (
+                              <item.icon className='mr-2 h-5 w-5 text-muted-foreground' />
+                            ) : null}
                             <div className={itemWrapperClasses}>
                               <span className='font-medium'>{item.label}</span>
                               {item.description ? (
@@ -354,9 +355,9 @@ export const SearchableCombobox = React.forwardRef<
                                 {item.label.slice(0, 2).toUpperCase()}
                               </AvatarFallback>
                             </Avatar>
-                          ) : (
-                            <User className='mr-2 h-5 w-5 text-muted-foreground' />
-                          )}
+                          ) : item.icon ? (
+                            <item.icon className='mr-2 h-5 w-5 text-muted-foreground' />
+                          ) : null}
                           <div className={itemWrapperClasses}>
                             <span className='font-medium'>{item.label}</span>
                             {item.description ? (
