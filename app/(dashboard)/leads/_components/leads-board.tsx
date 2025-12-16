@@ -23,6 +23,7 @@ import {
 
 import { useProjectsBoardSensors } from '@/app/(dashboard)/projects/_hooks/use-projects-board-sensors'
 import { useScrollPersistence } from '@/hooks/use-scroll-persistence'
+import { useColumnScrollPersistence } from '@/hooks/use-column-scroll-persistence'
 import type { LeadBoardColumnData, LeadRecord } from '@/lib/leads/types'
 import type { LeadStatusValue } from '@/lib/leads/constants'
 import { useToast } from '@/components/ui/use-toast'
@@ -49,6 +50,10 @@ export function LeadsBoard({
   const { sensors } = useProjectsBoardSensors()
   const { viewportRef: boardViewportRef, handleScroll: handleBoardScroll } =
     useScrollPersistence({ storageKey: 'leads-board', axis: 'x' })
+  const { getColumnRef, getScrollHandler } = useColumnScrollPersistence({
+    storageKey: 'leads-board',
+    columnIds: initialColumns.map(col => col.id),
+  })
   const [columns, setColumns] = useState(() =>
     cloneColumns(initialColumns)
   )
@@ -432,6 +437,8 @@ export function LeadsBoard({
                     }
                     draggingLeadId={draggingLead?.id ?? null}
                     recentlyMovedLeadId={recentlyMovedLeadId}
+                    columnScrollRef={getColumnRef(column.id)}
+                    onColumnScroll={getScrollHandler(column.id)}
                   />
                 ))}
               </div>

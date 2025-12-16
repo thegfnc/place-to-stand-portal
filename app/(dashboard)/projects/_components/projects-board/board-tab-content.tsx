@@ -13,6 +13,7 @@ import { TabsContent } from '@/components/ui/tabs'
 import { KanbanColumn } from '../kanban-column'
 import { ProjectsBoardEmpty } from '../projects-board-empty'
 import { TaskDragOverlay } from '../task-drag-overlay'
+import { useColumnScrollPersistence } from '@/hooks/use-column-scroll-persistence'
 
 import {
   FEEDBACK_CLASSES,
@@ -83,6 +84,11 @@ export function BoardTabContent(props: BoardTabContentProps) {
 
   const lastTaskOverId = useRef<UniqueIdentifier | null>(null)
   const lastColumnOverId = useRef<UniqueIdentifier | null>(null)
+
+  const { getColumnRef, getScrollHandler } = useColumnScrollPersistence({
+    storageKey: 'projects-board',
+    columnIds: BOARD_COLUMNS.map(col => col.id),
+  })
 
   type CollisionArgs = Parameters<CollisionDetection>[0]
 
@@ -307,6 +313,8 @@ export function BoardTabContent(props: BoardTabContentProps) {
                       }
                       draggingTask={draggingTask}
                       recentlyMovedTaskId={recentlyMovedTaskId}
+                      columnScrollRef={getColumnRef(column.id)}
+                      onColumnScroll={getScrollHandler(column.id)}
                     />
                   ))}
                 </div>

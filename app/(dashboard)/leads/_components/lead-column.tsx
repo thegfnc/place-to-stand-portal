@@ -1,6 +1,6 @@
 'use client'
 
-import { Fragment } from 'react'
+import { Fragment, type MutableRefObject, type UIEventHandler } from 'react'
 import { useDroppable } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 
@@ -25,6 +25,8 @@ type LeadColumnProps = {
   draggingLeadId?: string | null
   recentlyMovedLeadId?: string | null
   activeLeadId?: string | null
+  columnScrollRef?: MutableRefObject<HTMLDivElement | null>
+  onColumnScroll?: UIEventHandler<HTMLDivElement>
 }
 
 export function LeadColumn({
@@ -38,6 +40,8 @@ export function LeadColumn({
   draggingLeadId = null,
   recentlyMovedLeadId = null,
   activeLeadId = null,
+  columnScrollRef,
+  onColumnScroll,
 }: LeadColumnProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: columnId,
@@ -81,7 +85,11 @@ export function LeadColumn({
           </span>
         </div>
       </div>
-      <div className='flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-1'>
+      <div
+        ref={columnScrollRef}
+        onScroll={onColumnScroll}
+        className='flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-1'
+      >
         <SortableContext
           id={columnId}
           items={leads.map(lead => lead.id)}
