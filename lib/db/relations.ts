@@ -19,6 +19,8 @@ import {
   clientContacts,
   emailMetadata,
   emailLinks,
+  taskSuggestions,
+  suggestionFeedback,
 } from './schema'
 
 export const clientsRelations = relations(clients, ({ one, many }) => ({
@@ -252,6 +254,37 @@ export const emailLinksRelations = relations(emailLinks, ({ one }) => ({
   }),
   linkedByUser: one(users, {
     fields: [emailLinks.linkedBy],
+    references: [users.id],
+  }),
+}))
+
+export const taskSuggestionsRelations = relations(taskSuggestions, ({ one, many }) => ({
+  email: one(emailMetadata, {
+    fields: [taskSuggestions.emailMetadataId],
+    references: [emailMetadata.id],
+  }),
+  project: one(projects, {
+    fields: [taskSuggestions.projectId],
+    references: [projects.id],
+  }),
+  reviewedByUser: one(users, {
+    fields: [taskSuggestions.reviewedBy],
+    references: [users.id],
+  }),
+  createdTask: one(tasks, {
+    fields: [taskSuggestions.createdTaskId],
+    references: [tasks.id],
+  }),
+  feedback: many(suggestionFeedback),
+}))
+
+export const suggestionFeedbackRelations = relations(suggestionFeedback, ({ one }) => ({
+  suggestion: one(taskSuggestions, {
+    fields: [suggestionFeedback.taskSuggestionId],
+    references: [taskSuggestions.id],
+  }),
+  createdByUser: one(users, {
+    fields: [suggestionFeedback.createdBy],
     references: [users.id],
   }),
 }))

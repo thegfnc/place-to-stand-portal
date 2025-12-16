@@ -29,15 +29,21 @@ export function ClientEmailsSection({ emails, isAdmin }: Props) {
 
   // Fetch full email data when selected
   useEffect(() => {
-    if (!selectedEmailId) {
-      setSelectedEmail(null)
-      return
-    }
+    if (!selectedEmailId) return
+
+    let cancelled = false
     fetch(`/api/emails/${selectedEmailId}`)
       .then(r => r.ok ? r.json() : null)
-      .then(data => setSelectedEmail(data))
-      .catch(() => setSelectedEmail(null))
+      .then(data => { if (!cancelled) setSelectedEmail(data) })
+      .catch(() => { if (!cancelled) setSelectedEmail(null) })
+
+    return () => { cancelled = true }
   }, [selectedEmailId])
+
+  const handleClose = () => {
+    setSelectedEmailId(null)
+    setSelectedEmail(null)
+  }
 
   const handleUpdate = (updated: EmailWithLinks) => {
     setSelectedEmail(updated)
@@ -102,7 +108,7 @@ export function ClientEmailsSection({ emails, isAdmin }: Props) {
 
       <EmailDetailSheet
         email={selectedEmail}
-        onClose={() => setSelectedEmailId(null)}
+        onClose={handleClose}
         onUpdate={handleUpdate}
         isAdmin={isAdmin}
       />

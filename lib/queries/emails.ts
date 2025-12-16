@@ -299,9 +299,6 @@ export async function getLinkedEmailsForClient(clientId: string, limit = 20): Pr
 }
 
 export async function getEmailWithLinksById(userId: string, emailId: string): Promise<EmailWithLinks | null> {
-  const results = await getEmailsWithLinks(userId, { limit: 1 })
-
-  // Need to fetch specific email
   const [email] = await db
     .select()
     .from(emailMetadata)

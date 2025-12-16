@@ -64,6 +64,13 @@
       "when": 1765595585777,
       "tag": "0008_client_contacts",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1765814995677,
+      "tag": "0009_task_suggestions",
+      "breakpoints": true
     }
   ]
 }
