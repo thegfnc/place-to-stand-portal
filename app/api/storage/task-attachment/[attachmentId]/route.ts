@@ -9,6 +9,7 @@ import { getTaskAttachmentForDownload } from '@/lib/queries/task-attachments'
 import { ensureTaskAttachmentBucket } from '@/lib/storage/task-attachments'
 import { TASK_ATTACHMENT_BUCKET } from '@/lib/storage/task-attachment-constants'
 import { HttpError } from '@/lib/errors/http'
+import { buildContentDispositionHeader } from '@/lib/http/content-disposition'
 
 const paramsSchema = z.object({
   attachmentId: z.string().uuid(),
@@ -33,7 +34,10 @@ export async function GET(
     attachment = await getTaskAttachmentForDownload(actor, attachmentId)
   } catch (error) {
     if (error instanceof HttpError) {
-      return NextResponse.json({ error: error.message }, { status: error.status })
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.status }
+      )
     }
 
     console.error('Failed to load attachment metadata', error)
@@ -59,7 +63,6 @@ export async function GET(
 
   const arrayBuffer = await file.arrayBuffer()
   const fileBuffer = Buffer.from(arrayBuffer)
-  const sanitizedName = attachment.originalName.replace(/"/g, '\\"')
 
   return new NextResponse(fileBuffer, {
     status: 200,
@@ -67,7 +70,10 @@ export async function GET(
       'Content-Type': attachment.mimeType || 'application/octet-stream',
       'Content-Length': fileBuffer.length.toString(),
       'Cache-Control': 'private, max-age=300, stale-while-revalidate=600',
-      'Content-Disposition': `inline; filename="${sanitizedName}"`,
+      'Content-Disposition': buildContentDispositionHeader({
+        disposition: 'inline',
+        filename: attachment.originalName,
+      }),
     },
   })
 }
