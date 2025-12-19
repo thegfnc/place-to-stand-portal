@@ -16,6 +16,7 @@ export type HoursSnapshot = {
   year: number
   myHours: number
   companyHours: number
+  companyHoursPrepaid: number
   scopeLabel: string
   minCursor: MonthCursor
   maxCursor: MonthCursor

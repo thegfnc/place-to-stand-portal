@@ -183,7 +183,7 @@ export function HoursWidget({ initialSnapshot, className }: HoursWidgetProps) {
         </div>
       </header>
       <div className='flex flex-1 flex-col gap-4 px-5 py-4'>
-        <div className='grid gap-4 sm:grid-cols-2'>
+        <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-3'>
           <StatCard
             label='My hours logged'
             value={formatHours(snapshot.myHours)}
@@ -191,6 +191,10 @@ export function HoursWidget({ initialSnapshot, className }: HoursWidgetProps) {
           <StatCard
             label='Company hours logged'
             value={formatHours(snapshot.companyHours)}
+          />
+          <StatCard
+            label='Company hours prepaid'
+            value={formatHours(snapshot.companyHoursPrepaid)}
           />
         </div>
         {error ? <p className='text-destructive text-xs'>{error}</p> : null}

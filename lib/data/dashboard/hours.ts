@@ -3,9 +3,13 @@ import 'server-only'
 import { and, eq, gte, inArray, isNull, lte, sql, type SQL } from 'drizzle-orm'
 
 import type { AppUser } from '@/lib/auth/session'
-import { isAdmin, listAccessibleProjectIds } from '@/lib/auth/permissions'
+import {
+  isAdmin,
+  listAccessibleClientIds,
+  listAccessibleProjectIds,
+} from '@/lib/auth/permissions'
 import { db } from '@/lib/db'
-import { timeLogs } from '@/lib/db/schema'
+import { hourBlocks, timeLogs } from '@/lib/db/schema'
 import type { HoursSnapshot, MonthCursor } from '@/lib/dashboard/types'
 
 const HOURS_PRECISION = 2
@@ -47,6 +51,7 @@ export async function fetchHoursSnapshot(
         year,
         myHours,
         companyHours: 0,
+        companyHoursPrepaid: 0,
         scopeLabel: 'Your accounts',
         minCursor: bounds.min,
         maxCursor: bounds.max,
@@ -57,11 +62,38 @@ export async function fetchHoursSnapshot(
 
   const companyHours = await sumHours({ filters: companyFilters })
 
+  const scopedClientIds = await resolveClientScope(user)
+  const { startTimestamp, endTimestamp } = buildMonthTimestampRange(year, month)
+  const prepaidFilters = [
+    gte(hourBlocks.createdAt, startTimestamp),
+    sql`${hourBlocks.createdAt} < ${endTimestamp}`,
+    isNull(hourBlocks.deletedAt),
+  ]
+
+  if (Array.isArray(scopedClientIds)) {
+    if (!scopedClientIds.length) {
+      return {
+        month,
+        year,
+        myHours,
+        companyHours,
+        companyHoursPrepaid: 0,
+        scopeLabel: 'Your accounts',
+        minCursor: bounds.min,
+        maxCursor: bounds.max,
+      }
+    }
+    prepaidFilters.push(inArray(hourBlocks.clientId, scopedClientIds))
+  }
+
+  const companyHoursPrepaid = await sumPrepaidHours({ filters: prepaidFilters })
+
   return {
     month,
     year,
     myHours,
     companyHours,
+    companyHoursPrepaid,
     scopeLabel: Array.isArray(scopedProjectIds)
       ? 'Your accounts'
       : 'All projects',
@@ -73,6 +105,18 @@ export async function fetchHoursSnapshot(
 async function resolveProjectScope(user: AppUser) {
   if (user.role === 'CLIENT') {
     return await listAccessibleProjectIds(user)
+  }
+
+  if (isAdmin(user)) {
+    return null
+  }
+
+  return null
+}
+
+async function resolveClientScope(user: AppUser) {
+  if (user.role === 'CLIENT') {
+    return await listAccessibleClientIds(user)
   }
 
   if (isAdmin(user)) {
@@ -108,6 +152,32 @@ async function sumHours({
   return rounded
 }
 
+async function sumPrepaidHours({
+  filters,
+}: {
+  filters: SQL<unknown>[]
+}): Promise<number> {
+  const conditions = filters.filter(Boolean)
+
+  if (!conditions.length) {
+    return 0
+  }
+
+  const [row] = (await db
+    .select({
+      totalHours: sql<string | null>`COALESCE(SUM(${hourBlocks.hoursPurchased}), '0')`,
+    })
+    .from(hourBlocks)
+    .where(and(...conditions))) as Array<{ totalHours: string | null }>
+
+  const parsed = Number(row?.totalHours ?? '0')
+  const rounded = Number.isFinite(parsed)
+    ? Number(parsed.toFixed(HOURS_PRECISION))
+    : 0
+
+  return rounded
+}
+
 function buildMonthDateRange(year: number, month: number) {
   const start = new Date(Date.UTC(year, month - 1, 1))
   const end = new Date(Date.UTC(year, month, 0))
@@ -115,6 +185,16 @@ function buildMonthDateRange(year: number, month: number) {
   return {
     startDate: start.toISOString().slice(0, 10),
     endDate: end.toISOString().slice(0, 10),
+  }
+}
+
+function buildMonthTimestampRange(year: number, month: number) {
+  const start = new Date(Date.UTC(year, month - 1, 1))
+  const nextMonth = new Date(Date.UTC(year, month, 1))
+
+  return {
+    startTimestamp: start.toISOString(),
+    endTimestamp: nextMonth.toISOString(),
   }
 }
 
