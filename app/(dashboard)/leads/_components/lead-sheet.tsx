@@ -79,6 +79,7 @@ type LeadSheetProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   lead: LeadRecord | null
+  initialStatus?: LeadStatusValue | null
   assignees: LeadAssigneeOption[]
   onSuccess: () => void
 }
@@ -87,6 +88,7 @@ export function LeadSheet({
   open,
   onOpenChange,
   lead,
+  initialStatus,
   assignees,
   onSuccess,
 }: LeadSheetProps) {
@@ -105,11 +107,11 @@ export function LeadSheet({
       companyWebsite: lead?.companyWebsite ?? '',
       sourceType: lead?.sourceType ?? null,
       sourceDetail: lead?.sourceDetail ?? '',
-      status: lead?.status ?? 'NEW_OPPORTUNITIES',
+      status: lead?.status ?? initialStatus ?? 'NEW_OPPORTUNITIES',
       assigneeId: lead?.assigneeId ?? null,
       notes: lead?.notesHtml ?? '',
     }),
-    [lead]
+    [lead, initialStatus]
   )
 
   const form = useForm<LeadFormValues>({

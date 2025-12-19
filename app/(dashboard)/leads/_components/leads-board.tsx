@@ -38,6 +38,7 @@ type LeadsBoardProps = {
   initialColumns: LeadBoardColumnData[]
   canManage: boolean
   onEditLead: (lead: LeadRecord) => void
+  onCreateLead?: (status: LeadStatusValue) => void
   activeLeadId: string | null
 }
 
@@ -45,6 +46,7 @@ export function LeadsBoard({
   initialColumns,
   canManage,
   onEditLead,
+  onCreateLead,
   activeLeadId,
 }: LeadsBoardProps) {
   const { sensors } = useProjectsBoardSensors()
@@ -422,25 +424,33 @@ export function LeadsBoard({
               collisionDetection={collisionDetection}
             >
               <div className='flex h-full w-max gap-4 p-1'>
-                {columns.map(column => (
-                  <LeadColumn
-                    key={column.id}
-                    columnId={column.id}
-                    label={column.label}
-                    leads={column.leads}
-                    canManage={canManage && !isPending}
-                    onEditLead={onEditLead}
-                    activeLeadId={activeLeadId}
-                    isDropTarget={dropPreview?.columnId === column.id}
-                    dropIndicatorIndex={
-                      dropPreview?.columnId === column.id ? dropPreview.index : null
-                    }
-                    draggingLeadId={draggingLead?.id ?? null}
-                    recentlyMovedLeadId={recentlyMovedLeadId}
-                    columnScrollRef={getColumnRef(column.id)}
-                    onColumnScroll={getScrollHandler(column.id)}
-                  />
-                ))}
+                {columns.map(column => {
+                  const handleCreateForColumn =
+                    canManage && onCreateLead
+                      ? () => onCreateLead(column.id)
+                      : undefined
+
+                  return (
+                    <LeadColumn
+                      key={column.id}
+                      columnId={column.id}
+                      label={column.label}
+                      leads={column.leads}
+                      canManage={canManage && !isPending}
+                      onEditLead={onEditLead}
+                      onCreateLead={handleCreateForColumn}
+                      activeLeadId={activeLeadId}
+                      isDropTarget={dropPreview?.columnId === column.id}
+                      dropIndicatorIndex={
+                        dropPreview?.columnId === column.id ? dropPreview.index : null
+                      }
+                      draggingLeadId={draggingLead?.id ?? null}
+                      recentlyMovedLeadId={recentlyMovedLeadId}
+                      columnScrollRef={getColumnRef(column.id)}
+                      onColumnScroll={getScrollHandler(column.id)}
+                    />
+                  )
+                })}
               </div>
               <DragOverlay dropAnimation={null}>
                 {draggingLead ? (

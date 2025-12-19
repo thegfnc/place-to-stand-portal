@@ -1,6 +1,7 @@
 'use client'
 
 import { Fragment, type MutableRefObject, type UIEventHandler } from 'react'
+import { Plus } from 'lucide-react'
 import { useDroppable } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 
@@ -9,6 +10,7 @@ import type { LeadRecord } from '@/lib/leads/types'
 import type { LeadStatusValue } from '@/lib/leads/constants'
 import { getLeadStatusToken } from '@/lib/leads/constants'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 
 import { BoardDropPlaceholder } from '@/components/board/drop-placeholder'
 
@@ -20,6 +22,7 @@ type LeadColumnProps = {
   leads: LeadRecord[]
   canManage: boolean
   onEditLead: (lead: LeadRecord) => void
+  onCreateLead?: (status: LeadStatusValue) => void
   isDropTarget?: boolean
   dropIndicatorIndex?: number | null
   draggingLeadId?: string | null
@@ -35,6 +38,7 @@ export function LeadColumn({
   leads,
   canManage,
   onEditLead,
+  onCreateLead,
   isDropTarget = false,
   dropIndicatorIndex = null,
   draggingLeadId = null,
@@ -83,6 +87,20 @@ export function LeadColumn({
           <span className='text-muted-foreground text-[10px]'>
             {leads.length}
           </span>
+        </div>
+        <div className='flex items-center gap-2'>
+          {canManage && onCreateLead ? (
+            <Button
+              type='button'
+              size='icon'
+              variant='ghost'
+              className='h-7 w-7'
+              onClick={() => onCreateLead(columnId)}
+            >
+              <Plus className='h-4 w-4' />
+              <span className='sr-only'>Add lead to {label}</span>
+            </Button>
+          ) : null}
         </div>
       </div>
       <div

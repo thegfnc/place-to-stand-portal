@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button'
 import { DisabledFieldTooltip } from '@/components/ui/disabled-field-tooltip'
 import type { LeadAssigneeOption, LeadBoardColumnData } from '@/lib/leads/types'
 import type { LeadRecord } from '@/lib/leads/types'
+import type { LeadStatusValue } from '@/lib/leads/constants'
 
 import { LeadsHeader } from './leads-header'
 import { LeadsBoard } from './leads-board'
@@ -39,6 +40,7 @@ export function LeadsWorkspace({
 }: LeadsWorkspaceProps) {
   const router = useRouter()
   const [isCreatingLead, setIsCreatingLead] = useState(false)
+  const [initialStatus, setInitialStatus] = useState<LeadStatusValue | null>(null)
   const [closingLeadId, setClosingLeadId] = useState<string | null>(null)
   const [isSheetClosing, setIsSheetClosing] = useState(false)
   const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -70,13 +72,14 @@ export function LeadsWorkspace({
     }
   }, [])
 
-  const handleCreateLead = useCallback(() => {
+  const handleCreateLead = useCallback((status?: LeadStatusValue) => {
     if (!canManage) {
       return
     }
 
     cancelPendingClose()
     setClosingLeadId(null)
+    setInitialStatus(status ?? null)
     setIsCreatingLead(true)
     router.push('/leads/board', { scroll: false })
   }, [canManage, cancelPendingClose, router])
@@ -119,6 +122,7 @@ export function LeadsWorkspace({
 
       if (isCreatingLead) {
         setIsCreatingLead(false)
+        setInitialStatus(null)
         startRefresh(() => {
           router.refresh()
         })
@@ -167,6 +171,7 @@ export function LeadsWorkspace({
           open={isSheetOpen}
           onOpenChange={handleSheetOpenChange}
           lead={sheetLead}
+          initialStatus={initialStatus}
           assignees={assignees}
           onSuccess={handleSheetSuccess}
         />
@@ -190,7 +195,7 @@ export function LeadsWorkspace({
                 type='button'
                 size='sm'
                 disabled={!canManage}
-                onClick={handleCreateLead}
+                onClick={() => handleCreateLead()}
               >
                 <Plus className='h-4 w-4' />
                 Add lead
@@ -206,6 +211,7 @@ export function LeadsWorkspace({
             initialColumns={initialColumns}
             canManage={canManage}
             onEditLead={handleEditLead}
+            onCreateLead={handleCreateLead}
             activeLeadId={boardActiveLeadId}
           />
         </TabsContent>
