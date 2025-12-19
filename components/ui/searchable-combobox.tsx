@@ -127,8 +127,7 @@ export const SearchableCombobox = React.forwardRef<
     }, [items, resolvedGroups])
 
     const selectedItem = React.useMemo(
-      () =>
-        flattenedItems.find(item => item.value === (value ?? '')) ?? null,
+      () => flattenedItems.find(item => item.value === (value ?? '')) ?? null,
       [flattenedItems, value]
     )
 
@@ -217,11 +216,11 @@ export const SearchableCombobox = React.forwardRef<
               className={cn(
                 baseTriggerClasses,
                 variant === 'heading' &&
-                  'h-auto cursor-pointer border-none bg-transparent py-2 px-2 -ml-2 text-3xl font-semibold tracking-tight shadow-none transition-colors hover:bg-accent/50 hover:text-accent-foreground data-[state=open]:bg-accent/50 dark:bg-transparent dark:hover:bg-accent/50 dark:data-[state=open]:bg-accent/50 text-left',
+                  'hover:bg-accent/50 hover:text-accent-foreground data-[state=open]:bg-accent/50 dark:hover:bg-accent/50 dark:data-[state=open]:bg-accent/50 -ml-2 h-auto cursor-pointer border-none bg-transparent px-2 py-2 text-left text-3xl font-semibold tracking-tight shadow-none transition-colors dark:bg-transparent',
                 triggerClassName
               )}
             >
-              <div className='flex items-center gap-2 min-w-0 flex-1'>
+              <div className='flex flex-1 items-center gap-2'>
                 {selectedItem?.userId ? (
                   <Avatar className='h-5 w-5 shrink-0'>
                     {selectedItem.avatarUrl && (
@@ -234,7 +233,7 @@ export const SearchableCombobox = React.forwardRef<
                     </AvatarFallback>
                   </Avatar>
                 ) : selectedItem?.icon ? (
-                  <selectedItem.icon className='h-5 w-5 shrink-0 text-muted-foreground' />
+                  <selectedItem.icon className='text-muted-foreground h-5 w-5 shrink-0' />
                 ) : null}
                 <span
                   className={cn(
@@ -305,7 +304,7 @@ export const SearchableCombobox = React.forwardRef<
                                 </AvatarFallback>
                               </Avatar>
                             ) : item.icon ? (
-                              <item.icon className='mr-2 h-5 w-5 text-muted-foreground' />
+                              <item.icon className='text-muted-foreground mr-2 h-5 w-5' />
                             ) : null}
                             <div className={itemWrapperClasses}>
                               <span className='font-medium'>{item.label}</span>
@@ -356,7 +355,7 @@ export const SearchableCombobox = React.forwardRef<
                               </AvatarFallback>
                             </Avatar>
                           ) : item.icon ? (
-                            <item.icon className='mr-2 h-5 w-5 text-muted-foreground' />
+                            <item.icon className='text-muted-foreground mr-2 h-5 w-5' />
                           ) : null}
                           <div className={itemWrapperClasses}>
                             <span className='font-medium'>{item.label}</span>
