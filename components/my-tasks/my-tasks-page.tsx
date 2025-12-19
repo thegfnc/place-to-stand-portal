@@ -116,8 +116,11 @@ export function MyTasksPage({
 
       lookup.task.due_on = dueOn
       setEntries(current => [...current])
+      startRefresh(() => {
+        router.refresh()
+      })
     },
-    [taskLookup]
+    [taskLookup, router, startRefresh]
   )
 
   const getTaskCardOptions = useCallback(
@@ -203,11 +206,14 @@ export function MyTasksPage({
 
       try {
         await reorderMutation.mutateAsync(update.payload)
+        startRefresh(() => {
+          router.refresh()
+        })
       } catch {
         setEntries(update.previousEntries)
       }
     },
-    [reorderMutation]
+    [reorderMutation, router, startRefresh]
   )
 
   const canManageTasks = user.role === 'ADMIN'
