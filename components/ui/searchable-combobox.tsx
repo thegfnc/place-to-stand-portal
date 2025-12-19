@@ -283,6 +283,7 @@ export const SearchableCombobox = React.forwardRef<
                             }
                             onSelect={() => handleSelect(item.value)}
                             disabled={item.disabled}
+                            className='pr-3'
                           >
                             <CheckIcon
                               className={cn(
@@ -334,6 +335,7 @@ export const SearchableCombobox = React.forwardRef<
                           }
                           onSelect={() => handleSelect(item.value)}
                           disabled={item.disabled}
+                          className='pr-3'
                         >
                           <CheckIcon
                             className={cn(

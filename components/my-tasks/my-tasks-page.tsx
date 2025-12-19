@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState, useTransition } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 
 import { AppShellHeader } from '@/components/layout/app-shell'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -25,6 +25,7 @@ import type { MyTaskStatus } from '@/lib/projects/tasks/my-tasks-constants'
 import { MyTasksBoard } from './my-tasks-board'
 import type { MyTasksBoardReorderUpdate, TaskLookup } from './my-tasks-board'
 import { MyTasksCalendar } from './my-tasks-calendar'
+import { PersonSelector } from './person-selector'
 import { Plus } from 'lucide-react'
 
 export type MyTasksInitialEntry = {
@@ -43,6 +44,7 @@ type MyTasksPageProps = {
   initialEntries: MyTasksInitialEntry[]
   activeTaskId: string | null
   view: MyTasksView
+  selectedAssigneeId: string
 }
 
 export function MyTasksPage({
@@ -53,6 +55,7 @@ export function MyTasksPage({
   initialEntries,
   activeTaskId,
   view,
+  selectedAssigneeId,
 }: MyTasksPageProps) {
   const router = useRouter()
   const reorderMutation = useMyTasksReorderMutation()
@@ -126,9 +129,9 @@ export function MyTasksPage({
   const getTaskCardOptions = useCallback(
     (task: TaskWithRelations) => ({
       context: taskContexts.get(task.id),
-      hideAssignees: true,
+      hideAssignees: selectedAssigneeId === user.id,
     }),
-    [taskContexts]
+    [taskContexts, selectedAssigneeId, user.id]
   )
 
   const description =
@@ -162,12 +165,16 @@ export function MyTasksPage({
     }
   }, [shouldKeepTaskSheetMounted])
 
+  const searchParams = useSearchParams()
+
   const buildViewPath = useCallback(
     (targetView: MyTasksView, taskId?: string | null) => {
       const suffix = taskId ? `/${taskId}` : ''
-      return `/my-tasks/${targetView}${suffix}`
+      const assigneeParam = searchParams.get('assignee')
+      const queryString = assigneeParam ? `?assignee=${assigneeParam}` : ''
+      return `/my-tasks/${targetView}${suffix}${queryString}`
     },
-    []
+    [searchParams]
   )
 
   const handleOpenTask = useCallback(
@@ -238,12 +245,25 @@ export function MyTasksPage({
     [canManageTasks, user.id]
   )
 
+  const isAdmin = user.role === 'ADMIN'
+
   return (
     <div className='flex h-full min-h-0 flex-col gap-6'>
       <AppShellHeader>
-        <div>
-          <h1 className='text-2xl font-semibold tracking-tight'>My Tasks</h1>
-          <p className='text-muted-foreground text-sm'>{description}</p>
+        <div className='flex items-center justify-between gap-4'>
+          <div>
+            <h1 className='text-2xl font-semibold tracking-tight'>My Tasks</h1>
+            <p className='text-muted-foreground text-sm'>{description}</p>
+          </div>
+          {isAdmin && (
+            <div className='pr-1'>
+              <PersonSelector
+                admins={admins}
+                selectedUserId={selectedAssigneeId}
+                currentUserId={user.id}
+              />
+            </div>
+          )}
         </div>
       </AppShellHeader>
       <Tabs value={view} className='flex min-h-0 flex-1 flex-col gap-3'>
