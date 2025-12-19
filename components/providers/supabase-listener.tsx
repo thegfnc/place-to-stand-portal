@@ -52,5 +52,30 @@ export function SupabaseListener({ initialSession }: Props) {
     });
   }, [initialSession, supabase]);
 
+  // Refresh session when page becomes visible (e.g., after computer sleep/wake)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        // Verify and refresh session when page becomes visible
+        void supabase.auth.getSession().then(({ data: { session } }) => {
+          if (session) {
+            // Session exists and is valid, Supabase will auto-refresh if needed
+            return;
+          }
+          // If no session, redirect to login
+          if (typeof window !== 'undefined' && window.location.pathname !== '/sign-in') {
+            window.location.href = '/sign-in';
+          }
+        });
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [supabase]);
+
   return null;
 }
