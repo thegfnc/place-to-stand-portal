@@ -128,11 +128,15 @@ export function MyTasksCalendar({
       const previousDueOn = lookup.task.due_on ?? null
       lookup.task.due_on = overId
 
+      // Trigger immediate optimistic update
+      onDueDateChange(taskId, overId)
+
       try {
         await updateMyTaskDueDate(taskId, overId)
-        onDueDateChange(taskId, overId)
       } catch (error) {
+        // Revert optimistic update on error
         lookup.task.due_on = previousDueOn
+        onDueDateChange(taskId, previousDueOn)
         toast({
           variant: 'destructive',
           title: 'Unable to reschedule task',
