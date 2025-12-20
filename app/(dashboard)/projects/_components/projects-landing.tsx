@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useMemo } from 'react'
 import type { ReactNode } from 'react'
-import { FolderKanban, UserRound, Users } from 'lucide-react'
+import { Building2, FolderKanban, UserRound, Users } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
 import { Badge } from '@/components/ui/badge'
@@ -155,7 +155,10 @@ export function ProjectsLanding({
     </div>
   )
 
-  const renderProjectRow = (project: ProjectWithRelations) => {
+  const renderProjectRow = (
+    project: ProjectWithRelations,
+    options?: { indent?: boolean; isLast?: boolean }
+  ) => {
     const href = getProjectHref(project)
     const statusLabel = getProjectStatusLabel(project.status)
     const statusToken = getProjectStatusToken(project.status)
@@ -167,18 +170,30 @@ export function ProjectsLanding({
     const progressPercentage =
       totalCount > 0 ? Math.round((doneCount / totalCount) * 100) : 0
 
+    const treeLine = options?.indent ? (options.isLast ? '└' : '├') : null
+
     return (
       <TableRow key={project.id}>
         <TableCell>
-          <Link href={href} className='flex items-center gap-2 py-1 hover:underline'>
-            <FolderKanban className='h-4 w-4 shrink-0 text-emerald-500' />
-            <span className='font-medium'>{project.name}</span>
-          </Link>
+          <div className='flex items-center'>
+            {treeLine && (
+              <span className='text-muted-foreground/30 mr-2 w-4 shrink-0 text-center font-mono'>
+                {treeLine}
+              </span>
+            )}
+            <Link
+              href={href}
+              className='flex items-center gap-2 py-1 hover:underline'
+            >
+              <FolderKanban className='h-4 w-4 shrink-0 text-emerald-500' />
+              <span className='font-medium'>{project.name}</span>
+            </Link>
+          </div>
         </TableCell>
         <TableCell>
           <Badge className={cn('text-xs', statusToken)}>{statusLabel}</Badge>
         </TableCell>
-        <TableCell className='w-[200px]'>
+        <TableCell>
           <div className='flex items-center gap-3'>
             <Progress value={progressPercentage} className='h-2 w-24' />
             <span className='text-muted-foreground text-xs'>
@@ -195,15 +210,24 @@ export function ProjectsLanding({
     )
   }
 
+  const tableColumnWidths = {
+    project: 'w-[40%]',
+    status: 'w-[15%]',
+    progress: 'w-[25%]',
+    dates: 'w-[20%]',
+  }
+
   const renderProjectTable = (items: ProjectWithRelations[]) => (
     <div className='rounded-lg border'>
-      <Table>
+      <Table className='table-fixed'>
         <TableHeader>
           <TableRow className='hover:bg-transparent'>
-            <TableHead className='w-[300px]'>Project</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Progress</TableHead>
-            <TableHead>Dates</TableHead>
+            <TableHead className={tableColumnWidths.project}>Project</TableHead>
+            <TableHead className={tableColumnWidths.status}>Status</TableHead>
+            <TableHead className={tableColumnWidths.progress}>
+              Progress
+            </TableHead>
+            <TableHead className={tableColumnWidths.dates}>Dates</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>{items.map(project => renderProjectRow(project))}</TableBody>
@@ -211,28 +235,60 @@ export function ProjectsLanding({
     </div>
   )
 
+  const renderClientSeparatorRow = (client: {
+    id: string
+    name: string
+    slug: string | null
+  }) => (
+    <TableRow
+      key={`client-${client.id}`}
+      className='border-t-muted hover:bg-transparent'
+    >
+      <TableCell
+        colSpan={4}
+        className='bg-blue-100 py-2 align-middle dark:bg-blue-500/5'
+      >
+        <Link
+          href={
+            client.slug ? `/clients/${client.slug}` : `/clients/${client.id}`
+          }
+          className='inline-flex items-center gap-2 underline-offset-4 opacity-70 hover:underline'
+        >
+          <Building2 className='h-4 w-4 shrink-0 text-blue-500/80' />
+          <span className='text-sm font-semibold'>{client.name}</span>
+        </Link>
+      </TableCell>
+    </TableRow>
+  )
+
   const clientSectionContent =
     clientSections.length > 0 ? (
-      <div className='mb-10 space-y-10'>
-        {clientSections.map(({ client, projects: clientProjects }) => (
-          <div key={client.id} className='space-y-4'>
-            <div className='flex items-center gap-2'>
-              <h3 className='text-base font-semibold'>
-                <Link
-                  href={
-                    client.slug
-                      ? `/clients/${client.slug}`
-                      : `/clients/${client.id}`
-                  }
-                  className='underline-offset-4 hover:underline'
-                >
-                  {client.name}
-                </Link>
-              </h3>
-            </div>
-            {renderProjectTable(clientProjects)}
-          </div>
-        ))}
+      <div className='rounded-lg border'>
+        <Table className='table-fixed'>
+          <TableHeader>
+            <TableRow className='hover:bg-transparent'>
+              <TableHead className={tableColumnWidths.project}>
+                Project
+              </TableHead>
+              <TableHead className={tableColumnWidths.status}>Status</TableHead>
+              <TableHead className={tableColumnWidths.progress}>
+                Progress
+              </TableHead>
+              <TableHead className={tableColumnWidths.dates}>Dates</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {clientSections.flatMap(({ client, projects: clientProjects }) => [
+              renderClientSeparatorRow(client),
+              ...clientProjects.map((project, index) =>
+                renderProjectRow(project, {
+                  indent: true,
+                  isLast: index === clientProjects.length - 1,
+                })
+              ),
+            ])}
+          </TableBody>
+        </Table>
       </div>
     ) : (
       renderSectionEmptyState(
@@ -266,23 +322,17 @@ export function ProjectsLanding({
   ]
 
   return (
-    <div className='mb-14 space-y-24'>
+    <div className='mb-14 space-y-12'>
       <div>{clientSectionContent}</div>
       {sectionConfigs.map(
         ({ key, title, icon: Icon, count, content, className }) => (
-          <div key={key} className={cn('space-y-6', className)}>
-            <div className='flex items-center gap-3 border-b pb-4'>
-              <div className='bg-background flex h-10 w-10 items-center justify-center rounded-md border shadow-sm'>
-                <Icon className='text-muted-foreground h-5 w-5' />
+          <div key={key} className={cn('space-y-4', className)}>
+            <div className='flex items-center gap-2'>
+              <div className='bg-background flex h-8 w-8 items-center justify-center rounded-md border shadow-sm'>
+                <Icon className='text-muted-foreground h-4 w-4' />
               </div>
-              <div>
-                <h2 className='text-xl font-semibold tracking-tight'>
-                  {title}
-                </h2>
-                <p className='text-muted-foreground text-sm'>
-                  {count} project{count !== 1 ? 's' : ''}
-                </p>
-              </div>
+              <h2 className='text-base font-semibold'>{title}</h2>
+              <span className='text-muted-foreground text-sm'>({count})</span>
             </div>
             <div>{content}</div>
           </div>
