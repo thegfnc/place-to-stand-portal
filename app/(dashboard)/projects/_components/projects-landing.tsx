@@ -7,14 +7,15 @@ import { FolderKanban, UserRound, Users } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
 import { Badge } from '@/components/ui/badge'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import { getProjectStatusLabel, getProjectStatusToken } from '@/lib/constants'
 import { formatProjectDateRange } from '@/lib/settings/projects/project-formatters'
 import { buildBoardPath } from '@/lib/projects/board/board-utils'
@@ -154,7 +155,7 @@ export function ProjectsLanding({
     </div>
   )
 
-  const renderProjectCard = (project: ProjectWithRelations) => {
+  const renderProjectRow = (project: ProjectWithRelations) => {
     const href = getProjectHref(project)
     const statusLabel = getProjectStatusLabel(project.status)
     const statusToken = getProjectStatusToken(project.status)
@@ -167,43 +168,46 @@ export function ProjectsLanding({
       totalCount > 0 ? Math.round((doneCount / totalCount) * 100) : 0
 
     return (
-      <Link key={project.id} href={href}>
-        <Card className='border-y-border border-r-border flex h-full cursor-pointer flex-col justify-between border-l-4 border-l-emerald-500 shadow-sm transition-all hover:border-y-emerald-500/50 hover:border-r-emerald-500/50 hover:shadow-md'>
-          <CardHeader>
-            <div className='flex items-start justify-between gap-2'>
-              <div className='flex min-w-0 flex-1 items-center gap-2'>
-                <FolderKanban className='mt-0.5 h-5 w-5 shrink-0 text-emerald-500' />
-                <CardTitle className='line-clamp-2'>{project.name}</CardTitle>
-              </div>
-              <Badge className={cn('text-xs', statusToken)}>
-                {statusLabel}
-              </Badge>
-            </div>
-            <CardDescription className='flex items-center gap-2'>
-              {dateRange !== '—' ? (
-                <div className='text-muted-foreground text-sm'>{dateRange}</div>
-              ) : null}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className='space-y-2'>
-              <div className='flex items-center justify-between text-xs'>
-                <span className='text-muted-foreground'>Task Progress</span>
-                <span className='text-muted-foreground font-medium'>
-                  {doneCount} of {totalCount} done
-                </span>
-              </div>
-              <Progress value={progressPercentage} className='h-2' />
-            </div>
-          </CardContent>
-        </Card>
-      </Link>
+      <TableRow key={project.id}>
+        <TableCell>
+          <Link href={href} className='flex items-center gap-2 py-1 hover:underline'>
+            <FolderKanban className='h-4 w-4 shrink-0 text-emerald-500' />
+            <span className='font-medium'>{project.name}</span>
+          </Link>
+        </TableCell>
+        <TableCell>
+          <Badge className={cn('text-xs', statusToken)}>{statusLabel}</Badge>
+        </TableCell>
+        <TableCell className='w-[200px]'>
+          <div className='flex items-center gap-3'>
+            <Progress value={progressPercentage} className='h-2 w-24' />
+            <span className='text-muted-foreground text-xs'>
+              {doneCount}/{totalCount}
+            </span>
+          </div>
+        </TableCell>
+        <TableCell>
+          <span className='text-muted-foreground text-sm'>
+            {dateRange !== '—' ? dateRange : '—'}
+          </span>
+        </TableCell>
+      </TableRow>
     )
   }
 
-  const renderProjectGrid = (items: ProjectWithRelations[]) => (
-    <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-3'>
-      {items.map(project => renderProjectCard(project))}
+  const renderProjectTable = (items: ProjectWithRelations[]) => (
+    <div className='rounded-lg border'>
+      <Table>
+        <TableHeader>
+          <TableRow className='hover:bg-transparent'>
+            <TableHead className='w-[300px]'>Project</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead>Progress</TableHead>
+            <TableHead>Dates</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>{items.map(project => renderProjectRow(project))}</TableBody>
+      </Table>
     </div>
   )
 
@@ -226,7 +230,7 @@ export function ProjectsLanding({
                 </Link>
               </h3>
             </div>
-            {renderProjectGrid(clientProjects)}
+            {renderProjectTable(clientProjects)}
           </div>
         ))}
       </div>
@@ -244,7 +248,7 @@ export function ProjectsLanding({
       count: internalProjects.length,
       content:
         internalProjects.length > 0
-          ? renderProjectGrid(internalProjects)
+          ? renderProjectTable(internalProjects)
           : renderSectionEmptyState('There are no internal projects yet.'),
     },
     {
@@ -254,7 +258,7 @@ export function ProjectsLanding({
       count: personalProjects.length,
       content:
         personalProjects.length > 0
-          ? renderProjectGrid(personalProjects)
+          ? renderProjectTable(personalProjects)
           : renderSectionEmptyState(
               'You have not created any personal projects yet.'
             ),
