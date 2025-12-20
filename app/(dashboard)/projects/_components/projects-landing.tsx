@@ -246,7 +246,7 @@ export function ProjectsLanding({
     >
       <TableCell
         colSpan={4}
-        className='bg-blue-100 py-2 align-middle dark:bg-blue-500/5'
+        className='bg-blue-100 pt-3 pb-2.5 align-middle dark:bg-blue-500/5'
       >
         <Link
           href={
