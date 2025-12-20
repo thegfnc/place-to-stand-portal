@@ -252,9 +252,9 @@ export function ProjectsLanding({
           href={
             client.slug ? `/clients/${client.slug}` : `/clients/${client.id}`
           }
-          className='inline-flex items-center gap-2 underline-offset-4 opacity-70 hover:underline'
+          className='inline-flex items-center gap-2 underline-offset-4 opacity-65 hover:underline'
         >
-          <Building2 className='h-4 w-4 shrink-0 text-blue-500/80' />
+          <Building2 className='h-4 w-4 shrink-0 text-blue-500/75' />
           <span className='text-sm font-semibold'>{client.name}</span>
         </Link>
       </TableCell>
