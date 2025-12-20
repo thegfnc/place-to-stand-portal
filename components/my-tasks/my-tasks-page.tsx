@@ -119,12 +119,15 @@ export function MyTasksPage({
 
       lookup.task.due_on = dueOn
       setEntries(current => [...current])
-      startRefresh(() => {
-        router.refresh()
-      })
     },
-    [taskLookup, router, startRefresh]
+    [taskLookup]
   )
+
+  const handleCalendarRefresh = useCallback(() => {
+    startRefresh(() => {
+      router.refresh()
+    })
+  }, [router, startRefresh])
 
   const getTaskCardOptions = useCallback(
     (task: TaskWithRelations) => ({
@@ -340,6 +343,7 @@ export function MyTasksPage({
             onOpenTask={handleOpenTask}
             activeTaskId={activeTaskId}
             onDueDateChange={handleDueDateChange}
+            onRefresh={handleCalendarRefresh}
             scrollStorageKey={calendarScrollStorageKey}
           />
         </TabsContent>

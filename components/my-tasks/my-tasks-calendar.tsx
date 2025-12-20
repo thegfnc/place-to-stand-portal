@@ -29,6 +29,7 @@ type MyTasksCalendarProps = {
   onOpenTask: (taskId: string) => void
   activeTaskId: string | null
   onDueDateChange: (taskId: string, dueOn: string | null) => void
+  onRefresh?: () => void
   scrollStorageKey?: string | null
 }
 
@@ -39,6 +40,7 @@ export function MyTasksCalendar({
   onOpenTask,
   activeTaskId,
   onDueDateChange,
+  onRefresh,
   scrollStorageKey,
 }: MyTasksCalendarProps) {
   const today = useMemo(() => startOfDay(new Date()), [])
@@ -133,6 +135,8 @@ export function MyTasksCalendar({
 
       try {
         await updateMyTaskDueDate(taskId, overId)
+        // Refresh after successful API call
+        onRefresh?.()
       } catch (error) {
         // Revert optimistic update on error
         lookup.task.due_on = previousDueOn
@@ -145,7 +149,7 @@ export function MyTasksCalendar({
         })
       }
     },
-    [onDueDateChange, taskLookup, toast]
+    [onDueDateChange, onRefresh, taskLookup, toast]
   )
 
   return (
