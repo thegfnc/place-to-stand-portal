@@ -39,7 +39,8 @@ export async function proxy(req: NextRequest) {
     error: userError,
   } = await supabase.auth.getUser()
 
-  if (userError) {
+  // AuthSessionMissingError is expected for unauthenticated users - don't log it
+  if (userError && userError.name !== 'AuthSessionMissingError') {
     console.error('Failed to resolve Supabase user in middleware', userError)
   }
 
@@ -84,6 +85,6 @@ export async function proxy(req: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|assets/).*)',
+    '/((?!_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|assets/|relay-HVAq/).*)',
   ],
 }
