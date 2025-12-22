@@ -195,29 +195,32 @@ export function useLinkState(props: {
 }) {
   const { editor, hideWhenUnavailable = false } = props
 
-  const canSet = canSetLink(editor)
-  const isActive = isLinkActive(editor)
-
   const [isVisible, setIsVisible] = useState(false)
+  const [canSet, setCanSet] = useState(false)
+  const [isActive, setIsActive] = useState(false)
 
   useEffect(() => {
     if (!editor) return
 
-    const handleSelectionUpdate = () => {
+    const updateState = () => {
       setIsVisible(
         shouldShowLinkButton({
           editor,
           hideWhenUnavailable,
         })
       )
+      setCanSet(canSetLink(editor))
+      setIsActive(isLinkActive(editor))
     }
 
-    handleSelectionUpdate()
+    updateState()
 
-    editor.on("selectionUpdate", handleSelectionUpdate)
+    editor.on("selectionUpdate", updateState)
+    editor.on("transaction", updateState)
 
     return () => {
-      editor.off("selectionUpdate", handleSelectionUpdate)
+      editor.off("selectionUpdate", updateState)
+      editor.off("transaction", updateState)
     }
   }, [editor, hideWhenUnavailable])
 
