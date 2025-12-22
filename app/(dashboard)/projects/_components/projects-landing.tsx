@@ -246,15 +246,15 @@ export function ProjectsLanding({
     >
       <TableCell
         colSpan={4}
-        className='bg-blue-100 pt-3 pb-2.5 align-middle dark:bg-blue-500/5'
+        className='bg-blue-100 py-3 align-middle dark:bg-blue-500/8'
       >
         <Link
           href={
             client.slug ? `/clients/${client.slug}` : `/clients/${client.id}`
           }
-          className='inline-flex items-center gap-2 underline-offset-4 opacity-65 hover:underline'
+          className='flex w-fit shrink items-center gap-2 underline-offset-4 opacity-65 hover:underline'
         >
-          <Building2 className='h-4 w-4 shrink-0 text-blue-500/75' />
+          <Building2 className='h-4 w-4 shrink-0 text-blue-500/80' />
           <span className='text-sm font-semibold'>{client.name}</span>
         </Link>
       </TableCell>
