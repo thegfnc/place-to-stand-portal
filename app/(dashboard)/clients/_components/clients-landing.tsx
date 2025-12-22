@@ -51,7 +51,7 @@ export function ClientsLanding({ clients }: ClientsLandingProps) {
     <div className='rounded-lg border'>
       <Table>
         <TableHeader>
-          <TableRow className='hover:bg-transparent'>
+          <TableRow className='bg-muted/40'>
             <TableHead className='w-[300px]'>Client</TableHead>
             <TableHead>Billing</TableHead>
             <TableHead>Projects</TableHead>

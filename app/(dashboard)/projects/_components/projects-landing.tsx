@@ -221,7 +221,7 @@ export function ProjectsLanding({
     <div className='rounded-lg border'>
       <Table className='table-fixed'>
         <TableHeader>
-          <TableRow className='hover:bg-transparent'>
+          <TableRow className='bg-muted/40'>
             <TableHead className={tableColumnWidths.project}>Project</TableHead>
             <TableHead className={tableColumnWidths.status}>Status</TableHead>
             <TableHead className={tableColumnWidths.progress}>
@@ -266,7 +266,7 @@ export function ProjectsLanding({
       <div className='rounded-lg border'>
         <Table className='table-fixed'>
           <TableHeader>
-            <TableRow className='hover:bg-transparent'>
+            <TableRow className='bg-muted/40'>
               <TableHead className={tableColumnWidths.project}>
                 Project
               </TableHead>
@@ -322,13 +322,13 @@ export function ProjectsLanding({
   ]
 
   return (
-    <div className='mb-14 space-y-12'>
+    <div className='space-y-12'>
       <div>{clientSectionContent}</div>
       {sectionConfigs.map(
         ({ key, title, icon: Icon, count, content, className }) => (
           <div key={key} className={cn('space-y-4', className)}>
             <div className='flex items-center gap-2'>
-              <div className='bg-background flex h-8 w-8 items-center justify-center rounded-md border shadow-sm'>
+              <div className='bg-accent flex h-8 w-8 items-center justify-center rounded-md border shadow-sm'>
                 <Icon className='text-muted-foreground h-4 w-4' />
               </div>
               <h2 className='text-base font-semibold'>{title}</h2>
