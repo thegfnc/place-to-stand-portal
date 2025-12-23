@@ -58,6 +58,10 @@ export interface LinkMainProps {
    * Whether the link is currently active in the editor.
    */
   isActive: boolean
+  /**
+   * Callback to close the popover.
+   */
+  onClose?: () => void
 }
 
 export interface LinkPopoverProps
@@ -110,6 +114,7 @@ const LinkMain: React.FC<LinkMainProps> = ({
   removeLink,
   openLink,
   isActive,
+  onClose,
 }) => {
   const isMobile = useIsMobile()
 
@@ -117,6 +122,16 @@ const LinkMain: React.FC<LinkMainProps> = ({
     if (event.key === 'Enter') {
       event.preventDefault()
       setLink()
+    } else if (event.key === 'Escape') {
+      event.preventDefault()
+      onClose?.()
+    }
+  }
+
+  const handleContainerKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === 'Escape') {
+      event.preventDefault()
+      onClose?.()
     }
   }
 
@@ -125,6 +140,7 @@ const LinkMain: React.FC<LinkMainProps> = ({
       style={{
         ...(isMobile ? { boxShadow: 'none', border: 0 } : {}),
       }}
+      onKeyDown={handleContainerKeyDown}
     >
       <CardBody
         style={{
@@ -153,6 +169,7 @@ const LinkMain: React.FC<LinkMainProps> = ({
               title='Apply link'
               disabled={!url && !isActive}
               data-style='ghost'
+              tabIndex={0}
             >
               <CornerDownLeftIcon className='tiptap-button-icon' />
             </Button>
@@ -167,6 +184,7 @@ const LinkMain: React.FC<LinkMainProps> = ({
               title='Open in new window'
               disabled={!url && !isActive}
               data-style='ghost'
+              tabIndex={0}
             >
               <ExternalLinkIcon className='tiptap-button-icon' />
             </Button>
@@ -177,6 +195,7 @@ const LinkMain: React.FC<LinkMainProps> = ({
               title='Remove link'
               disabled={!url && !isActive}
               data-style='ghost'
+              tabIndex={0}
             >
               <TrashIcon className='tiptap-button-icon' />
             </Button>
@@ -322,6 +341,7 @@ export const LinkPopover = forwardRef<HTMLButtonElement, LinkPopoverProps>(
             removeLink={removeLink}
             openLink={openLink}
             isActive={isActive}
+            onClose={() => setIsOpen(false)}
           />
         </PopoverContent>
       </Popover>
