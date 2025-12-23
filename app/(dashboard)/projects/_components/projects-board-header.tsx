@@ -1,5 +1,6 @@
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Sparkles } from 'lucide-react'
 
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import {
@@ -7,6 +8,12 @@ import {
   type SearchableComboboxGroup,
   type SearchableComboboxItem,
 } from '@/components/ui/searchable-combobox'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 
 export type BoardHeaderItem = SearchableComboboxItem
 export type BoardHeaderItemGroup = SearchableComboboxGroup
@@ -20,6 +27,11 @@ type ProjectsBoardHeaderProps = {
   onSelectPreviousProject: () => void
   canSelectNext: boolean
   canSelectPrevious: boolean
+  // AI Suggestions
+  onOpenAISuggestions?: () => void
+  aiSuggestionsCount?: number
+  aiSuggestionsDisabled?: boolean
+  aiSuggestionsDisabledReason?: string | null
 }
 
 export function ProjectsBoardHeader({
@@ -31,7 +43,33 @@ export function ProjectsBoardHeader({
   onSelectPreviousProject,
   canSelectNext,
   canSelectPrevious,
+  onOpenAISuggestions,
+  aiSuggestionsCount = 0,
+  aiSuggestionsDisabled = false,
+  aiSuggestionsDisabledReason,
 }: ProjectsBoardHeaderProps) {
+  const aiButton = (
+    <Button
+      type='button'
+      variant='outline'
+      size='sm'
+      onClick={onOpenAISuggestions}
+      disabled={aiSuggestionsDisabled || !onOpenAISuggestions}
+      className='gap-2'
+    >
+      <Sparkles className='h-4 w-4 text-amber-500' />
+      <span className='hidden sm:inline'>AI Suggestions</span>
+      {aiSuggestionsCount > 0 && (
+        <Badge
+          variant='secondary'
+          className='ml-1 bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400'
+        >
+          {aiSuggestionsCount}
+        </Badge>
+      )}
+    </Button>
+  )
+
   return (
     <div className='flex w-full flex-wrap items-center gap-3'>
       <div className='flex flex-1 items-center gap-3'>
@@ -74,6 +112,22 @@ export function ProjectsBoardHeader({
             <ChevronRight className='h-4 w-4' />
           </Button>
         </div>
+        {onOpenAISuggestions && (
+          <div className='ml-2'>
+            {aiSuggestionsDisabledReason ? (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>{aiButton}</TooltipTrigger>
+                  <TooltipContent>
+                    <p>{aiSuggestionsDisabledReason}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            ) : (
+              aiButton
+            )}
+          </div>
+        )}
       </div>
     </div>
   )

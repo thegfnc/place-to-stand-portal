@@ -114,6 +114,7 @@ export async function approveSuggestion(
     projectId?: string
     dueDate?: string
     priority?: string
+    status?: 'BACKLOG' | 'ON_DECK' | 'IN_PROGRESS' | 'IN_REVIEW' | 'DONE'
   }
 ): Promise<{ task: typeof tasks.$inferSelect }> {
   const suggestion = await getSuggestionById(suggestionId)
@@ -169,6 +170,9 @@ export async function approveSuggestion(
     })
   }
 
+  // Determine final status (default to BACKLOG if not specified)
+  const finalStatus = modifications?.status ?? 'BACKLOG'
+
   // Create task and update suggestion in transaction
   const result = await db.transaction(async tx => {
     // Create the task
@@ -179,7 +183,7 @@ export async function approveSuggestion(
         title: finalTitle,
         description: finalDescription,
         dueOn: finalDueDate,
-        status: 'BACKLOG',
+        status: finalStatus,
         createdBy: userId,
         updatedBy: userId,
       })

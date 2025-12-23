@@ -71,6 +71,20 @@
       "when": 1765814995677,
       "tag": "0009_task_suggestions",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1766503149146,
+      "tag": "0010_multi_account_oauth",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1766509804320,
+      "tag": "0011_github_repo_schema",
+      "breakpoints": true
     }
   ]
 }

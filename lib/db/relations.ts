@@ -21,6 +21,8 @@ import {
   emailLinks,
   taskSuggestions,
   suggestionFeedback,
+  githubRepoLinks,
+  prSuggestions,
 } from './schema'
 
 export const clientsRelations = relations(clients, ({ one, many }) => ({
@@ -143,6 +145,7 @@ export const projectsRelations = relations(projects, ({ one, many }) => ({
   }),
   timeLogs: many(timeLogs),
   tasks: many(tasks),
+  githubRepos: many(githubRepoLinks),
 }))
 
 export const taskCommentsRelations = relations(taskComments, ({ one }) => ({
@@ -285,6 +288,41 @@ export const suggestionFeedbackRelations = relations(suggestionFeedback, ({ one 
   }),
   createdByUser: one(users, {
     fields: [suggestionFeedback.createdBy],
+    references: [users.id],
+  }),
+}))
+
+export const githubRepoLinksRelations = relations(githubRepoLinks, ({ one, many }) => ({
+  project: one(projects, {
+    fields: [githubRepoLinks.projectId],
+    references: [projects.id],
+  }),
+  oauthConnection: one(oauthConnections, {
+    fields: [githubRepoLinks.oauthConnectionId],
+    references: [oauthConnections.id],
+  }),
+  linkedByUser: one(users, {
+    fields: [githubRepoLinks.linkedBy],
+    references: [users.id],
+  }),
+  prSuggestions: many(prSuggestions),
+}))
+
+export const prSuggestionsRelations = relations(prSuggestions, ({ one }) => ({
+  taskSuggestion: one(taskSuggestions, {
+    fields: [prSuggestions.taskSuggestionId],
+    references: [taskSuggestions.id],
+  }),
+  email: one(emailMetadata, {
+    fields: [prSuggestions.emailMetadataId],
+    references: [emailMetadata.id],
+  }),
+  repoLink: one(githubRepoLinks, {
+    fields: [prSuggestions.githubRepoLinkId],
+    references: [githubRepoLinks.id],
+  }),
+  reviewedByUser: one(users, {
+    fields: [prSuggestions.reviewedBy],
     references: [users.id],
   }),
 }))

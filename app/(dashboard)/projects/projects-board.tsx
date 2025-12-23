@@ -17,6 +17,7 @@ import type { ContractorUserSummary } from '@/components/settings/projects/table
 import type { ProjectWithRelations } from '@/lib/types'
 import { ViewLogger } from '@/components/activity/view-logger'
 import { ActivityVerbs } from '@/lib/activity/types'
+import { useAISuggestionsSheet } from '@/lib/projects/board/state/use-ai-suggestions-sheet'
 import { ProjectsBoardEmpty } from './_components/projects-board-empty'
 import { ProjectsBoardHeader } from './_components/projects-board-header'
 import { ProjectBurndownWidget } from './_components/project-burndown-widget'
@@ -31,6 +32,12 @@ export function ProjectsBoard(props: ProjectsBoardProps) {
   const viewModel = useProjectsBoardViewModel(props)
   const router = useRouter()
   const { toast } = useToast()
+
+  // AI Suggestions sheet state
+  const aiSuggestionsState = useAISuggestionsSheet({
+    activeProject: viewModel.dialogs.activeProject,
+    currentUserId: props.currentUserId,
+  })
 
   const clientRows = useMemo<ClientRow[]>(
     () => buildClientRows(props.projects),
@@ -104,7 +111,13 @@ export function ProjectsBoard(props: ProjectsBoardProps) {
     return (
       <>
         <AppShellHeader>
-          <ProjectsBoardHeader {...viewModel.header} />
+          <ProjectsBoardHeader
+            {...viewModel.header}
+            onOpenAISuggestions={aiSuggestionsState.onOpen}
+            aiSuggestionsCount={aiSuggestionsState.pendingCount}
+            aiSuggestionsDisabled={aiSuggestionsState.disabled}
+            aiSuggestionsDisabledReason={aiSuggestionsState.disabledReason}
+          />
         </AppShellHeader>
         <div className='flex h-full flex-col gap-6'>
           <ProjectsBoardEmpty
@@ -132,7 +145,13 @@ export function ProjectsBoard(props: ProjectsBoardProps) {
       ) : null}
       <AppShellHeader>
         <div className='flex justify-between'>
-          <ProjectsBoardHeader {...viewModel.header} />
+          <ProjectsBoardHeader
+            {...viewModel.header}
+            onOpenAISuggestions={aiSuggestionsState.onOpen}
+            aiSuggestionsCount={aiSuggestionsState.pendingCount}
+            aiSuggestionsDisabled={aiSuggestionsState.disabled}
+            aiSuggestionsDisabledReason={aiSuggestionsState.disabledReason}
+          />
           <div className='flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-6'>
             {viewModel.burndown.visible ? (
               <ProjectBurndownWidget
@@ -168,7 +187,10 @@ export function ProjectsBoard(props: ProjectsBoardProps) {
           {...viewModel.tabs}
           projectActions={projectActions}
         />
-        <ProjectsBoardDialogs {...viewModel.dialogs} />
+        <ProjectsBoardDialogs
+          {...viewModel.dialogs}
+          aiSuggestionsState={aiSuggestionsState}
+        />
       </div>
       <ProjectLifecycleDialogs
         deleteTarget={deleteTarget}

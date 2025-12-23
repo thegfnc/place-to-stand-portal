@@ -19,7 +19,15 @@ const schema = z.object({
   GOOGLE_CLIENT_ID: z.string().min(1),
   GOOGLE_CLIENT_SECRET: z.string().min(1),
   GOOGLE_REDIRECT_URI: z.string().url(),
+  GITHUB_CLIENT_ID: z.string().min(1).optional(),
+  GITHUB_CLIENT_SECRET: z.string().min(1).optional(),
+  GITHUB_REDIRECT_URI: z.string().url().optional(),
 })
+
+// Helper to convert empty strings to undefined for optional env vars
+function emptyToUndefined(val: string | undefined): string | undefined {
+  return val === '' ? undefined : val
+}
 
 export const serverEnv = schema.parse({
   SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
@@ -36,4 +44,7 @@ export const serverEnv = schema.parse({
   GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
   GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
   GOOGLE_REDIRECT_URI: process.env.GOOGLE_REDIRECT_URI,
+  GITHUB_CLIENT_ID: emptyToUndefined(process.env.GITHUB_CLIENT_ID),
+  GITHUB_CLIENT_SECRET: emptyToUndefined(process.env.GITHUB_CLIENT_SECRET),
+  GITHUB_REDIRECT_URI: emptyToUndefined(process.env.GITHUB_REDIRECT_URI),
 })

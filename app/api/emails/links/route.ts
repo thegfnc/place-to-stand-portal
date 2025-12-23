@@ -15,6 +15,12 @@ export async function POST(req: NextRequest) {
       notes?: string | null
     }
 
+    console.log('[Email Link] Creating link:', {
+      emailMetadataId: body.emailMetadataId,
+      clientId: body.clientId,
+      userId: user.id,
+    })
+
     const created = await createEmailLink(user, {
       emailMetadataId: body.emailMetadataId,
       clientId: body.clientId ?? null,
@@ -24,8 +30,11 @@ export async function POST(req: NextRequest) {
       notes: body.notes ?? null,
     })
 
+    console.log('[Email Link] Created successfully:', created.id)
+
     return NextResponse.json({ ok: true, link: created })
   } catch (err) {
+    console.error('[Email Link] Error:', err)
     const error = err as HttpError
     const { status, body } = toResponsePayload(error)
     return NextResponse.json(body, { status })

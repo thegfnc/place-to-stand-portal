@@ -8,13 +8,18 @@ import { oauthConnections } from '@/lib/db/schema'
 export async function GET() {
   const user = await requireUser()
 
-  const [connection] = await db
+  // Fetch all Google accounts for this user (multi-account support)
+  const connections = await db
     .select({
+      id: oauthConnections.id,
       status: oauthConnections.status,
       providerEmail: oauthConnections.providerEmail,
+      displayName: oauthConnections.displayName,
+      providerAccountId: oauthConnections.providerAccountId,
       scopes: oauthConnections.scopes,
       lastSyncAt: oauthConnections.lastSyncAt,
       createdAt: oauthConnections.createdAt,
+      providerMetadata: oauthConnections.providerMetadata,
     })
     .from(oauthConnections)
     .where(
@@ -24,18 +29,23 @@ export async function GET() {
         isNull(oauthConnections.deletedAt)
       )
     )
-    .limit(1)
+    .orderBy(oauthConnections.createdAt)
 
-  if (!connection) {
-    return NextResponse.json({ connected: false })
+  if (connections.length === 0) {
+    return NextResponse.json({ connected: false, accounts: [] })
   }
 
   return NextResponse.json({
     connected: true,
-    status: connection.status,
-    email: connection.providerEmail,
-    scopes: connection.scopes,
-    lastSyncAt: connection.lastSyncAt,
-    connectedAt: connection.createdAt,
+    accounts: connections.map(c => ({
+      id: c.id,
+      email: c.providerEmail,
+      displayName: c.displayName || c.providerEmail,
+      status: c.status,
+      scopes: c.scopes,
+      lastSyncAt: c.lastSyncAt,
+      connectedAt: c.createdAt,
+      metadata: c.providerMetadata,
+    })),
   })
 }
