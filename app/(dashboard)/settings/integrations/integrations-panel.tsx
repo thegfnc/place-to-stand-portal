@@ -1,7 +1,7 @@
 'use client'
 
 import { siGithub, siSupabase, siVercel } from 'simple-icons/icons'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { toast } from '@/components/ui/use-toast'
@@ -19,6 +19,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
+import { ConnectedAccountsList, type ConnectedAccount } from '@/components/integrations/connected-accounts-list'
 
 function SimpleIcon({
   icon,
@@ -72,14 +73,38 @@ function GoogleIcon({ className }: { className?: string }) {
 
 const OAUTH_MESSAGES: Record<string, { title: string; description?: string; variant?: 'destructive' }> = {
   google_connected: { title: 'Connected', description: 'Google account connected successfully.' },
-  access_denied: { title: 'Access Denied', description: 'You denied access to your Google account.', variant: 'destructive' },
+  github_connected: { title: 'Connected', description: 'GitHub account connected successfully.' },
+  access_denied: { title: 'Access Denied', description: 'You denied access to the account.', variant: 'destructive' },
   invalid_request: { title: 'Invalid Request', description: 'OAuth request failed. Please try again.', variant: 'destructive' },
   invalid_state: { title: 'Security Error', description: 'State validation failed. Please try again.', variant: 'destructive' },
-  oauth_failed: { title: 'Connection Failed', description: 'Failed to connect Google account.', variant: 'destructive' },
+  oauth_failed: { title: 'Connection Failed', description: 'Failed to connect account.', variant: 'destructive' },
+}
+
+interface AccountsResponse {
+  connected: boolean
+  accounts: Array<{
+    id: string
+    email: string | null
+    displayName: string | null
+    status: string
+    login?: string
+    scopes: string[]
+    lastSyncAt: string | null
+    connectedAt: string
+    metadata: {
+      picture?: string
+      avatar_url?: string
+      name?: string
+      login?: string
+    }
+  }>
 }
 
 export function IntegrationsPanel() {
   const searchParams = useSearchParams()
+  const queryClient = useQueryClient()
+  const [isRedirectingGoogle, setIsRedirectingGoogle] = useState(false)
+  const [isRedirectingGitHub, setIsRedirectingGitHub] = useState(false)
 
   useEffect(() => {
     const success = searchParams.get('success')
@@ -93,41 +118,96 @@ export function IntegrationsPanel() {
     }
   }, [searchParams])
 
-  const { data, isLoading, refetch } = useQuery({
+  // Google accounts query
+  const { data: googleData, isLoading: googleLoading } = useQuery({
     queryKey: ['googleIntegrationStatus'],
     queryFn: async () => {
       const res = await fetch('/api/integrations/google/status')
       if (!res.ok) throw new Error('Failed to fetch Google status')
-      return (await res.json()) as {
-        connected: boolean
-        email?: string
-        status?: string
-        connectedAt?: string
-        lastSyncAt?: string
-      }
+      return (await res.json()) as AccountsResponse
     },
   })
 
-  const [isRedirecting, setIsRedirecting] = useState(false)
-  const disconnect = useMutation({
-    mutationFn: async () => {
+  // GitHub accounts query
+  const { data: githubData, isLoading: githubLoading } = useQuery({
+    queryKey: ['githubIntegrationStatus'],
+    queryFn: async () => {
+      const res = await fetch('/api/integrations/github/status')
+      if (!res.ok) throw new Error('Failed to fetch GitHub status')
+      return (await res.json()) as AccountsResponse
+    },
+  })
+
+  // Google disconnect mutation
+  const disconnectGoogle = useMutation({
+    mutationFn: async (connectionId: string) => {
       const res = await fetch('/api/integrations/google/disconnect', {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ connectionId }),
       })
       if (!res.ok) throw new Error('Failed to disconnect')
     },
     onSuccess: async () => {
-      toast({ title: 'Google disconnected' })
-      await refetch()
+      toast({ title: 'Google account disconnected' })
+      await queryClient.invalidateQueries({ queryKey: ['googleIntegrationStatus'] })
     },
     onError: (err: unknown) => {
-      toast({ title: 'Disconnect failed', description: String(err) })
+      toast({ title: 'Disconnect failed', description: String(err), variant: 'destructive' })
     },
   })
+
+  // GitHub disconnect mutation
+  const disconnectGitHub = useMutation({
+    mutationFn: async (connectionId: string) => {
+      const res = await fetch('/api/integrations/github/disconnect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ connectionId }),
+      })
+      if (!res.ok) throw new Error('Failed to disconnect')
+    },
+    onSuccess: async () => {
+      toast({ title: 'GitHub account disconnected' })
+      await queryClient.invalidateQueries({ queryKey: ['githubIntegrationStatus'] })
+    },
+    onError: (err: unknown) => {
+      toast({ title: 'Disconnect failed', description: String(err), variant: 'destructive' })
+    },
+  })
+
+  const handleConnectGoogle = () => {
+    setIsRedirectingGoogle(true)
+    window.location.href = '/api/auth/google'
+  }
+
+  const handleConnectGitHub = () => {
+    setIsRedirectingGitHub(true)
+    window.location.href = '/api/auth/github'
+  }
+
+  // Transform API response to ConnectedAccount format
+  const transformAccounts = (accounts: AccountsResponse['accounts'] | undefined): ConnectedAccount[] => {
+    if (!accounts) return []
+    return accounts.map(a => ({
+      id: a.id,
+      email: a.email,
+      displayName: a.displayName,
+      status: a.status,
+      login: a.login || a.metadata?.login,
+      lastSyncAt: a.lastSyncAt,
+      connectedAt: a.connectedAt,
+      metadata: a.metadata,
+    }))
+  }
+
+  const googleAccounts = transformAccounts(googleData?.accounts)
+  const githubAccounts = transformAccounts(githubData?.accounts)
 
   return (
     <div className='relative'>
       <div className='grid gap-6'>
+        {/* Google Card */}
         <Card>
           <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
             <div className='flex flex-col space-y-1.5'>
@@ -136,65 +216,36 @@ export function IntegrationsPanel() {
                 Google Workspace
               </CardTitle>
               <CardDescription>
-                Connect your Google Workspace account to sync emails, calendar,
-                and contacts.
+                Connect your Google Workspace accounts to sync emails and contacts.
               </CardDescription>
             </div>
           </CardHeader>
           <CardContent>
-            <div className='flex items-center justify-between'>
-              <div className='text-sm text-muted-foreground'>
-                {isLoading ? (
-                  'Checking status…'
-                ) : data?.connected ? (
-                  <span>Connected as {data.email}</span>
-                ) : (
-                  <span>Not connected</span>
-                )}
+            {googleLoading ? (
+              <div className='text-sm text-muted-foreground'>Checking status...</div>
+            ) : googleAccounts.length > 0 ? (
+              <ConnectedAccountsList
+                provider='google'
+                accounts={googleAccounts}
+                onDisconnect={async (id) => disconnectGoogle.mutateAsync(id)}
+                onAddAccount={handleConnectGoogle}
+              />
+            ) : (
+              <div className='flex items-center justify-between'>
+                <span className='text-sm text-muted-foreground'>Not connected</span>
+                <Button
+                  variant='outline'
+                  disabled={isRedirectingGoogle}
+                  onClick={handleConnectGoogle}
+                >
+                  {isRedirectingGoogle ? 'Connecting...' : 'Connect Google Account'}
+                </Button>
               </div>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span>
-                      {data?.connected ? (
-                        <Button
-                          variant='outline'
-                          disabled={disconnect.isPending}
-                          onClick={() => disconnect.mutate()}
-                        >
-                          {disconnect.isPending ? 'Disconnecting…' : 'Disconnect'}
-                        </Button>
-                      ) : (
-                        <Button
-                          variant='outline'
-                          disabled={isLoading || isRedirecting}
-                          onClick={() => {
-                            setIsRedirecting(true)
-                            window.location.href = '/api/auth/google'
-                          }}
-                        >
-                          {isLoading || isRedirecting
-                            ? 'Preparing…'
-                            : 'Connect Google Account'}
-                        </Button>
-                      )}
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>
-                      {isLoading
-                        ? 'Loading status'
-                        : data?.connected
-                        ? 'Disconnect your Google account'
-                        : 'Connect your Google account'}
-                    </p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
+            )}
           </CardContent>
         </Card>
 
+        {/* GitHub Card */}
         <Card>
           <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
             <div className='flex flex-col space-y-1.5'>
@@ -203,28 +254,36 @@ export function IntegrationsPanel() {
                 GitHub
               </CardTitle>
               <CardDescription>
-                Connect your GitHub account to sync repositories and issues.
+                Connect your GitHub accounts to sync repositories and create PRs.
               </CardDescription>
             </div>
           </CardHeader>
           <CardContent>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span>
-                    <Button variant='outline' disabled>
-                      Connect GitHub Account
-                    </Button>
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Coming soon</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            {githubLoading ? (
+              <div className='text-sm text-muted-foreground'>Checking status...</div>
+            ) : githubAccounts.length > 0 ? (
+              <ConnectedAccountsList
+                provider='github'
+                accounts={githubAccounts}
+                onDisconnect={async (id) => disconnectGitHub.mutateAsync(id)}
+                onAddAccount={handleConnectGitHub}
+              />
+            ) : (
+              <div className='flex items-center justify-between'>
+                <span className='text-sm text-muted-foreground'>Not connected</span>
+                <Button
+                  variant='outline'
+                  disabled={isRedirectingGitHub}
+                  onClick={handleConnectGitHub}
+                >
+                  {isRedirectingGitHub ? 'Connecting...' : 'Connect GitHub Account'}
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
 
+        {/* Vercel Card - Coming Soon */}
         <Card>
           <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
             <div className='flex flex-col space-y-1.5'>
@@ -255,6 +314,7 @@ export function IntegrationsPanel() {
           </CardContent>
         </Card>
 
+        {/* Supabase Card - Coming Soon */}
         <Card>
           <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
             <div className='flex flex-col space-y-1.5'>

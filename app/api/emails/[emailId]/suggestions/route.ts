@@ -1,20 +1,12 @@
 import { NextResponse, type NextRequest } from 'next/server'
-import { and, eq, isNull, sql, notInArray } from 'drizzle-orm'
+import { and, eq, isNull, notInArray } from 'drizzle-orm'
 
 import { requireUser } from '@/lib/auth/session'
 import { isAdmin } from '@/lib/auth/permissions'
 import { db } from '@/lib/db'
-import { clientContacts, clients, emailLinks, emailMetadata } from '@/lib/db/schema'
+import { clients, clientContacts, projects, emailLinks, emailMetadata } from '@/lib/db/schema'
 import { toResponsePayload, NotFoundError, ForbiddenError, type HttpError } from '@/lib/errors/http'
-
-function normalize(email: string | null | undefined) {
-  return (email ?? '').trim().toLowerCase()
-}
-
-function domain(email: string) {
-  const idx = email.indexOf('@')
-  return idx >= 0 ? email.slice(idx + 1) : ''
-}
+import { matchEmailToClients } from '@/lib/ai/email-client-matching'
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ emailId: string }> }) {
   const user = await requireUser()
@@ -33,13 +25,6 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ ema
       throw new ForbiddenError('Access denied')
     }
 
-    // Extract addresses
-    const from = normalize(email.fromEmail)
-    const tos = (email.toEmails ?? []).map(normalize)
-    const ccs = (email.ccEmails ?? []).map(normalize)
-    const allAddresses = Array.from(new Set([from, ...tos, ...ccs].filter(Boolean)))
-    const addressDomains = Array.from(new Set(allAddresses.map(domain).filter(Boolean)))
-
     // Get already-linked client IDs
     const existingLinks = await db
       .select({ clientId: emailLinks.clientId })
@@ -48,57 +33,83 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ ema
 
     const linkedClientIds = existingLinks.map(l => l.clientId).filter(Boolean) as string[]
 
-    // Find matching contacts (not already linked)
-    const matchQuery = db
+    // Fetch all clients with their contacts and projects
+    const allClients = await db
       .select({
-        clientId: clientContacts.clientId,
-        clientName: clients.name,
-        contactEmail: clientContacts.email,
-        contactName: clientContacts.name,
+        id: clients.id,
+        name: clients.name,
       })
-      .from(clientContacts)
-      .innerJoin(clients, eq(clients.id, clientContacts.clientId))
+      .from(clients)
       .where(
         and(
-          isNull(clientContacts.deletedAt),
           isNull(clients.deletedAt),
-          sql`(${clientContacts.email} = ANY(${allAddresses}) OR split_part(${clientContacts.email}, '@', 2) = ANY(${addressDomains}))`,
           linkedClientIds.length > 0
-            ? notInArray(clientContacts.clientId, linkedClientIds)
+            ? notInArray(clients.id, linkedClientIds)
             : undefined
         )
       )
 
-    const matches = await matchQuery
-
-    // Group by client and compute confidence
-    const clientMap = new Map<string, { clientId: string; clientName: string; confidence: number; matchedContacts: string[] }>()
-
-    for (const m of matches) {
-      const existing = clientMap.get(m.clientId)
-      const isExact = allAddresses.includes(normalize(m.contactEmail))
-      const confidence = isExact ? 1.0 : 0.6
-
-      if (!existing) {
-        clientMap.set(m.clientId, {
-          clientId: m.clientId,
-          clientName: m.clientName,
-          confidence,
-          matchedContacts: [m.contactEmail],
-        })
-      } else {
-        existing.confidence = Math.max(existing.confidence, confidence)
-        if (!existing.matchedContacts.includes(m.contactEmail)) {
-          existing.matchedContacts.push(m.contactEmail)
-        }
-      }
+    if (allClients.length === 0) {
+      return NextResponse.json({ ok: true, suggestions: [] })
     }
 
-    const suggestions = Array.from(clientMap.values()).sort((a, b) => b.confidence - a.confidence)
+    // Fetch contacts for each client
+    const allContacts = await db
+      .select({
+        clientId: clientContacts.clientId,
+        email: clientContacts.email,
+        name: clientContacts.name,
+      })
+      .from(clientContacts)
+      .where(isNull(clientContacts.deletedAt))
+
+    // Fetch projects for each client
+    const allProjects = await db
+      .select({
+        clientId: projects.clientId,
+        name: projects.name,
+      })
+      .from(projects)
+      .where(and(isNull(projects.deletedAt), eq(projects.type, 'CLIENT')))
+
+    // Group contacts and projects by client
+    const clientsWithData = allClients.map(client => ({
+      id: client.id,
+      name: client.name,
+      contacts: allContacts
+        .filter(c => c.clientId === client.id)
+        .map(c => ({ email: c.email, name: c.name })),
+      projects: allProjects
+        .filter(p => p.clientId === client.id)
+        .map(p => ({ name: p.name })),
+    }))
+
+    // Use AI to match email to clients
+    const { matches } = await matchEmailToClients({
+      email: {
+        from: email.fromEmail,
+        to: email.toEmails ?? [],
+        cc: email.ccEmails ?? [],
+        subject: email.subject,
+        snippet: email.snippet,
+      },
+      clients: clientsWithData,
+    })
+
+    // Transform AI matches to suggestion format
+    const suggestions = matches.map(match => ({
+      clientId: match.clientId,
+      clientName: match.clientName,
+      confidence: match.confidence,
+      matchedContacts: [], // AI doesn't return specific contacts, could enhance later
+      reasoning: match.reasoning,
+      matchType: match.matchType,
+    }))
 
     return NextResponse.json({ ok: true, suggestions })
   } catch (err) {
     const error = err as HttpError
+    console.error('Email suggestions error:', error)
     const { status, body } = toResponsePayload(error)
     return NextResponse.json(body, { status })
   }

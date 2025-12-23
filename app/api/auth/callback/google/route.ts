@@ -60,34 +60,60 @@ export async function GET(request: NextRequest) {
       ? encryptToken(tokens.refresh_token)
       : null
 
-    // Upsert connection (delete existing, insert new)
+    // Upsert connection by providerAccountId (supports multi-account)
     await db.transaction(async tx => {
-      // Remove any existing connection for this user+provider
-      await tx
-        .delete(oauthConnections)
+      // Check if this specific Google account already exists
+      const [existing] = await tx
+        .select({ id: oauthConnections.id })
+        .from(oauthConnections)
         .where(
           and(
             eq(oauthConnections.userId, user.id),
-            eq(oauthConnections.provider, 'GOOGLE')
+            eq(oauthConnections.provider, 'GOOGLE'),
+            eq(oauthConnections.providerAccountId, userInfo.id)
           )
         )
+        .limit(1)
 
-      // Insert new connection
-      await tx.insert(oauthConnections).values({
-        userId: user.id,
-        provider: 'GOOGLE',
-        providerAccountId: userInfo.id,
-        accessToken: encryptedAccessToken,
-        refreshToken: encryptedRefreshToken,
-        accessTokenExpiresAt: expiresAt,
-        scopes: GOOGLE_SCOPES,
-        status: 'ACTIVE',
-        providerEmail: userInfo.email,
-        providerMetadata: {
-          name: userInfo.name,
-          picture: userInfo.picture,
-        },
-      })
+      if (existing) {
+        // Update existing connection (re-auth flow)
+        await tx
+          .update(oauthConnections)
+          .set({
+            accessToken: encryptedAccessToken,
+            refreshToken: encryptedRefreshToken,
+            accessTokenExpiresAt: expiresAt,
+            scopes: GOOGLE_SCOPES,
+            status: 'ACTIVE',
+            providerEmail: userInfo.email,
+            displayName: userInfo.email,
+            providerMetadata: {
+              name: userInfo.name,
+              picture: userInfo.picture,
+            },
+            updatedAt: new Date().toISOString(),
+            deletedAt: null, // Re-enable if previously soft-deleted
+          })
+          .where(eq(oauthConnections.id, existing.id))
+      } else {
+        // Insert new connection (new account)
+        await tx.insert(oauthConnections).values({
+          userId: user.id,
+          provider: 'GOOGLE',
+          providerAccountId: userInfo.id,
+          accessToken: encryptedAccessToken,
+          refreshToken: encryptedRefreshToken,
+          accessTokenExpiresAt: expiresAt,
+          scopes: GOOGLE_SCOPES,
+          status: 'ACTIVE',
+          providerEmail: userInfo.email,
+          displayName: userInfo.email,
+          providerMetadata: {
+            name: userInfo.name,
+            picture: userInfo.picture,
+          },
+        })
+      }
     })
 
     // Log activity

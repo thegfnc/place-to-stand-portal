@@ -40,7 +40,7 @@ services:
     ports:
       - "3002:3000"  # Map to 3002 to avoid conflict with local dev servers
     env_file:
-      - env.local
+      - .env.local
     environment:
       # Use Supabase's PostgreSQL running on host (port 54322)
       - DATABASE_URL=postgresql://postgres:postgres@host.docker.internal:54322/postgres

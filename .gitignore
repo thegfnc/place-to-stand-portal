@@ -42,3 +42,6 @@ supabase/seed.sql
 .env.local
 # Ignore local OAuth client secrets
 client_secret_*.json
+
+# Screenshots
+*.png

@@ -22,7 +22,14 @@ import {
 import { useToast } from '@/components/ui/use-toast'
 import type { EmailWithLinks } from '@/lib/queries/emails'
 
-type Suggestion = { clientId: string; clientName: string; confidence: number; matchedContacts: string[] }
+type Suggestion = {
+  clientId: string
+  clientName: string
+  confidence: number
+  matchedContacts: string[]
+  reasoning?: string
+  matchType?: 'EXACT_EMAIL' | 'DOMAIN' | 'CONTENT' | 'CONTEXTUAL'
+}
 type SelectOption = { id: string; name: string }
 
 type Props = {
@@ -37,6 +44,7 @@ export function EmailDetailSheet({ email, onClose, onUpdate, isAdmin }: Props) {
   const [clients, setClients] = useState<SelectOption[]>([])
   const [selectedClient, setSelectedClient] = useState<string>('')
   const [suggestions, setSuggestions] = useState<Suggestion[]>([])
+  const [suggestionsLoading, setSuggestionsLoading] = useState(false)
   const [linking, setLinking] = useState(false)
 
   // Load clients on mount
@@ -47,17 +55,19 @@ export function EmailDetailSheet({ email, onClose, onUpdate, isAdmin }: Props) {
       .catch(() => {})
   }, [])
 
-  // Load suggestions when email changes
+  // Load AI suggestions when email changes
   const emailId = email?.id
   useEffect(() => {
     if (!emailId) {
       setSuggestions([])
       return
     }
+    setSuggestionsLoading(true)
     fetch(`/api/emails/${emailId}/suggestions`)
       .then(r => r.json())
       .then(data => setSuggestions(data.suggestions || []))
       .catch(() => setSuggestions([]))
+      .finally(() => setSuggestionsLoading(false))
   }, [emailId])
 
   const handleLink = async (clientId: string) => {
@@ -175,28 +185,40 @@ export function EmailDetailSheet({ email, onClose, onUpdate, isAdmin }: Props) {
             )}
           </div>
 
-          {/* Suggestions */}
-          {suggestions.length > 0 && (
-            <div>
-              <h4 className='font-medium mb-2'>Suggestions</h4>
+          {/* AI Suggestions */}
+          <div>
+            <h4 className='font-medium mb-2'>AI Suggestions</h4>
+            {suggestionsLoading ? (
+              <div className='flex items-center gap-2 p-4 border rounded-md bg-muted/30'>
+                <Loader2 className='h-4 w-4 animate-spin text-muted-foreground' />
+                <span className='text-sm text-muted-foreground'>Analyzing email...</span>
+              </div>
+            ) : suggestions.length > 0 ? (
               <div className='space-y-2'>
                 {suggestions.map(s => (
-                  <div key={s.clientId} className='flex items-center justify-between p-2 border rounded-md bg-muted/50'>
-                    <div className='flex items-center gap-2'>
-                      <Building2 className='h-4 w-4 text-muted-foreground' />
-                      <span>{s.clientName}</span>
-                      <Badge variant='secondary' className='text-xs'>
-                        {Math.round(s.confidence * 100)}% match
-                      </Badge>
+                  <div key={s.clientId} className='p-3 border rounded-md bg-muted/50 space-y-2'>
+                    <div className='flex items-center justify-between'>
+                      <div className='flex items-center gap-2'>
+                        <Building2 className='h-4 w-4 text-muted-foreground' />
+                        <span className='font-medium'>{s.clientName}</span>
+                        <Badge variant='secondary' className='text-xs'>
+                          {Math.round(s.confidence * 100)}%
+                        </Badge>
+                      </div>
+                      <Button size='sm' variant='outline' onClick={() => handleLink(s.clientId)} disabled={linking}>
+                        Link
+                      </Button>
                     </div>
-                    <Button size='sm' variant='outline' onClick={() => handleLink(s.clientId)} disabled={linking}>
-                      Link
-                    </Button>
+                    {s.reasoning && (
+                      <p className='text-xs text-muted-foreground italic'>{s.reasoning}</p>
+                    )}
                   </div>
                 ))}
               </div>
-            </div>
-          )}
+            ) : (
+              <p className='text-sm text-muted-foreground'>No client matches found.</p>
+            )}
+          </div>
 
           {/* Manual Link */}
           {isAdmin && availableClients.length > 0 && (
