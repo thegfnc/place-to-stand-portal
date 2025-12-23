@@ -17,8 +17,12 @@ export const getSession = cache(async (): Promise<Session | null> => {
   const supabase = getSupabaseServerClient()
   const { data, error } = await supabase.auth.getSession()
 
-  if (error) {
+  // AuthSessionMissingError is expected for unauthenticated users - don't log it
+  if (error && error.name !== 'AuthSessionMissingError') {
     console.error('Failed to resolve Supabase session', error)
+  }
+
+  if (error) {
     return null
   }
 
@@ -32,8 +36,12 @@ export const getCurrentUser = cache(async (): Promise<AppUser | null> => {
     error,
   } = await supabase.auth.getUser()
 
-  if (error) {
+  // AuthSessionMissingError is expected for unauthenticated users - don't log it
+  if (error && error.name !== 'AuthSessionMissingError') {
     console.error('Failed to resolve Supabase user', error)
+  }
+
+  if (error) {
     return null
   }
 

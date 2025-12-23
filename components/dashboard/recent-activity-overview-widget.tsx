@@ -7,7 +7,10 @@ import { Tabs } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
 
 import { SummaryContent } from '@/components/dashboard/recent-activity-overview/summary-content'
-import { TIMEFRAME_OPTIONS, type TimeframeValue } from '@/components/dashboard/recent-activity-overview/constants'
+import {
+  TIMEFRAME_OPTIONS,
+  type TimeframeValue,
+} from '@/components/dashboard/recent-activity-overview/constants'
 import { useRecentActivitySummary } from '@/components/dashboard/recent-activity-overview/use-recent-activity-summary'
 import { WidgetControls } from '@/components/dashboard/recent-activity-overview/widget-controls'
 
@@ -38,7 +41,7 @@ export function RecentActivityOverviewWidget({
   return (
     <section
       className={cn(
-        'bg-card flex h-full flex-col overflow-hidden rounded-xl border shadow-sm',
+        'bg-card flex flex-col overflow-hidden rounded-xl border shadow-sm',
         className
       )}
       aria-labelledby='recent-activity-overview-heading'

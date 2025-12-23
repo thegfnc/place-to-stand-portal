@@ -20,15 +20,24 @@ type PageParams = {
   taskId?: string[]
 }
 
+type PageSearchParams = {
+  assignee?: string
+}
+
 type PageProps = {
   params: Promise<PageParams>
+  searchParams: Promise<PageSearchParams>
 }
 
 const DEFAULT_VIEW: MyTasksView = 'board'
 
-export default async function MyTasksViewRoute({ params }: PageProps) {
+export default async function MyTasksViewRoute({
+  params,
+  searchParams,
+}: PageProps) {
   const user = await requireUser()
   const resolvedParams = await params
+  const resolvedSearchParams = await searchParams
   const viewParam = resolvedParams.view
   const activeTaskId = resolvedParams.taskId?.[0] ?? null
 
@@ -37,18 +46,29 @@ export default async function MyTasksViewRoute({ params }: PageProps) {
     redirect(`/my-tasks/${DEFAULT_VIEW}${suffix}`)
   }
 
-  const [assignedSummaries, admins, accessibleProjects] = await Promise.all([
-    listAssignedTaskSummaries({
-      userId: user.id,
-      role: user.role,
-      limit: null,
-    }),
+  const [admins, accessibleProjects] = await Promise.all([
     fetchAdminUsers(),
     fetchProjectsWithRelations({
       forUserId: user.id,
       forRole: user.role,
     }),
   ])
+
+  // For admins, allow viewing other admin's tasks via the assignee param
+  const isAdmin = user.role === 'ADMIN'
+  const requestedAssigneeId = resolvedSearchParams.assignee ?? user.id
+  const selectedAssigneeId =
+    isAdmin &&
+    requestedAssigneeId !== user.id &&
+    admins.some(admin => admin.id === requestedAssigneeId)
+      ? requestedAssigneeId
+      : user.id
+
+  const assignedSummaries = await listAssignedTaskSummaries({
+    userId: selectedAssigneeId,
+    role: user.role,
+    limit: null,
+  })
 
   const projectLookup = new Map(
     accessibleProjects.map(project => [project.id, project])
@@ -90,6 +110,7 @@ export default async function MyTasksViewRoute({ params }: PageProps) {
       initialEntries={initialEntries}
       activeTaskId={activeTaskId}
       view={viewParam}
+      selectedAssigneeId={selectedAssigneeId}
     />
   )
 }

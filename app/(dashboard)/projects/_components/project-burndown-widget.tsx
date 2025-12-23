@@ -49,7 +49,7 @@ export function ProjectBurndownWidget({
     : projectLogged
   const projectHoursLabel = shouldShowMonthToDate
     ? 'Project hours logged this month'
-    : 'Project hours logged total'
+    : 'Project hours logged'
   const clientRemaining = totalClientRemainingHours
   const remainingTone = clientRemaining < 0 ? 'destructive' : 'default'
 
@@ -59,6 +59,10 @@ export function ProjectBurndownWidget({
       aria-label='Burndown overview'
     >
       <dl className='flex flex-col gap-2 text-[10px] font-medium md:flex-row md:items-stretch md:gap-2'>
+        <MetricRow
+          label={projectHoursLabel}
+          value={`${formatHours(projectLoggedValue)} hrs`}
+        />
         {showClientRemainingCard ? (
           <MetricRow
             label='Client hours remaining'
@@ -66,10 +70,6 @@ export function ProjectBurndownWidget({
             tone={remainingTone}
           />
         ) : null}
-        <MetricRow
-          label={projectHoursLabel}
-          value={`${formatHours(projectLoggedValue)} hrs`}
-        />
       </dl>
       <div className='flex flex-col gap-2'>
         {viewTimeLogsHref ? (

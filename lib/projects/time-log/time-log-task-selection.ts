@@ -30,18 +30,25 @@ export function useTimeLogTaskSelection(
     useState<ProjectTask | null>(null)
 
   const eligibleTasks = useMemo(() => {
-    return tasks.filter(task => {
-      if (task.deleted_at !== null) {
-        return false
-      }
-      if (task.status === 'ARCHIVED') {
-        return false
-      }
-      if (task.accepted_at !== null) {
-        return false
-      }
-      return true
-    })
+    return tasks
+      .filter(task => {
+        if (task.deleted_at !== null) {
+          return false
+        }
+        if (task.status === 'ARCHIVED') {
+          return false
+        }
+        if (task.accepted_at !== null) {
+          return false
+        }
+        return true
+      })
+      .sort((a, b) => {
+        // Sort by most recently updated first
+        const aTime = new Date(a.updated_at).getTime()
+        const bTime = new Date(b.updated_at).getTime()
+        return bTime - aTime
+      })
   }, [tasks])
 
   const availableTasks = useMemo(() => {

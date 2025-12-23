@@ -48,7 +48,7 @@ export function ProjectsLandingAdminSection({
 
   const createDisabled = sortedClients.length === 0
   const createDisabledReason = createDisabled
-    ? "Add a client before creating a project."
+    ? 'Add a client before creating a project.'
     : null
 
   const totalProjectsLabel = useMemo(() => {
@@ -56,44 +56,49 @@ export function ProjectsLandingAdminSection({
   }, [totalProjectCount])
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center gap-4">
-        <ProjectsTabsNav activeTab="projects" className="flex-1 sm:flex-none" />
-        <div className="ml-auto flex items-center gap-6">
-          <span className="text-muted-foreground whitespace-nowrap text-sm">
-            Total projects: {totalProjectsLabel}
-          </span>
-          <DisabledFieldTooltip
-            disabled={createDisabled}
-            reason={createDisabledReason}
-          >
-            <Button
-              type="button"
-              size='sm'
-              onClick={openCreate}
+    <section className='bg-background rounded-xl border p-6 shadow-sm'>
+      <div className='space-y-6'>
+        <div className='flex flex-wrap items-center gap-4'>
+          <ProjectsTabsNav
+            activeTab='projects'
+            className='flex-1 sm:flex-none'
+          />
+          <div className='ml-auto flex items-center gap-6'>
+            <span className='text-muted-foreground text-sm whitespace-nowrap'>
+              Total projects: {totalProjectsLabel}
+            </span>
+            <DisabledFieldTooltip
               disabled={createDisabled}
-              className="gap-2"
+              reason={createDisabledReason}
             >
-              <Plus className="h-4 w-4" />
-              Add project
-            </Button>
-          </DisabledFieldTooltip>
+              <Button
+                type='button'
+                size='sm'
+                onClick={openCreate}
+                disabled={createDisabled}
+                className='gap-2'
+              >
+                <Plus className='h-4 w-4' />
+                Add project
+              </Button>
+            </DisabledFieldTooltip>
+          </div>
         </div>
+        <ProjectsLanding
+          projects={projects}
+          clients={landingClients}
+          currentUserId={currentUserId}
+        />
+        <ProjectSheet
+          open={sheetOpen}
+          onOpenChange={handleSheetOpenChange}
+          onComplete={handleSheetComplete}
+          project={selectedProject}
+          clients={sortedClients}
+          contractorDirectory={[]}
+          projectContractors={{}}
+        />
       </div>
-      <ProjectsLanding
-        projects={projects}
-        clients={landingClients}
-        currentUserId={currentUserId}
-      />
-      <ProjectSheet
-        open={sheetOpen}
-        onOpenChange={handleSheetOpenChange}
-        onComplete={handleSheetComplete}
-        project={selectedProject}
-        clients={sortedClients}
-        contractorDirectory={[]}
-        projectContractors={{}}
-      />
-    </div>
+    </section>
   )
 }

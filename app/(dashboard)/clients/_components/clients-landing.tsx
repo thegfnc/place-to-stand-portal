@@ -1,21 +1,32 @@
 'use client'
 
 import Link from 'next/link'
-import { Building2, FolderKanban } from 'lucide-react'
+import { Building2, Clock, FolderKanban } from 'lucide-react'
 
 import { Badge } from '@/components/ui/badge'
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import type { ClientWithMetrics } from '@/lib/data/clients'
 import { getBillingTypeLabel } from '@/lib/settings/clients/billing-types'
+import { cn } from '@/lib/utils'
 
 type ClientsLandingProps = {
   clients: ClientWithMetrics[]
+}
+
+const HOURS_FORMATTER = new Intl.NumberFormat('en-US', {
+  maximumFractionDigits: 2,
+  minimumFractionDigits: 0,
+})
+
+function formatHours(hours: number): string {
+  return HOURS_FORMATTER.format(hours)
 }
 
 export function ClientsLanding({ clients }: ClientsLandingProps) {
@@ -37,47 +48,83 @@ export function ClientsLanding({ clients }: ClientsLandingProps) {
   }
 
   return (
-    <div className='space-y-6'>
-      <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-3'>
-        {clients.map(client => (
-          <Link key={client.id} href={getClientHref(client)}>
-            <Card className='border-l-4 border-l-blue-500 border-y-border border-r-border hover:border-r-blue-500/50 hover:border-y-blue-500/50 flex h-full cursor-pointer flex-col justify-between shadow-sm transition-all hover:shadow-md'>
-              <CardHeader>
-                <div className='flex items-start justify-between gap-2'>
-                  <div className='flex min-w-0 flex-1 items-center gap-2'>
-                    <Building2 className='text-blue-500 mt-0.5 h-5 w-5 shrink-0' />
-                    <CardTitle className='line-clamp-2'>
-                      {client.name}
-                    </CardTitle>
-                  </div>
-                  <Badge variant='outline' className='text-xs'>
-                    {getBillingTypeLabel(client.billingType)}
-                  </Badge>
-                </div>
-                {client.slug ? (
-                  <CardDescription className='text-muted-foreground text-xs'>
-                    /{client.slug}
-                  </CardDescription>
-                ) : null}
-              </CardHeader>
-              <CardContent>
+    <div className='rounded-lg border'>
+      <Table>
+        <TableHeader>
+          <TableRow className='bg-muted/40'>
+            <TableHead className='w-[300px]'>Client</TableHead>
+            <TableHead>Billing</TableHead>
+            <TableHead>Projects</TableHead>
+            <TableHead>Hours</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {clients.map(client => (
+            <TableRow key={client.id}>
+              <TableCell>
+                <Link
+                  href={getClientHref(client)}
+                  className='flex items-center gap-2 py-1 hover:underline'
+                >
+                  <Building2 className='h-4 w-4 shrink-0 text-blue-500' />
+                  <span className='font-medium'>{client.name}</span>
+                </Link>
+              </TableCell>
+              <TableCell>
+                <Badge variant='outline' className='text-xs'>
+                  {getBillingTypeLabel(client.billingType)}
+                </Badge>
+              </TableCell>
+              <TableCell>
                 <div className='flex items-center gap-2 text-sm'>
                   <FolderKanban className='text-muted-foreground h-4 w-4' />
                   <span className='text-muted-foreground'>
-                    {client.activeProjectCount} active project
-                    {client.activeProjectCount !== 1 ? 's' : ''}
+                    {client.activeProjectCount} active
+                    {client.projectCount > client.activeProjectCount && (
+                      <span className='text-muted-foreground/60'>
+                        {' '}
+                        ({client.projectCount} total)
+                      </span>
+                    )}
                   </span>
-                  {client.projectCount > client.activeProjectCount ? (
-                    <span className='text-muted-foreground/60'>
-                      ({client.projectCount} total)
-                    </span>
-                  ) : null}
                 </div>
-              </CardContent>
-            </Card>
-          </Link>
-        ))}
-      </div>
+              </TableCell>
+              <TableCell>
+                {client.billingType === 'prepaid' ? (
+                  <div className='flex items-center gap-2 text-sm'>
+                    <Clock
+                      className={cn(
+                        'h-4 w-4',
+                        client.hoursRemaining > 0
+                          ? 'text-emerald-600'
+                          : client.hoursRemaining === 0
+                            ? 'text-muted-foreground'
+                            : 'text-red-600'
+                      )}
+                    />
+                    <span
+                      className={cn(
+                        client.hoursRemaining > 0
+                          ? 'font-medium text-emerald-600'
+                          : client.hoursRemaining === 0
+                            ? 'text-muted-foreground'
+                            : 'font-medium text-red-600'
+                      )}
+                    >
+                      {formatHours(client.hoursRemaining)} remaining
+                    </span>
+                    <span className='text-muted-foreground/60'>
+                      ({formatHours(client.totalHoursPurchased)} total)
+                    </span>
+                  </div>
+                ) : (
+                  <span className='text-muted-foreground text-sm'>—</span>
+                )}
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
     </div>
   )
 }

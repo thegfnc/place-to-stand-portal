@@ -1,4 +1,4 @@
-import { Fragment } from 'react'
+import { Fragment, type MutableRefObject, type UIEventHandler } from 'react'
 import { Plus } from 'lucide-react'
 import { useDroppable } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
@@ -28,7 +28,7 @@ type KanbanColumnProps = {
   canManage: boolean
   renderAssignees: (
     task: TaskWithRelations
-  ) => Array<{ id: string; name: string }>
+  ) => Array<{ id: string; name: string; avatarUrl: string | null }>
   onEditTask: (task: TaskWithRelations) => void
   activeTaskId: string | null
   onCreateTask?: (status: BoardColumnId) => void
@@ -38,6 +38,8 @@ type KanbanColumnProps = {
   draggingTask?: TaskWithRelations | null
   recentlyMovedTaskId?: string | null
   getTaskCardOptions?: (task: TaskWithRelations) => TaskCardOptions | undefined
+  columnScrollRef?: MutableRefObject<HTMLDivElement | null>
+  onColumnScroll?: UIEventHandler<HTMLDivElement>
 }
 
 export function KanbanColumn({
@@ -55,6 +57,8 @@ export function KanbanColumn({
   draggingTask = null,
   recentlyMovedTaskId = null,
   getTaskCardOptions,
+  columnScrollRef,
+  onColumnScroll,
 }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: columnId,
@@ -115,7 +119,11 @@ export function KanbanColumn({
           ) : null}
         </div>
       </div>
-      <div className='flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-1'>
+      <div
+        ref={columnScrollRef}
+        onScroll={onColumnScroll}
+        className='flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-1'
+      >
         <SortableContext
           id={columnId}
           items={tasks.map(task => task.id)}

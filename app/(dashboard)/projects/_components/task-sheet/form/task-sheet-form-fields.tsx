@@ -20,6 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Badge } from '@/components/ui/badge'
 import { RichTextEditor } from '@/components/ui/rich-text-editor'
 import { DisabledFieldTooltip } from '@/components/ui/disabled-field-tooltip'
 import type { UseFormReturn } from 'react-hook-form'
@@ -27,6 +28,7 @@ import type { UseFormReturn } from 'react-hook-form'
 import type { TaskSheetFormValues } from '@/lib/projects/task-sheet/task-sheet-schema'
 import { normalizeRichTextContent } from '@/lib/projects/task-sheet/task-sheet-utils'
 import type { AttachmentItem } from '@/lib/projects/task-sheet/use-task-sheet-state'
+import { cn } from '@/lib/utils'
 
 import { TaskAttachmentsField } from '../task-attachments-field'
 
@@ -38,7 +40,7 @@ export type TaskSheetFormFieldsProps = {
   isPending: boolean
   canManage: boolean
   resolveDisabledReason: (disabled: boolean) => string | null
-  taskStatuses: Array<{ value: string; label: string }>
+  taskStatuses: Array<{ value: string; label: string; token: string }>
   assigneeItems: SearchableComboboxItem[]
   unassignedValue: string
   projectItems: SearchableComboboxItem[]
@@ -136,6 +138,9 @@ export function TaskSheetFormFields(props: TaskSheetFormFieldsProps) {
           render={({ field }) => {
             const disabled = isPending || !canManage
             const reason = resolveDisabledReason(disabled)
+            const selectedStatus = taskStatuses.find(
+              s => s.value === field.value
+            )
 
             return (
               <FormItem>
@@ -148,14 +153,34 @@ export function TaskSheetFormFields(props: TaskSheetFormFieldsProps) {
                   <FormControl>
                     <DisabledFieldTooltip disabled={disabled} reason={reason}>
                       <SelectTrigger>
-                        <SelectValue placeholder='Select status' />
+                        <SelectValue placeholder='Select status'>
+                          {selectedStatus && (
+                            <Badge
+                              variant='outline'
+                              className={cn(
+                                'text-xs font-semibold tracking-wide uppercase',
+                                selectedStatus.token
+                              )}
+                            >
+                              {selectedStatus.label}
+                            </Badge>
+                          )}
+                        </SelectValue>
                       </SelectTrigger>
                     </DisabledFieldTooltip>
                   </FormControl>
                   <SelectContent align='start'>
                     {taskStatuses.map(status => (
                       <SelectItem key={status.value} value={status.value}>
-                        {status.label}
+                        <Badge
+                          variant='outline'
+                          className={cn(
+                            'text-xs font-semibold tracking-wide uppercase',
+                            status.token
+                          )}
+                        >
+                          {status.label}
+                        </Badge>
                       </SelectItem>
                     ))}
                   </SelectContent>

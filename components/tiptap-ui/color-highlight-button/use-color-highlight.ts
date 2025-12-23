@@ -257,24 +257,28 @@ export function useColorHighlight(config: UseColorHighlightConfig) {
   const { editor } = useTiptapEditor(providedEditor)
   const isMobile = useIsMobile()
   const [isVisible, setIsVisible] = useState<boolean>(true)
-  const canColorHighlightState = canColorHighlight(editor, mode)
-  const isActive = isColorHighlightActive(editor, highlightColor, mode)
+  const [canColorHighlightState, setCanColorHighlightState] = useState<boolean>(false)
+  const [isActive, setIsActive] = useState<boolean>(false)
 
   useEffect(() => {
     if (!editor) return
 
-    const handleSelectionUpdate = () => {
+    const updateState = () => {
       setIsVisible(shouldShowButton({ editor, hideWhenUnavailable, mode }))
+      setCanColorHighlightState(canColorHighlight(editor, mode))
+      setIsActive(isColorHighlightActive(editor, highlightColor, mode))
     }
 
-    handleSelectionUpdate()
+    updateState()
 
-    editor.on("selectionUpdate", handleSelectionUpdate)
+    editor.on("selectionUpdate", updateState)
+    editor.on("transaction", updateState)
 
     return () => {
-      editor.off("selectionUpdate", handleSelectionUpdate)
+      editor.off("selectionUpdate", updateState)
+      editor.off("transaction", updateState)
     }
-  }, [editor, hideWhenUnavailable, mode])
+  }, [editor, hideWhenUnavailable, mode, highlightColor])
 
   const handleColorHighlight = useCallback(() => {
     if (!editor || !canColorHighlightState || !highlightColor || !label)

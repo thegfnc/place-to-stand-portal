@@ -1,8 +1,9 @@
 'use client'
 
 import { format } from 'date-fns'
-import { Archive, Pencil, RefreshCw, Trash2, User } from 'lucide-react'
+import { Archive, Pencil, RefreshCw, Trash2 } from 'lucide-react'
 
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { TableCell, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -39,12 +40,27 @@ export function UsersTableRow({
   const showRestore = mode === 'archive'
   const showDestroy = mode === 'archive'
 
+  const displayName = user.full_name ?? user.email
+  const initials = user.full_name
+    ? user.full_name
+        .split(' ')
+        .map(segment => segment[0])
+        .join('')
+        .slice(0, 2)
+        .toUpperCase()
+    : user.email.slice(0, 2).toUpperCase()
+
   return (
     <TableRow className={user.deleted_at ? 'opacity-60' : undefined}>
       <TableCell>
         <div className='flex items-center gap-2'>
-          <User className='text-muted-foreground h-4 w-4' />
-          <span className='font-medium'>{user.full_name ?? user.email}</span>
+          <Avatar className='h-6 w-6'>
+            {user.avatar_url && (
+              <AvatarImage src={`/api/storage/user-avatar/${user.id}`} />
+            )}
+            <AvatarFallback className='text-[10px]'>{initials}</AvatarFallback>
+          </Avatar>
+          <span className='font-medium'>{displayName}</span>
         </div>
       </TableCell>
       <TableCell className='text-muted-foreground text-sm'>

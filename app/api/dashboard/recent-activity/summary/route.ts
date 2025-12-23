@@ -21,6 +21,10 @@ import { clients, projects } from '@/lib/db/schema'
 const VALID_TIMEFRAMES = [1, 7, 14, 28] as const
 const ONE_HOUR_MS = 60 * 60 * 1000
 const MAX_LOG_LINES_IN_PROMPT = 200
+const SUMMARY_CHARACTER_LIMIT = 1200
+const ADDITIONAL_HIGHLIGHTS_HEADING = '### Additional Highlights'
+const MAX_OVERFLOW_BULLET_LENGTH = 160
+const MAX_OVERFLOW_BULLETS = 4
 
 type ValidTimeframe = (typeof VALID_TIMEFRAMES)[number]
 
@@ -133,31 +137,40 @@ export async function POST(request: Request) {
         now,
         context,
       }),
-      onFinish: async ({ text }) => {
-        const completion = (text ?? '').trim()
-        const summaryToStore =
-          completion || buildFallbackSummary(logs, timeframeDays, context)
-
-        try {
-          await upsertActivityOverviewCache({
-            userId: user.id,
-            timeframeDays,
-            summary: summaryToStore,
-            cachedAt: new Date().toISOString(),
-            expiresAt: expiresAtIso,
-          })
-        } catch (cacheError) {
-          console.error('Failed to cache activity overview summary', cacheError)
-        }
-      },
     })
 
-    return result.toTextStreamResponse({
-      headers: buildCacheHeaders({
-        status: 'miss',
-        cachedAt: nowIso,
+    let completion = ''
+    try {
+      for await (const delta of result.textStream) {
+        completion += delta
+      }
+    } catch (streamError) {
+      console.error('Failed to collect activity overview stream', streamError)
+    }
+
+    const fallbackSummary = buildFallbackSummary(logs, timeframeDays, context)
+    const baseSummary = completion.trim() || fallbackSummary
+    const summary = enforceSummaryCharacterLimit(
+      baseSummary,
+      SUMMARY_CHARACTER_LIMIT
+    )
+
+    try {
+      await upsertActivityOverviewCache({
+        userId: user.id,
+        timeframeDays,
+        summary,
+        cachedAt: new Date().toISOString(),
         expiresAt: expiresAtIso,
-      }),
+      })
+    } catch (cacheError) {
+      console.error('Failed to cache activity overview summary', cacheError)
+    }
+
+    return streamFromString(summary, {
+      status: 'miss',
+      cachedAt: nowIso,
+      expiresAt: expiresAtIso,
     })
   } catch (error) {
     console.error('Invalid request body for recent activity summary', error)
@@ -271,6 +284,164 @@ function buildFallbackSummary(
   }
 
   return sections.join('\n')
+}
+
+type SummarySection = {
+  heading: string
+  body: string[]
+}
+
+function enforceSummaryCharacterLimit(summary: string, limit: number): string {
+  const trimmed = summary.trim()
+
+  if (!trimmed || trimmed.length <= limit) {
+    return trimmed
+  }
+
+  const sections = parseSummarySections(trimmed)
+  if (!sections.length) {
+    return truncateWithEllipsis(trimmed, limit)
+  }
+
+  const kept: SummarySection[] = []
+  const overflow: SummarySection[] = []
+  let currentLength = 0
+
+  for (const section of sections) {
+    const sectionString = sectionToString(section)
+    if (!sectionString.trim()) {
+      continue
+    }
+
+    const spacer = kept.length ? 1 : 0
+    if (currentLength + sectionString.length + spacer <= limit) {
+      kept.push(section)
+      currentLength += sectionString.length + spacer
+    } else {
+      overflow.push(section)
+    }
+  }
+
+  if (overflow.length) {
+    const overflowSection = buildAdditionalHighlightsSection(overflow)
+    if (overflowSection) {
+      kept.push(overflowSection)
+    }
+  }
+
+  const output = formatSummarySections(kept)
+  if (output.length <= limit) {
+    return output
+  }
+
+  return truncateWithEllipsis(output, limit)
+}
+
+function parseSummarySections(summary: string): SummarySection[] {
+  const lines = summary.split(/\r?\n/)
+  const sections: SummarySection[] = []
+  let current: SummarySection | null = null
+
+  for (const rawLine of lines) {
+    const line = rawLine.trimEnd()
+    if (line.startsWith('### ')) {
+      if (current) {
+        sections.push(current)
+      }
+      current = { heading: line.trim(), body: [] }
+      continue
+    }
+
+    if (!current) {
+      current = {
+        heading: `### ${COMPANY_GENERAL_HEADING}`,
+        body: [],
+      }
+    }
+
+    if (line || current.body.length) {
+      current.body.push(line)
+    }
+  }
+
+  if (current) {
+    sections.push(current)
+  }
+
+  return sections
+}
+
+function sectionToString(section: SummarySection): string {
+  const filteredBody = section.body.filter(line => line.trim().length)
+  if (!filteredBody.length) {
+    return section.heading
+  }
+
+  return [section.heading, ...filteredBody].join('\n')
+}
+
+function formatSummarySections(sections: SummarySection[]): string {
+  return sections.map(sectionToString).filter(Boolean).join('\n')
+}
+
+function buildAdditionalHighlightsSection(
+  sections: SummarySection[]
+): SummarySection | null {
+  if (!sections.length) {
+    return null
+  }
+
+  const bullets: string[] = []
+  const limitedSections = sections.slice(0, MAX_OVERFLOW_BULLETS)
+
+  for (const section of limitedSections) {
+    const headingLabel = section.heading.replace(/^###\s*/, '').trim()
+    const primaryLine =
+      section.body.find(line => line.trim().startsWith('-')) ??
+      section.body.find(line => line.trim().length > 0) ??
+      ''
+    const cleanedLine = primaryLine.replace(/^-+\s*/, '').trim()
+    const bulletContent = cleanedLine
+      ? `${headingLabel}: ${cleanedLine}`
+      : `${headingLabel}: Updates in progress.`
+    const normalized = truncateWithEllipsis(
+      bulletContent,
+      MAX_OVERFLOW_BULLET_LENGTH
+    )
+    bullets.push(`- ${normalized}`)
+  }
+
+  if (!bullets.length) {
+    return null
+  }
+
+  if (sections.length > bullets.length) {
+    const remaining = sections.length - bullets.length
+    bullets.push(
+      `- ${remaining} more update${remaining === 1 ? '' : 's'} captured across other projects.`
+    )
+  }
+
+  return {
+    heading: ADDITIONAL_HIGHLIGHTS_HEADING,
+    body: bullets,
+  }
+}
+
+function truncateWithEllipsis(text: string, limit: number): string {
+  if (limit <= 0) {
+    return ''
+  }
+
+  if (text.length <= limit) {
+    return text
+  }
+
+  if (limit <= 1) {
+    return '…'
+  }
+
+  return text.slice(0, limit - 1).trimEnd() + '…'
 }
 
 function timeframeDaysLabel(timeframe: ValidTimeframe): string {

@@ -214,6 +214,8 @@ function CalendarTaskCard({
 
   const assignees = renderAssignees(task)
   const primaryAssignee = assignees[0]?.name ?? 'Unassigned'
+  const primaryAssigneeId = assignees[0]?.id ?? null
+  const primaryAssigneeAvatarUrl = assignees[0]?.avatarUrl ?? null
   const sanitizedAttributes = useMemo(() => {
     if (!attributes) {
       return {}
@@ -236,6 +238,8 @@ function CalendarTaskCard({
       ref={setNodeRef}
       task={task}
       primaryAssignee={primaryAssignee}
+      primaryAssigneeId={primaryAssigneeId}
+      primaryAssigneeAvatarUrl={primaryAssigneeAvatarUrl}
       canManageTasks={canManageTasks}
       isActive={isActive}
       isDragging={isDragging}

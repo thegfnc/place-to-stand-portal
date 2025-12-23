@@ -10,7 +10,7 @@ import {
   ensureClientAccess,
 } from '@/lib/auth/permissions'
 import { db } from '@/lib/db'
-import { clients, projects } from '@/lib/db/schema'
+import { clients, projects, hourBlocks, timeLogs } from '@/lib/db/schema'
 import { NotFoundError } from '@/lib/errors/http'
 
 export type ClientWithMetrics = {
@@ -24,6 +24,9 @@ export type ClientWithMetrics = {
   deletedAt: string | null
   projectCount: number
   activeProjectCount: number
+  totalHoursPurchased: number
+  totalHoursUsed: number
+  hoursRemaining: number
 }
 
 export type ClientDetail = {
@@ -49,6 +52,7 @@ export const fetchClientsWithMetrics = cache(
       baseConditions.push(inArray(clients.id, clientIds))
     }
 
+    // Fetch base client data with project counts
     const rows = await db
       .select({
         id: clients.id,
@@ -84,18 +88,72 @@ export const fetchClientsWithMetrics = cache(
       )
       .orderBy(asc(clients.name))
 
-    return rows.map(row => ({
-      id: row.id,
-      name: row.name,
-      slug: row.slug,
-      notes: row.notes,
-      billingType: row.billingType,
-      createdAt: row.createdAt,
-      updatedAt: row.updatedAt,
-      deletedAt: row.deletedAt,
-      projectCount: Number(row.projectCount ?? 0),
-      activeProjectCount: Number(row.activeProjectCount ?? 0),
-    }))
+    if (rows.length === 0) {
+      return []
+    }
+
+    const clientIds = rows.map(r => r.id)
+
+    // Fetch hour blocks data separately
+    const hourBlocksData = await db
+      .select({
+        clientId: hourBlocks.clientId,
+        totalHoursPurchased: sql<number>`
+          coalesce(sum(${hourBlocks.hoursPurchased}), 0)
+        `.as('total_hours_purchased'),
+      })
+      .from(hourBlocks)
+      .where(and(inArray(hourBlocks.clientId, clientIds), isNull(hourBlocks.deletedAt)))
+      .groupBy(hourBlocks.clientId)
+
+    const hourBlocksMap = new Map(
+      hourBlocksData.map(hb => [hb.clientId, Number(hb.totalHoursPurchased ?? 0)])
+    )
+
+    // Fetch time logs data separately (only for active projects)
+    const timeLogsData = await db
+      .select({
+        clientId: projects.clientId,
+        totalHoursUsed: sql<number>`
+          coalesce(sum(${timeLogs.hours}), 0)
+        `.as('total_hours_used'),
+      })
+      .from(timeLogs)
+      .innerJoin(projects, eq(timeLogs.projectId, projects.id))
+      .where(
+        and(
+          inArray(projects.clientId, clientIds),
+          isNull(timeLogs.deletedAt),
+          isNull(projects.deletedAt)
+        )
+      )
+      .groupBy(projects.clientId)
+
+    const timeLogsMap = new Map(
+      timeLogsData.map(tl => [tl.clientId, Number(tl.totalHoursUsed ?? 0)])
+    )
+
+    return rows.map(row => {
+      const totalHoursPurchased = hourBlocksMap.get(row.id) ?? 0
+      const totalHoursUsed = timeLogsMap.get(row.id) ?? 0
+      const hoursRemaining = totalHoursPurchased - totalHoursUsed
+
+      return {
+        id: row.id,
+        name: row.name,
+        slug: row.slug,
+        notes: row.notes,
+        billingType: row.billingType,
+        createdAt: row.createdAt,
+        updatedAt: row.updatedAt,
+        deletedAt: row.deletedAt,
+        projectCount: Number(row.projectCount ?? 0),
+        activeProjectCount: Number(row.activeProjectCount ?? 0),
+        totalHoursPurchased,
+        totalHoursUsed,
+        hoursRemaining,
+      }
+    })
   }
 )
 
@@ -186,8 +244,13 @@ export const fetchProjectsForClient = cache(
     const taskCounts = await db
       .select({
         projectId: tasks.projectId,
-        total: sql<number>`count(*) filter (where ${tasks.status} != 'ARCHIVED')`.as('total'),
-        done: sql<number>`count(*) filter (where ${tasks.status} = 'DONE')`.as('done'),
+        total:
+          sql<number>`count(*) filter (where ${tasks.status} != 'ARCHIVED')`.as(
+            'total'
+          ),
+        done: sql<number>`count(*) filter (where ${tasks.status} = 'DONE')`.as(
+          'done'
+        ),
       })
       .from(tasks)
       .where(and(inArray(tasks.projectId, projectIds), isNull(tasks.deletedAt)))
@@ -210,6 +273,34 @@ export const fetchProjectsForClient = cache(
     }))
   }
 )
+
+export async function fetchClientsByIds(
+  clientIds: string[]
+): Promise<ClientDetail[]> {
+  if (!clientIds.length) {
+    return []
+  }
+
+  const rows = await db
+    .select({
+      id: clients.id,
+      name: clients.name,
+      slug: clients.slug,
+      notes: clients.notes,
+      billingType: clients.billingType,
+      createdAt: clients.createdAt,
+      updatedAt: clients.updatedAt,
+      deletedAt: clients.deletedAt,
+    })
+    .from(clients)
+    .where(and(inArray(clients.id, clientIds), isNull(clients.deletedAt)))
+
+  const lookup = new Map(rows.map(row => [row.id, row]))
+
+  return clientIds
+    .map(id => lookup.get(id))
+    .filter((row): row is ClientDetail => Boolean(row))
+}
 
 /**
  * Resolves a client identifier (slug or UUID) to the client record.
@@ -237,4 +328,3 @@ export const resolveClientIdentifier = cache(
     return { ...client, resolvedId: client.id }
   }
 )
-

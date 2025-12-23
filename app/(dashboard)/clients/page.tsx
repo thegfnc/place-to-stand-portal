@@ -23,9 +23,7 @@ type ClientsPageProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>
 }
 
-export default async function ClientsPage({
-  searchParams,
-}: ClientsPageProps) {
+export default async function ClientsPage({ searchParams }: ClientsPageProps) {
   const user = await requireUser()
   const params = searchParams ? await searchParams : {}
   const canManageClients = isAdmin(user)
@@ -33,19 +31,19 @@ export default async function ClientsPage({
     typeof params.q === 'string'
       ? params.q
       : Array.isArray(params.q)
-        ? params.q[0] ?? ''
+        ? (params.q[0] ?? '')
         : ''
   const cursor =
     typeof params.cursor === 'string'
       ? params.cursor
       : Array.isArray(params.cursor)
-        ? params.cursor[0] ?? null
+        ? (params.cursor[0] ?? null)
         : null
   const directionParam =
     typeof params.dir === 'string'
       ? params.dir
       : Array.isArray(params.dir)
-        ? params.dir[0] ?? null
+        ? (params.dir[0] ?? null)
         : null
   const direction =
     directionParam === 'backward' ? 'backward' : ('forward' as const)
@@ -83,24 +81,28 @@ export default async function ClientsPage({
       <AppShellHeader>
         <ClientsLandingHeader clients={clients} />
       </AppShellHeader>
-      <div className='space-y-6'>
-        <div className='flex flex-wrap items-center gap-4'>
-          <ClientsTabsNav activeTab='clients' className='flex-1 sm:flex-none' />
-          {canManageClients && managementData ? (
-            <div className='flex items-center gap-6 ml-auto'>
-              <span className='text-muted-foreground text-sm whitespace-nowrap'>
-                Total clients: {managementData.totalCount}
-              </span>
-              <ClientsAddButton
-                clientUsers={clientUsers}
-                clientMembers={membersByClient}
-              />
-            </div>
-          ) : null}
+      <section className='bg-background rounded-xl border p-6 shadow-sm'>
+        <div className='space-y-6'>
+          <div className='flex flex-wrap items-center gap-4'>
+            <ClientsTabsNav
+              activeTab='clients'
+              className='flex-1 sm:flex-none'
+            />
+            {canManageClients && managementData ? (
+              <div className='ml-auto flex items-center gap-6'>
+                <span className='text-muted-foreground text-sm whitespace-nowrap'>
+                  Total clients: {managementData.totalCount}
+                </span>
+                <ClientsAddButton
+                  clientUsers={clientUsers}
+                  clientMembers={membersByClient}
+                />
+              </div>
+            ) : null}
+          </div>
+          <ClientsLanding clients={clients} />
         </div>
-        <ClientsLanding clients={clients} />
-      </div>
+      </section>
     </>
   )
 }
-

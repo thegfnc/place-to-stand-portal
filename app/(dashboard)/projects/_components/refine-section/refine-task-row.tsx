@@ -22,7 +22,7 @@ import type { TaskWithRelations } from "@/lib/types"
 
 import { formatDueDate, formatUpdatedAt } from "./refine-formatters"
 
-type AssigneeInfo = { id: string; name: string }
+type AssigneeInfo = { id: string; name: string; avatarUrl: string | null }
 
 export type RefineTaskRowProps = {
   task: TaskWithRelations

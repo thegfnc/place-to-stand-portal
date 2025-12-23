@@ -15,6 +15,8 @@ import type {
 import { sortClientsByName } from '@/lib/settings/projects/project-sheet-form'
 import type { ContractorUserSummary } from '@/components/settings/projects/table/types'
 import type { ProjectWithRelations } from '@/lib/types'
+import { ViewLogger } from '@/components/activity/view-logger'
+import { ActivityVerbs } from '@/lib/activity/types'
 import { ProjectsBoardEmpty } from './_components/projects-board-empty'
 import { ProjectsBoardHeader } from './_components/projects-board-header'
 import { ProjectBurndownWidget } from './_components/project-burndown-widget'
@@ -30,10 +32,14 @@ export function ProjectsBoard(props: ProjectsBoardProps) {
   const router = useRouter()
   const { toast } = useToast()
 
-  const clientRows = useMemo<ClientRow[]>(() => buildClientRows(props.projects), [
-    props.projects,
-  ])
-  const sortedClients = useMemo(() => sortClientsByName(clientRows), [clientRows])
+  const clientRows = useMemo<ClientRow[]>(
+    () => buildClientRows(props.projects),
+    [props.projects]
+  )
+  const sortedClients = useMemo(
+    () => sortClientsByName(clientRows),
+    [clientRows]
+  )
   const projectContractors = useMemo(
     () => buildProjectContractors(props.projects),
     [props.projects]
@@ -112,6 +118,18 @@ export function ProjectsBoard(props: ProjectsBoardProps) {
 
   return (
     <>
+      {activeProject ? (
+        <ViewLogger
+          actorId={props.currentUserId}
+          verb={ActivityVerbs.PROJECT_VIEWED}
+          summary={`Viewed project "${activeProject.name}" (${props.initialTab} tab)`}
+          targetType='PROJECT'
+          targetId={activeProject.id}
+          targetClientId={activeProject.client_id}
+          targetProjectId={activeProject.id}
+          metadata={{ tab: props.initialTab }}
+        />
+      ) : null}
       <AppShellHeader>
         <div className='flex justify-between'>
           <ProjectsBoardHeader {...viewModel.header} />

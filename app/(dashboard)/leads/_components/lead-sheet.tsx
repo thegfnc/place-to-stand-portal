@@ -26,6 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Badge } from '@/components/ui/badge'
 import {
   Sheet,
   SheetContent,
@@ -36,11 +37,14 @@ import {
 import { useToast } from '@/components/ui/use-toast'
 import { useSheetFormControls } from '@/lib/hooks/use-sheet-form-controls'
 import { useUnsavedChangesWarning } from '@/lib/hooks/use-unsaved-changes-warning'
+import { cn } from '@/lib/utils'
 import {
   LEAD_SOURCE_LABELS,
   LEAD_SOURCE_TYPES,
   LEAD_STATUS_LABELS,
+  LEAD_STATUS_ORDER,
   LEAD_STATUS_VALUES,
+  getLeadStatusToken,
   type LeadSourceTypeValue,
   type LeadStatusValue,
 } from '@/lib/leads/constants'
@@ -75,6 +79,7 @@ type LeadSheetProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   lead: LeadRecord | null
+  initialStatus?: LeadStatusValue | null
   assignees: LeadAssigneeOption[]
   onSuccess: () => void
 }
@@ -83,6 +88,7 @@ export function LeadSheet({
   open,
   onOpenChange,
   lead,
+  initialStatus,
   assignees,
   onSuccess,
 }: LeadSheetProps) {
@@ -101,11 +107,11 @@ export function LeadSheet({
       companyWebsite: lead?.companyWebsite ?? '',
       sourceType: lead?.sourceType ?? null,
       sourceDetail: lead?.sourceDetail ?? '',
-      status: lead?.status ?? 'NEW_OPPORTUNITIES',
+      status: lead?.status ?? initialStatus ?? 'NEW_OPPORTUNITIES',
       assigneeId: lead?.assigneeId ?? null,
       notes: lead?.notesHtml ?? '',
     }),
-    [lead]
+    [lead, initialStatus]
   )
 
   const form = useForm<LeadFormValues>({
@@ -128,9 +134,21 @@ export function LeadSheet({
         value: assignee.id,
         label: assignee.name,
         description: assignee.email ?? undefined,
+        userId: assignee.id,
+        avatarUrl: assignee.avatarUrl,
       })),
     ],
     [assignees]
+  )
+
+  const leadStatuses = useMemo(
+    () =>
+      LEAD_STATUS_ORDER.map(status => ({
+        value: status,
+        label: LEAD_STATUS_LABELS[status],
+        token: getLeadStatusToken(status),
+      })),
+    []
   )
 
   const submitDisabled = isSaving || isArchiving
@@ -445,31 +463,57 @@ export function LeadSheet({
                   <FormField
                     control={form.control}
                     name='status'
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Status</FormLabel>
-                        <Select
-                          value={field.value}
-                          onValueChange={(value: LeadStatusValue) =>
-                            field.onChange(value)
-                          }
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder='Select status' />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {LEAD_STATUS_VALUES.map(status => (
-                              <SelectItem key={status} value={status}>
-                                {LEAD_STATUS_LABELS[status]}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
+                    render={({ field }) => {
+                      const selectedStatus = leadStatuses.find(
+                        status => status.value === field.value
+                      )
+
+                      return (
+                        <FormItem>
+                          <FormLabel>Status</FormLabel>
+                          <Select
+                            value={field.value}
+                            onValueChange={(value: LeadStatusValue) =>
+                              field.onChange(value)
+                            }
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder='Select status'>
+                                  {selectedStatus ? (
+                                    <Badge
+                                      variant='outline'
+                                      className={cn(
+                                        'text-xs font-semibold tracking-wide uppercase',
+                                        selectedStatus.token
+                                      )}
+                                    >
+                                      {selectedStatus.label}
+                                    </Badge>
+                                  ) : null}
+                                </SelectValue>
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {leadStatuses.map(status => (
+                                <SelectItem key={status.value} value={status.value}>
+                                  <Badge
+                                    variant='outline'
+                                    className={cn(
+                                      'text-xs font-semibold tracking-wide uppercase',
+                                      status.token
+                                    )}
+                                  >
+                                    {status.label}
+                                  </Badge>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )
+                    }}
                   />
                   <FormField
                     control={form.control}

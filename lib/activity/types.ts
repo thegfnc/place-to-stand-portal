@@ -79,6 +79,8 @@ export const ActivityVerbs = {
   OAUTH_EXPIRED: 'OAUTH_EXPIRED',
   TASK_CREATED_FROM_EMAIL: 'TASK_CREATED_FROM_EMAIL',
   TASK_SUGGESTION_REJECTED: 'TASK_SUGGESTION_REJECTED',
+  CLIENT_VIEWED: 'CLIENT_VIEWED',
+  PROJECT_VIEWED: 'PROJECT_VIEWED',
 } as const
 
 export type ActivityVerb = (typeof ActivityVerbs)[keyof typeof ActivityVerbs]

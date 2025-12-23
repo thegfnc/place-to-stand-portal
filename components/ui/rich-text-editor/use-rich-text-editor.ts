@@ -55,8 +55,20 @@ const buildExtensions = (placeholder?: string) => {
     },
   })
 
-  // Extend Link extension to add Cmd/Ctrl+K keyboard shortcut
+  // Extend Link extension to add Cmd/Ctrl+K keyboard shortcut and title tooltip
   const LinkWithShortcut = LinkExtension.extend({
+    // Add title attribute for native browser tooltip on hover
+    renderHTML({ HTMLAttributes }) {
+      return [
+        'a',
+        {
+          ...HTMLAttributes,
+          title: HTMLAttributes.href || undefined,
+        },
+        0,
+      ]
+    },
+
     addKeyboardShortcuts() {
       return {
         'Mod-k': () => {

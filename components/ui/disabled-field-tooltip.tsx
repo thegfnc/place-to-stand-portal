@@ -37,10 +37,10 @@ export function DisabledFieldTooltip({
     <Tooltip>
       <TooltipTrigger asChild>
         <div
-          className={cn('w-full cursor-not-allowed', className)}
+          className={cn('cursor-not-allowed', className)}
           aria-disabled='true'
         >
-          <div className='w-full'>{wrappedChild}</div>
+          <div>{wrappedChild}</div>
         </div>
       </TooltipTrigger>
       <TooltipContent>{reason}</TooltipContent>

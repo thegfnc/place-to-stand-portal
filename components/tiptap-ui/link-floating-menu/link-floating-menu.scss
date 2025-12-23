@@ -1,0 +1,54 @@
+.link-floating-menu {
+  position: fixed;
+  z-index: 100;
+  transform: translateX(-50%);
+  pointer-events: auto;
+  animation: linkFloatingMenuFadeIn 150ms cubic-bezier(0.16, 1, 0.3, 1);
+
+  .link-floating-menu-card {
+    max-width: 400px;
+  }
+
+  .link-floating-menu-url {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.375rem 0.5rem;
+    border-radius: var(--tt-radius-md, 0.5rem);
+    color: var(--tt-button-default-text-color);
+    text-decoration: none;
+    font-size: 0.8125rem;
+    line-height: 1.25;
+    max-width: 200px;
+    transition: background-color var(--tt-transition-duration-default) var(--tt-transition-easing-default);
+
+    &:hover {
+      background-color: var(--tt-button-hover-bg-color);
+      color: var(--tt-button-hover-text-color);
+    }
+
+    .link-floating-menu-url-icon {
+      flex-shrink: 0;
+      width: 0.875rem;
+      height: 0.875rem;
+      color: var(--tt-button-default-icon-color);
+    }
+
+    .link-floating-menu-url-text {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+  }
+}
+
+@keyframes linkFloatingMenuFadeIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}

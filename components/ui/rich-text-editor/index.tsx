@@ -28,6 +28,7 @@ import {
   LinkContent,
   LinkButton,
 } from '@/components/tiptap-ui/link-popover'
+import { LinkFloatingMenu } from '@/components/tiptap-ui/link-floating-menu'
 import { MarkButton } from '@/components/tiptap-ui/mark-button'
 import { TextAlignButton } from '@/components/tiptap-ui/text-align-button'
 
@@ -124,7 +125,11 @@ const MainToolbarContent = ({
         ) : (
           <ColorHighlightPopoverButton onClick={onHighlighterClick} />
         )}
-        {!isMobile ? <LinkPopover /> : <LinkButton onClick={onLinkClick} />}
+        {!isMobile ? (
+          <LinkPopover autoOpenOnLinkActive={false} />
+        ) : (
+          <LinkButton onClick={onLinkClick} />
+        )}
       </ToolbarGroup>
 
       <ToolbarSeparator />
@@ -307,6 +312,9 @@ export function RichTextEditor({
         </Toolbar>
 
         <EditorContent editor={editor} className={contentClasses} />
+
+        {/* Link floating menu - appears on hover or when cursor is in a link */}
+        <LinkFloatingMenu editor={editor} />
       </EditorContext.Provider>
     </div>
   )

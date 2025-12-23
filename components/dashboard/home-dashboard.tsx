@@ -3,20 +3,32 @@
 import { AppShellHeader } from '@/components/layout/app-shell'
 import type { AppUser } from '@/lib/auth/session'
 import type { AssignedTaskSummary } from '@/lib/data/tasks'
+import type {
+  HoursSnapshot,
+  RecentlyViewedSummary,
+} from '@/lib/dashboard/types'
 
 import { MyTasksWidget } from './my-tasks-widget'
 import { RecentActivityOverviewWidget } from './recent-activity-overview-widget'
+import { RecentlyViewedWidget } from './recently-viewed-widget'
+import { HoursWidget } from './hours-widget'
 
 type HomeDashboardProps = {
   user: AppUser
   tasks: AssignedTaskSummary[]
   totalTaskCount: number
+  recentProjects: RecentlyViewedSummary[]
+  recentClients: RecentlyViewedSummary[]
+  initialHoursSnapshot: HoursSnapshot
 }
 
 export function HomeDashboard({
   user,
   tasks,
   totalTaskCount,
+  recentProjects,
+  recentClients,
+  initialHoursSnapshot,
 }: HomeDashboardProps) {
   const displayName = getDisplayName(user)
 
@@ -30,14 +42,27 @@ export function HomeDashboard({
             : 'Welcome back. Here is what needs your attention.'}
         </p>
       </AppShellHeader>
-      <div className='grid auto-rows-[minmax(220px,auto)] gap-6 md:grid-cols-2 xl:grid-cols-12'>
-        <MyTasksWidget
-          tasks={tasks}
-          role={user.role}
-          totalCount={totalTaskCount}
-          className='md:col-span-2 xl:col-span-6'
-        />
-        <RecentActivityOverviewWidget className='md:col-span-2 xl:col-span-6' />
+      <div className='grid grid-cols-1 gap-6 md:grid-cols-2'>
+        <div>
+          <MyTasksWidget
+            tasks={tasks}
+            role={user.role}
+            totalCount={totalTaskCount}
+            className='mb-6'
+          />
+          <RecentlyViewedWidget
+            projects={recentProjects}
+            clients={recentClients}
+            className='mb-6'
+          />
+        </div>
+        <div>
+          <HoursWidget
+            initialSnapshot={initialHoursSnapshot}
+            className='mb-6'
+          />
+          <RecentActivityOverviewWidget className='mb-6' />
+        </div>
       </div>
     </div>
   )

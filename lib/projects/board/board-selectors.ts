@@ -2,6 +2,7 @@ import type { TaskWithRelations } from '@/lib/types'
 
 type MemberDirectoryEntry = {
   name: string
+  avatarUrl: string | null
 }
 
 export type TaskMemberDirectory = Map<string, MemberDirectoryEntry>
@@ -9,6 +10,7 @@ export type TaskMemberDirectory = Map<string, MemberDirectoryEntry>
 export type RenderAssigneeFn = (task: TaskWithRelations) => Array<{
   id: string
   name: string
+  avatarUrl: string | null
 }>
 
 export function createRenderAssignees(
@@ -29,10 +31,14 @@ export function createRenderAssignees(
         return {
           id: assignee.user_id,
           name: entry?.name ?? 'Unknown',
+          avatarUrl: entry?.avatarUrl ?? null,
         }
       })
-      .filter((assignee): assignee is { id: string; name: string } =>
-        Boolean(assignee)
+      .filter(
+        (
+          assignee
+        ): assignee is { id: string; name: string; avatarUrl: string | null } =>
+          Boolean(assignee)
       )
   }
 }

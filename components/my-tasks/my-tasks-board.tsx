@@ -12,6 +12,7 @@ import { KanbanColumn } from '@/app/(dashboard)/projects/_components/kanban-colu
 import { TaskDragOverlay } from '@/app/(dashboard)/projects/_components/task-drag-overlay'
 import { useProjectsBoardSensors } from '@/app/(dashboard)/projects/_hooks/use-projects-board-sensors'
 import { useScrollPersistence } from '@/hooks/use-scroll-persistence'
+import { useColumnScrollPersistence } from '@/hooks/use-column-scroll-persistence'
 import type { ProjectWithRelations, TaskWithRelations } from '@/lib/types'
 import type { RenderAssigneeFn } from '@/lib/projects/board/board-selectors'
 import {
@@ -81,6 +82,10 @@ export function MyTasksBoard({
       storageKey: scrollStorageKey ?? null,
       axis: 'x',
     })
+  const { getColumnRef, getScrollHandler } = useColumnScrollPersistence({
+    storageKey: scrollStorageKey ?? 'my-tasks-board',
+    columnIds: MY_TASK_BOARD_COLUMNS.map(col => col.id),
+  })
   const [draggingTask, setDraggingTask] = useState<TaskWithRelations | null>(
     null
   )
@@ -209,6 +214,8 @@ export function MyTasksBoard({
                       draggingTask={draggingTask}
                       recentlyMovedTaskId={recentlyMovedTaskId}
                       getTaskCardOptions={getTaskCardOptions}
+                      columnScrollRef={getColumnRef(column.id)}
+                      onColumnScroll={getScrollHandler(column.id)}
                     />
                   )
                 })}

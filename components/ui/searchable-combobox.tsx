@@ -3,6 +3,7 @@
 import * as React from 'react'
 import { CheckIcon, ChevronsUpDownIcon } from 'lucide-react'
 
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import {
@@ -25,6 +26,9 @@ export type SearchableComboboxItem = {
   description?: string
   keywords?: string[]
   disabled?: boolean
+  avatarUrl?: string | null
+  userId?: string
+  icon?: React.ComponentType<{ className?: string }>
 }
 
 export type SearchableComboboxGroup = {
@@ -123,8 +127,7 @@ export const SearchableCombobox = React.forwardRef<
     }, [items, resolvedGroups])
 
     const selectedItem = React.useMemo(
-      () =>
-        flattenedItems.find(item => item.value === (value ?? '')) ?? null,
+      () => flattenedItems.find(item => item.value === (value ?? '')) ?? null,
       [flattenedItems, value]
     )
 
@@ -213,18 +216,34 @@ export const SearchableCombobox = React.forwardRef<
               className={cn(
                 baseTriggerClasses,
                 variant === 'heading' &&
-                  'h-auto cursor-pointer border-none bg-transparent py-2 px-2 -ml-2 text-3xl font-semibold tracking-tight shadow-none transition-colors hover:bg-accent/50 hover:text-accent-foreground data-[state=open]:bg-accent/50 dark:bg-transparent dark:hover:bg-accent/50 dark:data-[state=open]:bg-accent/50 text-left',
+                  'hover:bg-accent/50 hover:text-accent-foreground data-[state=open]:bg-accent/50 dark:hover:bg-accent/50 dark:data-[state=open]:bg-accent/50 -ml-2 h-auto cursor-pointer border-none bg-transparent px-2 py-2 text-left text-3xl font-semibold tracking-tight shadow-none transition-colors dark:bg-transparent',
                 triggerClassName
               )}
             >
-              <span
-                className={cn(
-                  variant !== 'heading' && 'line-clamp-1',
-                  selectedItem ? selectedTextClasses : placeholderTextClasses
-                )}
-              >
-                {selectedItem?.label ?? resolvedPlaceholder}
-              </span>
+              <div className='flex flex-1 items-center gap-2'>
+                {selectedItem?.userId ? (
+                  <Avatar className='h-5 w-5 shrink-0'>
+                    {selectedItem.avatarUrl && (
+                      <AvatarImage
+                        src={`/api/storage/user-avatar/${selectedItem.userId}`}
+                      />
+                    )}
+                    <AvatarFallback className='text-[9px]'>
+                      {selectedItem.label.slice(0, 2).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                ) : selectedItem?.icon ? (
+                  <selectedItem.icon className='text-muted-foreground h-5 w-5 shrink-0' />
+                ) : null}
+                <span
+                  className={cn(
+                    variant !== 'heading' && 'line-clamp-1',
+                    selectedItem ? selectedTextClasses : placeholderTextClasses
+                  )}
+                >
+                  {selectedItem?.label ?? resolvedPlaceholder}
+                </span>
+              </div>
               <ChevronsUpDownIcon className='size-4 shrink-0 opacity-50' />
             </Button>
           </PopoverTrigger>
@@ -264,6 +283,7 @@ export const SearchableCombobox = React.forwardRef<
                             }
                             onSelect={() => handleSelect(item.value)}
                             disabled={item.disabled}
+                            className='pr-3'
                           >
                             <CheckIcon
                               className={cn(
@@ -273,6 +293,20 @@ export const SearchableCombobox = React.forwardRef<
                                   : 'opacity-0'
                               )}
                             />
+                            {item.userId ? (
+                              <Avatar className='mr-2 h-5 w-5'>
+                                {item.avatarUrl && (
+                                  <AvatarImage
+                                    src={`/api/storage/user-avatar/${item.userId}`}
+                                  />
+                                )}
+                                <AvatarFallback className='text-[9px]'>
+                                  {item.label.slice(0, 2).toUpperCase()}
+                                </AvatarFallback>
+                              </Avatar>
+                            ) : item.icon ? (
+                              <item.icon className='text-muted-foreground mr-2 h-5 w-5' />
+                            ) : null}
                             <div className={itemWrapperClasses}>
                               <span className='font-medium'>{item.label}</span>
                               {item.description ? (
@@ -301,6 +335,7 @@ export const SearchableCombobox = React.forwardRef<
                           }
                           onSelect={() => handleSelect(item.value)}
                           disabled={item.disabled}
+                          className='pr-3'
                         >
                           <CheckIcon
                             className={cn(
@@ -310,6 +345,20 @@ export const SearchableCombobox = React.forwardRef<
                                 : 'opacity-0'
                             )}
                           />
+                          {item.userId ? (
+                            <Avatar className='mr-2 h-5 w-5'>
+                              {item.avatarUrl && (
+                                <AvatarImage
+                                  src={`/api/storage/user-avatar/${item.userId}`}
+                                />
+                              )}
+                              <AvatarFallback className='text-[9px]'>
+                                {item.label.slice(0, 2).toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                          ) : item.icon ? (
+                            <item.icon className='text-muted-foreground mr-2 h-5 w-5' />
+                          ) : null}
                           <div className={itemWrapperClasses}>
                             <span className='font-medium'>{item.label}</span>
                             {item.description ? (
