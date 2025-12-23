@@ -60,7 +60,9 @@ function truncateUrl(url: string, maxLength: number = 35): string {
   }
 }
 
-export function LinkFloatingMenu({ editor: providedEditor }: LinkFloatingMenuProps) {
+export function LinkFloatingMenu({
+  editor: providedEditor,
+}: LinkFloatingMenuProps) {
   const { editor } = useTiptapEditor(providedEditor)
   const [url, setUrl] = useState<string>('')
   const [position, setPosition] = useState<MenuPosition | null>(null)
@@ -91,18 +93,20 @@ export function LinkFloatingMenu({ editor: providedEditor }: LinkFloatingMenuPro
     }, 150)
   }, [clearHideTimeout])
 
-  const showMenu = useCallback((linkElement: HTMLElement, linkUrl: string) => {
-    clearHideTimeout()
-    const rect = linkElement.getBoundingClientRect()
-    setUrl(linkUrl)
-    setPosition({
-      x: rect.left + rect.width / 2,
-      y: rect.bottom + 8,
-    })
-    setIsVisible(true)
-    hoveredLinkRef.current = linkElement
-  }, [clearHideTimeout])
-
+  const showMenu = useCallback(
+    (linkElement: HTMLElement, linkUrl: string) => {
+      clearHideTimeout()
+      const rect = linkElement.getBoundingClientRect()
+      setUrl(linkUrl)
+      setPosition({
+        x: rect.left + rect.width / 2,
+        y: rect.bottom + 8,
+      })
+      setIsVisible(true)
+      hoveredLinkRef.current = linkElement
+    },
+    [clearHideTimeout]
+  )
 
   // Handle cursor position in editor (selection in link)
   useEffect(() => {
@@ -117,14 +121,14 @@ export function LinkFloatingMenu({ editor: providedEditor }: LinkFloatingMenuPro
         if (href) {
           // Find the link element at cursor position
           const { from } = editor.state.selection
-          const resolved = editor.state.doc.resolve(from)
           const domAtPos = editor.view.domAtPos(from)
 
           let linkElement: HTMLElement | null = null
           if (domAtPos.node) {
-            const node = domAtPos.node instanceof Element
-              ? domAtPos.node
-              : domAtPos.node.parentElement
+            const node =
+              domAtPos.node instanceof Element
+                ? domAtPos.node
+                : domAtPos.node.parentElement
             linkElement = node?.closest('a') as HTMLElement | null
           }
 
@@ -148,7 +152,6 @@ export function LinkFloatingMenu({ editor: providedEditor }: LinkFloatingMenuPro
       editor.off('transaction', updateCursorState)
     }
   }, [editor, showMenu, scheduleHide])
-
 
   // Hide when editor loses focus
   useEffect(() => {
@@ -266,7 +269,7 @@ export function LinkFloatingMenu({ editor: providedEditor }: LinkFloatingMenuPro
   return createPortal(
     <div
       ref={menuRef}
-      className="link-floating-menu"
+      className='link-floating-menu'
       style={{
         left: position.x,
         top: position.y,
@@ -274,67 +277,67 @@ export function LinkFloatingMenu({ editor: providedEditor }: LinkFloatingMenuPro
       onMouseEnter={handleMenuMouseEnter}
       onMouseLeave={handleMenuMouseLeave}
     >
-      <Card className="link-floating-menu-card">
+      <Card className='link-floating-menu-card'>
         <CardBody>
-          <CardItemGroup orientation="horizontal">
+          <CardItemGroup orientation='horizontal'>
             <a
               href={url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="link-floating-menu-url"
+              target='_blank'
+              rel='noopener noreferrer'
+              className='link-floating-menu-url'
               title={url}
-              onClick={(e) => {
+              onClick={e => {
                 e.preventDefault()
                 handleOpen()
               }}
             >
-              <LinkIcon className="link-floating-menu-url-icon" />
-              <span className="link-floating-menu-url-text">
+              <LinkIcon className='link-floating-menu-url-icon' />
+              <span className='link-floating-menu-url-text'>
                 {truncateUrl(url)}
               </span>
             </a>
 
             <Separator />
 
-            <ButtonGroup orientation="horizontal">
+            <ButtonGroup orientation='horizontal'>
               <Button
-                type="button"
+                type='button'
                 onClick={handleEdit}
-                data-style="ghost"
-                tooltip="Edit link"
-                aria-label="Edit link"
+                data-style='ghost'
+                tooltip='Edit link'
+                aria-label='Edit link'
               >
-                <PencilIcon className="tiptap-button-icon" />
+                <PencilIcon className='tiptap-button-icon' />
               </Button>
 
               <Button
-                type="button"
+                type='button'
                 onClick={handleCopy}
-                data-style="ghost"
+                data-style='ghost'
                 tooltip={copied ? 'Copied!' : 'Copy link'}
-                aria-label="Copy link"
+                aria-label='Copy link'
               >
-                <CopyIcon className="tiptap-button-icon" />
+                <CopyIcon className='tiptap-button-icon' />
               </Button>
 
               <Button
-                type="button"
+                type='button'
                 onClick={handleOpen}
-                data-style="ghost"
-                tooltip="Open in new tab"
-                aria-label="Open in new tab"
+                data-style='ghost'
+                tooltip='Open in new tab'
+                aria-label='Open in new tab'
               >
-                <ExternalLinkIcon className="tiptap-button-icon" />
+                <ExternalLinkIcon className='tiptap-button-icon' />
               </Button>
 
               <Button
-                type="button"
+                type='button'
                 onClick={handleRemove}
-                data-style="ghost"
-                tooltip="Remove link"
-                aria-label="Remove link"
+                data-style='ghost'
+                tooltip='Remove link'
+                aria-label='Remove link'
               >
-                <TrashIcon className="tiptap-button-icon" />
+                <TrashIcon className='tiptap-button-icon' />
               </Button>
             </ButtonGroup>
           </CardItemGroup>
