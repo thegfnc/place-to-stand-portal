@@ -64,7 +64,7 @@ export function SuggestionItem({
   const selectedOption = COLUMN_OPTIONS.find(o => o.value === selectedColumn)
 
   return (
-    <div className='rounded-lg border bg-muted/30 p-3'>
+    <div className='rounded-lg border bg-muted/30 p-3 overflow-visible'>
       <div className='flex items-start justify-between gap-3'>
         <div className='min-w-0 flex-1'>
           <div className='flex items-center gap-2'>
@@ -117,19 +117,8 @@ export function SuggestionItem({
       </div>
 
       {/* Actions */}
-      <div className='mt-3 flex items-center justify-end gap-2'>
-        <Button
-          variant='ghost'
-          size='sm'
-          onClick={() => onReject()}
-          disabled={isCreating}
-          className='text-muted-foreground hover:text-destructive'
-        >
-          <X className='mr-1 h-3 w-3' />
-          Dismiss
-        </Button>
-
-        <div className='flex items-center gap-1'>
+      <div className='mt-3 border-t pt-3'>
+        <div className='flex items-center gap-2'>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant='outline' size='sm' disabled={isCreating}>
@@ -139,7 +128,7 @@ export function SuggestionItem({
                 {selectedOption?.label}
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align='end'>
+            <DropdownMenuContent align='start'>
               {COLUMN_OPTIONS.map(option => (
                 <DropdownMenuItem
                   key={option.value}
@@ -155,15 +144,26 @@ export function SuggestionItem({
           <Button size='sm' onClick={handleCreateTask} disabled={isCreating}>
             {isCreating ? (
               <>
-                <Loader2 className='mr-1 h-3 w-3 animate-spin' />
+                <Loader2 className='mr-1 h-4 w-4 animate-spin' />
                 Creating...
               </>
             ) : (
               <>
-                <Check className='mr-1 h-3 w-3' />
+                <Check className='mr-1 h-4 w-4' />
                 Create Task
               </>
             )}
+          </Button>
+
+          <Button
+            variant='ghost'
+            size='sm'
+            onClick={() => onReject()}
+            disabled={isCreating}
+            className='ml-auto text-muted-foreground hover:text-destructive'
+          >
+            <X className='mr-1 h-4 w-4' />
+            Dismiss
           </Button>
         </div>
       </div>

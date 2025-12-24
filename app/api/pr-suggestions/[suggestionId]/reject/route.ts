@@ -13,9 +13,9 @@ export async function POST(
     await rejectPRSuggestion(suggestionId, user.id)
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Error rejecting PR suggestion:', error)
+    console.error('PR rejection error:', error)
     return NextResponse.json(
-      { error: 'Failed to reject suggestion' },
+      { error: error instanceof Error ? error.message : 'Failed to reject' },
       { status: 400 }
     )
   }

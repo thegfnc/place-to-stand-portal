@@ -40,7 +40,7 @@ export function EmailSuggestionCard({
   const senderDisplay = email.fromName || email.fromEmail
 
   return (
-    <Card className='overflow-hidden'>
+    <Card>
       <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
         <CollapsibleTrigger asChild>
           <CardHeader className='cursor-pointer p-4 hover:bg-muted/50'>

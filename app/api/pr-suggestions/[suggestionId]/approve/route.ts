@@ -6,8 +6,9 @@ import { approvePRSuggestion } from '@/lib/data/pr-suggestions'
 const schema = z.object({
   title: z.string().min(1).max(100).optional(),
   body: z.string().max(10000).optional(),
-  branch: z.string().min(1).max(100).optional(),
-  baseBranch: z.string().min(1).max(100).optional(),
+  branch: z.string().max(100).optional(),
+  baseBranch: z.string().max(100).optional(),
+  createNewBranch: z.boolean().optional(),
 })
 
 export async function POST(
@@ -21,29 +22,26 @@ export async function POST(
   const result = schema.safeParse(body)
 
   if (!result.success) {
-    return NextResponse.json(
-      { error: 'Invalid request', details: result.error.flatten() },
-      { status: 400 }
-    )
+    return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
   }
 
   const modifications = result.data
-  const hasModifications = Object.keys(modifications).length > 0
 
   try {
-    const prResult = await approvePRSuggestion(
+    const pr = await approvePRSuggestion(
       suggestionId,
       user.id,
-      hasModifications ? modifications : undefined
+      Object.keys(modifications).length > 0 ? modifications : undefined
     )
 
     return NextResponse.json({
       success: true,
-      prNumber: prResult.prNumber,
-      prUrl: prResult.prUrl,
+      prNumber: pr.prNumber,
+      prUrl: pr.prUrl,
+      branchCreated: pr.branchCreated,
     })
   } catch (error) {
-    console.error('Error approving PR suggestion:', error)
+    console.error('PR approval error:', error)
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to create PR' },
       { status: 400 }

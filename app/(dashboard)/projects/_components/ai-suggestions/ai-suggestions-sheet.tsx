@@ -1,6 +1,6 @@
 'use client'
 
-import { RefreshCw, Sparkles, Loader2, Mail, AlertCircle } from 'lucide-react'
+import { RefreshCw, Sparkles, Loader2, Mail, AlertCircle, ArrowLeft } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import {
@@ -15,6 +15,8 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 
 import type { UseAISuggestionsSheetReturn } from '@/lib/projects/board/state/use-ai-suggestions-sheet'
 import { EmailSuggestionCard } from './email-suggestion-card'
+import { PRGenerationPrompt } from './pr-generation-prompt'
+import { PRPreviewDialog } from './pr-preview-dialog'
 
 type AISuggestionsSheetProps = UseAISuggestionsSheetReturn & {
   projectName: string | null
@@ -35,12 +37,22 @@ export function AISuggestionsSheet({
   onCreateTask,
   onRejectSuggestion,
   projectName,
+  // PR generation props
+  createdTaskInfo,
+  isGeneratingPR,
+  isApprovingPR,
+  prSuggestion,
+  onGeneratePR,
+  onApprovePR,
+  onDismissPR,
 }: AISuggestionsSheetProps) {
   const hasEmails = emails.length > 0
+  const showPRPrompt = createdTaskInfo && !prSuggestion
+  const showPRPreview = !!prSuggestion
 
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
-      <SheetContent className='flex w-full flex-col gap-0 p-0 sm:max-w-[600px]'>
+      <SheetContent className='flex h-full w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-[700px]'>
         <SheetHeader className='border-b px-6 py-4'>
           <div className='flex items-center gap-2'>
             <Sparkles className='h-5 w-5 text-amber-500' />
@@ -56,39 +68,53 @@ export function AISuggestionsSheet({
         {/* Action Bar */}
         <div className='flex items-center justify-between border-b px-6 py-3'>
           <div className='text-sm text-muted-foreground'>
-            {projectName && <span className='font-medium'>{projectName}</span>}
-          </div>
-          <div className='flex items-center gap-2'>
-            <Button
-              variant='outline'
-              size='sm'
-              onClick={onRefresh}
-              disabled={isLoading}
-            >
-              <RefreshCw className={`mr-1 h-3 w-3 ${isLoading ? 'animate-spin' : ''}`} />
-              Refresh
-            </Button>
-            {unanalyzedCount > 0 && (
+            {(showPRPrompt || showPRPreview) ? (
               <Button
-                variant='default'
+                variant='ghost'
                 size='sm'
-                onClick={onAnalyzeEmails}
-                disabled={isAnalyzing}
+                onClick={onDismissPR}
+                className='-ml-2'
               >
-                {isAnalyzing ? (
-                  <>
-                    <Loader2 className='mr-1 h-3 w-3 animate-spin' />
-                    Analyzing...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className='mr-1 h-3 w-3' />
-                    Analyze {unanalyzedCount} email{unanalyzedCount !== 1 ? 's' : ''}
-                  </>
-                )}
+                <ArrowLeft className='mr-1 h-3 w-3' />
+                Back to suggestions
               </Button>
+            ) : (
+              projectName && <span className='font-medium'>{projectName}</span>
             )}
           </div>
+          {!(showPRPrompt || showPRPreview) && (
+            <div className='flex items-center gap-2'>
+              <Button
+                variant='outline'
+                size='sm'
+                onClick={onRefresh}
+                disabled={isLoading}
+              >
+                <RefreshCw className={`mr-1 h-3 w-3 ${isLoading ? 'animate-spin' : ''}`} />
+                Refresh
+              </Button>
+              {unanalyzedCount > 0 && (
+                <Button
+                  variant='default'
+                  size='sm'
+                  onClick={onAnalyzeEmails}
+                  disabled={isAnalyzing}
+                >
+                  {isAnalyzing ? (
+                    <>
+                      <Loader2 className='mr-1 h-3 w-3 animate-spin' />
+                      Analyzing...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className='mr-1 h-3 w-3' />
+                      Analyze {unanalyzedCount} email{unanalyzedCount !== 1 ? 's' : ''}
+                    </>
+                  )}
+                </Button>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Error Alert */}
@@ -100,9 +126,27 @@ export function AISuggestionsSheet({
         )}
 
         {/* Content */}
-        <ScrollArea className='flex-1'>
-          <div className='p-6'>
-            {isLoading ? (
+        <ScrollArea className='min-h-0 flex-1'>
+          <div className='p-6 pb-8'>
+            {/* PR Generation Prompt - shown after task creation */}
+            {showPRPrompt ? (
+              <PRGenerationPrompt
+                taskTitle={createdTaskInfo.title}
+                repos={createdTaskInfo.githubRepos}
+                isGenerating={isGeneratingPR}
+                onGenerate={onGeneratePR}
+                onSkip={onDismissPR}
+              />
+            ) : /* PR Preview Dialog - shown after PR generation */
+            showPRPreview ? (
+              <PRPreviewDialog
+                suggestion={prSuggestion}
+                isApproving={isApprovingPR}
+                onApprove={onApprovePR}
+                onCancel={onDismissPR}
+              />
+            ) : /* Normal content - email suggestions list */
+            isLoading ? (
               <div className='flex flex-col items-center justify-center py-12 text-muted-foreground'>
                 <Loader2 className='mb-3 h-8 w-8 animate-spin' />
                 <p className='text-sm'>Loading suggestions...</p>

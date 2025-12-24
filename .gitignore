@@ -44,4 +44,4 @@ supabase/seed.sql
 client_secret_*.json
 
 # Screenshots
-*.png
+Screenshot*.png
