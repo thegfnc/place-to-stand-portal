@@ -83,7 +83,8 @@ function extractTextBody(msg: GmailMessage): string {
   const payload = msg.payload
   if (!payload) return ''
 
-  function findTextPart(parts: typeof payload.parts | undefined): string {
+  type MessagePart = NonNullable<typeof payload.parts>[number]
+  function findTextPart(parts: MessagePart[] | undefined): string {
     if (!parts) return ''
     for (const part of parts) {
       if (part.mimeType === 'text/plain' && part.body?.data) {
@@ -270,7 +271,7 @@ async function main() {
 
       console.log(`AI Result: ${result.noActionRequired ? 'No action required' : `${result.tasks.length} tasks found`}`)
       console.log(`Summary: ${result.summary}`)
-      console.log(`Tokens: ${usage?.promptTokens ?? 0} prompt, ${usage?.completionTokens ?? 0} completion`)
+      console.log(`Tokens: ${usage?.inputTokens ?? 0} prompt, ${usage?.outputTokens ?? 0} completion`)
 
       if (!result.noActionRequired && result.tasks.length > 0) {
         // Save suggestions
@@ -288,8 +289,8 @@ async function main() {
             reasoning: task.reasoning,
             status: 'PENDING' as const,
             aiModelVersion: 'gemini-2.0-flash-lite-v1',
-            promptTokens: Math.round((usage?.promptTokens ?? 0) / result.tasks.length),
-            completionTokens: Math.round((usage?.completionTokens ?? 0) / result.tasks.length),
+            promptTokens: Math.round((usage?.inputTokens ?? 0) / result.tasks.length),
+            completionTokens: Math.round((usage?.outputTokens ?? 0) / result.tasks.length),
           }))
 
         if (suggestions.length > 0) {
