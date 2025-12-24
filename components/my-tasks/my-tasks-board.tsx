@@ -42,7 +42,6 @@ type MyTasksBoardProps = {
   getTaskCardOptions?: (task: TaskWithRelations) => TaskCardOptions | undefined
   onOpenTask: (taskId: string) => void
   onReorder: (update: MyTasksBoardReorderUpdate) => void
-  isPending: boolean
   activeTaskId: string | null
   scrollStorageKey?: string | null
   onCreateTask?: (status: MyTaskStatus) => void
@@ -70,7 +69,6 @@ export function MyTasksBoard({
   getTaskCardOptions,
   onOpenTask,
   onReorder,
-  isPending,
   activeTaskId,
   scrollStorageKey,
   onCreateTask,
@@ -96,7 +94,7 @@ export function MyTasksBoard({
   const [recentlyMovedTaskId, setRecentlyMovedTaskId] = useState<string | null>(
     null
   )
-  const boardCanManage = !isPending
+  const boardCanManage = true
 
   const rowsByColumn = useMemo(
     () => buildRowsByColumn(entries, taskLookup),

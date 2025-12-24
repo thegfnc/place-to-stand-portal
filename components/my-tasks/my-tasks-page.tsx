@@ -211,17 +211,17 @@ export function MyTasksPage({
   )
 
   const handleReorder = useCallback(
-    async (update: MyTasksBoardReorderUpdate) => {
+    (update: MyTasksBoardReorderUpdate) => {
       setEntries(update.nextEntries)
 
-      try {
-        await reorderMutation.mutateAsync(update.payload)
-        startRefresh(() => {
+      startRefresh(async () => {
+        try {
+          await reorderMutation.mutateAsync(update.payload)
           router.refresh()
-        })
-      } catch {
-        setEntries(update.previousEntries)
-      }
+        } catch {
+          setEntries(update.previousEntries)
+        }
+      })
     },
     [reorderMutation, router, startRefresh]
   )
@@ -324,7 +324,6 @@ export function MyTasksPage({
               getTaskCardOptions={getTaskCardOptions}
               onOpenTask={handleOpenTask}
               onReorder={handleReorder}
-              isPending={reorderMutation.isPending}
               activeTaskId={activeTaskId}
               scrollStorageKey={boardScrollStorageKey}
               onCreateTask={handleStartCreateTask}
