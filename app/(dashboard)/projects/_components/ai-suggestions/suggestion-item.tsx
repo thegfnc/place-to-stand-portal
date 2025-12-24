@@ -89,7 +89,7 @@ export function SuggestionItem({
           )}
           {suggestion.reasoning && (
             <p className='mt-2 text-xs italic text-muted-foreground/80'>
-              "{suggestion.reasoning}"
+              &ldquo;{suggestion.reasoning}&rdquo;
             </p>
           )}
           <div className='mt-2 flex flex-wrap items-center gap-2'>

@@ -3,7 +3,7 @@ config({ path: '.env.local' })
 
 import { drizzle } from 'drizzle-orm/postgres-js'
 import postgres from 'postgres'
-import { and, eq, isNull, desc, not, inArray, sql } from 'drizzle-orm'
+import { and, eq, isNull, desc, sql } from 'drizzle-orm'
 import {
   emailMetadata,
   emailLinks,
@@ -72,11 +72,6 @@ async function getGmailMessage(accessToken: string, messageId: string): Promise<
   const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } })
   if (!res.ok) throw new Error(`Gmail get failed: ${res.status}`)
   return res.json()
-}
-
-function getHeader(headers: Array<{ name: string; value: string }> | undefined, name: string): string {
-  const found = headers?.find(h => h.name.toLowerCase() === name.toLowerCase())
-  return found?.value ?? ''
 }
 
 function extractTextBody(msg: GmailMessage): string {

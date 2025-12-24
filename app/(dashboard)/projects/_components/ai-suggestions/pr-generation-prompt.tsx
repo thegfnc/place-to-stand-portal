@@ -53,7 +53,7 @@ export function PRGenerationPrompt({
       {/* Success message */}
       <h3 className='mb-1 text-lg font-semibold'>Task Created</h3>
       <p className='mb-6 text-sm text-muted-foreground'>
-        "{taskTitle}"
+        &ldquo;{taskTitle}&rdquo;
       </p>
 
       {/* PR generation prompt */}

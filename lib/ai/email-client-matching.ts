@@ -9,7 +9,6 @@ import {
 } from './prompts/email-to-client'
 import {
   emailClientMatchResponseSchema,
-  type EmailClientMatchResponse,
   type ClientMatch,
 } from './schemas/email-client-match'
 

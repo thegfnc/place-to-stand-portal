@@ -56,7 +56,7 @@ type UseAISuggestionsSheetArgs = {
 
 export function useAISuggestionsSheet({
   activeProject,
-  currentUserId,
+  currentUserId: _currentUserId,
 }: UseAISuggestionsSheetArgs) {
   const router = useRouter()
   const [isOpen, setIsOpen] = useState(false)

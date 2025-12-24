@@ -20,7 +20,7 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ projectId: string }> }
 ) {
-  const user = await requireRole('ADMIN')
+  await requireRole('ADMIN')
   const { projectId } = await params
 
   // Get project to find the client

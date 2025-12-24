@@ -80,7 +80,7 @@ export async function createPRSuggestionFromEmail(
   const emailBody = sanitizeEmailBody(rawBody)
 
   // Generate suggestion using AI
-  const { result, usage } = await generatePRSuggestion({
+  const { result } = await generatePRSuggestion({
     emailSubject: email.subject || '',
     emailBody,
     fromEmail: email.fromEmail,
@@ -171,7 +171,7 @@ export async function createPRSuggestionFromTask(
   const emailBody = sanitizeEmailBody(rawBody)
 
   // Generate suggestion with task context
-  const { result, usage } = await generatePRSuggestion({
+  const { result } = await generatePRSuggestion({
     emailSubject: taskSuggestion.email.subject || '',
     emailBody,
     fromEmail: taskSuggestion.email.fromEmail,

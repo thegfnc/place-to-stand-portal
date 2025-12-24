@@ -13,7 +13,7 @@ import { generatedPRSchema, type GeneratedPR } from './schemas/pr-generation'
 const gateway = createGateway()
 const model = gateway('google/gemini-2.5-flash-lite')
 
-export interface GeneratePRParams extends PRGenerationPromptParams {}
+export type GeneratePRParams = PRGenerationPromptParams
 
 export interface PRGenerationResponse {
   result: GeneratedPR

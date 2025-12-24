@@ -3,7 +3,7 @@ config({ path: '.env.local' })
 
 import { drizzle } from 'drizzle-orm/postgres-js'
 import postgres from 'postgres'
-import { and, eq, isNull, sql, inArray, not } from 'drizzle-orm'
+import { and, eq, isNull, sql, not } from 'drizzle-orm'
 import { emailMetadata, emailLinks, clientContacts, users } from '../lib/db/schema'
 
 const queryClient = postgres(process.env.DATABASE_URL || 'postgresql://postgres:postgres@127.0.0.1:54322/postgres')

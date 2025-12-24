@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { ExternalLink, Github, Loader2, GitBranch, Plus } from 'lucide-react'
+import { ExternalLink, Github, Loader2, GitBranch } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -130,7 +130,7 @@ export function PRPreviewDialog({
         {createdPR.branchCreated && (
           <p className='mb-4 text-xs text-muted-foreground'>
             <GitBranch className='mr-1 inline h-3 w-3' />
-            New branch "{branch}" was created from {baseBranch}
+            New branch &ldquo;{branch}&rdquo; was created from {baseBranch}
           </p>
         )}
         <div className='flex gap-2'>
@@ -298,7 +298,7 @@ export function PRPreviewDialog({
       {/* Reasoning */}
       {suggestion.reasoning && (
         <p className='text-xs italic text-muted-foreground'>
-          AI reasoning: "{suggestion.reasoning}"
+          AI reasoning: &ldquo;{suggestion.reasoning}&rdquo;
         </p>
       )}
 

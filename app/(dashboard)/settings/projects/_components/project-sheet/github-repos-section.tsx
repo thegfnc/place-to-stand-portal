@@ -29,7 +29,7 @@ interface RepoOption {
 
 export function GitHubReposSection({
   projectId,
-  projectName,
+  projectName: _projectName,
   disabled = false,
 }: GitHubReposSectionProps) {
   const [repos, setRepos] = useState<GitHubRepoLink[]>([])

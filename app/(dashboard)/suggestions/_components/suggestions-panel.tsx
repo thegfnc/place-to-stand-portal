@@ -76,7 +76,7 @@ export function SuggestionsPanel({
       setSuggestions(prev => prev.filter(s => s.id !== suggestionId))
       setCounts(prev => ({ ...prev, pending: prev.pending - 1, rejected: prev.rejected + 1 }))
       showMessage('success', 'Suggestion rejected')
-    } catch (error) {
+    } catch {
       showMessage('error', 'Failed to reject suggestion')
     } finally {
       setProcessing(false)
@@ -110,7 +110,7 @@ export function SuggestionsPanel({
         `${result.succeeded} suggestions ${action}d${result.failed > 0 ? `, ${result.failed} failed` : ''}`
       )
       router.refresh()
-    } catch (error) {
+    } catch {
       showMessage('error', 'Bulk action failed')
     } finally {
       setProcessing(false)
