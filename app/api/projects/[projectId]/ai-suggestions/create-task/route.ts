@@ -6,6 +6,7 @@ import { requireRole } from '@/lib/auth/session'
 import { db } from '@/lib/db'
 import { projects } from '@/lib/db/schema'
 import { approveSuggestion, rejectSuggestion } from '@/lib/data/suggestions'
+import { getProjectRepos } from '@/lib/data/github-repos'
 
 const createTaskSchema = z.object({
   suggestionId: z.string().uuid(),
@@ -99,6 +100,9 @@ export async function POST(
       }
     )
 
+    // Fetch GitHub repos linked to this project for PR generation
+    const githubRepos = await getProjectRepos(projectId)
+
     return NextResponse.json({
       success: true,
       task: {
@@ -107,6 +111,12 @@ export async function POST(
         status: task.status,
         projectId: task.projectId,
       },
+      suggestionId: parsed.data.suggestionId,
+      githubRepos: githubRepos.map(r => ({
+        id: r.id,
+        repoFullName: r.repoFullName,
+        defaultBranch: r.defaultBranch,
+      })),
     })
   } catch (error) {
     console.error('Failed to create task from suggestion:', error)

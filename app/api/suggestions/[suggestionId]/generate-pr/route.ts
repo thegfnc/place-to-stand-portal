@@ -11,10 +11,13 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ suggestionId: string }> }
 ) {
+  console.log('[generate-pr] Starting request...')
   const user = await requireRole('ADMIN')
   const { suggestionId } = await params
+  console.log('[generate-pr] suggestionId:', suggestionId)
 
   const body = await request.json()
+  console.log('[generate-pr] body:', body)
   const result = schema.safeParse(body)
 
   if (!result.success) {
@@ -25,11 +28,13 @@ export async function POST(
   }
 
   try {
+    console.log('[generate-pr] Calling createPRSuggestionFromTask...')
     const prSuggestion = await createPRSuggestionFromTask(
       suggestionId,
       result.data.repoLinkId,
       user.id
     )
+    console.log('[generate-pr] Success!')
 
     return NextResponse.json({ success: true, suggestion: prSuggestion })
   } catch (error) {

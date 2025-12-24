@@ -16,6 +16,24 @@ import type { PRSuggestionWithContext } from '@/lib/types/github'
 const MODEL_VERSION = 'gemini-2.5-flash-lite-v1'
 
 /**
+ * Sanitize email body for AI processing
+ * Removes binary data, excessive whitespace, and non-text content
+ */
+function sanitizeEmailBody(body: string): string {
+  if (!body) return ''
+
+  return body
+    // Remove long hex strings (often embedded binary/attachment data)
+    .replace(/[a-f0-9]{32,}/gi, '[binary data removed]')
+    // Remove base64 encoded blocks
+    .replace(/[A-Za-z0-9+/=]{100,}/g, '[encoded data removed]')
+    // Remove excessive whitespace
+    .replace(/\s{10,}/g, '\n\n')
+    // Limit length
+    .slice(0, 8000)
+}
+
+/**
  * Create a PR suggestion from an email
  */
 export async function createPRSuggestionFromEmail(
@@ -58,7 +76,8 @@ export async function createPRSuggestionFromEmail(
   // Get email body from Gmail
   const gmailMessage = await getMessage(userId, email.gmailMessageId)
   const normalized = normalizeEmail(gmailMessage)
-  const emailBody = normalized.bodyText || email.snippet || ''
+  const rawBody = normalized.bodyText || email.snippet || ''
+  const emailBody = sanitizeEmailBody(rawBody)
 
   // Generate suggestion using AI
   const { result, usage } = await generatePRSuggestion({
@@ -148,7 +167,8 @@ export async function createPRSuggestionFromTask(
   // Get email body from Gmail
   const gmailMessage = await getMessage(userId, taskSuggestion.email.gmailMessageId)
   const normalized = normalizeEmail(gmailMessage)
-  const emailBody = normalized.bodyText || taskSuggestion.email.snippet || ''
+  const rawBody = normalized.bodyText || taskSuggestion.email.snippet || ''
+  const emailBody = sanitizeEmailBody(rawBody)
 
   // Generate suggestion with task context
   const { result, usage } = await generatePRSuggestion({

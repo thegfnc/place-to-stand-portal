@@ -1,12 +1,12 @@
 import { eq, and, isNull, desc, inArray } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { prSuggestions, githubRepoLinks, emailMetadata } from '@/lib/db/schema'
-import { createPullRequest } from '@/lib/github/client'
+import { createPullRequest, branchExists, createBranch } from '@/lib/github/client'
 import { logActivity } from '@/lib/activity/logger'
 import type { PRSuggestionWithContext } from '@/lib/types/github'
 
 /**
- * Get pending PR suggestions
+ * Get pending PR suggestions (DRAFT or PENDING status)
  */
 export async function getPendingPRSuggestions(
   options: { limit?: number } = {}
@@ -49,7 +49,7 @@ export async function getPendingPRSuggestions(
 }
 
 /**
- * Get single PR suggestion by ID
+ * Get single PR suggestion with context
  */
 export async function getPRSuggestionById(
   suggestionId: string
@@ -75,7 +75,9 @@ export async function getPRSuggestionById(
     .from(prSuggestions)
     .innerJoin(githubRepoLinks, eq(githubRepoLinks.id, prSuggestions.githubRepoLinkId))
     .leftJoin(emailMetadata, eq(emailMetadata.id, prSuggestions.emailMetadataId))
-    .where(eq(prSuggestions.id, suggestionId))
+    .where(
+      and(eq(prSuggestions.id, suggestionId), isNull(prSuggestions.deletedAt))
+    )
     .limit(1)
 
   if (!result) return null
@@ -99,7 +101,7 @@ export async function getPRSuggestionById(
 }
 
 /**
- * Approve PR suggestion and create GitHub PR
+ * Approve PR suggestion and create actual GitHub PR
  */
 export async function approvePRSuggestion(
   suggestionId: string,
@@ -109,42 +111,78 @@ export async function approvePRSuggestion(
     body?: string
     branch?: string
     baseBranch?: string
+    createNewBranch?: boolean
   }
-): Promise<{ prNumber: number; prUrl: string }> {
+): Promise<{ prNumber: number; prUrl: string; branchCreated: boolean }> {
   // Get suggestion with repo info
-  const result = await getPRSuggestionById(suggestionId)
+  const suggestion = await getPRSuggestionById(suggestionId)
 
-  if (!result) throw new Error('Suggestion not found')
-
-  if (!['DRAFT', 'PENDING'].includes(result.status)) {
-    throw new Error('Suggestion already processed')
+  if (!suggestion) {
+    throw new Error('PR suggestion not found')
   }
 
-  const finalTitle = modifications?.title ?? result.suggestedTitle
-  const finalBody = modifications?.body ?? result.suggestedBody
-  const finalBranch = modifications?.branch ?? result.suggestedBranch
-  const finalBaseBranch = modifications?.baseBranch ?? result.suggestedBaseBranch ?? 'main'
+  if (!['DRAFT', 'PENDING'].includes(suggestion.status)) {
+    throw new Error('PR suggestion already processed')
+  }
+
+  const finalTitle = modifications?.title ?? suggestion.suggestedTitle
+  const finalBody = modifications?.body ?? suggestion.suggestedBody
+  const finalBranch = modifications?.branch ?? suggestion.suggestedBranch
+  const finalBaseBranch =
+    modifications?.baseBranch ?? suggestion.suggestedBaseBranch ?? 'main'
 
   if (!finalBranch) {
     throw new Error('Branch name is required')
   }
 
+  let branchCreated = false
+
   try {
-    // Create PR on GitHub using the OAuth connection linked to this repo
+    // Check if branch exists
+    const exists = await branchExists(
+      userId,
+      suggestion.repoOwner,
+      suggestion.repoName,
+      finalBranch,
+      suggestion.oauthConnectionId
+    )
+
+    // Create branch if it doesn't exist and user requested creation
+    if (!exists) {
+      if (modifications?.createNewBranch) {
+        await createBranch(
+          userId,
+          suggestion.repoOwner,
+          suggestion.repoName,
+          {
+            newBranch: finalBranch,
+            baseBranch: finalBaseBranch,
+          },
+          suggestion.oauthConnectionId
+        )
+        branchCreated = true
+      } else {
+        throw new Error(
+          `Branch "${finalBranch}" does not exist. Enable "Create new branch" to create it automatically.`
+        )
+      }
+    }
+
+    // Create PR on GitHub
     const pr = await createPullRequest(
       userId,
-      result.repoOwner,
-      result.repoName,
+      suggestion.repoOwner,
+      suggestion.repoName,
       {
         title: finalTitle,
         body: finalBody,
         head: finalBranch,
         base: finalBaseBranch,
       },
-      result.oauthConnectionId
+      suggestion.oauthConnectionId
     )
 
-    // Update suggestion
+    // Update suggestion status
     await db
       .update(prSuggestions)
       .set({
@@ -162,17 +200,17 @@ export async function approvePRSuggestion(
       actorId: userId,
       actorRole: 'ADMIN',
       verb: 'PR_CREATED_FROM_SUGGESTION',
-      summary: `Created PR #${pr.number} on ${result.repoLink.repoFullName}`,
+      summary: `Created PR #${pr.number} on ${suggestion.repoLink.repoFullName}`,
       targetType: 'PROJECT',
       targetId: suggestionId,
       metadata: {
         prNumber: pr.number,
         prUrl: pr.html_url,
-        repoFullName: result.repoLink.repoFullName,
+        repoFullName: suggestion.repoLink.repoFullName,
       },
     })
 
-    return { prNumber: pr.number, prUrl: pr.html_url }
+    return { prNumber: pr.number, prUrl: pr.html_url, branchCreated }
   } catch (error) {
     // Update suggestion with error
     await db
@@ -195,6 +233,17 @@ export async function rejectPRSuggestion(
   suggestionId: string,
   userId: string
 ): Promise<void> {
+  const [suggestion] = await db
+    .select({ repoLink: githubRepoLinks.repoFullName })
+    .from(prSuggestions)
+    .innerJoin(githubRepoLinks, eq(githubRepoLinks.id, prSuggestions.githubRepoLinkId))
+    .where(eq(prSuggestions.id, suggestionId))
+    .limit(1)
+
+  if (!suggestion) {
+    throw new Error('PR suggestion not found')
+  }
+
   await db
     .update(prSuggestions)
     .set({
@@ -209,7 +258,7 @@ export async function rejectPRSuggestion(
     actorId: userId,
     actorRole: 'ADMIN',
     verb: 'PR_SUGGESTION_REJECTED',
-    summary: 'Rejected PR suggestion',
+    summary: `Rejected PR suggestion for ${suggestion.repoLink}`,
     targetType: 'PROJECT',
     targetId: suggestionId,
   })

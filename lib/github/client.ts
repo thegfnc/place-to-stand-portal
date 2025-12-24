@@ -163,6 +163,77 @@ export async function listBranches(
 }
 
 /**
+ * Get a specific branch (to get its SHA)
+ */
+export async function getBranch(
+  userId: string,
+  owner: string,
+  repo: string,
+  branch: string,
+  connectionId?: string
+): Promise<GitHubBranch> {
+  return githubFetch(
+    userId,
+    `/repos/${owner}/${repo}/branches/${encodeURIComponent(branch)}`,
+    {},
+    connectionId
+  )
+}
+
+/**
+ * Create a new branch from a base branch
+ */
+export async function createBranch(
+  userId: string,
+  owner: string,
+  repo: string,
+  params: {
+    newBranch: string
+    baseBranch: string
+  },
+  connectionId?: string
+): Promise<{ ref: string; sha: string }> {
+  // First, get the SHA of the base branch
+  const baseBranchInfo = await getBranch(userId, owner, repo, params.baseBranch, connectionId)
+  const sha = baseBranchInfo.commit.sha
+
+  // Create the new branch reference
+  const result = await githubFetch<{ ref: string; object: { sha: string } }>(
+    userId,
+    `/repos/${owner}/${repo}/git/refs`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ref: `refs/heads/${params.newBranch}`,
+        sha,
+      }),
+    },
+    connectionId
+  )
+
+  return { ref: result.ref, sha: result.object.sha }
+}
+
+/**
+ * Check if a branch exists
+ */
+export async function branchExists(
+  userId: string,
+  owner: string,
+  repo: string,
+  branch: string,
+  connectionId?: string
+): Promise<boolean> {
+  try {
+    await getBranch(userId, owner, repo, branch, connectionId)
+    return true
+  } catch {
+    return false
+  }
+}
+
+/**
  * Get the default connection ID for a user
  */
 export async function getDefaultConnectionId(userId: string): Promise<string | null> {
