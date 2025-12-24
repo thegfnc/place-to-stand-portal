@@ -18,6 +18,7 @@ import {
   pgEnum,
   integer,
   primaryKey,
+  boolean,
 } from 'drizzle-orm/pg-core'
 import { sql } from 'drizzle-orm'
 
@@ -54,6 +55,23 @@ export const leadSourceType = pgEnum('lead_source_type', [
   'REFERRAL',
   'WEBSITE',
   'EVENT',
+])
+
+export const oauthProvider = pgEnum('oauth_provider', ['GOOGLE', 'GITHUB'])
+
+export const oauthConnectionStatus = pgEnum('oauth_connection_status', [
+  'ACTIVE',
+  'EXPIRED',
+  'REVOKED',
+  'PENDING_REAUTH',
+])
+
+export const prSuggestionStatus = pgEnum('pr_suggestion_status', [
+  'DRAFT', // AI generated, not reviewed
+  'PENDING', // User reviewed, awaiting approval
+  'APPROVED', // User approved, PR created
+  'REJECTED', // User rejected
+  'FAILED', // PR creation failed
 ])
 
 export const clients = pgTable(
@@ -105,6 +123,73 @@ export const clients = pgTable(
       as: 'permissive',
       for: 'select',
       to: ['public'],
+    }),
+  ]
+)
+
+// Client contacts: external email addresses associated with clients
+export const clientContacts = pgTable(
+  'client_contacts',
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    clientId: uuid('client_id').notNull(),
+    email: text().notNull(),
+    name: text(),
+    isPrimary: boolean('is_primary').default(false).notNull(),
+    createdBy: uuid('created_by'),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+    deletedAt: timestamp('deleted_at', { withTimezone: true, mode: 'string' }),
+  },
+  table => [
+    // One email per client (prevent duplicates)
+    unique('client_contacts_client_email_key').on(table.clientId, table.email),
+    // Index for looking up contacts by client
+    index('idx_client_contacts_client')
+      .using('btree', table.clientId.asc().nullsLast().op('uuid_ops'))
+      .where(sql`(deleted_at IS NULL)`),
+    // Index for email matching (critical for performance)
+    index('idx_client_contacts_email')
+      .using('btree', table.email.asc().nullsLast().op('text_ops'))
+      .where(sql`(deleted_at IS NULL)`),
+    // Index for looking up by email domain (for domain matching)
+    index('idx_client_contacts_email_domain')
+      .using('btree', sql`split_part(email, '@', 2)`) // expression index
+      .where(sql`(deleted_at IS NULL)`),
+    // Foreign key to clients
+    foreignKey({
+      columns: [table.clientId],
+      foreignColumns: [clients.id],
+      name: 'client_contacts_client_id_fkey',
+    }).onDelete('cascade'),
+    // Foreign key to users (who created)
+    foreignKey({
+      columns: [table.createdBy],
+      foreignColumns: [users.id],
+      name: 'client_contacts_created_by_fkey',
+    }),
+    // RLS Policies
+    pgPolicy('Admins manage client contacts', {
+      as: 'permissive',
+      for: 'all',
+      to: ['public'],
+      using: sql`is_admin()`,
+      withCheck: sql`is_admin()`,
+    }),
+    pgPolicy('Users view client contacts for accessible clients', {
+      as: 'permissive',
+      for: 'select',
+      to: ['public'],
+      using: sql`(
+        client_id IN (
+          SELECT client_id FROM client_members
+          WHERE user_id = auth.uid() AND deleted_at IS NULL
+        )
+      )`,
     }),
   ]
 )
@@ -870,6 +955,377 @@ export const users = pgTable(
   ]
 )
 
+export const oauthConnections = pgTable(
+  'oauth_connections',
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    userId: uuid('user_id').notNull(),
+    provider: oauthProvider().notNull(),
+    providerAccountId: text('provider_account_id').notNull(),
+    accessToken: text('access_token').notNull(), // Encrypted
+    refreshToken: text('refresh_token'), // Encrypted, nullable
+    accessTokenExpiresAt: timestamp('access_token_expires_at', {
+      withTimezone: true,
+      mode: 'string',
+    }),
+    scopes: text('scopes').array().notNull(),
+    status: oauthConnectionStatus().default('ACTIVE').notNull(),
+    providerEmail: text('provider_email'),
+    displayName: text('display_name'), // User-friendly name for account picker
+    providerMetadata: jsonb('provider_metadata').default({}).notNull(),
+    lastSyncAt: timestamp('last_sync_at', { withTimezone: true, mode: 'string' }),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+    deletedAt: timestamp('deleted_at', { withTimezone: true, mode: 'string' }),
+  },
+  table => [
+    // Multi-account: one connection per user per provider per account
+    unique('oauth_connections_user_provider_account_key').on(
+      table.userId,
+      table.provider,
+      table.providerAccountId
+    ),
+    // Index for looking up user's connections
+    index('idx_oauth_connections_user')
+      .using('btree', table.userId.asc().nullsLast().op('uuid_ops'))
+      .where(sql`(deleted_at IS NULL)`),
+    // Index for finding connections by provider
+    index('idx_oauth_connections_provider')
+      .using('btree', table.provider.asc().nullsLast())
+      .where(sql`(deleted_at IS NULL AND status = 'ACTIVE')`),
+    // Foreign key to users
+    foreignKey({
+      columns: [table.userId],
+      foreignColumns: [users.id],
+      name: 'oauth_connections_user_id_fkey',
+    }).onDelete('cascade'),
+    // RLS Policies
+    pgPolicy('Users manage own oauth connections', {
+      as: 'permissive',
+      for: 'all',
+      to: ['public'],
+      using: sql`user_id = auth.uid()`,
+    }),
+    pgPolicy('Admins view all oauth connections', {
+      as: 'permissive',
+      for: 'select',
+      to: ['public'],
+      using: sql`is_admin()`,
+    }),
+  ]
+)
+
+// Email linking foundation
+export const emailLinkSource = pgEnum('email_link_source', [
+  'AUTOMATIC',
+  'MANUAL_FORWARD',
+  'MANUAL_LINK',
+])
+
+// AI task suggestion workflow
+export const suggestionStatus = pgEnum('suggestion_status', [
+  'PENDING', // Awaiting user review
+  'APPROVED', // User approved, task created
+  'REJECTED', // User rejected
+  'MODIFIED', // User approved with modifications
+  'EXPIRED', // Auto-expired after X days
+])
+
+export const emailMetadata = pgTable(
+  'email_metadata',
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    userId: uuid('user_id').notNull(), // PTS user who owns this email
+    gmailMessageId: text('gmail_message_id').notNull(),
+    gmailThreadId: text('gmail_thread_id'),
+    subject: text(),
+    snippet: text(), // Gmail preview text
+    fromEmail: text('from_email').notNull(),
+    fromName: text('from_name'),
+    toEmails: text('to_emails').array().default([]).notNull(),
+    ccEmails: text('cc_emails').array().default([]).notNull(),
+    receivedAt: timestamp('received_at', { withTimezone: true, mode: 'string' }).notNull(),
+    isRead: boolean('is_read').default(false).notNull(),
+    hasAttachments: boolean('has_attachments').default(false).notNull(),
+    labels: text().array().default([]).notNull(),
+    rawMetadata: jsonb('raw_metadata').default({}).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+    deletedAt: timestamp('deleted_at', { withTimezone: true, mode: 'string' }),
+  },
+  table => [
+    // Unique: one entry per Gmail message per user
+    unique('email_metadata_user_gmail_id_key').on(table.userId, table.gmailMessageId),
+    // Index for user's emails
+    index('idx_email_metadata_user')
+      .using('btree', table.userId.asc().nullsLast().op('uuid_ops'))
+      .where(sql`(deleted_at IS NULL)`),
+    // Index for from email (for matching)
+    index('idx_email_metadata_from_email')
+      .using('btree', table.fromEmail.asc().nullsLast().op('text_ops'))
+      .where(sql`(deleted_at IS NULL)`),
+    // Index for date range queries
+    index('idx_email_metadata_received_at')
+      .using('btree', table.receivedAt.desc().nullsFirst())
+      .where(sql`(deleted_at IS NULL)`),
+    // Index for thread grouping
+    index('idx_email_metadata_thread')
+      .using('btree', table.gmailThreadId.asc().nullsLast().op('text_ops'))
+      .where(sql`(deleted_at IS NULL AND gmail_thread_id IS NOT NULL)`),
+    // Foreign key
+    foreignKey({
+      columns: [table.userId],
+      foreignColumns: [users.id],
+      name: 'email_metadata_user_id_fkey',
+    }).onDelete('cascade'),
+    // RLS Policies
+    pgPolicy('Users manage own email metadata', {
+      as: 'permissive',
+      for: 'all',
+      to: ['public'],
+      using: sql`user_id = auth.uid()`,
+      withCheck: sql`user_id = auth.uid()`,
+    }),
+    pgPolicy('Admins view all email metadata', {
+      as: 'permissive',
+      for: 'select',
+      to: ['public'],
+      using: sql`is_admin()`,
+    }),
+  ]
+)
+
+export const emailLinks = pgTable(
+  'email_links',
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    emailMetadataId: uuid('email_metadata_id').notNull(),
+    clientId: uuid('client_id'), // Nullable - can link to just project
+    projectId: uuid('project_id'), // Nullable - can link to just client
+    source: emailLinkSource().notNull(),
+    confidence: numeric({ precision: 3, scale: 2 }), // 0.00-1.00
+    linkedBy: uuid('linked_by'), // Null for automatic links
+    notes: text(),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+    deletedAt: timestamp('deleted_at', { withTimezone: true, mode: 'string' }),
+  },
+  table => [
+    // Index for email lookup
+    index('idx_email_links_email')
+      .using('btree', table.emailMetadataId.asc().nullsLast().op('uuid_ops'))
+      .where(sql`(deleted_at IS NULL)`),
+    // Index for client lookup
+    index('idx_email_links_client')
+      .using('btree', table.clientId.asc().nullsLast().op('uuid_ops'))
+      .where(sql`(deleted_at IS NULL AND client_id IS NOT NULL)`),
+    // Index for project lookup
+    index('idx_email_links_project')
+      .using('btree', table.projectId.asc().nullsLast().op('uuid_ops'))
+      .where(sql`(deleted_at IS NULL AND project_id IS NOT NULL)`),
+    // Constraint: must link to at least client OR project
+    check(
+      'email_links_client_or_project',
+      sql`client_id IS NOT NULL OR project_id IS NOT NULL`
+    ),
+    // Constraint: confidence must be between 0 and 1
+    check(
+      'email_links_confidence_range',
+      sql`confidence IS NULL OR (confidence >= 0 AND confidence <= 1)`
+    ),
+    // Foreign keys
+    foreignKey({
+      columns: [table.emailMetadataId],
+      foreignColumns: [emailMetadata.id],
+      name: 'email_links_email_metadata_id_fkey',
+    }).onDelete('cascade'),
+    foreignKey({
+      columns: [table.clientId],
+      foreignColumns: [clients.id],
+      name: 'email_links_client_id_fkey',
+    }).onDelete('cascade'),
+    foreignKey({
+      columns: [table.projectId],
+      foreignColumns: [projects.id],
+      name: 'email_links_project_id_fkey',
+    }).onDelete('cascade'),
+    foreignKey({
+      columns: [table.linkedBy],
+      foreignColumns: [users.id],
+      name: 'email_links_linked_by_fkey',
+    }),
+    // RLS Policies
+    pgPolicy('Admins manage email links', {
+      as: 'permissive',
+      for: 'all',
+      to: ['public'],
+      using: sql`is_admin()`,
+      withCheck: sql`is_admin()`,
+    }),
+    pgPolicy('Users view linked emails for accessible clients', {
+      as: 'permissive',
+      for: 'select',
+      to: ['public'],
+      using: sql`(
+        client_id IN (
+          SELECT client_id FROM client_members
+          WHERE user_id = auth.uid() AND deleted_at IS NULL
+        )
+        OR project_id IN (
+          SELECT id FROM projects
+          WHERE created_by = auth.uid() AND deleted_at IS NULL
+        )
+      )`,
+    }),
+  ]
+)
+
+// AI-generated task suggestions from emails
+export const taskSuggestions = pgTable(
+  'task_suggestions',
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    emailMetadataId: uuid('email_metadata_id').notNull(),
+    projectId: uuid('project_id'), // Suggested project (can be overridden)
+    suggestedTitle: text('suggested_title').notNull(),
+    suggestedDescription: text('suggested_description'),
+    suggestedDueDate: date('suggested_due_date'),
+    suggestedPriority: text('suggested_priority'), // HIGH, MEDIUM, LOW
+    suggestedAssignees: uuid('suggested_assignees').array().default([]),
+    confidence: numeric({ precision: 3, scale: 2 }).notNull(), // 0.00-1.00
+    reasoning: text(), // AI's explanation for the suggestion
+    status: suggestionStatus().default('PENDING').notNull(),
+    reviewedBy: uuid('reviewed_by'),
+    reviewedAt: timestamp('reviewed_at', { withTimezone: true, mode: 'string' }),
+    reviewNotes: text('review_notes'),
+    createdTaskId: uuid('created_task_id'), // Link to created task if approved
+    aiModelVersion: text('ai_model_version'),
+    promptTokens: integer('prompt_tokens'),
+    completionTokens: integer('completion_tokens'),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+    deletedAt: timestamp('deleted_at', { withTimezone: true, mode: 'string' }),
+  },
+  table => [
+    // Index for pending suggestions (main query)
+    index('idx_task_suggestions_pending')
+      .using('btree', table.status.asc().nullsLast())
+      .where(sql`(deleted_at IS NULL AND status = 'PENDING')`),
+    // Index for email lookup
+    index('idx_task_suggestions_email')
+      .using('btree', table.emailMetadataId.asc().nullsLast().op('uuid_ops'))
+      .where(sql`(deleted_at IS NULL)`),
+    // Index for project lookup
+    index('idx_task_suggestions_project')
+      .using('btree', table.projectId.asc().nullsLast().op('uuid_ops'))
+      .where(sql`(deleted_at IS NULL AND project_id IS NOT NULL)`),
+    // Foreign keys
+    foreignKey({
+      columns: [table.emailMetadataId],
+      foreignColumns: [emailMetadata.id],
+      name: 'task_suggestions_email_metadata_id_fkey',
+    }).onDelete('cascade'),
+    foreignKey({
+      columns: [table.projectId],
+      foreignColumns: [projects.id],
+      name: 'task_suggestions_project_id_fkey',
+    }),
+    foreignKey({
+      columns: [table.reviewedBy],
+      foreignColumns: [users.id],
+      name: 'task_suggestions_reviewed_by_fkey',
+    }),
+    foreignKey({
+      columns: [table.createdTaskId],
+      foreignColumns: [tasks.id],
+      name: 'task_suggestions_created_task_id_fkey',
+    }),
+    // Constraint: confidence must be between 0 and 1
+    check(
+      'task_suggestions_confidence_range',
+      sql`confidence >= 0 AND confidence <= 1`
+    ),
+    // RLS Policies
+    pgPolicy('Admins manage task suggestions', {
+      as: 'permissive',
+      for: 'all',
+      to: ['public'],
+      using: sql`is_admin()`,
+      withCheck: sql`is_admin()`,
+    }),
+    pgPolicy('Users view own task suggestions', {
+      as: 'permissive',
+      for: 'select',
+      to: ['public'],
+      using: sql`(
+        email_metadata_id IN (
+          SELECT id FROM email_metadata WHERE user_id = auth.uid()
+        )
+      )`,
+    }),
+  ]
+)
+
+// Feedback on AI suggestions for model improvement
+export const suggestionFeedback = pgTable(
+  'suggestion_feedback',
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    taskSuggestionId: uuid('task_suggestion_id').notNull(),
+    feedbackType: text('feedback_type').notNull(), // 'title_changed', 'rejected_not_actionable', etc.
+    originalValue: text('original_value'),
+    correctedValue: text('corrected_value'),
+    createdBy: uuid('created_by').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+  },
+  table => [
+    index('idx_suggestion_feedback_suggestion')
+      .using('btree', table.taskSuggestionId.asc().nullsLast().op('uuid_ops')),
+    foreignKey({
+      columns: [table.taskSuggestionId],
+      foreignColumns: [taskSuggestions.id],
+      name: 'suggestion_feedback_task_suggestion_id_fkey',
+    }).onDelete('cascade'),
+    foreignKey({
+      columns: [table.createdBy],
+      foreignColumns: [users.id],
+      name: 'suggestion_feedback_created_by_fkey',
+    }),
+    // RLS: admins manage, users view own feedback
+    pgPolicy('Admins manage suggestion feedback', {
+      as: 'permissive',
+      for: 'all',
+      to: ['public'],
+      using: sql`is_admin()`,
+      withCheck: sql`is_admin()`,
+    }),
+    pgPolicy('Users view own suggestion feedback', {
+      as: 'permissive',
+      for: 'select',
+      to: ['public'],
+      using: sql`created_by = auth.uid()`,
+    }),
+  ]
+)
+
 export const activityLogs = pgTable(
   'activity_logs',
   {
@@ -953,6 +1409,162 @@ export const activityLogs = pgTable(
     }),
   ]
 )
+// GitHub repo links - connects repos to projects
+export const githubRepoLinks = pgTable(
+  'github_repo_links',
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    projectId: uuid('project_id').notNull(),
+    oauthConnectionId: uuid('oauth_connection_id').notNull(), // Track which GitHub account
+    repoOwner: text('repo_owner').notNull(), // GitHub org or user
+    repoName: text('repo_name').notNull(),
+    repoFullName: text('repo_full_name').notNull(), // owner/repo
+    repoId: bigint('repo_id', { mode: 'number' }).notNull(),
+    defaultBranch: text('default_branch').default('main').notNull(),
+    isActive: boolean('is_active').default(true).notNull(),
+    linkedBy: uuid('linked_by').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+    deletedAt: timestamp('deleted_at', { withTimezone: true, mode: 'string' }),
+  },
+  table => [
+    // One link per repo per project
+    unique('github_repo_links_project_repo_key').on(table.projectId, table.repoFullName),
+    // Index for project lookup
+    index('idx_github_repo_links_project')
+      .using('btree', table.projectId.asc().nullsLast().op('uuid_ops'))
+      .where(sql`(deleted_at IS NULL)`),
+    // Index for repo lookup
+    index('idx_github_repo_links_repo')
+      .using('btree', table.repoFullName.asc().nullsLast().op('text_ops'))
+      .where(sql`(deleted_at IS NULL)`),
+    // Index for oauth connection lookup
+    index('idx_github_repo_links_oauth')
+      .using('btree', table.oauthConnectionId.asc().nullsLast().op('uuid_ops'))
+      .where(sql`(deleted_at IS NULL)`),
+    // Foreign keys
+    foreignKey({
+      columns: [table.projectId],
+      foreignColumns: [projects.id],
+      name: 'github_repo_links_project_id_fkey',
+    }).onDelete('cascade'),
+    foreignKey({
+      columns: [table.oauthConnectionId],
+      foreignColumns: [oauthConnections.id],
+      name: 'github_repo_links_oauth_connection_id_fkey',
+    }).onDelete('cascade'),
+    foreignKey({
+      columns: [table.linkedBy],
+      foreignColumns: [users.id],
+      name: 'github_repo_links_linked_by_fkey',
+    }),
+    // RLS Policies
+    pgPolicy('Admins manage github repo links', {
+      as: 'permissive',
+      for: 'all',
+      to: ['public'],
+      using: sql`is_admin()`,
+    }),
+    pgPolicy('Users view repo links for accessible projects', {
+      as: 'permissive',
+      for: 'select',
+      to: ['public'],
+      using: sql`(
+        project_id IN (
+          SELECT id FROM projects WHERE deleted_at IS NULL
+          AND (created_by = auth.uid() OR client_id IN (
+            SELECT client_id FROM client_members WHERE user_id = auth.uid() AND deleted_at IS NULL
+          ))
+        )
+      )`,
+    }),
+  ]
+)
+
+// PR suggestions - AI-generated PR descriptions from emails/tasks
+export const prSuggestions = pgTable(
+  'pr_suggestions',
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    taskSuggestionId: uuid('task_suggestion_id'), // Optional link to task suggestion
+    emailMetadataId: uuid('email_metadata_id'), // Optional direct email link
+    githubRepoLinkId: uuid('github_repo_link_id').notNull(),
+    suggestedTitle: text('suggested_title').notNull(),
+    suggestedBody: text('suggested_body').notNull(), // Markdown PR description
+    suggestedBranch: text('suggested_branch'),
+    suggestedBaseBranch: text('suggested_base_branch').default('main'),
+    suggestedLabels: text('suggested_labels').array().default([]),
+    suggestedAssignees: text('suggested_assignees').array().default([]), // GitHub usernames
+    confidence: numeric({ precision: 3, scale: 2 }).notNull(), // 0.00-1.00
+    reasoning: text(),
+    status: prSuggestionStatus().default('DRAFT').notNull(),
+    reviewedBy: uuid('reviewed_by'),
+    reviewedAt: timestamp('reviewed_at', { withTimezone: true, mode: 'string' }),
+    createdPrNumber: integer('created_pr_number'),
+    createdPrUrl: text('created_pr_url'),
+    errorMessage: text('error_message'),
+    aiModelVersion: text('ai_model_version'),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+    deletedAt: timestamp('deleted_at', { withTimezone: true, mode: 'string' }),
+  },
+  table => [
+    // Index for pending suggestions
+    index('idx_pr_suggestions_pending')
+      .using('btree', table.status.asc().nullsLast())
+      .where(sql`(deleted_at IS NULL AND status IN ('DRAFT', 'PENDING'))`),
+    // Index for repo lookup
+    index('idx_pr_suggestions_repo')
+      .using('btree', table.githubRepoLinkId.asc().nullsLast().op('uuid_ops'))
+      .where(sql`(deleted_at IS NULL)`),
+    // Index for task suggestion lookup
+    index('idx_pr_suggestions_task')
+      .using('btree', table.taskSuggestionId.asc().nullsLast().op('uuid_ops'))
+      .where(sql`(deleted_at IS NULL AND task_suggestion_id IS NOT NULL)`),
+    // Foreign keys
+    foreignKey({
+      columns: [table.taskSuggestionId],
+      foreignColumns: [taskSuggestions.id],
+      name: 'pr_suggestions_task_suggestion_id_fkey',
+    }),
+    foreignKey({
+      columns: [table.emailMetadataId],
+      foreignColumns: [emailMetadata.id],
+      name: 'pr_suggestions_email_metadata_id_fkey',
+    }),
+    foreignKey({
+      columns: [table.githubRepoLinkId],
+      foreignColumns: [githubRepoLinks.id],
+      name: 'pr_suggestions_github_repo_link_id_fkey',
+    }).onDelete('cascade'),
+    foreignKey({
+      columns: [table.reviewedBy],
+      foreignColumns: [users.id],
+      name: 'pr_suggestions_reviewed_by_fkey',
+    }),
+    // Constraint: confidence must be between 0 and 1
+    check(
+      'pr_suggestions_confidence_range',
+      sql`confidence >= 0 AND confidence <= 1`
+    ),
+    // RLS Policies
+    pgPolicy('Admins manage pr suggestions', {
+      as: 'permissive',
+      for: 'all',
+      to: ['public'],
+      using: sql`is_admin()`,
+    }),
+  ]
+)
+
 export const currentUserWithRole = pgView('current_user_with_role', {
   id: uuid(),
   role: userRole(),

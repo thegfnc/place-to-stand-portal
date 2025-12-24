@@ -2,6 +2,7 @@ import { config } from 'dotenv'
 import type { Config } from 'drizzle-kit'
 
 config({ path: '.env.local', override: false })
+config({ path: 'env.local', override: false })
 config({ path: '.env', override: false })
 
 if (!process.env.DATABASE_URL) {

@@ -8,6 +8,8 @@ import {
   ListTodo,
   Handshake,
   Plug,
+  Mail,
+  Sparkles,
 } from 'lucide-react'
 import type { UserRole } from '@/lib/auth/session'
 
@@ -39,6 +41,16 @@ export const NAV_GROUPS: NavGroup[] = [
         label: 'My Tasks',
         icon: ListTodo,
         matchHrefs: ['/my-tasks', '/my-tasks/calendar'],
+      },
+      {
+        href: '/emails',
+        label: 'Emails',
+        icon: Mail,
+      },
+      {
+        href: '/suggestions',
+        label: 'Suggestions',
+        icon: Sparkles,
       },
     ],
   },
