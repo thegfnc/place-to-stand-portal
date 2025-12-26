@@ -11,6 +11,12 @@ export function getSupabaseServerClient() {
     serverEnv.NEXT_PUBLIC_SUPABASE_URL,
     serverEnv.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     {
+      auth: {
+        // Disable auto-refresh on server to prevent negative timeout warnings
+        // when reading expired tokens from cookies. Token refresh is handled
+        // client-side by the SupabaseListener component.
+        autoRefreshToken: false,
+      },
       cookies: {
         async getAll() {
           const store = await cookies();
