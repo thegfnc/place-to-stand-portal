@@ -224,6 +224,20 @@ CREATE UNIQUE INDEX "idx_time_log_tasks_unique" ON "time_log_tasks" USING btree 
 CREATE INDEX "idx_time_logs_project" ON "time_logs" USING btree ("project_id" uuid_ops) WHERE (deleted_at IS NULL);--> statement-breakpoint
 CREATE INDEX "idx_time_logs_user_id" ON "time_logs" USING btree ("user_id" uuid_ops) WHERE (deleted_at IS NULL);--> statement-breakpoint
 CREATE VIEW "public"."current_user_with_role" AS (SELECT id, role FROM users u WHERE id = auth.uid() AND deleted_at IS NULL);--> statement-breakpoint
+CREATE OR REPLACE FUNCTION public.is_admin()
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = 'public'
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.users
+    WHERE id = auth.uid()
+    AND role = 'ADMIN'
+    AND deleted_at IS NULL
+  );
+$$;--> statement-breakpoint
 CREATE POLICY "Admins delete activity logs" ON "activity_logs" AS PERMISSIVE FOR DELETE TO public USING (is_admin());--> statement-breakpoint
 CREATE POLICY "Admins update activity logs" ON "activity_logs" AS PERMISSIVE FOR UPDATE TO public;--> statement-breakpoint
 CREATE POLICY "Users insert activity logs" ON "activity_logs" AS PERMISSIVE FOR INSERT TO public;--> statement-breakpoint
