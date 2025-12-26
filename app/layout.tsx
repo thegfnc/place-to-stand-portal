@@ -19,6 +19,7 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.APP_BASE_URL || 'http://localhost:3000'),
   title: 'Place to Stand Portal',
   description: 'Client and project management for Place to Stand Agency.',
 }
