@@ -58,7 +58,7 @@ export default async function RootLayout({
       </head>
       <body
         className={cn(
-          'bg-background min-h-screen font-sans antialiased',
+          'bg-background h-screen overflow-hidden font-sans antialiased',
           geistSans.variable,
           geistMono.variable
         )}

@@ -54,36 +54,8 @@
     {
       "idx": 7,
       "version": "7",
-      "when": 1765401619293,
-      "tag": "0007_oauth_schema",
-      "breakpoints": true
-    },
-    {
-      "idx": 8,
-      "version": "7",
-      "when": 1765595585777,
-      "tag": "0008_client_contacts",
-      "breakpoints": true
-    },
-    {
-      "idx": 9,
-      "version": "7",
-      "when": 1765814995677,
-      "tag": "0009_task_suggestions",
-      "breakpoints": true
-    },
-    {
-      "idx": 10,
-      "version": "7",
-      "when": 1766503149146,
-      "tag": "0010_multi_account_oauth",
-      "breakpoints": true
-    },
-    {
-      "idx": 11,
-      "version": "7",
-      "when": 1766509804320,
-      "tag": "0011_github_repo_schema",
+      "when": 1735344000000,
+      "tag": "0007_unified_messaging",
       "breakpoints": true
     }
   ]

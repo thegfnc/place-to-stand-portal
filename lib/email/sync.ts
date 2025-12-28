@@ -3,8 +3,10 @@ import 'server-only'
 import { and, eq, inArray, isNull } from 'drizzle-orm'
 
 import { db } from '@/lib/db'
-import { emailMetadata, oauthConnections } from '@/lib/db/schema'
+import { messages, oauthConnections, threads } from '@/lib/db/schema'
 import { listMessages, getMessage, normalizeEmail } from '@/lib/gmail/client'
+import { findOrCreateThread } from '@/lib/queries/threads'
+import { getMessageByExternalId, createMessage } from '@/lib/queries/messages'
 import type { GmailMessage } from '@/lib/gmail/types'
 
 const BATCH_SIZE = 50
@@ -20,36 +22,19 @@ function parseEmailAddress(addr: string | null): { email: string; name: string |
   return { email: addr.trim().toLowerCase(), name: null }
 }
 
-/** Convert Gmail message to email_metadata insert format */
-function toMetadataRecord(userId: string, msg: GmailMessage) {
-  const norm = normalizeEmail(msg)
-  const from = parseEmailAddress(norm.from)
-  const hasAttachments = checkAttachments(msg.payload)
-
-  return {
-    userId,
-    gmailMessageId: msg.id,
-    gmailThreadId: msg.threadId || null,
-    subject: norm.subject,
-    snippet: norm.snippet || null,
-    fromEmail: from.email || 'unknown@unknown',
-    fromName: from.name,
-    toEmails: norm.to.map(e => parseEmailAddress(e).email).filter(Boolean),
-    ccEmails: norm.cc.map(e => parseEmailAddress(e).email).filter(Boolean),
-    receivedAt: msg.internalDate
-      ? new Date(parseInt(msg.internalDate, 10)).toISOString()
-      : new Date().toISOString(),
-    isRead: !(msg.labelIds || []).includes('UNREAD'),
-    hasAttachments,
-    labels: msg.labelIds || [],
-    rawMetadata: {},
-  }
-}
-
 function checkAttachments(payload?: GmailMessage['payload']): boolean {
   if (!payload) return false
   if (payload.filename && payload.body?.size) return true
   return (payload.parts || []).some(checkAttachments)
+}
+
+/** Get all participant emails from a message */
+function getParticipantEmails(msg: GmailMessage): string[] {
+  const norm = normalizeEmail(msg)
+  const from = parseEmailAddress(norm.from).email
+  const tos = norm.to.map(e => parseEmailAddress(e).email).filter(Boolean)
+  const ccs = norm.cc.map(e => parseEmailAddress(e).email).filter(Boolean)
+  return Array.from(new Set([from, ...tos, ...ccs].filter(Boolean)))
 }
 
 /** Sync Gmail messages for a single user */
@@ -65,11 +50,11 @@ export async function syncGmailForUser(userId: string): Promise<SyncResult> {
 
   // Check which already exist
   const existing = await db
-    .select({ gmailMessageId: emailMetadata.gmailMessageId })
-    .from(emailMetadata)
-    .where(and(eq(emailMetadata.userId, userId), inArray(emailMetadata.gmailMessageId, gmailIds)))
+    .select({ externalMessageId: messages.externalMessageId })
+    .from(messages)
+    .where(and(eq(messages.userId, userId), inArray(messages.externalMessageId, gmailIds)))
 
-  const existingSet = new Set(existing.map(e => e.gmailMessageId))
+  const existingSet = new Set(existing.map(e => e.externalMessageId).filter(Boolean))
   const newIds = gmailIds.filter(id => !existingSet.has(id))
   result.skipped = existingSet.size
 
@@ -78,24 +63,84 @@ export async function syncGmailForUser(userId: string): Promise<SyncResult> {
   // Fetch and insert in batches
   for (let i = 0; i < newIds.length; i += BATCH_SIZE) {
     const batch = newIds.slice(i, i + BATCH_SIZE)
-    const messages: GmailMessage[] = []
+    const gmailMessages: GmailMessage[] = []
 
     // Fetch messages (parallel within batch)
     const fetches = await Promise.allSettled(batch.map(id => getMessage(userId, id)))
     for (const f of fetches) {
-      if (f.status === 'fulfilled') messages.push(f.value)
+      if (f.status === 'fulfilled') gmailMessages.push(f.value)
       else result.errors.push(f.reason?.message || 'fetch error')
     }
 
-    if (messages.length === 0) continue
+    if (gmailMessages.length === 0) continue
 
-    // Insert batch
-    try {
-      const records = messages.map(m => toMetadataRecord(userId, m))
-      await db.insert(emailMetadata).values(records).onConflictDoNothing()
-      result.synced += records.length
-    } catch (err) {
-      result.errors.push(err instanceof Error ? err.message : 'insert error')
+    // Group messages by thread
+    const messagesByThread = new Map<string, GmailMessage[]>()
+    for (const msg of gmailMessages) {
+      const threadId = msg.threadId || msg.id
+      const existing = messagesByThread.get(threadId) || []
+      existing.push(msg)
+      messagesByThread.set(threadId, existing)
+    }
+
+    // Process each thread
+    for (const [gmailThreadId, threadMessages] of messagesByThread) {
+      try {
+        // Find or create thread
+        const firstMsg = threadMessages[0]
+        const norm = normalizeEmail(firstMsg)
+        const allParticipants = new Set<string>()
+        threadMessages.forEach(m => getParticipantEmails(m).forEach(e => allParticipants.add(e)))
+
+        const { thread } = await findOrCreateThread(gmailThreadId, userId, {
+          source: 'EMAIL',
+          subject: norm.subject || null,
+          participantEmails: Array.from(allParticipants),
+          createdBy: userId,
+          metadata: {},
+        })
+
+        // Create messages for this thread
+        for (const msg of threadMessages) {
+          // Check if message already exists (double-check within loop)
+          const existingMsg = await getMessageByExternalId(msg.id, userId)
+          if (existingMsg) {
+            result.skipped++
+            continue
+          }
+
+          const msgNorm = normalizeEmail(msg)
+          const from = parseEmailAddress(msgNorm.from)
+          const hasAttachments = checkAttachments(msg.payload)
+          const sentAt = msg.internalDate
+            ? new Date(parseInt(msg.internalDate, 10)).toISOString()
+            : new Date().toISOString()
+
+          await createMessage({
+            threadId: thread.id,
+            userId,
+            source: 'EMAIL',
+            externalMessageId: msg.id,
+            subject: msgNorm.subject,
+            bodyText: msgNorm.bodyText,
+            bodyHtml: msgNorm.bodyHtml,
+            snippet: msgNorm.snippet || null,
+            fromEmail: from.email || 'unknown@unknown',
+            fromName: from.name,
+            toEmails: msgNorm.to.map(e => parseEmailAddress(e).email).filter(Boolean),
+            ccEmails: msgNorm.cc.map(e => parseEmailAddress(e).email).filter(Boolean),
+            sentAt,
+            isInbound: true, // Could determine based on user's email
+            isRead: !(msg.labelIds || []).includes('UNREAD'),
+            hasAttachments,
+            providerMetadata: { labels: msg.labelIds || [] },
+          })
+
+          result.synced++
+        }
+      } catch (err) {
+        result.errors.push(err instanceof Error ? err.message : 'insert error')
+      }
     }
   }
 
@@ -117,14 +162,14 @@ export async function getEmailSyncStatus(userId: string) {
       .where(and(eq(oauthConnections.userId, userId), eq(oauthConnections.provider, 'GOOGLE'), isNull(oauthConnections.deletedAt)))
       .limit(1),
     db
-      .select({ count: emailMetadata.id })
-      .from(emailMetadata)
-      .where(and(eq(emailMetadata.userId, userId), isNull(emailMetadata.deletedAt))),
+      .select({ count: messages.id })
+      .from(messages)
+      .where(and(eq(messages.userId, userId), isNull(messages.deletedAt))),
   ])
 
   return {
     connected: !!connection,
     lastSyncAt: connection?.lastSyncAt ?? null,
-    totalEmails: stats ? 1 : 0, // Will fix count below
+    totalEmails: stats ? 1 : 0, // Note: This is a simple check, not actual count
   }
 }

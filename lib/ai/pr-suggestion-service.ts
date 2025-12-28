@@ -3,15 +3,14 @@ import 'server-only'
 import { eq, and, isNull } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import {
-  prSuggestions,
+  suggestions,
   githubRepoLinks,
-  emailMetadata,
-  taskSuggestions,
+  messages,
   projects,
 } from '@/lib/db/schema'
 import { getMessage, normalizeEmail } from '@/lib/gmail/client'
 import { generatePRSuggestion } from './pr-generation'
-import type { PRSuggestionWithContext } from '@/lib/types/github'
+import type { NewSuggestion, PRSuggestedContent, SuggestionWithContext } from '@/lib/types/suggestions'
 
 const MODEL_VERSION = 'gemini-2.5-flash-lite-v1'
 
@@ -33,27 +32,43 @@ function sanitizeEmailBody(body: string): string {
     .slice(0, 8000)
 }
 
+export interface PRSuggestionResult {
+  id: string
+  type: 'PR'
+  status: string
+  confidence: string
+  suggestedContent: PRSuggestedContent
+  message?: {
+    subject: string | null
+    fromEmail: string
+  } | null
+  githubRepoLink: {
+    repoFullName: string
+    defaultBranch: string
+  }
+}
+
 /**
- * Create a PR suggestion from an email
+ * Create a PR suggestion from a message
  */
-export async function createPRSuggestionFromEmail(
-  emailId: string,
+export async function createPRSuggestionFromMessage(
+  messageId: string,
   repoLinkId: string,
   userId: string
-): Promise<PRSuggestionWithContext> {
-  // Get email metadata
-  const [email] = await db
+): Promise<PRSuggestionResult> {
+  // Get message
+  const [message] = await db
     .select()
-    .from(emailMetadata)
+    .from(messages)
     .where(
       and(
-        eq(emailMetadata.id, emailId),
-        isNull(emailMetadata.deletedAt)
+        eq(messages.id, messageId),
+        isNull(messages.deletedAt)
       )
     )
     .limit(1)
 
-  if (!email) throw new Error('Email not found')
+  if (!message) throw new Error('Message not found')
 
   // Get repo link with project info
   const [repoLink] = await db
@@ -73,73 +88,90 @@ export async function createPRSuggestionFromEmail(
 
   if (!repoLink) throw new Error('Repo link not found')
 
-  // Get email body from Gmail
-  const gmailMessage = await getMessage(userId, email.gmailMessageId)
-  const normalized = normalizeEmail(gmailMessage)
-  const rawBody = normalized.bodyText || email.snippet || ''
-  const emailBody = sanitizeEmailBody(rawBody)
+  // Get message body - use stored body or fetch from Gmail
+  let emailBody = message.bodyText || ''
+
+  if (!emailBody && message.externalMessageId) {
+    const gmailMessage = await getMessage(userId, message.externalMessageId)
+    const normalized = normalizeEmail(gmailMessage)
+    emailBody = sanitizeEmailBody(normalized.bodyText || message.snippet || '')
+  } else {
+    emailBody = sanitizeEmailBody(emailBody || message.snippet || '')
+  }
 
   // Generate suggestion using AI
   const { result } = await generatePRSuggestion({
-    emailSubject: email.subject || '',
+    emailSubject: message.subject || '',
     emailBody,
-    fromEmail: email.fromEmail,
+    fromEmail: message.fromEmail,
     repoFullName: repoLink.link.repoFullName,
     projectName: repoLink.projectName || undefined,
   })
 
-  // Save suggestion to database
+  // Create unified suggestion with type: PR
+  const prContent: PRSuggestedContent = {
+    title: result.title,
+    body: result.body,
+    branch: result.suggestedBranch,
+    baseBranch: repoLink.link.defaultBranch,
+    labels: result.labels || [],
+    assignees: [],
+  }
+
   const [suggestion] = await db
-    .insert(prSuggestions)
+    .insert(suggestions)
     .values({
-      emailMetadataId: emailId,
+      messageId,
+      threadId: message.threadId,
+      type: 'PR',
+      status: 'DRAFT',
+      projectId: repoLink.link.projectId,
       githubRepoLinkId: repoLinkId,
-      suggestedTitle: result.title,
-      suggestedBody: result.body,
-      suggestedBranch: result.suggestedBranch,
-      suggestedBaseBranch: repoLink.link.defaultBranch,
-      suggestedLabels: result.labels || [],
-      suggestedAssignees: [],
       confidence: String(result.confidence),
       reasoning: result.reasoning,
-      status: 'DRAFT',
       aiModelVersion: MODEL_VERSION,
+      suggestedContent: prContent,
     })
     .returning()
 
   return {
-    ...suggestion,
-    repoLink: {
+    id: suggestion.id,
+    type: 'PR',
+    status: suggestion.status,
+    confidence: suggestion.confidence,
+    suggestedContent: prContent,
+    message: {
+      subject: message.subject,
+      fromEmail: message.fromEmail,
+    },
+    githubRepoLink: {
       repoFullName: repoLink.link.repoFullName,
       defaultBranch: repoLink.link.defaultBranch,
-    },
-    email: {
-      subject: email.subject,
-      fromEmail: email.fromEmail,
     },
   }
 }
 
 /**
- * Create a PR suggestion from an approved task suggestion
+ * Create a PR suggestion from an existing task suggestion
  */
-export async function createPRSuggestionFromTask(
+export async function createPRSuggestionFromTaskSuggestion(
   taskSuggestionId: string,
   repoLinkId: string,
   userId: string
-): Promise<PRSuggestionWithContext> {
-  // Get task suggestion with email
+): Promise<PRSuggestionResult> {
+  // Get task suggestion with message
   const [taskSuggestion] = await db
     .select({
-      suggestion: taskSuggestions,
-      email: emailMetadata,
+      suggestion: suggestions,
+      message: messages,
     })
-    .from(taskSuggestions)
-    .innerJoin(emailMetadata, eq(emailMetadata.id, taskSuggestions.emailMetadataId))
+    .from(suggestions)
+    .innerJoin(messages, eq(messages.id, suggestions.messageId))
     .where(
       and(
-        eq(taskSuggestions.id, taskSuggestionId),
-        isNull(taskSuggestions.deletedAt)
+        eq(suggestions.id, taskSuggestionId),
+        eq(suggestions.type, 'TASK'),
+        isNull(suggestions.deletedAt)
       )
     )
     .limit(1)
@@ -164,52 +196,70 @@ export async function createPRSuggestionFromTask(
 
   if (!repoLink) throw new Error('Repo link not found')
 
-  // Get email body from Gmail
-  const gmailMessage = await getMessage(userId, taskSuggestion.email.gmailMessageId)
-  const normalized = normalizeEmail(gmailMessage)
-  const rawBody = normalized.bodyText || taskSuggestion.email.snippet || ''
-  const emailBody = sanitizeEmailBody(rawBody)
+  // Get message body
+  let emailBody = taskSuggestion.message.bodyText || ''
+
+  if (!emailBody && taskSuggestion.message.externalMessageId) {
+    const gmailMessage = await getMessage(userId, taskSuggestion.message.externalMessageId)
+    const normalized = normalizeEmail(gmailMessage)
+    emailBody = sanitizeEmailBody(normalized.bodyText || taskSuggestion.message.snippet || '')
+  } else {
+    emailBody = sanitizeEmailBody(emailBody || taskSuggestion.message.snippet || '')
+  }
+
+  // Get task context from suggestion
+  const taskContent = taskSuggestion.suggestion.suggestedContent as { title?: string; description?: string }
 
   // Generate suggestion with task context
   const { result } = await generatePRSuggestion({
-    emailSubject: taskSuggestion.email.subject || '',
+    emailSubject: taskSuggestion.message.subject || '',
     emailBody,
-    fromEmail: taskSuggestion.email.fromEmail,
+    fromEmail: taskSuggestion.message.fromEmail,
     repoFullName: repoLink.link.repoFullName,
     projectName: repoLink.projectName || undefined,
-    relatedTaskTitle: taskSuggestion.suggestion.suggestedTitle,
-    relatedTaskDescription: taskSuggestion.suggestion.suggestedDescription || undefined,
+    relatedTaskTitle: taskContent.title,
+    relatedTaskDescription: taskContent.description,
   })
 
-  // Save suggestion
+  // Create unified suggestion with type: PR
+  const prContent: PRSuggestedContent = {
+    title: result.title,
+    body: result.body,
+    branch: result.suggestedBranch,
+    baseBranch: repoLink.link.defaultBranch,
+    labels: result.labels || [],
+    assignees: [],
+  }
+
   const [suggestion] = await db
-    .insert(prSuggestions)
+    .insert(suggestions)
     .values({
-      taskSuggestionId,
-      emailMetadataId: taskSuggestion.email.id,
+      messageId: taskSuggestion.message.id,
+      threadId: taskSuggestion.message.threadId,
+      type: 'PR',
+      status: 'DRAFT',
+      projectId: repoLink.link.projectId,
       githubRepoLinkId: repoLinkId,
-      suggestedTitle: result.title,
-      suggestedBody: result.body,
-      suggestedBranch: result.suggestedBranch,
-      suggestedBaseBranch: repoLink.link.defaultBranch,
-      suggestedLabels: result.labels || [],
-      suggestedAssignees: [],
       confidence: String(result.confidence),
       reasoning: result.reasoning,
-      status: 'DRAFT',
       aiModelVersion: MODEL_VERSION,
+      suggestedContent: prContent,
     })
     .returning()
 
   return {
-    ...suggestion,
-    repoLink: {
+    id: suggestion.id,
+    type: 'PR',
+    status: suggestion.status,
+    confidence: suggestion.confidence,
+    suggestedContent: prContent,
+    message: {
+      subject: taskSuggestion.message.subject,
+      fromEmail: taskSuggestion.message.fromEmail,
+    },
+    githubRepoLink: {
       repoFullName: repoLink.link.repoFullName,
       defaultBranch: repoLink.link.defaultBranch,
-    },
-    email: {
-      subject: taskSuggestion.email.subject,
-      fromEmail: taskSuggestion.email.fromEmail,
     },
   }
 }

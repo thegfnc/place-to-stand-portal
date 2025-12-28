@@ -135,6 +135,41 @@ function collectText(part?: GmailBodyPart): string {
   return [thisPart, children].filter(Boolean).join('\n')
 }
 
+function collectHtml(part?: GmailBodyPart): string {
+  if (!part) return ''
+  const thisPart = part.mimeType === 'text/html' ? decodeBase64Url(part.body?.data) : ''
+  const children = (part.parts || []).map(p => collectHtml(p)).join('')
+  return [thisPart, children].filter(Boolean).join('')
+}
+
+/**
+ * Mark a message as read in Gmail by removing the UNREAD label
+ */
+export async function markGmailMessageAsRead(
+  userId: string,
+  messageId: string,
+  options?: GmailClientOptions
+): Promise<void> {
+  const { accessToken } = await getValidAccessToken(userId, options?.connectionId)
+  const url = `https://gmail.googleapis.com/gmail/v1/users/me/messages/${messageId}/modify`
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      removeLabelIds: ['UNREAD'],
+    }),
+  })
+
+  if (!res.ok) {
+    const errorText = await res.text()
+    throw new Error(`Gmail mark as read failed: ${errorText}`)
+  }
+}
+
 export function normalizeEmail(message: GmailMessage): NormalizedEmail {
   const headers = message.payload?.headers || []
   const subject = header(headers, 'Subject')
@@ -149,6 +184,7 @@ export function normalizeEmail(message: GmailMessage): NormalizedEmail {
     .filter(Boolean)
   const date = header(headers, 'Date')
   const bodyText = collectText(message.payload)
+  const bodyHtml = collectHtml(message.payload)
 
   return {
     id: message.id,
@@ -159,6 +195,7 @@ export function normalizeEmail(message: GmailMessage): NormalizedEmail {
     date,
     snippet: message.snippet,
     bodyText: bodyText || undefined,
+    bodyHtml: bodyHtml || undefined,
   }
 }
 

@@ -1,54 +1,19 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
 import { Mail } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 
 import { Badge } from '@/components/ui/badge'
-import { EmailDetailSheet } from '@/app/(dashboard)/emails/_components/email-detail-sheet'
-import type { EmailWithLinks } from '@/lib/queries/emails'
-
-type LinkedEmail = {
-  id: string
-  subject: string | null
-  fromEmail: string
-  fromName: string | null
-  receivedAt: string
-  source: string
-}
+import type { MessageForClient } from '@/lib/queries/messages'
 
 type Props = {
-  emails: LinkedEmail[]
+  messages: MessageForClient[]
   isAdmin: boolean
 }
 
-export function ClientEmailsSection({ emails, isAdmin }: Props) {
-  const [selectedEmailId, setSelectedEmailId] = useState<string | null>(null)
-  const [selectedEmail, setSelectedEmail] = useState<EmailWithLinks | null>(null)
-
-  // Fetch full email data when selected
-  useEffect(() => {
-    if (!selectedEmailId) return
-
-    let cancelled = false
-    fetch(`/api/emails/${selectedEmailId}`)
-      .then(r => r.ok ? r.json() : null)
-      .then(data => { if (!cancelled) setSelectedEmail(data) })
-      .catch(() => { if (!cancelled) setSelectedEmail(null) })
-
-    return () => { cancelled = true }
-  }, [selectedEmailId])
-
-  const handleClose = () => {
-    setSelectedEmailId(null)
-    setSelectedEmail(null)
-  }
-
-  const handleUpdate = (updated: EmailWithLinks) => {
-    setSelectedEmail(updated)
-  }
-
+export function ClientEmailsSection({ messages, isAdmin }: Props) {
   return (
     <section className='bg-card text-card-foreground overflow-hidden rounded-xl border shadow-sm'>
       <div className='bg-muted/30 flex items-center justify-between gap-3 border-b px-6 py-4'>
@@ -56,62 +21,54 @@ export function ClientEmailsSection({ emails, isAdmin }: Props) {
           <div className='bg-background flex h-8 w-8 items-center justify-center rounded-md border shadow-sm'>
             <Mail className='text-muted-foreground h-4 w-4' />
           </div>
-          <h2 className='text-lg font-semibold tracking-tight'>Linked Emails</h2>
-          <Badge variant='secondary'>{emails.length}</Badge>
+          <h2 className='text-lg font-semibold tracking-tight'>Messages</h2>
+          <Badge variant='secondary'>{messages.length}</Badge>
         </div>
-        <Link href='/emails' className='text-sm text-muted-foreground hover:underline'>
-          View all emails →
+        <Link href='/inbox' className='text-sm text-muted-foreground hover:underline'>
+          View inbox →
         </Link>
       </div>
 
       <div className='p-6'>
-        {emails.length === 0 ? (
+        {messages.length === 0 ? (
           <div className='text-muted-foreground rounded-lg border border-dashed p-6 text-center text-sm'>
-            No emails linked to this client yet. Add contacts to enable auto-matching.
+            No messages linked to this client yet. Add contacts to enable auto-matching.
           </div>
         ) : (
           <div className='space-y-2'>
-            {emails.slice(0, 10).map(email => (
+            {messages.slice(0, 10).map(msg => (
               <div
-                key={email.id}
-                onClick={() => setSelectedEmailId(email.id)}
-                className='flex items-center justify-between gap-4 py-2 px-3 rounded-md hover:bg-muted/50 cursor-pointer'
+                key={msg.id}
+                className='flex items-center justify-between gap-4 py-2 px-3 rounded-md hover:bg-muted/50'
               >
                 <div className='flex-1 min-w-0'>
                   <div className='font-medium truncate'>
-                    {email.subject || '(no subject)'}
+                    {msg.subject || '(no subject)'}
                   </div>
                   <div className='text-sm text-muted-foreground truncate'>
-                    {email.fromName || email.fromEmail}
+                    {msg.fromName || msg.fromEmail}
                   </div>
                 </div>
                 <div className='flex items-center gap-2 shrink-0'>
                   <Badge variant='outline' className='text-xs'>
-                    {email.source === 'AUTOMATIC' ? 'Auto' : 'Manual'}
+                    {msg.isInbound ? 'Inbound' : 'Outbound'}
                   </Badge>
                   <span className='text-xs text-muted-foreground'>
-                    {formatDistanceToNow(new Date(email.receivedAt), { addSuffix: true })}
+                    {formatDistanceToNow(new Date(msg.sentAt), { addSuffix: true })}
                   </span>
                 </div>
               </div>
             ))}
-            {emails.length > 10 && (
+            {messages.length > 10 && (
               <div className='text-center pt-2'>
-                <Link href='/emails?filter=linked' className='text-sm text-muted-foreground hover:underline'>
-                  +{emails.length - 10} more emails
+                <Link href='/inbox' className='text-sm text-muted-foreground hover:underline'>
+                  +{messages.length - 10} more messages
                 </Link>
               </div>
             )}
           </div>
         )}
       </div>
-
-      <EmailDetailSheet
-        email={selectedEmail}
-        onClose={handleClose}
-        onUpdate={handleUpdate}
-        isAdmin={isAdmin}
-      />
     </section>
   )
 }

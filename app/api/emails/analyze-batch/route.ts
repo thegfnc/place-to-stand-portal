@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { requireRole } from '@/lib/auth/session'
-import { processUnanalyzedEmails } from '@/lib/ai/suggestion-service'
+import { processUnanalyzedMessages } from '@/lib/ai/suggestion-service'
 
 const requestSchema = z.object({
   limit: z.number().int().min(1).max(100).optional().default(20),
@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const result = await processUnanalyzedEmails(user.id, limit)
+    const result = await processUnanalyzedMessages(user.id, limit)
 
     return NextResponse.json({
       success: true,

@@ -2,16 +2,32 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Inbox, CheckCircle2, XCircle, Sparkles } from 'lucide-react'
+import { Inbox, CheckCircle2, XCircle, Sparkles, Mail, Calendar, FolderKanban, Loader2 } from 'lucide-react'
+import { formatDistanceToNow } from 'date-fns'
+
+import { AppShellHeader } from '@/components/layout/app-shell'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import type { TaskSuggestionWithEmail } from '@/lib/types/suggestions'
-import { SuggestionCard } from './suggestion-card'
-import { SuggestionEditSheet } from './suggestion-edit-sheet'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Checkbox } from '@/components/ui/checkbox'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { useToast } from '@/components/ui/use-toast'
+import type { SuggestionWithContext, TaskSuggestedContent, PRSuggestedContent } from '@/lib/types/suggestions'
 
-interface SuggestionsPanelProps {
-  initialSuggestions: TaskSuggestionWithEmail[]
-  initialCounts: { pending: number; approved: number; rejected: number }
+type SuggestionCounts = {
+  pending: number
+  approved: number
+  rejected: number
+  byType: {
+    TASK: number
+    PR: number
+    REPLY: number
+  }
+}
+
+type SuggestionsPanelProps = {
+  initialSuggestions: SuggestionWithContext[]
+  initialCounts: SuggestionCounts
   projects: Array<{ id: string; name: string }>
 }
 
@@ -21,21 +37,12 @@ export function SuggestionsPanel({
   projects,
 }: SuggestionsPanelProps) {
   const router = useRouter()
+  const { toast } = useToast()
   const [suggestions, setSuggestions] = useState(initialSuggestions)
   const [counts, setCounts] = useState(initialCounts)
   const [selected, setSelected] = useState<string[]>([])
-  const [editingSuggestion, setEditingSuggestion] = useState<TaskSuggestionWithEmail | null>(null)
   const [processing, setProcessing] = useState(false)
-  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
-
-  const showMessage = (type: 'success' | 'error', text: string) => {
-    setMessage({ type, text })
-    setTimeout(() => setMessage(null), 3000)
-  }
-
-  const handleApprove = async (suggestion: TaskSuggestionWithEmail) => {
-    setEditingSuggestion(suggestion)
-  }
+  const [rejectDialogOpen, setRejectDialogOpen] = useState<string | null>(null)
 
   const handleQuickApprove = async (suggestionId: string) => {
     setProcessing(true)
@@ -53,33 +60,38 @@ export function SuggestionsPanel({
 
       setSuggestions(prev => prev.filter(s => s.id !== suggestionId))
       setCounts(prev => ({ ...prev, pending: prev.pending - 1, approved: prev.approved + 1 }))
-      showMessage('success', 'Task created successfully')
+      toast({ title: 'Suggestion approved', description: 'Task created successfully.' })
       router.refresh()
     } catch (error) {
-      showMessage('error', error instanceof Error ? error.message : 'Failed to approve suggestion')
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to approve suggestion',
+        variant: 'destructive',
+      })
     } finally {
       setProcessing(false)
     }
   }
 
-  const handleReject = async (suggestionId: string, reason?: string) => {
+  const handleReject = async (suggestionId: string) => {
     setProcessing(true)
     try {
       const response = await fetch(`/api/suggestions/${suggestionId}/reject`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reason }),
+        body: JSON.stringify({}),
       })
 
       if (!response.ok) throw new Error('Failed to reject')
 
       setSuggestions(prev => prev.filter(s => s.id !== suggestionId))
       setCounts(prev => ({ ...prev, pending: prev.pending - 1, rejected: prev.rejected + 1 }))
-      showMessage('success', 'Suggestion rejected')
+      toast({ title: 'Suggestion rejected' })
     } catch {
-      showMessage('error', 'Failed to reject suggestion')
+      toast({ title: 'Error', description: 'Failed to reject suggestion', variant: 'destructive' })
     } finally {
       setProcessing(false)
+      setRejectDialogOpen(null)
     }
   }
 
@@ -105,26 +117,17 @@ export function SuggestionsPanel({
       }))
       setSelected([])
 
-      showMessage(
-        result.failed > 0 ? 'error' : 'success',
-        `${result.succeeded} suggestions ${action}d${result.failed > 0 ? `, ${result.failed} failed` : ''}`
-      )
+      toast({
+        title: result.failed > 0 ? 'Partial success' : 'Success',
+        description: `${result.succeeded} suggestions ${action}d${result.failed > 0 ? `, ${result.failed} failed` : ''}`,
+        variant: result.failed > 0 ? 'destructive' : 'default',
+      })
       router.refresh()
     } catch {
-      showMessage('error', 'Bulk action failed')
+      toast({ title: 'Error', description: 'Bulk action failed', variant: 'destructive' })
     } finally {
       setProcessing(false)
     }
-  }
-
-  const handleEditComplete = (approved: boolean) => {
-    if (approved && editingSuggestion) {
-      setSuggestions(prev => prev.filter(s => s.id !== editingSuggestion.id))
-      setCounts(prev => ({ ...prev, pending: prev.pending - 1, approved: prev.approved + 1 }))
-      showMessage('success', 'Task created successfully')
-      router.refresh()
-    }
-    setEditingSuggestion(null)
   }
 
   const toggleSelect = (id: string) => {
@@ -140,98 +143,221 @@ export function SuggestionsPanel({
   }
 
   return (
-    <div className='space-y-4'>
-      {/* Message Banner */}
-      {message && (
-        <div
-          className={`p-3 rounded-lg text-sm ${
-            message.type === 'success'
-              ? 'bg-green-50 text-green-800 dark:bg-green-900/20 dark:text-green-200'
-              : 'bg-red-50 text-red-800 dark:bg-red-900/20 dark:text-red-200'
-          }`}
-        >
-          {message.text}
-        </div>
-      )}
+    <>
+      <AppShellHeader>
+        <h1 className='text-2xl font-semibold tracking-tight'>AI Suggestions</h1>
+        <p className='text-muted-foreground text-sm'>
+          Review AI-generated suggestions from client communications.
+        </p>
+      </AppShellHeader>
 
-      {/* Stats */}
-      <div className='flex gap-4'>
-        <Badge variant='outline' className='text-sm'>
-          <Inbox className='mr-1 h-3 w-3' />
-          {counts.pending} pending
-        </Badge>
-        <Badge variant='outline' className='text-sm text-green-600'>
-          <CheckCircle2 className='mr-1 h-3 w-3' />
-          {counts.approved} approved
-        </Badge>
-        <Badge variant='outline' className='text-sm text-red-600'>
-          <XCircle className='mr-1 h-3 w-3' />
-          {counts.rejected} rejected
-        </Badge>
+      <div className='space-y-4'>
+        {/* Stats */}
+        <div className='flex flex-wrap gap-4'>
+          <Badge variant='outline' className='text-sm'>
+            <Inbox className='mr-1 h-3 w-3' />
+            {counts.pending} pending
+          </Badge>
+          <Badge variant='outline' className='text-sm text-green-600'>
+            <CheckCircle2 className='mr-1 h-3 w-3' />
+            {counts.approved} approved
+          </Badge>
+          <Badge variant='outline' className='text-sm text-red-600'>
+            <XCircle className='mr-1 h-3 w-3' />
+            {counts.rejected} rejected
+          </Badge>
+        </div>
+
+        {/* Bulk Actions */}
+        {selected.length > 0 && (
+          <div className='flex items-center gap-2 rounded-lg bg-muted p-3'>
+            <span className='text-sm'>{selected.length} selected</span>
+            <Button
+              size='sm'
+              onClick={() => handleBulkAction('approve')}
+              disabled={processing}
+            >
+              Approve All
+            </Button>
+            <Button
+              size='sm'
+              variant='outline'
+              onClick={() => handleBulkAction('reject')}
+              disabled={processing}
+            >
+              Reject All
+            </Button>
+            <Button size='sm' variant='ghost' onClick={() => setSelected([])}>
+              Clear
+            </Button>
+          </div>
+        )}
+
+        {/* Suggestion List */}
+        {suggestions.length === 0 ? (
+          <div className='rounded-lg border border-dashed p-8 text-center'>
+            <Sparkles className='mx-auto h-8 w-8 text-muted-foreground' />
+            <p className='mt-2 text-sm text-muted-foreground'>
+              No pending suggestions. Suggestions are generated when emails are analyzed on project boards.
+            </p>
+          </div>
+        ) : (
+          <div className='space-y-4'>
+            {suggestions.length > 1 && (
+              <div className='flex items-center gap-2'>
+                <Checkbox
+                  checked={selected.length === suggestions.length}
+                  onCheckedChange={toggleSelectAll}
+                />
+                <span className='text-sm text-muted-foreground'>Select all</span>
+              </div>
+            )}
+            {suggestions.map(suggestion => (
+              <SuggestionCard
+                key={suggestion.id}
+                suggestion={suggestion}
+                selected={selected.includes(suggestion.id)}
+                onSelect={() => toggleSelect(suggestion.id)}
+                onQuickApprove={() => handleQuickApprove(suggestion.id)}
+                onReject={() => setRejectDialogOpen(suggestion.id)}
+                disabled={processing}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* Bulk Actions */}
-      {selected.length > 0 && (
-        <div className='flex items-center gap-2 p-3 bg-muted rounded-lg'>
-          <span className='text-sm'>{selected.length} selected</span>
-          <Button
-            size='sm'
-            onClick={() => handleBulkAction('approve')}
-            disabled={processing}
-          >
-            Approve All
-          </Button>
+      {/* Reject Dialog */}
+      <ConfirmDialog
+        open={!!rejectDialogOpen}
+        title='Reject suggestion?'
+        description='This will reject the suggestion. This action cannot be undone.'
+        confirmLabel='Reject'
+        cancelLabel='Cancel'
+        confirmVariant='destructive'
+        onConfirm={() => rejectDialogOpen && handleReject(rejectDialogOpen)}
+        onCancel={() => setRejectDialogOpen(null)}
+      />
+    </>
+  )
+}
+
+function SuggestionCard({
+  suggestion,
+  selected,
+  onSelect,
+  onQuickApprove,
+  onReject,
+  disabled,
+}: {
+  suggestion: SuggestionWithContext
+  selected: boolean
+  onSelect: () => void
+  onQuickApprove: () => void
+  onReject: () => void
+  disabled?: boolean
+}) {
+  const content = suggestion.suggestedContent as TaskSuggestedContent | PRSuggestedContent
+  const title = 'title' in content ? content.title : 'Untitled'
+  const description = 'description' in content ? content.description : ('body' in content ? content.body : null)
+
+  const confidencePercent = Math.round(Number(suggestion.confidence) * 100)
+  const confidenceColor =
+    confidencePercent >= 80 ? 'text-green-600' :
+    confidencePercent >= 60 ? 'text-amber-600' : 'text-red-600'
+
+  return (
+    <Card className={selected ? 'ring-2 ring-primary' : ''}>
+      <CardHeader className='pb-2'>
+        <div className='flex items-start gap-3'>
+          <Checkbox
+            checked={selected}
+            onCheckedChange={onSelect}
+            className='mt-1'
+          />
+          <div className='min-w-0 flex-1'>
+            <div className='flex items-center gap-2'>
+              <Badge variant='outline' className='text-xs'>
+                {suggestion.type}
+              </Badge>
+              <CardTitle className='text-base font-medium'>
+                {title}
+              </CardTitle>
+            </div>
+            {suggestion.message && (
+              <div className='mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground'>
+                <span className='flex items-center gap-1'>
+                  <Mail className='h-3 w-3' />
+                  {suggestion.message.subject || '(no subject)'}
+                </span>
+                <span>·</span>
+                <span>{suggestion.message.fromEmail}</span>
+                {suggestion.message.sentAt && (
+                  <>
+                    <span>·</span>
+                    <span>{formatDistanceToNow(new Date(suggestion.message.sentAt))} ago</span>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+          <Badge className={confidenceColor} variant='outline'>
+            {confidencePercent}% confidence
+          </Badge>
+        </div>
+      </CardHeader>
+      <CardContent className='pt-0'>
+        {description && (
+          <p className='mb-3 line-clamp-2 text-sm text-muted-foreground'>
+            {description}
+          </p>
+        )}
+
+        <div className='mb-3 flex flex-wrap items-center gap-4 text-sm'>
+          {suggestion.project && (
+            <span className='flex items-center gap-1'>
+              <FolderKanban className='h-3 w-3' />
+              {suggestion.project.name}
+            </span>
+          )}
+          {'dueDate' in content && content.dueDate && (
+            <span className='flex items-center gap-1'>
+              <Calendar className='h-3 w-3' />
+              {content.dueDate}
+            </span>
+          )}
+          {'priority' in content && content.priority && (
+            <Badge variant='secondary' className='text-xs'>
+              {content.priority}
+            </Badge>
+          )}
+        </div>
+
+        {suggestion.reasoning && (
+          <p className='mb-3 text-xs italic text-muted-foreground'>
+            &quot;{suggestion.reasoning}&quot;
+          </p>
+        )}
+
+        <div className='flex items-center justify-end gap-2'>
           <Button
             size='sm'
             variant='outline'
-            onClick={() => handleBulkAction('reject')}
-            disabled={processing}
+            onClick={onReject}
+            disabled={disabled}
           >
-            Reject All
+            Reject
           </Button>
-          <Button size='sm' variant='ghost' onClick={() => setSelected([])}>
-            Clear
+          <Button
+            size='sm'
+            onClick={onQuickApprove}
+            disabled={disabled || !suggestion.projectId}
+          >
+            {disabled ? <Loader2 className='mr-1 h-3 w-3 animate-spin' /> : null}
+            {suggestion.type === 'TASK' ? 'Create Task' : 'Create PR'}
           </Button>
         </div>
-      )}
-
-      {/* Suggestion List */}
-      {suggestions.length === 0 ? (
-        <div className='rounded-lg border border-dashed p-8 text-center'>
-          <Sparkles className='mx-auto h-8 w-8 text-muted-foreground' />
-          <p className='mt-2 text-sm text-muted-foreground'>
-            No pending suggestions. Analyze more emails to generate task suggestions.
-          </p>
-        </div>
-      ) : (
-        <div className='space-y-3'>
-          <div className='flex items-center justify-between'>
-            <Button variant='ghost' size='sm' onClick={toggleSelectAll}>
-              {selected.length === suggestions.length ? 'Deselect All' : 'Select All'}
-            </Button>
-          </div>
-          {suggestions.map(suggestion => (
-            <SuggestionCard
-              key={suggestion.id}
-              suggestion={suggestion}
-              selected={selected.includes(suggestion.id)}
-              onSelect={() => toggleSelect(suggestion.id)}
-              onApprove={() => handleApprove(suggestion)}
-              onQuickApprove={() => handleQuickApprove(suggestion.id)}
-              onReject={(reason) => handleReject(suggestion.id, reason)}
-              disabled={processing}
-            />
-          ))}
-        </div>
-      )}
-
-      {/* Edit Sheet */}
-      <SuggestionEditSheet
-        suggestion={editingSuggestion}
-        projects={projects}
-        onClose={() => setEditingSuggestion(null)}
-        onComplete={handleEditComplete}
-      />
-    </div>
+      </CardContent>
+    </Card>
   )
 }

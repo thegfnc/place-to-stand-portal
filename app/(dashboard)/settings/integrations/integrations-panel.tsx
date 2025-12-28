@@ -19,7 +19,10 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
-import { ConnectedAccountsList, type ConnectedAccount } from '@/components/integrations/connected-accounts-list'
+import {
+  ConnectedAccountsList,
+  type ConnectedAccount,
+} from '@/components/integrations/connected-accounts-list'
 
 function SimpleIcon({
   icon,
@@ -71,13 +74,38 @@ function GoogleIcon({ className }: { className?: string }) {
   )
 }
 
-const OAUTH_MESSAGES: Record<string, { title: string; description?: string; variant?: 'destructive' }> = {
-  google_connected: { title: 'Connected', description: 'Google account connected successfully.' },
-  github_connected: { title: 'Connected', description: 'GitHub account connected successfully.' },
-  access_denied: { title: 'Access Denied', description: 'You denied access to the account.', variant: 'destructive' },
-  invalid_request: { title: 'Invalid Request', description: 'OAuth request failed. Please try again.', variant: 'destructive' },
-  invalid_state: { title: 'Security Error', description: 'State validation failed. Please try again.', variant: 'destructive' },
-  oauth_failed: { title: 'Connection Failed', description: 'Failed to connect account.', variant: 'destructive' },
+const OAUTH_MESSAGES: Record<
+  string,
+  { title: string; description?: string; variant?: 'destructive' }
+> = {
+  google_connected: {
+    title: 'Connected',
+    description: 'Google account connected successfully.',
+  },
+  github_connected: {
+    title: 'Connected',
+    description: 'GitHub account connected successfully.',
+  },
+  access_denied: {
+    title: 'Access Denied',
+    description: 'You denied access to the account.',
+    variant: 'destructive',
+  },
+  invalid_request: {
+    title: 'Invalid Request',
+    description: 'OAuth request failed. Please try again.',
+    variant: 'destructive',
+  },
+  invalid_state: {
+    title: 'Security Error',
+    description: 'State validation failed. Please try again.',
+    variant: 'destructive',
+  },
+  oauth_failed: {
+    title: 'Connection Failed',
+    description: 'Failed to connect account.',
+    variant: 'destructive',
+  },
 }
 
 interface AccountsResponse {
@@ -113,7 +141,11 @@ export function IntegrationsPanel() {
 
     if (key && OAUTH_MESSAGES[key]) {
       const msg = OAUTH_MESSAGES[key]
-      toast({ title: msg.title, description: msg.description, variant: msg.variant })
+      toast({
+        title: msg.title,
+        description: msg.description,
+        variant: msg.variant,
+      })
       window.history.replaceState({}, '', '/settings/integrations')
     }
   }, [searchParams])
@@ -150,10 +182,16 @@ export function IntegrationsPanel() {
     },
     onSuccess: async () => {
       toast({ title: 'Google account disconnected' })
-      await queryClient.invalidateQueries({ queryKey: ['googleIntegrationStatus'] })
+      await queryClient.invalidateQueries({
+        queryKey: ['googleIntegrationStatus'],
+      })
     },
     onError: (err: unknown) => {
-      toast({ title: 'Disconnect failed', description: String(err), variant: 'destructive' })
+      toast({
+        title: 'Disconnect failed',
+        description: String(err),
+        variant: 'destructive',
+      })
     },
   })
 
@@ -169,10 +207,16 @@ export function IntegrationsPanel() {
     },
     onSuccess: async () => {
       toast({ title: 'GitHub account disconnected' })
-      await queryClient.invalidateQueries({ queryKey: ['githubIntegrationStatus'] })
+      await queryClient.invalidateQueries({
+        queryKey: ['githubIntegrationStatus'],
+      })
     },
     onError: (err: unknown) => {
-      toast({ title: 'Disconnect failed', description: String(err), variant: 'destructive' })
+      toast({
+        title: 'Disconnect failed',
+        description: String(err),
+        variant: 'destructive',
+      })
     },
   })
 
@@ -187,7 +231,9 @@ export function IntegrationsPanel() {
   }
 
   // Transform API response to ConnectedAccount format
-  const transformAccounts = (accounts: AccountsResponse['accounts'] | undefined): ConnectedAccount[] => {
+  const transformAccounts = (
+    accounts: AccountsResponse['accounts'] | undefined
+  ): ConnectedAccount[] => {
     if (!accounts) return []
     return accounts.map(a => ({
       id: a.id,
@@ -206,7 +252,7 @@ export function IntegrationsPanel() {
 
   return (
     <div className='relative'>
-      <div className='grid gap-6'>
+      <div className='grid grid-cols-2 gap-6'>
         {/* Google Card */}
         <Card>
           <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
@@ -216,29 +262,36 @@ export function IntegrationsPanel() {
                 Google Workspace
               </CardTitle>
               <CardDescription>
-                Connect your Google Workspace accounts to sync emails and contacts.
+                Connect your Google Workspace accounts to sync emails and
+                contacts.
               </CardDescription>
             </div>
           </CardHeader>
           <CardContent>
             {googleLoading ? (
-              <div className='text-sm text-muted-foreground'>Checking status...</div>
+              <div className='text-muted-foreground text-sm'>
+                Checking status...
+              </div>
             ) : googleAccounts.length > 0 ? (
               <ConnectedAccountsList
                 provider='google'
                 accounts={googleAccounts}
-                onDisconnect={async (id) => disconnectGoogle.mutateAsync(id)}
+                onDisconnect={async id => disconnectGoogle.mutateAsync(id)}
                 onAddAccount={handleConnectGoogle}
               />
             ) : (
               <div className='flex items-center justify-between'>
-                <span className='text-sm text-muted-foreground'>Not connected</span>
+                <span className='text-muted-foreground text-sm'>
+                  Not connected
+                </span>
                 <Button
                   variant='outline'
                   disabled={isRedirectingGoogle}
                   onClick={handleConnectGoogle}
                 >
-                  {isRedirectingGoogle ? 'Connecting...' : 'Connect Google Account'}
+                  {isRedirectingGoogle
+                    ? 'Connecting...'
+                    : 'Connect Google Account'}
                 </Button>
               </div>
             )}
@@ -254,29 +307,36 @@ export function IntegrationsPanel() {
                 GitHub
               </CardTitle>
               <CardDescription>
-                Connect your GitHub accounts to sync repositories and create PRs.
+                Connect your GitHub accounts to sync repositories and create
+                PRs.
               </CardDescription>
             </div>
           </CardHeader>
           <CardContent>
             {githubLoading ? (
-              <div className='text-sm text-muted-foreground'>Checking status...</div>
+              <div className='text-muted-foreground text-sm'>
+                Checking status...
+              </div>
             ) : githubAccounts.length > 0 ? (
               <ConnectedAccountsList
                 provider='github'
                 accounts={githubAccounts}
-                onDisconnect={async (id) => disconnectGitHub.mutateAsync(id)}
+                onDisconnect={async id => disconnectGitHub.mutateAsync(id)}
                 onAddAccount={handleConnectGitHub}
               />
             ) : (
               <div className='flex items-center justify-between'>
-                <span className='text-sm text-muted-foreground'>Not connected</span>
+                <span className='text-muted-foreground text-sm'>
+                  Not connected
+                </span>
                 <Button
                   variant='outline'
                   disabled={isRedirectingGitHub}
                   onClick={handleConnectGitHub}
                 >
-                  {isRedirectingGitHub ? 'Connecting...' : 'Connect GitHub Account'}
+                  {isRedirectingGitHub
+                    ? 'Connecting...'
+                    : 'Connect GitHub Account'}
                 </Button>
               </div>
             )}

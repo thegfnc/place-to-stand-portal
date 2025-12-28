@@ -28,7 +28,7 @@ import type {
   ClientProject,
 } from '@/lib/data/clients'
 import type { ClientContact } from '@/lib/types/client-contacts'
-import type { LinkedEmailForClient } from '@/lib/queries/emails'
+import type { MessageForClient } from '@/lib/queries/messages'
 import { getBillingTypeLabel } from '@/lib/settings/clients/billing-types'
 import {
   ARCHIVE_CLIENT_CONFIRM_LABEL,
@@ -55,7 +55,7 @@ type ClientDetailProps = {
   client: HydratedClientDetail
   projects: ClientProject[]
   contacts: ClientContact[]
-  linkedEmails: LinkedEmailForClient[]
+  messages: MessageForClient[]
   canManageClients: boolean
   clientUsers: ClientUserSummary[]
   clientMembers: Record<string, ClientUserSummary[]>
@@ -67,7 +67,7 @@ export function ClientDetail({
   client,
   projects,
   contacts,
-  linkedEmails,
+  messages,
   canManageClients,
   clientUsers,
   clientMembers,
@@ -194,8 +194,8 @@ export function ClientDetail({
             canManage={canManageClients}
           />
 
-          {/* Linked Emails Section */}
-          <ClientEmailsSection emails={linkedEmails} isAdmin={canManageClients} />
+          {/* Messages Section */}
+          <ClientEmailsSection messages={messages} isAdmin={canManageClients} />
 
           {/* Notes Section */}
           <ClientNotesSection

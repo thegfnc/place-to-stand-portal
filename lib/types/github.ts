@@ -1,14 +1,14 @@
 import type { InferSelectModel, InferInsertModel } from 'drizzle-orm'
-import type { githubRepoLinks, prSuggestions } from '@/lib/db/schema'
+import type { githubRepoLinks } from '@/lib/db/schema'
 
+// Re-export PRSuggestionWithContext for backwards compatibility
+export type { PRSuggestionWithContext } from './suggestions'
+
+// Base types from schema
 export type GitHubRepoLink = InferSelectModel<typeof githubRepoLinks>
 export type NewGitHubRepoLink = InferInsertModel<typeof githubRepoLinks>
 
-export type PRSuggestion = InferSelectModel<typeof prSuggestions>
-export type NewPRSuggestion = InferInsertModel<typeof prSuggestions>
-
-export type PRSuggestionStatus = 'DRAFT' | 'PENDING' | 'APPROVED' | 'REJECTED' | 'FAILED'
-
+// Extended types with relations
 export interface GitHubRepoLinkWithProject extends GitHubRepoLink {
   project: {
     id: string
@@ -16,15 +16,12 @@ export interface GitHubRepoLinkWithProject extends GitHubRepoLink {
   }
 }
 
-export interface PRSuggestionWithContext extends PRSuggestion {
-  repoLink: {
-    repoFullName: string
-    defaultBranch: string
+export interface GitHubRepoLinkWithOAuth extends GitHubRepoLink {
+  oauthConnection: {
+    id: string
+    providerEmail: string | null
+    displayName: string | null
   }
-  email?: {
-    subject: string | null
-    fromEmail: string
-  } | null
 }
 
 // GitHub API response types

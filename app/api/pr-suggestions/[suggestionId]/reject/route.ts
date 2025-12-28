@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireRole } from '@/lib/auth/session'
-import { rejectPRSuggestion } from '@/lib/data/pr-suggestions'
+import { rejectSuggestion } from '@/lib/data/suggestions'
 
 export async function POST(
   request: NextRequest,
@@ -10,7 +10,7 @@ export async function POST(
   const { suggestionId } = await params
 
   try {
-    await rejectPRSuggestion(suggestionId, user.id)
+    await rejectSuggestion(suggestionId, user.id)
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('PR rejection error:', error)

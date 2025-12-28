@@ -6,11 +6,12 @@ import { db } from '@/lib/db'
 import {
   clientMembers,
   clients,
-  emailMetadata,
   projects,
+  threads,
+  messages,
+  clientContacts,
 } from '@/lib/db/schema'
 import { and, eq, isNull } from 'drizzle-orm'
-import { matchAndLinkEmail } from '@/lib/email/matcher'
 
 export async function POST() {
   const user = await requireUser()
@@ -37,65 +38,86 @@ export async function POST() {
   await upsertContact({ clientId: acme.id, email: 'dev@acme.com', name: 'Acme Dev', createdBy: user.id })
   await upsertContact({ clientId: beta.id, email: 'team@beta.io', name: 'Beta Team', createdBy: user.id })
 
-  // Emails (owned by current user)
-  const email1 = await upsertEmail({
+  // Create threads and messages (owned by current user)
+  const thread1 = await upsertThread({
+    clientId: acme.id,
+    subject: 'Kickoff & SOW',
+    source: 'EMAIL',
+    externalThreadId: 'test-thread-1',
+    participantEmails: ['ceo@acme.com', user.email ?? 'user@example.com'],
+    createdBy: user.id,
+  })
+
+  const message1 = await upsertMessage({
+    threadId: thread1.id,
     userId: user.id,
-    gmailMessageId: 'test-gmail-msg-1',
-    gmailThreadId: 'thread-1',
+    source: 'EMAIL',
+    externalMessageId: 'test-gmail-msg-1',
+    subject: 'Kickoff & SOW',
     fromEmail: 'ceo@acme.com',
     fromName: 'Acme CEO',
     toEmails: [user.email ?? 'user@example.com'],
-    ccEmails: [],
-    subject: 'Kickoff & SOW',
-    snippet: 'Excited to kick off the website project…',
-    receivedAt: new Date().toISOString(),
-    isRead: false,
+    sentAt: new Date().toISOString(),
+    snippet: 'Excited to kick off the website project...',
+    isInbound: true,
     hasAttachments: true,
-    labels: ['INBOX'],
   })
 
-  const email2 = await upsertEmail({
+  const thread2 = await upsertThread({
+    clientId: beta.id,
+    subject: 'Integration Inquiry',
+    source: 'EMAIL',
+    externalThreadId: 'test-thread-2',
+    participantEmails: ['someone@beta.io', user.email ?? 'user@example.com'],
+    createdBy: user.id,
+  })
+
+  const message2 = await upsertMessage({
+    threadId: thread2.id,
     userId: user.id,
-    gmailMessageId: 'test-gmail-msg-2',
-    gmailThreadId: 'thread-2',
+    source: 'EMAIL',
+    externalMessageId: 'test-gmail-msg-2',
+    subject: 'Integration Inquiry',
     fromEmail: 'someone@beta.io',
     fromName: 'Beta Someone',
     toEmails: [user.email ?? 'user@example.com'],
-    ccEmails: [],
-    subject: 'Integration Inquiry',
-    snippet: 'We would like to discuss integration options…',
-    receivedAt: new Date(Date.now() - 1000 * 60 * 60).toISOString(),
+    sentAt: new Date(Date.now() - 1000 * 60 * 60).toISOString(),
+    snippet: 'We would like to discuss integration options...',
+    isInbound: true,
     isRead: true,
     hasAttachments: false,
-    labels: ['INBOX'],
   })
 
-  const email3 = await upsertEmail({
+  // Thread without client link (unknown sender)
+  const thread3 = await upsertThread({
+    subject: 'Cold Outreach',
+    source: 'EMAIL',
+    externalThreadId: 'test-thread-3',
+    participantEmails: ['random@unknown.com', user.email ?? 'user@example.com'],
+    createdBy: user.id,
+  })
+
+  const message3 = await upsertMessage({
+    threadId: thread3.id,
     userId: user.id,
-    gmailMessageId: 'test-gmail-msg-3',
-    gmailThreadId: 'thread-3',
+    source: 'EMAIL',
+    externalMessageId: 'test-gmail-msg-3',
+    subject: 'Cold Outreach',
     fromEmail: 'random@unknown.com',
     fromName: 'Random Person',
     toEmails: [user.email ?? 'user@example.com'],
-    ccEmails: [],
-    subject: 'Cold Outreach',
-    snippet: 'We have a great offer for you…',
-    receivedAt: new Date(Date.now() - 1000 * 60 * 120).toISOString(),
-    isRead: false,
+    sentAt: new Date(Date.now() - 1000 * 60 * 120).toISOString(),
+    snippet: 'We have a great offer for you...',
+    isInbound: true,
     hasAttachments: false,
-    labels: ['INBOX'],
   })
-
-  // Run matcher for the first two (exact + domain)
-  const match1 = await matchAndLinkEmail(user, email1.id)
-  const match2 = await matchAndLinkEmail(user, email2.id)
 
   return NextResponse.json({
     ok: true,
     clients: { acme, beta },
     project: acmeWebsite,
-    emails: { email1, email2, email3 },
-    matches: { match1, match2 },
+    threads: { thread1, thread2, thread3 },
+    messages: { message1, message2, message3 },
   })
 }
 
@@ -143,7 +165,6 @@ async function upsertProject(input: { slug: string; name: string; clientId: stri
 }
 
 async function upsertContact(input: { clientId: string; email: string; name?: string | null; createdBy: string }) {
-  const { clientContacts } = await import('@/lib/db/schema')
   const existing = await db
     .select()
     .from(clientContacts)
@@ -157,46 +178,99 @@ async function upsertContact(input: { clientId: string; email: string; name?: st
   return row
 }
 
-async function upsertEmail(input: {
-  userId: string
-  gmailMessageId: string
-  gmailThreadId?: string | null
-  fromEmail: string
-  fromName?: string | null
-  toEmails?: string[]
-  ccEmails?: string[]
+async function upsertThread(input: {
+  clientId?: string | null
+  projectId?: string | null
   subject?: string | null
-  snippet?: string | null
-  receivedAt: string
-  isRead?: boolean
-  hasAttachments?: boolean
-  labels?: string[]
+  source: 'EMAIL' | 'CHAT' | 'VOICE_MEMO' | 'DOCUMENT' | 'FORM'
+  externalThreadId?: string | null
+  participantEmails?: string[]
+  createdBy?: string | null
 }) {
-  const existing = await db
-    .select()
-    .from(emailMetadata)
-    .where(and(eq(emailMetadata.userId, input.userId), eq(emailMetadata.gmailMessageId, input.gmailMessageId), isNull(emailMetadata.deletedAt)))
-    .limit(1)
-  if (existing[0]) return existing[0]
+  if (input.externalThreadId) {
+    const existing = await db
+      .select()
+      .from(threads)
+      .where(and(eq(threads.externalThreadId, input.externalThreadId), isNull(threads.deletedAt)))
+      .limit(1)
+    if (existing[0]) return existing[0]
+  }
+
   const [row] = await db
-    .insert(emailMetadata)
+    .insert(threads)
     .values({
-      userId: input.userId,
-      gmailMessageId: input.gmailMessageId,
-      gmailThreadId: input.gmailThreadId ?? null,
+      clientId: input.clientId ?? null,
+      projectId: input.projectId ?? null,
       subject: input.subject ?? null,
-      snippet: input.snippet ?? null,
-      fromEmail: input.fromEmail,
-      fromName: input.fromName ?? null,
-      toEmails: input.toEmails ?? [],
-      ccEmails: input.ccEmails ?? [],
-      receivedAt: input.receivedAt,
-      isRead: input.isRead ?? false,
-      hasAttachments: input.hasAttachments ?? false,
-      labels: input.labels ?? [],
-      rawMetadata: {},
+      source: input.source,
+      externalThreadId: input.externalThreadId ?? null,
+      participantEmails: input.participantEmails ?? [],
+      createdBy: input.createdBy ?? null,
     })
     .returning()
   return row
 }
 
+async function upsertMessage(input: {
+  threadId: string
+  userId: string
+  source: 'EMAIL' | 'CHAT' | 'VOICE_MEMO' | 'DOCUMENT' | 'FORM'
+  externalMessageId?: string | null
+  subject?: string | null
+  fromEmail: string
+  fromName?: string | null
+  toEmails?: string[]
+  ccEmails?: string[]
+  sentAt: string
+  snippet?: string | null
+  isInbound?: boolean
+  isRead?: boolean
+  hasAttachments?: boolean
+}) {
+  if (input.externalMessageId) {
+    const existing = await db
+      .select()
+      .from(messages)
+      .where(
+        and(
+          eq(messages.userId, input.userId),
+          eq(messages.externalMessageId, input.externalMessageId),
+          isNull(messages.deletedAt)
+        )
+      )
+      .limit(1)
+    if (existing[0]) return existing[0]
+  }
+
+  const [row] = await db
+    .insert(messages)
+    .values({
+      threadId: input.threadId,
+      userId: input.userId,
+      source: input.source,
+      externalMessageId: input.externalMessageId ?? null,
+      subject: input.subject ?? null,
+      fromEmail: input.fromEmail,
+      fromName: input.fromName ?? null,
+      toEmails: input.toEmails ?? [],
+      ccEmails: input.ccEmails ?? [],
+      sentAt: input.sentAt,
+      snippet: input.snippet ?? null,
+      isInbound: input.isInbound ?? true,
+      isRead: input.isRead ?? false,
+      hasAttachments: input.hasAttachments ?? false,
+    })
+    .returning()
+
+  // Update thread stats
+  await db
+    .update(threads)
+    .set({
+      messageCount: 1, // Simplified for seed
+      lastMessageAt: input.sentAt,
+      updatedAt: new Date().toISOString(),
+    })
+    .where(eq(threads.id, input.threadId))
+
+  return row
+}

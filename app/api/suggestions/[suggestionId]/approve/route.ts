@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
+import { eq } from 'drizzle-orm'
 import { requireRole } from '@/lib/auth/session'
 import { approveSuggestion } from '@/lib/data/suggestions'
+import { db } from '@/lib/db'
+import { tasks } from '@/lib/db/schema'
 
 const approveSchema = z.object({
   title: z.string().min(1).max(200).optional(),
@@ -37,9 +40,28 @@ export async function POST(
       Object.keys(modifications).length > 0 ? modifications : undefined
     )
 
+    // For task suggestions, fetch the created task details
+    let task = null
+    if (result.taskId) {
+      const [createdTask] = await db
+        .select({
+          id: tasks.id,
+          title: tasks.title,
+          status: tasks.status,
+          projectId: tasks.projectId,
+        })
+        .from(tasks)
+        .where(eq(tasks.id, result.taskId))
+        .limit(1)
+      task = createdTask
+    }
+
     return NextResponse.json({
       success: true,
-      task: result.task,
+      task,
+      taskId: result.taskId,
+      prNumber: result.prNumber,
+      prUrl: result.prUrl,
     })
   } catch (error) {
     return NextResponse.json(

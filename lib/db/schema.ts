@@ -22,6 +22,10 @@ import {
 } from 'drizzle-orm/pg-core'
 import { sql } from 'drizzle-orm'
 
+// =============================================================================
+// ENUMS
+// =============================================================================
+
 export const taskStatus = pgEnum('task_status', [
   'BACKLOG',
   'ON_DECK',
@@ -57,8 +61,8 @@ export const leadSourceType = pgEnum('lead_source_type', [
   'EVENT',
 ])
 
+// OAuth enums
 export const oauthProvider = pgEnum('oauth_provider', ['GOOGLE', 'GITHUB'])
-
 export const oauthConnectionStatus = pgEnum('oauth_connection_status', [
   'ACTIVE',
   'EXPIRED',
@@ -66,13 +70,82 @@ export const oauthConnectionStatus = pgEnum('oauth_connection_status', [
   'PENDING_REAUTH',
 ])
 
-export const prSuggestionStatus = pgEnum('pr_suggestion_status', [
-  'DRAFT', // AI generated, not reviewed
-  'PENDING', // User reviewed, awaiting approval
-  'APPROVED', // User approved, PR created
-  'REJECTED', // User rejected
-  'FAILED', // PR creation failed
+// Messaging enums (Phase 5)
+export const messageSource = pgEnum('message_source', [
+  'EMAIL',
+  'CHAT',
+  'VOICE_MEMO',
+  'DOCUMENT',
+  'FORM',
 ])
+export const threadStatus = pgEnum('thread_status', [
+  'OPEN',
+  'RESOLVED',
+  'ARCHIVED',
+])
+
+// Unified suggestion enums
+export const suggestionType = pgEnum('suggestion_type', ['TASK', 'PR', 'REPLY'])
+export const suggestionStatus = pgEnum('suggestion_status', [
+  'DRAFT',
+  'PENDING',
+  'APPROVED',
+  'REJECTED',
+  'MODIFIED',
+  'EXPIRED',
+  'FAILED',
+])
+
+// =============================================================================
+// CORE TABLES
+// =============================================================================
+
+export const users = pgTable(
+  'users',
+  {
+    id: uuid().primaryKey().notNull(),
+    email: text().notNull(),
+    fullName: text('full_name'),
+    role: userRole().default('CLIENT').notNull(),
+    avatarUrl: text('avatar_url'),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+    deletedAt: timestamp('deleted_at', { withTimezone: true, mode: 'string' }),
+  },
+  table => [
+    foreignKey({
+      columns: [table.id],
+      foreignColumns: [table.id],
+      name: 'users_id_fkey',
+    }).onDelete('cascade'),
+    unique('users_email_key').on(table.email),
+    pgPolicy('Admins delete users', {
+      as: 'permissive',
+      for: 'delete',
+      to: ['public'],
+      using: sql`is_admin()`,
+    }),
+    pgPolicy('Admins insert users', {
+      as: 'permissive',
+      for: 'insert',
+      to: ['public'],
+    }),
+    pgPolicy('Admins update users', {
+      as: 'permissive',
+      for: 'update',
+      to: ['public'],
+    }),
+    pgPolicy('Users view accessible users', {
+      as: 'permissive',
+      for: 'select',
+      to: ['public'],
+    }),
+  ]
+)
 
 export const clients = pgTable(
   'clients',
@@ -127,7 +200,6 @@ export const clients = pgTable(
   ]
 )
 
-// Client contacts: external email addresses associated with clients
 export const clientContacts = pgTable(
   'client_contacts',
   {
@@ -146,33 +218,26 @@ export const clientContacts = pgTable(
     deletedAt: timestamp('deleted_at', { withTimezone: true, mode: 'string' }),
   },
   table => [
-    // One email per client (prevent duplicates)
     unique('client_contacts_client_email_key').on(table.clientId, table.email),
-    // Index for looking up contacts by client
     index('idx_client_contacts_client')
       .using('btree', table.clientId.asc().nullsLast().op('uuid_ops'))
       .where(sql`(deleted_at IS NULL)`),
-    // Index for email matching (critical for performance)
     index('idx_client_contacts_email')
       .using('btree', table.email.asc().nullsLast().op('text_ops'))
       .where(sql`(deleted_at IS NULL)`),
-    // Index for looking up by email domain (for domain matching)
     index('idx_client_contacts_email_domain')
-      .using('btree', sql`split_part(email, '@', 2)`) // expression index
+      .using('btree', sql`split_part(email, '@', 2)`)
       .where(sql`(deleted_at IS NULL)`),
-    // Foreign key to clients
     foreignKey({
       columns: [table.clientId],
       foreignColumns: [clients.id],
       name: 'client_contacts_client_id_fkey',
     }).onDelete('cascade'),
-    // Foreign key to users (who created)
     foreignKey({
       columns: [table.createdBy],
       foreignColumns: [users.id],
       name: 'client_contacts_created_by_fkey',
     }),
-    // RLS Policies
     pgPolicy('Admins manage client contacts', {
       as: 'permissive',
       for: 'all',
@@ -194,170 +259,9 @@ export const clientContacts = pgTable(
   ]
 )
 
-export const taskAssignees = pgTable(
-  'task_assignees',
-  {
-    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
-    id: bigint({ mode: 'number' }).primaryKey().generatedByDefaultAsIdentity({
-      name: 'task_assignees_id_seq',
-      startWith: 1,
-      increment: 1,
-      minValue: 1,
-      maxValue: 9223372036854775807,
-      cache: 1,
-    }),
-    taskId: uuid('task_id').notNull(),
-    userId: uuid('user_id').notNull(),
-    createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
-      .default(sql`timezone('utc'::text, now())`)
-      .notNull(),
-    deletedAt: timestamp('deleted_at', { withTimezone: true, mode: 'string' }),
-  },
-  table => [
-    index('idx_task_assignees_user')
-      .using('btree', table.userId.asc().nullsLast().op('uuid_ops'))
-      .where(sql`(deleted_at IS NULL)`),
-    foreignKey({
-      columns: [table.taskId],
-      foreignColumns: [tasks.id],
-      name: 'task_assignees_task_id_fkey',
-    }).onDelete('cascade'),
-    foreignKey({
-      columns: [table.userId],
-      foreignColumns: [users.id],
-      name: 'task_assignees_user_id_fkey',
-    }).onDelete('cascade'),
-    unique('task_assignees_task_id_user_id_key').on(table.taskId, table.userId),
-    pgPolicy('Admins manage task assignees', {
-      as: 'permissive',
-      for: 'all',
-      to: ['public'],
-      using: sql`is_admin()`,
-      withCheck: sql`is_admin()`,
-    }),
-    pgPolicy('Users view task assignees', {
-      as: 'permissive',
-      for: 'select',
-      to: ['public'],
-    }),
-  ]
-)
-
-export const taskAssigneeMetadata = pgTable(
-  'task_assignee_metadata',
-  {
-    taskId: uuid('task_id').notNull(),
-    userId: uuid('user_id').notNull(),
-    sortOrder: integer('sort_order').notNull(),
-    createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
-      .default(sql`timezone('utc'::text, now())`)
-      .notNull(),
-    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' })
-      .default(sql`timezone('utc'::text, now())`)
-      .notNull(),
-    deletedAt: timestamp('deleted_at', { withTimezone: true, mode: 'string' }),
-  },
-  table => [
-    index('idx_task_assignee_metadata_user')
-      .using('btree', table.userId.asc().nullsLast().op('uuid_ops'))
-      .where(sql`(deleted_at IS NULL)`),
-    foreignKey({
-      columns: [table.taskId],
-      foreignColumns: [tasks.id],
-      name: 'task_assignee_metadata_task_id_fkey',
-    }).onDelete('cascade'),
-    foreignKey({
-      columns: [table.userId],
-      foreignColumns: [users.id],
-      name: 'task_assignee_metadata_user_id_fkey',
-    }).onDelete('cascade'),
-    primaryKey({
-      name: 'task_assignee_metadata_pkey',
-      columns: [table.taskId, table.userId],
-    }),
-    pgPolicy('Admins manage task assignee metadata', {
-      as: 'permissive',
-      for: 'all',
-      to: ['public'],
-      using: sql`is_admin()`,
-      withCheck: sql`is_admin()`,
-    }),
-    pgPolicy('Users view task assignee metadata', {
-      as: 'permissive',
-      for: 'select',
-      to: ['public'],
-    }),
-  ]
-)
-
-export const hourBlocks = pgTable(
-  'hour_blocks',
-  {
-    id: uuid().defaultRandom().primaryKey().notNull(),
-    hoursPurchased: numeric('hours_purchased', {
-      precision: 6,
-      scale: 2,
-    }).notNull(),
-    createdBy: uuid('created_by'),
-    createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
-      .default(sql`timezone('utc'::text, now())`)
-      .notNull(),
-    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' })
-      .default(sql`timezone('utc'::text, now())`)
-      .notNull(),
-    deletedAt: timestamp('deleted_at', { withTimezone: true, mode: 'string' }),
-    invoiceNumber: text('invoice_number'),
-    clientId: uuid('client_id').notNull(),
-  },
-  table => [
-    index('idx_hour_blocks_client_id')
-      .using('btree', table.clientId.asc().nullsLast().op('uuid_ops'))
-      .where(sql`(deleted_at IS NULL)`),
-    index('idx_hour_blocks_created_by')
-      .using('btree', table.createdBy.asc().nullsLast().op('uuid_ops'))
-      .where(sql`(deleted_at IS NULL)`),
-    foreignKey({
-      columns: [table.createdBy],
-      foreignColumns: [users.id],
-      name: 'hour_blocks_created_by_fkey',
-    }),
-    foreignKey({
-      columns: [table.clientId],
-      foreignColumns: [clients.id],
-      name: 'hour_blocks_client_id_fkey',
-    }).onDelete('cascade'),
-    pgPolicy('Admins delete hour blocks', {
-      as: 'permissive',
-      for: 'delete',
-      to: ['public'],
-      using: sql`is_admin()`,
-    }),
-    pgPolicy('Admins insert hour blocks', {
-      as: 'permissive',
-      for: 'insert',
-      to: ['public'],
-    }),
-    pgPolicy('Admins update hour blocks', {
-      as: 'permissive',
-      for: 'update',
-      to: ['public'],
-    }),
-    pgPolicy('Users view hour blocks', {
-      as: 'permissive',
-      for: 'select',
-      to: ['public'],
-    }),
-    check(
-      'hour_blocks_invoice_number_format',
-      sql`(invoice_number IS NULL) OR (invoice_number ~ '^[A-Za-z0-9-]+$'::text)`
-    ),
-  ]
-)
-
 export const clientMembers = pgTable(
   'client_members',
   {
-    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
     id: bigint({ mode: 'number' }).primaryKey().generatedByDefaultAsIdentity({
       name: 'client_members_id_seq',
       startWith: 1,
@@ -492,6 +396,183 @@ export const projects = pgTable(
   ]
 )
 
+export const tasks = pgTable(
+  'tasks',
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    projectId: uuid('project_id').notNull(),
+    title: text().notNull(),
+    description: text(),
+    status: taskStatus().default('BACKLOG').notNull(),
+    dueOn: date('due_on'),
+    createdBy: uuid('created_by'),
+    updatedBy: uuid('updated_by'),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+    deletedAt: timestamp('deleted_at', { withTimezone: true, mode: 'string' }),
+    acceptedAt: timestamp('accepted_at', {
+      withTimezone: true,
+      mode: 'string',
+    }),
+    rank: text().default('zzzzzzzz').notNull(),
+  },
+  table => [
+    index('idx_tasks_created_by')
+      .using('btree', table.createdBy.asc().nullsLast().op('uuid_ops'))
+      .where(sql`(deleted_at IS NULL)`),
+    index('idx_tasks_project')
+      .using('btree', table.projectId.asc().nullsLast().op('uuid_ops'))
+      .where(sql`(deleted_at IS NULL)`),
+    index('idx_tasks_project_status_rank').using(
+      'btree',
+      table.projectId.asc().nullsLast().op('uuid_ops'),
+      table.status.asc().nullsLast().op('enum_ops'),
+      table.rank.asc().nullsLast().op('text_ops')
+    ),
+    index('idx_tasks_status')
+      .using('btree', table.status.asc().nullsLast().op('enum_ops'))
+      .where(sql`(deleted_at IS NULL)`),
+    index('idx_tasks_updated_by')
+      .using('btree', table.updatedBy.asc().nullsLast().op('uuid_ops'))
+      .where(sql`(deleted_at IS NULL)`),
+    foreignKey({
+      columns: [table.projectId],
+      foreignColumns: [projects.id],
+      name: 'tasks_project_id_fkey',
+    }).onDelete('cascade'),
+    foreignKey({
+      columns: [table.createdBy],
+      foreignColumns: [users.id],
+      name: 'tasks_created_by_fkey',
+    }),
+    foreignKey({
+      columns: [table.updatedBy],
+      foreignColumns: [users.id],
+      name: 'tasks_updated_by_fkey',
+    }),
+    pgPolicy('Users create tasks', {
+      as: 'permissive',
+      for: 'insert',
+      to: ['public'],
+      withCheck: sql`is_admin()`,
+    }),
+    pgPolicy('Users delete tasks', {
+      as: 'permissive',
+      for: 'delete',
+      to: ['public'],
+    }),
+    pgPolicy('Users update tasks', {
+      as: 'permissive',
+      for: 'update',
+      to: ['public'],
+    }),
+    pgPolicy('Users view tasks', {
+      as: 'permissive',
+      for: 'select',
+      to: ['public'],
+    }),
+  ]
+)
+
+export const taskAssignees = pgTable(
+  'task_assignees',
+  {
+    id: bigint({ mode: 'number' }).primaryKey().generatedByDefaultAsIdentity({
+      name: 'task_assignees_id_seq',
+      startWith: 1,
+      increment: 1,
+      minValue: 1,
+      maxValue: 9223372036854775807,
+      cache: 1,
+    }),
+    taskId: uuid('task_id').notNull(),
+    userId: uuid('user_id').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+    deletedAt: timestamp('deleted_at', { withTimezone: true, mode: 'string' }),
+  },
+  table => [
+    index('idx_task_assignees_user')
+      .using('btree', table.userId.asc().nullsLast().op('uuid_ops'))
+      .where(sql`(deleted_at IS NULL)`),
+    foreignKey({
+      columns: [table.taskId],
+      foreignColumns: [tasks.id],
+      name: 'task_assignees_task_id_fkey',
+    }).onDelete('cascade'),
+    foreignKey({
+      columns: [table.userId],
+      foreignColumns: [users.id],
+      name: 'task_assignees_user_id_fkey',
+    }).onDelete('cascade'),
+    unique('task_assignees_task_id_user_id_key').on(table.taskId, table.userId),
+    pgPolicy('Admins manage task assignees', {
+      as: 'permissive',
+      for: 'all',
+      to: ['public'],
+      using: sql`is_admin()`,
+      withCheck: sql`is_admin()`,
+    }),
+    pgPolicy('Users view task assignees', {
+      as: 'permissive',
+      for: 'select',
+      to: ['public'],
+    }),
+  ]
+)
+
+export const taskAssigneeMetadata = pgTable(
+  'task_assignee_metadata',
+  {
+    taskId: uuid('task_id').notNull(),
+    userId: uuid('user_id').notNull(),
+    sortOrder: integer('sort_order').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+    deletedAt: timestamp('deleted_at', { withTimezone: true, mode: 'string' }),
+  },
+  table => [
+    index('idx_task_assignee_metadata_user')
+      .using('btree', table.userId.asc().nullsLast().op('uuid_ops'))
+      .where(sql`(deleted_at IS NULL)`),
+    foreignKey({
+      columns: [table.taskId],
+      foreignColumns: [tasks.id],
+      name: 'task_assignee_metadata_task_id_fkey',
+    }).onDelete('cascade'),
+    foreignKey({
+      columns: [table.userId],
+      foreignColumns: [users.id],
+      name: 'task_assignee_metadata_user_id_fkey',
+    }).onDelete('cascade'),
+    primaryKey({
+      name: 'task_assignee_metadata_pkey',
+      columns: [table.taskId, table.userId],
+    }),
+    pgPolicy('Admins manage task assignee metadata', {
+      as: 'permissive',
+      for: 'all',
+      to: ['public'],
+      using: sql`is_admin()`,
+      withCheck: sql`is_admin()`,
+    }),
+    pgPolicy('Users view task assignee metadata', {
+      as: 'permissive',
+      for: 'select',
+      to: ['public'],
+    }),
+  ]
+)
+
 export const taskComments = pgTable(
   'task_comments',
   {
@@ -546,6 +627,125 @@ export const taskComments = pgTable(
       for: 'select',
       to: ['public'],
     }),
+  ]
+)
+
+export const taskAttachments = pgTable(
+  'task_attachments',
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    taskId: uuid('task_id').notNull(),
+    storagePath: text('storage_path').notNull(),
+    originalName: text('original_name').notNull(),
+    mimeType: text('mime_type').notNull(),
+    fileSize: bigint('file_size', { mode: 'number' }).notNull(),
+    uploadedBy: uuid('uploaded_by').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+    deletedAt: timestamp('deleted_at', { withTimezone: true, mode: 'string' }),
+  },
+  table => [
+    index('idx_task_attachments_task')
+      .using('btree', table.taskId.asc().nullsLast().op('uuid_ops'))
+      .where(sql`(deleted_at IS NULL)`),
+    index('idx_task_attachments_uploaded_by')
+      .using('btree', table.uploadedBy.asc().nullsLast().op('uuid_ops'))
+      .where(sql`(deleted_at IS NULL)`),
+    foreignKey({
+      columns: [table.taskId],
+      foreignColumns: [tasks.id],
+      name: 'task_attachments_task_id_fkey',
+    }).onDelete('cascade'),
+    foreignKey({
+      columns: [table.uploadedBy],
+      foreignColumns: [users.id],
+      name: 'task_attachments_uploaded_by_fkey',
+    }).onDelete('cascade'),
+    pgPolicy('Admins manage task attachments', {
+      as: 'permissive',
+      for: 'all',
+      to: ['public'],
+      using: sql`is_admin()`,
+      withCheck: sql`is_admin()`,
+    }),
+    pgPolicy('Users create task attachments', {
+      as: 'permissive',
+      for: 'insert',
+      to: ['public'],
+    }),
+    pgPolicy('Users view task attachments', {
+      as: 'permissive',
+      for: 'select',
+      to: ['public'],
+    }),
+  ]
+)
+
+export const hourBlocks = pgTable(
+  'hour_blocks',
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    hoursPurchased: numeric('hours_purchased', {
+      precision: 6,
+      scale: 2,
+    }).notNull(),
+    createdBy: uuid('created_by'),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+    deletedAt: timestamp('deleted_at', { withTimezone: true, mode: 'string' }),
+    invoiceNumber: text('invoice_number'),
+    clientId: uuid('client_id').notNull(),
+  },
+  table => [
+    index('idx_hour_blocks_client_id')
+      .using('btree', table.clientId.asc().nullsLast().op('uuid_ops'))
+      .where(sql`(deleted_at IS NULL)`),
+    index('idx_hour_blocks_created_by')
+      .using('btree', table.createdBy.asc().nullsLast().op('uuid_ops'))
+      .where(sql`(deleted_at IS NULL)`),
+    foreignKey({
+      columns: [table.createdBy],
+      foreignColumns: [users.id],
+      name: 'hour_blocks_created_by_fkey',
+    }),
+    foreignKey({
+      columns: [table.clientId],
+      foreignColumns: [clients.id],
+      name: 'hour_blocks_client_id_fkey',
+    }).onDelete('cascade'),
+    pgPolicy('Admins delete hour blocks', {
+      as: 'permissive',
+      for: 'delete',
+      to: ['public'],
+      using: sql`is_admin()`,
+    }),
+    pgPolicy('Admins insert hour blocks', {
+      as: 'permissive',
+      for: 'insert',
+      to: ['public'],
+    }),
+    pgPolicy('Admins update hour blocks', {
+      as: 'permissive',
+      for: 'update',
+      to: ['public'],
+    }),
+    pgPolicy('Users view hour blocks', {
+      as: 'permissive',
+      for: 'select',
+      to: ['public'],
+    }),
+    check(
+      'hour_blocks_invoice_number_format',
+      sql`(invoice_number IS NULL) OR (invoice_number ~ '^[A-Za-z0-9-]+$'::text)`
+    ),
   ]
 )
 
@@ -660,204 +860,6 @@ export const timeLogTasks = pgTable(
   ]
 )
 
-export const taskAttachments = pgTable(
-  'task_attachments',
-  {
-    id: uuid().defaultRandom().primaryKey().notNull(),
-    taskId: uuid('task_id').notNull(),
-    storagePath: text('storage_path').notNull(),
-    originalName: text('original_name').notNull(),
-    mimeType: text('mime_type').notNull(),
-    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
-    fileSize: bigint('file_size', { mode: 'number' }).notNull(),
-    uploadedBy: uuid('uploaded_by').notNull(),
-    createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
-      .default(sql`timezone('utc'::text, now())`)
-      .notNull(),
-    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' })
-      .default(sql`timezone('utc'::text, now())`)
-      .notNull(),
-    deletedAt: timestamp('deleted_at', { withTimezone: true, mode: 'string' }),
-  },
-  table => [
-    index('idx_task_attachments_task')
-      .using('btree', table.taskId.asc().nullsLast().op('uuid_ops'))
-      .where(sql`(deleted_at IS NULL)`),
-    index('idx_task_attachments_uploaded_by')
-      .using('btree', table.uploadedBy.asc().nullsLast().op('uuid_ops'))
-      .where(sql`(deleted_at IS NULL)`),
-    foreignKey({
-      columns: [table.taskId],
-      foreignColumns: [tasks.id],
-      name: 'task_attachments_task_id_fkey',
-    }).onDelete('cascade'),
-    foreignKey({
-      columns: [table.uploadedBy],
-      foreignColumns: [users.id],
-      name: 'task_attachments_uploaded_by_fkey',
-    }).onDelete('cascade'),
-    pgPolicy('Admins manage task attachments', {
-      as: 'permissive',
-      for: 'all',
-      to: ['public'],
-      using: sql`is_admin()`,
-      withCheck: sql`is_admin()`,
-    }),
-    pgPolicy('Users create task attachments', {
-      as: 'permissive',
-      for: 'insert',
-      to: ['public'],
-    }),
-    pgPolicy('Users view task attachments', {
-      as: 'permissive',
-      for: 'select',
-      to: ['public'],
-    }),
-  ]
-)
-
-export const activityOverviewCache = pgTable(
-  'activity_overview_cache',
-  {
-    id: uuid().defaultRandom().primaryKey().notNull(),
-    userId: uuid('user_id').notNull(),
-    timeframeDays: smallint('timeframe_days').notNull(),
-    summary: text().notNull(),
-    cachedAt: timestamp('cached_at', { withTimezone: true, mode: 'string' })
-      .default(sql`timezone('utc'::text, now())`)
-      .notNull(),
-    expiresAt: timestamp('expires_at', {
-      withTimezone: true,
-      mode: 'string',
-    }).notNull(),
-    createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
-      .default(sql`timezone('utc'::text, now())`)
-      .notNull(),
-    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' })
-      .default(sql`timezone('utc'::text, now())`)
-      .notNull(),
-  },
-  table => [
-    uniqueIndex('activity_overview_cache_user_timeframe_idx').using(
-      'btree',
-      table.userId.asc().nullsLast().op('uuid_ops'),
-      table.timeframeDays.asc().nullsLast().op('int2_ops')
-    ),
-    foreignKey({
-      columns: [table.userId],
-      foreignColumns: [users.id],
-      name: 'activity_overview_cache_user_id_fkey',
-    }).onDelete('cascade'),
-    pgPolicy('Users can delete their cached activity overview', {
-      as: 'permissive',
-      for: 'delete',
-      to: ['public'],
-      using: sql`(( SELECT auth.uid() AS uid) = user_id)`,
-    }),
-    pgPolicy('Users can insert their cached activity overview', {
-      as: 'permissive',
-      for: 'insert',
-      to: ['public'],
-    }),
-    pgPolicy('Users can update their cached activity overview', {
-      as: 'permissive',
-      for: 'update',
-      to: ['public'],
-    }),
-    pgPolicy('Users can view their cached activity overview', {
-      as: 'permissive',
-      for: 'select',
-      to: ['public'],
-    }),
-    check(
-      'activity_overview_cache_timeframe_days_check',
-      sql`timeframe_days = ANY (ARRAY[1, 7, 14, 28])`
-    ),
-  ]
-)
-
-export const tasks = pgTable(
-  'tasks',
-  {
-    id: uuid().defaultRandom().primaryKey().notNull(),
-    projectId: uuid('project_id').notNull(),
-    title: text().notNull(),
-    description: text(),
-    status: taskStatus().default('BACKLOG').notNull(),
-    dueOn: date('due_on'),
-    createdBy: uuid('created_by'),
-    updatedBy: uuid('updated_by'),
-    createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
-      .default(sql`timezone('utc'::text, now())`)
-      .notNull(),
-    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' })
-      .default(sql`timezone('utc'::text, now())`)
-      .notNull(),
-    deletedAt: timestamp('deleted_at', { withTimezone: true, mode: 'string' }),
-    acceptedAt: timestamp('accepted_at', {
-      withTimezone: true,
-      mode: 'string',
-    }),
-    rank: text().default('zzzzzzzz').notNull(),
-  },
-  table => [
-    index('idx_tasks_created_by')
-      .using('btree', table.createdBy.asc().nullsLast().op('uuid_ops'))
-      .where(sql`(deleted_at IS NULL)`),
-    index('idx_tasks_project')
-      .using('btree', table.projectId.asc().nullsLast().op('uuid_ops'))
-      .where(sql`(deleted_at IS NULL)`),
-    index('idx_tasks_project_status_rank').using(
-      'btree',
-      table.projectId.asc().nullsLast().op('uuid_ops'),
-      table.status.asc().nullsLast().op('enum_ops'),
-      table.rank.asc().nullsLast().op('text_ops')
-    ),
-    index('idx_tasks_status')
-      .using('btree', table.status.asc().nullsLast().op('enum_ops'))
-      .where(sql`(deleted_at IS NULL)`),
-    index('idx_tasks_updated_by')
-      .using('btree', table.updatedBy.asc().nullsLast().op('uuid_ops'))
-      .where(sql`(deleted_at IS NULL)`),
-    foreignKey({
-      columns: [table.projectId],
-      foreignColumns: [projects.id],
-      name: 'tasks_project_id_fkey',
-    }).onDelete('cascade'),
-    foreignKey({
-      columns: [table.createdBy],
-      foreignColumns: [users.id],
-      name: 'tasks_created_by_fkey',
-    }),
-    foreignKey({
-      columns: [table.updatedBy],
-      foreignColumns: [users.id],
-      name: 'tasks_updated_by_fkey',
-    }),
-    pgPolicy('Users create tasks', {
-      as: 'permissive',
-      for: 'insert',
-      to: ['public'],
-      withCheck: sql`is_admin()`,
-    }),
-    pgPolicy('Users delete tasks', {
-      as: 'permissive',
-      for: 'delete',
-      to: ['public'],
-    }),
-    pgPolicy('Users update tasks', {
-      as: 'permissive',
-      for: 'update',
-      to: ['public'],
-    }),
-    pgPolicy('Users view tasks', {
-      as: 'permissive',
-      for: 'select',
-      to: ['public'],
-    }),
-  ]
-)
-
 export const leads = pgTable(
   'leads',
   {
@@ -904,424 +906,6 @@ export const leads = pgTable(
       as: 'permissive',
       for: 'select',
       to: ['public'],
-    }),
-  ]
-)
-
-export const users = pgTable(
-  'users',
-  {
-    id: uuid().primaryKey().notNull(),
-    email: text().notNull(),
-    fullName: text('full_name'),
-    role: userRole().default('CLIENT').notNull(),
-    avatarUrl: text('avatar_url'),
-    createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
-      .default(sql`timezone('utc'::text, now())`)
-      .notNull(),
-    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' })
-      .default(sql`timezone('utc'::text, now())`)
-      .notNull(),
-    deletedAt: timestamp('deleted_at', { withTimezone: true, mode: 'string' }),
-  },
-  table => [
-    foreignKey({
-      columns: [table.id],
-      foreignColumns: [table.id],
-      name: 'users_id_fkey',
-    }).onDelete('cascade'),
-    unique('users_email_key').on(table.email),
-    pgPolicy('Admins delete users', {
-      as: 'permissive',
-      for: 'delete',
-      to: ['public'],
-      using: sql`is_admin()`,
-    }),
-    pgPolicy('Admins insert users', {
-      as: 'permissive',
-      for: 'insert',
-      to: ['public'],
-    }),
-    pgPolicy('Admins update users', {
-      as: 'permissive',
-      for: 'update',
-      to: ['public'],
-    }),
-    pgPolicy('Users view accessible users', {
-      as: 'permissive',
-      for: 'select',
-      to: ['public'],
-    }),
-  ]
-)
-
-export const oauthConnections = pgTable(
-  'oauth_connections',
-  {
-    id: uuid().defaultRandom().primaryKey().notNull(),
-    userId: uuid('user_id').notNull(),
-    provider: oauthProvider().notNull(),
-    providerAccountId: text('provider_account_id').notNull(),
-    accessToken: text('access_token').notNull(), // Encrypted
-    refreshToken: text('refresh_token'), // Encrypted, nullable
-    accessTokenExpiresAt: timestamp('access_token_expires_at', {
-      withTimezone: true,
-      mode: 'string',
-    }),
-    scopes: text('scopes').array().notNull(),
-    status: oauthConnectionStatus().default('ACTIVE').notNull(),
-    providerEmail: text('provider_email'),
-    displayName: text('display_name'), // User-friendly name for account picker
-    providerMetadata: jsonb('provider_metadata').default({}).notNull(),
-    lastSyncAt: timestamp('last_sync_at', { withTimezone: true, mode: 'string' }),
-    createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
-      .default(sql`timezone('utc'::text, now())`)
-      .notNull(),
-    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' })
-      .default(sql`timezone('utc'::text, now())`)
-      .notNull(),
-    deletedAt: timestamp('deleted_at', { withTimezone: true, mode: 'string' }),
-  },
-  table => [
-    // Multi-account: one connection per user per provider per account
-    unique('oauth_connections_user_provider_account_key').on(
-      table.userId,
-      table.provider,
-      table.providerAccountId
-    ),
-    // Index for looking up user's connections
-    index('idx_oauth_connections_user')
-      .using('btree', table.userId.asc().nullsLast().op('uuid_ops'))
-      .where(sql`(deleted_at IS NULL)`),
-    // Index for finding connections by provider
-    index('idx_oauth_connections_provider')
-      .using('btree', table.provider.asc().nullsLast())
-      .where(sql`(deleted_at IS NULL AND status = 'ACTIVE')`),
-    // Foreign key to users
-    foreignKey({
-      columns: [table.userId],
-      foreignColumns: [users.id],
-      name: 'oauth_connections_user_id_fkey',
-    }).onDelete('cascade'),
-    // RLS Policies
-    pgPolicy('Users manage own oauth connections', {
-      as: 'permissive',
-      for: 'all',
-      to: ['public'],
-      using: sql`user_id = auth.uid()`,
-    }),
-    pgPolicy('Admins view all oauth connections', {
-      as: 'permissive',
-      for: 'select',
-      to: ['public'],
-      using: sql`is_admin()`,
-    }),
-  ]
-)
-
-// Email linking foundation
-export const emailLinkSource = pgEnum('email_link_source', [
-  'AUTOMATIC',
-  'MANUAL_FORWARD',
-  'MANUAL_LINK',
-])
-
-// AI task suggestion workflow
-export const suggestionStatus = pgEnum('suggestion_status', [
-  'PENDING', // Awaiting user review
-  'APPROVED', // User approved, task created
-  'REJECTED', // User rejected
-  'MODIFIED', // User approved with modifications
-  'EXPIRED', // Auto-expired after X days
-])
-
-export const emailMetadata = pgTable(
-  'email_metadata',
-  {
-    id: uuid().defaultRandom().primaryKey().notNull(),
-    userId: uuid('user_id').notNull(), // PTS user who owns this email
-    gmailMessageId: text('gmail_message_id').notNull(),
-    gmailThreadId: text('gmail_thread_id'),
-    subject: text(),
-    snippet: text(), // Gmail preview text
-    fromEmail: text('from_email').notNull(),
-    fromName: text('from_name'),
-    toEmails: text('to_emails').array().default([]).notNull(),
-    ccEmails: text('cc_emails').array().default([]).notNull(),
-    receivedAt: timestamp('received_at', { withTimezone: true, mode: 'string' }).notNull(),
-    isRead: boolean('is_read').default(false).notNull(),
-    hasAttachments: boolean('has_attachments').default(false).notNull(),
-    labels: text().array().default([]).notNull(),
-    rawMetadata: jsonb('raw_metadata').default({}).notNull(),
-    createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
-      .default(sql`timezone('utc'::text, now())`)
-      .notNull(),
-    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' })
-      .default(sql`timezone('utc'::text, now())`)
-      .notNull(),
-    deletedAt: timestamp('deleted_at', { withTimezone: true, mode: 'string' }),
-  },
-  table => [
-    // Unique: one entry per Gmail message per user
-    unique('email_metadata_user_gmail_id_key').on(table.userId, table.gmailMessageId),
-    // Index for user's emails
-    index('idx_email_metadata_user')
-      .using('btree', table.userId.asc().nullsLast().op('uuid_ops'))
-      .where(sql`(deleted_at IS NULL)`),
-    // Index for from email (for matching)
-    index('idx_email_metadata_from_email')
-      .using('btree', table.fromEmail.asc().nullsLast().op('text_ops'))
-      .where(sql`(deleted_at IS NULL)`),
-    // Index for date range queries
-    index('idx_email_metadata_received_at')
-      .using('btree', table.receivedAt.desc().nullsFirst())
-      .where(sql`(deleted_at IS NULL)`),
-    // Index for thread grouping
-    index('idx_email_metadata_thread')
-      .using('btree', table.gmailThreadId.asc().nullsLast().op('text_ops'))
-      .where(sql`(deleted_at IS NULL AND gmail_thread_id IS NOT NULL)`),
-    // Foreign key
-    foreignKey({
-      columns: [table.userId],
-      foreignColumns: [users.id],
-      name: 'email_metadata_user_id_fkey',
-    }).onDelete('cascade'),
-    // RLS Policies
-    pgPolicy('Users manage own email metadata', {
-      as: 'permissive',
-      for: 'all',
-      to: ['public'],
-      using: sql`user_id = auth.uid()`,
-      withCheck: sql`user_id = auth.uid()`,
-    }),
-    pgPolicy('Admins view all email metadata', {
-      as: 'permissive',
-      for: 'select',
-      to: ['public'],
-      using: sql`is_admin()`,
-    }),
-  ]
-)
-
-export const emailLinks = pgTable(
-  'email_links',
-  {
-    id: uuid().defaultRandom().primaryKey().notNull(),
-    emailMetadataId: uuid('email_metadata_id').notNull(),
-    clientId: uuid('client_id'), // Nullable - can link to just project
-    projectId: uuid('project_id'), // Nullable - can link to just client
-    source: emailLinkSource().notNull(),
-    confidence: numeric({ precision: 3, scale: 2 }), // 0.00-1.00
-    linkedBy: uuid('linked_by'), // Null for automatic links
-    notes: text(),
-    createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
-      .default(sql`timezone('utc'::text, now())`)
-      .notNull(),
-    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' })
-      .default(sql`timezone('utc'::text, now())`)
-      .notNull(),
-    deletedAt: timestamp('deleted_at', { withTimezone: true, mode: 'string' }),
-  },
-  table => [
-    // Index for email lookup
-    index('idx_email_links_email')
-      .using('btree', table.emailMetadataId.asc().nullsLast().op('uuid_ops'))
-      .where(sql`(deleted_at IS NULL)`),
-    // Index for client lookup
-    index('idx_email_links_client')
-      .using('btree', table.clientId.asc().nullsLast().op('uuid_ops'))
-      .where(sql`(deleted_at IS NULL AND client_id IS NOT NULL)`),
-    // Index for project lookup
-    index('idx_email_links_project')
-      .using('btree', table.projectId.asc().nullsLast().op('uuid_ops'))
-      .where(sql`(deleted_at IS NULL AND project_id IS NOT NULL)`),
-    // Constraint: must link to at least client OR project
-    check(
-      'email_links_client_or_project',
-      sql`client_id IS NOT NULL OR project_id IS NOT NULL`
-    ),
-    // Constraint: confidence must be between 0 and 1
-    check(
-      'email_links_confidence_range',
-      sql`confidence IS NULL OR (confidence >= 0 AND confidence <= 1)`
-    ),
-    // Foreign keys
-    foreignKey({
-      columns: [table.emailMetadataId],
-      foreignColumns: [emailMetadata.id],
-      name: 'email_links_email_metadata_id_fkey',
-    }).onDelete('cascade'),
-    foreignKey({
-      columns: [table.clientId],
-      foreignColumns: [clients.id],
-      name: 'email_links_client_id_fkey',
-    }).onDelete('cascade'),
-    foreignKey({
-      columns: [table.projectId],
-      foreignColumns: [projects.id],
-      name: 'email_links_project_id_fkey',
-    }).onDelete('cascade'),
-    foreignKey({
-      columns: [table.linkedBy],
-      foreignColumns: [users.id],
-      name: 'email_links_linked_by_fkey',
-    }),
-    // RLS Policies
-    pgPolicy('Admins manage email links', {
-      as: 'permissive',
-      for: 'all',
-      to: ['public'],
-      using: sql`is_admin()`,
-      withCheck: sql`is_admin()`,
-    }),
-    pgPolicy('Users view linked emails for accessible clients', {
-      as: 'permissive',
-      for: 'select',
-      to: ['public'],
-      using: sql`(
-        client_id IN (
-          SELECT client_id FROM client_members
-          WHERE user_id = auth.uid() AND deleted_at IS NULL
-        )
-        OR project_id IN (
-          SELECT id FROM projects
-          WHERE created_by = auth.uid() AND deleted_at IS NULL
-        )
-      )`,
-    }),
-  ]
-)
-
-// AI-generated task suggestions from emails
-export const taskSuggestions = pgTable(
-  'task_suggestions',
-  {
-    id: uuid().defaultRandom().primaryKey().notNull(),
-    emailMetadataId: uuid('email_metadata_id').notNull(),
-    projectId: uuid('project_id'), // Suggested project (can be overridden)
-    suggestedTitle: text('suggested_title').notNull(),
-    suggestedDescription: text('suggested_description'),
-    suggestedDueDate: date('suggested_due_date'),
-    suggestedPriority: text('suggested_priority'), // HIGH, MEDIUM, LOW
-    suggestedAssignees: uuid('suggested_assignees').array().default([]),
-    confidence: numeric({ precision: 3, scale: 2 }).notNull(), // 0.00-1.00
-    reasoning: text(), // AI's explanation for the suggestion
-    status: suggestionStatus().default('PENDING').notNull(),
-    reviewedBy: uuid('reviewed_by'),
-    reviewedAt: timestamp('reviewed_at', { withTimezone: true, mode: 'string' }),
-    reviewNotes: text('review_notes'),
-    createdTaskId: uuid('created_task_id'), // Link to created task if approved
-    aiModelVersion: text('ai_model_version'),
-    promptTokens: integer('prompt_tokens'),
-    completionTokens: integer('completion_tokens'),
-    createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
-      .default(sql`timezone('utc'::text, now())`)
-      .notNull(),
-    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' })
-      .default(sql`timezone('utc'::text, now())`)
-      .notNull(),
-    deletedAt: timestamp('deleted_at', { withTimezone: true, mode: 'string' }),
-  },
-  table => [
-    // Index for pending suggestions (main query)
-    index('idx_task_suggestions_pending')
-      .using('btree', table.status.asc().nullsLast())
-      .where(sql`(deleted_at IS NULL AND status = 'PENDING')`),
-    // Index for email lookup
-    index('idx_task_suggestions_email')
-      .using('btree', table.emailMetadataId.asc().nullsLast().op('uuid_ops'))
-      .where(sql`(deleted_at IS NULL)`),
-    // Index for project lookup
-    index('idx_task_suggestions_project')
-      .using('btree', table.projectId.asc().nullsLast().op('uuid_ops'))
-      .where(sql`(deleted_at IS NULL AND project_id IS NOT NULL)`),
-    // Foreign keys
-    foreignKey({
-      columns: [table.emailMetadataId],
-      foreignColumns: [emailMetadata.id],
-      name: 'task_suggestions_email_metadata_id_fkey',
-    }).onDelete('cascade'),
-    foreignKey({
-      columns: [table.projectId],
-      foreignColumns: [projects.id],
-      name: 'task_suggestions_project_id_fkey',
-    }),
-    foreignKey({
-      columns: [table.reviewedBy],
-      foreignColumns: [users.id],
-      name: 'task_suggestions_reviewed_by_fkey',
-    }),
-    foreignKey({
-      columns: [table.createdTaskId],
-      foreignColumns: [tasks.id],
-      name: 'task_suggestions_created_task_id_fkey',
-    }),
-    // Constraint: confidence must be between 0 and 1
-    check(
-      'task_suggestions_confidence_range',
-      sql`confidence >= 0 AND confidence <= 1`
-    ),
-    // RLS Policies
-    pgPolicy('Admins manage task suggestions', {
-      as: 'permissive',
-      for: 'all',
-      to: ['public'],
-      using: sql`is_admin()`,
-      withCheck: sql`is_admin()`,
-    }),
-    pgPolicy('Users view own task suggestions', {
-      as: 'permissive',
-      for: 'select',
-      to: ['public'],
-      using: sql`(
-        email_metadata_id IN (
-          SELECT id FROM email_metadata WHERE user_id = auth.uid()
-        )
-      )`,
-    }),
-  ]
-)
-
-// Feedback on AI suggestions for model improvement
-export const suggestionFeedback = pgTable(
-  'suggestion_feedback',
-  {
-    id: uuid().defaultRandom().primaryKey().notNull(),
-    taskSuggestionId: uuid('task_suggestion_id').notNull(),
-    feedbackType: text('feedback_type').notNull(), // 'title_changed', 'rejected_not_actionable', etc.
-    originalValue: text('original_value'),
-    correctedValue: text('corrected_value'),
-    createdBy: uuid('created_by').notNull(),
-    createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
-      .default(sql`timezone('utc'::text, now())`)
-      .notNull(),
-  },
-  table => [
-    index('idx_suggestion_feedback_suggestion')
-      .using('btree', table.taskSuggestionId.asc().nullsLast().op('uuid_ops')),
-    foreignKey({
-      columns: [table.taskSuggestionId],
-      foreignColumns: [taskSuggestions.id],
-      name: 'suggestion_feedback_task_suggestion_id_fkey',
-    }).onDelete('cascade'),
-    foreignKey({
-      columns: [table.createdBy],
-      foreignColumns: [users.id],
-      name: 'suggestion_feedback_created_by_fkey',
-    }),
-    // RLS: admins manage, users view own feedback
-    pgPolicy('Admins manage suggestion feedback', {
-      as: 'permissive',
-      for: 'all',
-      to: ['public'],
-      using: sql`is_admin()`,
-      withCheck: sql`is_admin()`,
-    }),
-    pgPolicy('Users view own suggestion feedback', {
-      as: 'permissive',
-      for: 'select',
-      to: ['public'],
-      using: sql`created_by = auth.uid()`,
     }),
   ]
 )
@@ -1409,16 +993,348 @@ export const activityLogs = pgTable(
     }),
   ]
 )
-// GitHub repo links - connects repos to projects
+
+export const activityOverviewCache = pgTable(
+  'activity_overview_cache',
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    userId: uuid('user_id').notNull(),
+    timeframeDays: smallint('timeframe_days').notNull(),
+    summary: text().notNull(),
+    cachedAt: timestamp('cached_at', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+    expiresAt: timestamp('expires_at', {
+      withTimezone: true,
+      mode: 'string',
+    }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+  },
+  table => [
+    uniqueIndex('activity_overview_cache_user_timeframe_idx').using(
+      'btree',
+      table.userId.asc().nullsLast().op('uuid_ops'),
+      table.timeframeDays.asc().nullsLast().op('int2_ops')
+    ),
+    foreignKey({
+      columns: [table.userId],
+      foreignColumns: [users.id],
+      name: 'activity_overview_cache_user_id_fkey',
+    }).onDelete('cascade'),
+    pgPolicy('Users can delete their cached activity overview', {
+      as: 'permissive',
+      for: 'delete',
+      to: ['public'],
+      using: sql`(( SELECT auth.uid() AS uid) = user_id)`,
+    }),
+    pgPolicy('Users can insert their cached activity overview', {
+      as: 'permissive',
+      for: 'insert',
+      to: ['public'],
+    }),
+    pgPolicy('Users can update their cached activity overview', {
+      as: 'permissive',
+      for: 'update',
+      to: ['public'],
+    }),
+    pgPolicy('Users can view their cached activity overview', {
+      as: 'permissive',
+      for: 'select',
+      to: ['public'],
+    }),
+    check(
+      'activity_overview_cache_timeframe_days_check',
+      sql`timeframe_days = ANY (ARRAY[1, 7, 14, 28])`
+    ),
+  ]
+)
+
+// =============================================================================
+// OAUTH CONNECTIONS
+// =============================================================================
+
+export const oauthConnections = pgTable(
+  'oauth_connections',
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    userId: uuid('user_id').notNull(),
+    provider: oauthProvider().notNull(),
+    providerAccountId: text('provider_account_id').notNull(),
+    accessToken: text('access_token').notNull(),
+    refreshToken: text('refresh_token'),
+    accessTokenExpiresAt: timestamp('access_token_expires_at', {
+      withTimezone: true,
+      mode: 'string',
+    }),
+    scopes: text('scopes').array().notNull(),
+    status: oauthConnectionStatus().default('ACTIVE').notNull(),
+    providerEmail: text('provider_email'),
+    displayName: text('display_name'),
+    providerMetadata: jsonb('provider_metadata').default({}).notNull(),
+    lastSyncAt: timestamp('last_sync_at', { withTimezone: true, mode: 'string' }),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+    deletedAt: timestamp('deleted_at', { withTimezone: true, mode: 'string' }),
+  },
+  table => [
+    unique('oauth_connections_user_provider_account_key').on(
+      table.userId,
+      table.provider,
+      table.providerAccountId
+    ),
+    index('idx_oauth_connections_user')
+      .using('btree', table.userId.asc().nullsLast().op('uuid_ops'))
+      .where(sql`(deleted_at IS NULL)`),
+    index('idx_oauth_connections_provider')
+      .using('btree', table.provider.asc().nullsLast())
+      .where(sql`(deleted_at IS NULL AND status = 'ACTIVE')`),
+    foreignKey({
+      columns: [table.userId],
+      foreignColumns: [users.id],
+      name: 'oauth_connections_user_id_fkey',
+    }).onDelete('cascade'),
+    pgPolicy('Users manage own oauth connections', {
+      as: 'permissive',
+      for: 'all',
+      to: ['public'],
+      using: sql`user_id = auth.uid()`,
+    }),
+    pgPolicy('Admins view all oauth connections', {
+      as: 'permissive',
+      for: 'select',
+      to: ['public'],
+      using: sql`is_admin()`,
+    }),
+  ]
+)
+
+// =============================================================================
+// THREADS & MESSAGES (Phase 5 - Unified Messaging)
+// =============================================================================
+
+export const threads = pgTable(
+  'threads',
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    clientId: uuid('client_id'),
+    projectId: uuid('project_id'),
+    subject: text(),
+    status: threadStatus().default('OPEN').notNull(),
+    source: messageSource().notNull(),
+    externalThreadId: text('external_thread_id'),
+    participantEmails: text('participant_emails').array().default([]).notNull(),
+    lastMessageAt: timestamp('last_message_at', { withTimezone: true, mode: 'string' }),
+    messageCount: integer('message_count').default(0).notNull(),
+    metadata: jsonb().default({}).notNull(),
+    createdBy: uuid('created_by'),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+    deletedAt: timestamp('deleted_at', { withTimezone: true, mode: 'string' }),
+  },
+  table => [
+    index('idx_threads_client')
+      .using('btree', table.clientId.asc().nullsLast().op('uuid_ops'))
+      .where(sql`(deleted_at IS NULL AND client_id IS NOT NULL)`),
+    index('idx_threads_project')
+      .using('btree', table.projectId.asc().nullsLast().op('uuid_ops'))
+      .where(sql`(deleted_at IS NULL AND project_id IS NOT NULL)`),
+    index('idx_threads_external')
+      .using('btree', table.externalThreadId.asc().nullsLast().op('text_ops'))
+      .where(sql`(deleted_at IS NULL AND external_thread_id IS NOT NULL)`),
+    index('idx_threads_last_message')
+      .using('btree', table.lastMessageAt.desc().nullsFirst())
+      .where(sql`(deleted_at IS NULL)`),
+    foreignKey({
+      columns: [table.clientId],
+      foreignColumns: [clients.id],
+      name: 'threads_client_id_fkey',
+    }),
+    foreignKey({
+      columns: [table.projectId],
+      foreignColumns: [projects.id],
+      name: 'threads_project_id_fkey',
+    }),
+    foreignKey({
+      columns: [table.createdBy],
+      foreignColumns: [users.id],
+      name: 'threads_created_by_fkey',
+    }),
+    pgPolicy('Admins manage threads', {
+      as: 'permissive',
+      for: 'all',
+      to: ['public'],
+      using: sql`is_admin()`,
+      withCheck: sql`is_admin()`,
+    }),
+    pgPolicy('Users view accessible threads', {
+      as: 'permissive',
+      for: 'select',
+      to: ['public'],
+      using: sql`(
+        client_id IN (
+          SELECT client_id FROM client_members
+          WHERE user_id = auth.uid() AND deleted_at IS NULL
+        )
+        OR project_id IN (
+          SELECT id FROM projects
+          WHERE created_by = auth.uid() AND deleted_at IS NULL
+        )
+        OR created_by = auth.uid()
+      )`,
+    }),
+  ]
+)
+
+export const messages = pgTable(
+  'messages',
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    threadId: uuid('thread_id').notNull(),
+    userId: uuid('user_id').notNull(),
+    source: messageSource().notNull(),
+    externalMessageId: text('external_message_id'),
+    subject: text(),
+    bodyText: text('body_text'),
+    bodyHtml: text('body_html'),
+    snippet: text(),
+    fromEmail: text('from_email').notNull(),
+    fromName: text('from_name'),
+    toEmails: text('to_emails').array().default([]).notNull(),
+    ccEmails: text('cc_emails').array().default([]).notNull(),
+    sentAt: timestamp('sent_at', { withTimezone: true, mode: 'string' }).notNull(),
+    isInbound: boolean('is_inbound').default(true).notNull(),
+    isRead: boolean('is_read').default(false).notNull(),
+    hasAttachments: boolean('has_attachments').default(false).notNull(),
+    analyzedAt: timestamp('analyzed_at', { withTimezone: true, mode: 'string' }),
+    analysisVersion: text('analysis_version'),
+    providerMetadata: jsonb('provider_metadata').default({}).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+    deletedAt: timestamp('deleted_at', { withTimezone: true, mode: 'string' }),
+  },
+  table => [
+    unique('messages_user_external_key').on(table.userId, table.externalMessageId),
+    index('idx_messages_thread')
+      .using('btree', table.threadId.asc().nullsLast().op('uuid_ops'))
+      .where(sql`(deleted_at IS NULL)`),
+    index('idx_messages_user')
+      .using('btree', table.userId.asc().nullsLast().op('uuid_ops'))
+      .where(sql`(deleted_at IS NULL)`),
+    index('idx_messages_sent_at')
+      .using('btree', table.sentAt.desc().nullsFirst())
+      .where(sql`(deleted_at IS NULL)`),
+    index('idx_messages_unanalyzed')
+      .using('btree', table.userId.asc().nullsLast())
+      .where(sql`(deleted_at IS NULL AND analyzed_at IS NULL)`),
+    index('idx_messages_from_email')
+      .using('btree', table.fromEmail.asc().nullsLast().op('text_ops'))
+      .where(sql`(deleted_at IS NULL)`),
+    foreignKey({
+      columns: [table.threadId],
+      foreignColumns: [threads.id],
+      name: 'messages_thread_id_fkey',
+    }).onDelete('cascade'),
+    foreignKey({
+      columns: [table.userId],
+      foreignColumns: [users.id],
+      name: 'messages_user_id_fkey',
+    }).onDelete('cascade'),
+    pgPolicy('Users manage own messages', {
+      as: 'permissive',
+      for: 'all',
+      to: ['public'],
+      using: sql`user_id = auth.uid()`,
+      withCheck: sql`user_id = auth.uid()`,
+    }),
+    pgPolicy('Admins view all messages', {
+      as: 'permissive',
+      for: 'select',
+      to: ['public'],
+      using: sql`is_admin()`,
+    }),
+  ]
+)
+
+export const messageAttachments = pgTable(
+  'message_attachments',
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    messageId: uuid('message_id').notNull(),
+    storagePath: text('storage_path').notNull(),
+    originalName: text('original_name').notNull(),
+    mimeType: text('mime_type').notNull(),
+    fileSize: bigint('file_size', { mode: 'number' }).notNull(),
+    contentId: text('content_id'),
+    isInline: boolean('is_inline').default(false).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+  },
+  table => [
+    index('idx_message_attachments_message')
+      .using('btree', table.messageId.asc().nullsLast().op('uuid_ops')),
+    foreignKey({
+      columns: [table.messageId],
+      foreignColumns: [messages.id],
+      name: 'message_attachments_message_id_fkey',
+    }).onDelete('cascade'),
+  ]
+)
+
+export const emailRaw = pgTable(
+  'email_raw',
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    messageId: uuid('message_id').notNull(),
+    rawMime: text('raw_mime'),
+    storagePath: text('storage_path'),
+    checksum: text().notNull(),
+    sizeBytes: bigint('size_bytes', { mode: 'number' }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+  },
+  table => [
+    unique('email_raw_message_key').on(table.messageId),
+    check('email_raw_has_content', sql`raw_mime IS NOT NULL OR storage_path IS NOT NULL`),
+    foreignKey({
+      columns: [table.messageId],
+      foreignColumns: [messages.id],
+      name: 'email_raw_message_id_fkey',
+    }).onDelete('cascade'),
+  ]
+)
+
+// =============================================================================
+// GITHUB INTEGRATION
+// =============================================================================
+
 export const githubRepoLinks = pgTable(
   'github_repo_links',
   {
     id: uuid().defaultRandom().primaryKey().notNull(),
     projectId: uuid('project_id').notNull(),
-    oauthConnectionId: uuid('oauth_connection_id').notNull(), // Track which GitHub account
-    repoOwner: text('repo_owner').notNull(), // GitHub org or user
+    oauthConnectionId: uuid('oauth_connection_id').notNull(),
+    repoOwner: text('repo_owner').notNull(),
     repoName: text('repo_name').notNull(),
-    repoFullName: text('repo_full_name').notNull(), // owner/repo
+    repoFullName: text('repo_full_name').notNull(),
     repoId: bigint('repo_id', { mode: 'number' }).notNull(),
     defaultBranch: text('default_branch').default('main').notNull(),
     isActive: boolean('is_active').default(true).notNull(),
@@ -1432,21 +1348,16 @@ export const githubRepoLinks = pgTable(
     deletedAt: timestamp('deleted_at', { withTimezone: true, mode: 'string' }),
   },
   table => [
-    // One link per repo per project
     unique('github_repo_links_project_repo_key').on(table.projectId, table.repoFullName),
-    // Index for project lookup
     index('idx_github_repo_links_project')
       .using('btree', table.projectId.asc().nullsLast().op('uuid_ops'))
       .where(sql`(deleted_at IS NULL)`),
-    // Index for repo lookup
     index('idx_github_repo_links_repo')
       .using('btree', table.repoFullName.asc().nullsLast().op('text_ops'))
       .where(sql`(deleted_at IS NULL)`),
-    // Index for oauth connection lookup
     index('idx_github_repo_links_oauth')
       .using('btree', table.oauthConnectionId.asc().nullsLast().op('uuid_ops'))
       .where(sql`(deleted_at IS NULL)`),
-    // Foreign keys
     foreignKey({
       columns: [table.projectId],
       foreignColumns: [projects.id],
@@ -1462,7 +1373,6 @@ export const githubRepoLinks = pgTable(
       foreignColumns: [users.id],
       name: 'github_repo_links_linked_by_fkey',
     }),
-    // RLS Policies
     pgPolicy('Admins manage github repo links', {
       as: 'permissive',
       for: 'all',
@@ -1485,29 +1395,33 @@ export const githubRepoLinks = pgTable(
   ]
 )
 
-// PR suggestions - AI-generated PR descriptions from emails/tasks
-export const prSuggestions = pgTable(
-  'pr_suggestions',
+// =============================================================================
+// UNIFIED SUGGESTIONS (Phase 5 - Polymorphic)
+// =============================================================================
+
+export const suggestions = pgTable(
+  'suggestions',
   {
     id: uuid().defaultRandom().primaryKey().notNull(),
-    taskSuggestionId: uuid('task_suggestion_id'), // Optional link to task suggestion
-    emailMetadataId: uuid('email_metadata_id'), // Optional direct email link
-    githubRepoLinkId: uuid('github_repo_link_id').notNull(),
-    suggestedTitle: text('suggested_title').notNull(),
-    suggestedBody: text('suggested_body').notNull(), // Markdown PR description
-    suggestedBranch: text('suggested_branch'),
-    suggestedBaseBranch: text('suggested_base_branch').default('main'),
-    suggestedLabels: text('suggested_labels').array().default([]),
-    suggestedAssignees: text('suggested_assignees').array().default([]), // GitHub usernames
-    confidence: numeric({ precision: 3, scale: 2 }).notNull(), // 0.00-1.00
+    messageId: uuid('message_id'),
+    threadId: uuid('thread_id'),
+    type: suggestionType().notNull(),
+    status: suggestionStatus().default('PENDING').notNull(),
+    projectId: uuid('project_id'),
+    githubRepoLinkId: uuid('github_repo_link_id'),
+    confidence: numeric({ precision: 3, scale: 2 }).notNull(),
     reasoning: text(),
-    status: prSuggestionStatus().default('DRAFT').notNull(),
+    aiModelVersion: text('ai_model_version'),
+    promptTokens: integer('prompt_tokens'),
+    completionTokens: integer('completion_tokens'),
+    suggestedContent: jsonb('suggested_content').default({}).notNull(),
     reviewedBy: uuid('reviewed_by'),
     reviewedAt: timestamp('reviewed_at', { withTimezone: true, mode: 'string' }),
+    reviewNotes: text('review_notes'),
+    createdTaskId: uuid('created_task_id'),
     createdPrNumber: integer('created_pr_number'),
     createdPrUrl: text('created_pr_url'),
     errorMessage: text('error_message'),
-    aiModelVersion: text('ai_model_version'),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
       .default(sql`timezone('utc'::text, now())`)
       .notNull(),
@@ -1517,53 +1431,134 @@ export const prSuggestions = pgTable(
     deletedAt: timestamp('deleted_at', { withTimezone: true, mode: 'string' }),
   },
   table => [
-    // Index for pending suggestions
-    index('idx_pr_suggestions_pending')
-      .using('btree', table.status.asc().nullsLast())
-      .where(sql`(deleted_at IS NULL AND status IN ('DRAFT', 'PENDING'))`),
-    // Index for repo lookup
-    index('idx_pr_suggestions_repo')
+    check('suggestions_confidence_range', sql`confidence >= 0 AND confidence <= 1`),
+    check('suggestions_pr_requires_repo', sql`type != 'PR' OR github_repo_link_id IS NOT NULL`),
+    index('idx_suggestions_pending_type')
+      .using('btree', table.type.asc().nullsLast(), table.status.asc().nullsLast())
+      .where(sql`(deleted_at IS NULL AND status IN ('PENDING', 'DRAFT'))`),
+    index('idx_suggestions_message')
+      .using('btree', table.messageId.asc().nullsLast().op('uuid_ops'))
+      .where(sql`(deleted_at IS NULL AND message_id IS NOT NULL)`),
+    index('idx_suggestions_thread')
+      .using('btree', table.threadId.asc().nullsLast().op('uuid_ops'))
+      .where(sql`(deleted_at IS NULL AND thread_id IS NOT NULL)`),
+    index('idx_suggestions_project')
+      .using('btree', table.projectId.asc().nullsLast().op('uuid_ops'))
+      .where(sql`(deleted_at IS NULL AND project_id IS NOT NULL)`),
+    index('idx_suggestions_repo')
       .using('btree', table.githubRepoLinkId.asc().nullsLast().op('uuid_ops'))
-      .where(sql`(deleted_at IS NULL)`),
-    // Index for task suggestion lookup
-    index('idx_pr_suggestions_task')
-      .using('btree', table.taskSuggestionId.asc().nullsLast().op('uuid_ops'))
-      .where(sql`(deleted_at IS NULL AND task_suggestion_id IS NOT NULL)`),
-    // Foreign keys
+      .where(sql`(deleted_at IS NULL AND github_repo_link_id IS NOT NULL)`),
     foreignKey({
-      columns: [table.taskSuggestionId],
-      foreignColumns: [taskSuggestions.id],
-      name: 'pr_suggestions_task_suggestion_id_fkey',
+      columns: [table.messageId],
+      foreignColumns: [messages.id],
+      name: 'suggestions_message_id_fkey',
     }),
     foreignKey({
-      columns: [table.emailMetadataId],
-      foreignColumns: [emailMetadata.id],
-      name: 'pr_suggestions_email_metadata_id_fkey',
+      columns: [table.threadId],
+      foreignColumns: [threads.id],
+      name: 'suggestions_thread_id_fkey',
+    }),
+    foreignKey({
+      columns: [table.projectId],
+      foreignColumns: [projects.id],
+      name: 'suggestions_project_id_fkey',
     }),
     foreignKey({
       columns: [table.githubRepoLinkId],
       foreignColumns: [githubRepoLinks.id],
-      name: 'pr_suggestions_github_repo_link_id_fkey',
-    }).onDelete('cascade'),
+      name: 'suggestions_github_repo_link_id_fkey',
+    }),
     foreignKey({
       columns: [table.reviewedBy],
       foreignColumns: [users.id],
-      name: 'pr_suggestions_reviewed_by_fkey',
+      name: 'suggestions_reviewed_by_fkey',
     }),
-    // Constraint: confidence must be between 0 and 1
-    check(
-      'pr_suggestions_confidence_range',
-      sql`confidence >= 0 AND confidence <= 1`
-    ),
-    // RLS Policies
-    pgPolicy('Admins manage pr suggestions', {
+    foreignKey({
+      columns: [table.createdTaskId],
+      foreignColumns: [tasks.id],
+      name: 'suggestions_created_task_id_fkey',
+    }),
+    pgPolicy('Admins manage suggestions', {
       as: 'permissive',
       for: 'all',
       to: ['public'],
       using: sql`is_admin()`,
+      withCheck: sql`is_admin()`,
+    }),
+    pgPolicy('Users view suggestions for accessible threads', {
+      as: 'permissive',
+      for: 'select',
+      to: ['public'],
+      using: sql`(
+        thread_id IN (
+          SELECT t.id FROM threads t
+          WHERE t.deleted_at IS NULL AND (
+            t.client_id IN (
+              SELECT client_id FROM client_members
+              WHERE user_id = auth.uid() AND deleted_at IS NULL
+            )
+            OR t.created_by = auth.uid()
+          )
+        )
+        OR message_id IN (
+          SELECT id FROM messages WHERE user_id = auth.uid()
+        )
+      )`,
     }),
   ]
 )
+
+export const suggestionFeedback = pgTable(
+  'suggestion_feedback',
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    suggestionId: uuid('suggestion_id').notNull(),
+    feedbackType: text('feedback_type').notNull(),
+    originalValue: text('original_value'),
+    correctedValue: text('corrected_value'),
+    createdBy: uuid('created_by').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+  },
+  table => [
+    index('idx_suggestion_feedback_suggestion')
+      .using('btree', table.suggestionId.asc().nullsLast().op('uuid_ops')),
+    foreignKey({
+      columns: [table.suggestionId],
+      foreignColumns: [suggestions.id],
+      name: 'suggestion_feedback_suggestion_id_fkey',
+    }).onDelete('cascade'),
+    foreignKey({
+      columns: [table.createdBy],
+      foreignColumns: [users.id],
+      name: 'suggestion_feedback_created_by_fkey',
+    }),
+    pgPolicy('Admins manage suggestion feedback', {
+      as: 'permissive',
+      for: 'all',
+      to: ['public'],
+      using: sql`is_admin()`,
+      withCheck: sql`is_admin()`,
+    }),
+    pgPolicy('Users view own suggestion feedback', {
+      as: 'permissive',
+      for: 'select',
+      to: ['public'],
+      using: sql`created_by = auth.uid()`,
+    }),
+    pgPolicy('Users create own suggestion feedback', {
+      as: 'permissive',
+      for: 'insert',
+      to: ['public'],
+      withCheck: sql`created_by = auth.uid()`,
+    }),
+  ]
+)
+
+// =============================================================================
+// VIEWS
+// =============================================================================
 
 export const currentUserWithRole = pgView('current_user_with_role', {
   id: uuid(),

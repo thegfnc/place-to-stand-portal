@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { requireRole } from '@/lib/auth/session'
-import { createPRSuggestionFromEmail } from '@/lib/ai/pr-suggestion-service'
+import { createPRSuggestionFromMessage } from '@/lib/ai/pr-suggestion-service'
 
 const schema = z.object({
   repoLinkId: z.string().uuid(),
@@ -25,7 +25,8 @@ export async function POST(
   }
 
   try {
-    const suggestion = await createPRSuggestionFromEmail(
+    // emailId is now messageId in the new schema
+    const suggestion = await createPRSuggestionFromMessage(
       emailId,
       result.data.repoLinkId,
       user.id

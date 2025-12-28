@@ -43,8 +43,8 @@ export const NAV_GROUPS: NavGroup[] = [
         matchHrefs: ['/my-tasks', '/my-tasks/calendar'],
       },
       {
-        href: '/emails',
-        label: 'Emails',
+        href: '/inbox',
+        label: 'Inbox',
         icon: Mail,
       },
       {

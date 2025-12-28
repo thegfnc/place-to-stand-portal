@@ -4,7 +4,7 @@ import { and, eq, isNull, notInArray } from 'drizzle-orm'
 import { requireUser } from '@/lib/auth/session'
 import { isAdmin } from '@/lib/auth/permissions'
 import { db } from '@/lib/db'
-import { clients, clientContacts, projects, emailLinks, emailMetadata } from '@/lib/db/schema'
+import { clients, clientContacts, projects, messages, threads } from '@/lib/db/schema'
 import { toResponsePayload, NotFoundError, ForbiddenError, type HttpError } from '@/lib/errors/http'
 import { matchEmailToClients } from '@/lib/ai/email-client-matching'
 
@@ -13,25 +13,27 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ ema
   const { emailId } = await params
 
   try {
-    // Get the email
-    const [email] = await db
-      .select()
-      .from(emailMetadata)
-      .where(and(eq(emailMetadata.id, emailId), isNull(emailMetadata.deletedAt)))
+    // Get the message with its thread
+    const [result] = await db
+      .select({
+        message: messages,
+        thread: threads,
+      })
+      .from(messages)
+      .leftJoin(threads, eq(threads.id, messages.threadId))
+      .where(and(eq(messages.id, emailId), isNull(messages.deletedAt)))
       .limit(1)
 
-    if (!email) throw new NotFoundError('Email not found')
-    if (!isAdmin(user) && email.userId !== user.id) {
+    if (!result?.message) throw new NotFoundError('Message not found')
+    const message = result.message
+    const thread = result.thread
+
+    if (!isAdmin(user) && message.userId !== user.id) {
       throw new ForbiddenError('Access denied')
     }
 
-    // Get already-linked client IDs
-    const existingLinks = await db
-      .select({ clientId: emailLinks.clientId })
-      .from(emailLinks)
-      .where(and(eq(emailLinks.emailMetadataId, emailId), isNull(emailLinks.deletedAt)))
-
-    const linkedClientIds = existingLinks.map(l => l.clientId).filter(Boolean) as string[]
+    // Get already-linked client from thread
+    const linkedClientIds = thread?.clientId ? [thread.clientId] : []
 
     // Fetch all clients with their contacts and projects
     const allClients = await db
@@ -84,14 +86,14 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ ema
         .map(p => ({ name: p.name })),
     }))
 
-    // Use AI to match email to clients
+    // Use AI to match message to clients
     const { matches } = await matchEmailToClients({
       email: {
-        from: email.fromEmail,
-        to: email.toEmails ?? [],
-        cc: email.ccEmails ?? [],
-        subject: email.subject,
-        snippet: email.snippet,
+        from: message.fromEmail,
+        to: message.toEmails ?? [],
+        cc: message.ccEmails ?? [],
+        subject: message.subject,
+        snippet: message.snippet,
       },
       clients: clientsWithData,
     })
@@ -101,7 +103,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ ema
       clientId: match.clientId,
       clientName: match.clientName,
       confidence: match.confidence,
-      matchedContacts: [], // AI doesn't return specific contacts, could enhance later
+      matchedContacts: [],
       reasoning: match.reasoning,
       matchType: match.matchType,
     }))
@@ -109,7 +111,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ ema
     return NextResponse.json({ ok: true, suggestions })
   } catch (err) {
     const error = err as HttpError
-    console.error('Email suggestions error:', error)
+    console.error('Message suggestions error:', error)
     const { status, body } = toResponsePayload(error)
     return NextResponse.json(body, { status })
   }

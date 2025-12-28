@@ -1,10 +1,10 @@
 import 'server-only'
 
-import { and, eq, inArray, isNull, sql } from 'drizzle-orm'
+import { and, eq, isNull, sql } from 'drizzle-orm'
 
 import type { AppUser } from '@/lib/auth/session'
 import { db } from '@/lib/db'
-import { clientContacts, emailLinks, emailMetadata } from '@/lib/db/schema'
+import { clientContacts, messages, threads } from '@/lib/db/schema'
 import { ForbiddenError, NotFoundError } from '@/lib/errors/http'
 import { isAdmin } from '@/lib/auth/permissions'
 
@@ -18,33 +18,51 @@ function domain(email: string) {
 }
 
 export type MatchResult = {
-  createdLinkIds: string[]
+  linked: boolean
+  clientId: string | null
+  confidence: 'HIGH' | 'MEDIUM' | null
 }
 
 /**
- * Match an email against client contacts via exact email and domain heuristics.
- * Inserts email_links with source=AUTOMATIC and confidence scores.
+ * Match a message against client contacts via exact email and domain heuristics.
+ * Updates the thread's clientId directly in the new unified schema.
  */
-export async function matchAndLinkEmail(
+export async function matchAndLinkMessage(
   user: AppUser,
-  emailId: string
+  messageId: string
 ): Promise<MatchResult> {
-  const rows = await db
-    .select()
-    .from(emailMetadata)
-    .where(and(eq(emailMetadata.id, emailId), isNull(emailMetadata.deletedAt)))
+  // Get the message and its thread
+  const [row] = await db
+    .select({
+      message: messages,
+      thread: threads,
+    })
+    .from(messages)
+    .leftJoin(threads, eq(threads.id, messages.threadId))
+    .where(and(eq(messages.id, messageId), isNull(messages.deletedAt)))
     .limit(1)
 
-  const email = rows[0]
-  if (!email) throw new NotFoundError('Email not found')
+  if (!row?.message) throw new NotFoundError('Message not found')
 
-  if (!isAdmin(user) && email.userId !== user.id) {
-    throw new ForbiddenError('Insufficient permissions to match email')
+  const message = row.message
+  const thread = row.thread
+
+  if (!isAdmin(user) && message.userId !== user.id) {
+    throw new ForbiddenError('Insufficient permissions to match message')
   }
 
-  const from = normalize(email.fromEmail)
-  const tos = (email.toEmails ?? []).map(normalize)
-  const ccs = (email.ccEmails ?? []).map(normalize)
+  // If thread is already linked to a client, skip
+  if (thread?.clientId) {
+    return { linked: true, clientId: thread.clientId, confidence: 'HIGH' }
+  }
+
+  if (!thread) {
+    return { linked: false, clientId: null, confidence: null }
+  }
+
+  const from = normalize(message.fromEmail)
+  const tos = (message.toEmails ?? []).map(normalize)
+  const ccs = (message.ccEmails ?? []).map(normalize)
   const allAddresses = Array.from(new Set([from, ...tos, ...ccs].filter(Boolean)))
 
   const addressDomains = Array.from(new Set(allAddresses.map(domain).filter(Boolean)))
@@ -62,45 +80,112 @@ export async function matchAndLinkEmail(
     )
 
   if (!contacts.length) {
-    return { createdLinkIds: [] }
+    return { linked: false, clientId: null, confidence: null }
   }
 
-  // De-dupe clients
-  const clientIds = Array.from(new Set(contacts.map(c => c.clientId)))
+  // Determine best match - prefer exact email match from sender
+  const exactFromMatch = contacts.find(c => normalize(c.email) === from)
+  const anyExactMatch = contacts.find(c => allAddresses.includes(normalize(c.email)))
 
-  // Avoid duplicates: fetch existing links for this email+clients
-  const existing = await db
-    .select({ clientId: emailLinks.clientId, id: emailLinks.id })
-    .from(emailLinks)
+  const bestMatch = exactFromMatch || anyExactMatch || contacts[0]
+  const confidence = exactFromMatch ? 'HIGH' : 'MEDIUM'
+
+  // Update thread with client link
+  await db
+    .update(threads)
+    .set({
+      clientId: bestMatch.clientId,
+      updatedAt: new Date().toISOString(),
+    })
+    .where(eq(threads.id, thread.id))
+
+  return {
+    linked: true,
+    clientId: bestMatch.clientId,
+    confidence,
+  }
+}
+
+/**
+ * Match all messages in a thread against client contacts.
+ * Links the thread to the best matching client.
+ */
+export async function matchAndLinkThread(
+  user: AppUser,
+  threadId: string
+): Promise<MatchResult> {
+  // Get the thread
+  const [thread] = await db
+    .select()
+    .from(threads)
+    .where(and(eq(threads.id, threadId), isNull(threads.deletedAt)))
+    .limit(1)
+
+  if (!thread) throw new NotFoundError('Thread not found')
+
+  // Check permissions - user must have created thread or be admin
+  if (!isAdmin(user) && thread.createdBy !== user.id) {
+    throw new ForbiddenError('Insufficient permissions to match thread')
+  }
+
+  // If thread is already linked to a client, return existing
+  if (thread.clientId) {
+    return { linked: true, clientId: thread.clientId, confidence: 'HIGH' }
+  }
+
+  // Use participant emails from thread
+  const allAddresses = (thread.participantEmails ?? []).map(normalize).filter(Boolean)
+  if (allAddresses.length === 0) {
+    return { linked: false, clientId: null, confidence: null }
+  }
+
+  const addressDomains = Array.from(new Set(allAddresses.map(domain).filter(Boolean)))
+
+  // Find contacts that match any address or any domain
+  const contacts = await db
+    .select({ id: clientContacts.id, clientId: clientContacts.clientId, email: clientContacts.email })
+    .from(clientContacts)
     .where(
       and(
-        eq(emailLinks.emailMetadataId, email.id),
-        isNull(emailLinks.deletedAt),
-        inArray(emailLinks.clientId, clientIds)
+        isNull(clientContacts.deletedAt),
+        sql`${clientContacts.email} = ANY(${allAddresses}) OR split_part(${clientContacts.email}, '@', 2) = ANY(${addressDomains})`
       )
     )
 
-  const existingClientIds = new Set(existing.map(e => e.clientId).filter(Boolean) as string[])
-  const toCreate = clientIds.filter(id => !existingClientIds.has(id))
+  if (!contacts.length) {
+    return { linked: false, clientId: null, confidence: null }
+  }
 
-  if (!toCreate.length) return { createdLinkIds: [] }
+  // Use the first matching client
+  const bestMatch = contacts[0]
+  const isExactMatch = allAddresses.includes(normalize(bestMatch.email))
+  const confidence = isExactMatch ? 'HIGH' : 'MEDIUM'
 
-  const created = await db
-    .insert(emailLinks)
-    .values(
-      toCreate.map(clientId => ({
-        emailMetadataId: email.id,
-        clientId,
-        projectId: null,
-        source: 'AUTOMATIC' as const,
-        confidence: contacts.some(c => c.clientId === clientId && normalize(c.email) === from)
-          ? '1.00'
-          : '0.60',
-        linkedBy: null,
-        notes: null,
-      }))
-    )
-    .returning({ id: emailLinks.id })
+  // Update thread with client link
+  await db
+    .update(threads)
+    .set({
+      clientId: bestMatch.clientId,
+      updatedAt: new Date().toISOString(),
+    })
+    .where(eq(threads.id, thread.id))
 
-  return { createdLinkIds: created.map(c => c.id) }
+  return {
+    linked: true,
+    clientId: bestMatch.clientId,
+    confidence,
+  }
+}
+
+/**
+ * Legacy function for backwards compatibility.
+ * @deprecated Use matchAndLinkMessage instead
+ */
+export async function matchAndLinkEmail(
+  user: AppUser,
+  messageId: string
+): Promise<{ createdLinkIds: string[] }> {
+  const result = await matchAndLinkMessage(user, messageId)
+  // Return empty array since we no longer create link records
+  return { createdLinkIds: result.linked && result.clientId ? [result.clientId] : [] }
 }

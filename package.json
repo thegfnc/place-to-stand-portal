@@ -10,7 +10,8 @@
     "type-check": "npx tsc --noEmit",
     "db:pull": "npx drizzle-kit pull --config drizzle.config.ts",
     "db:generate": "npx drizzle-kit generate --config drizzle.config.ts",
-    "db:migrate": "npx drizzle-kit migrate --config drizzle.config.ts"
+    "db:migrate": "npx drizzle-kit migrate --config drizzle.config.ts",
+    "db:reset": "supabase db reset && npm run db:migrate"
   },
   "dependencies": {
     "@ai-sdk/openai": "^2.0.86",

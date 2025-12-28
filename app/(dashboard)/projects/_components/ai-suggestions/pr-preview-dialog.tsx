@@ -42,11 +42,11 @@ export function PRPreviewDialog({
   onApprove,
   onCancel,
 }: PRPreviewDialogProps) {
-  const [title, setTitle] = useState(suggestion.suggestedTitle)
-  const [body, setBody] = useState(suggestion.suggestedBody)
-  const [branch, setBranch] = useState(suggestion.suggestedBranch || '')
+  const [title, setTitle] = useState(suggestion.suggestedContent.title)
+  const [body, setBody] = useState(suggestion.suggestedContent.body)
+  const [branch, setBranch] = useState(suggestion.suggestedContent.branch || '')
   const [baseBranch, setBaseBranch] = useState(
-    suggestion.suggestedBaseBranch || 'main'
+    suggestion.suggestedContent.baseBranch || suggestion.githubRepoLink?.defaultBranch || 'main'
   )
   const [createNewBranch, setCreateNewBranch] = useState(true)
   const [branches, setBranches] = useState<BranchInfo[]>([])
@@ -61,7 +61,8 @@ export function PRPreviewDialog({
   // Fetch branches when component mounts
   useEffect(() => {
     const fetchBranches = async () => {
-      const [owner, repo] = suggestion.repoLink.repoFullName.split('/')
+      if (!suggestion.githubRepoLink) return
+      const [owner, repo] = suggestion.githubRepoLink.repoFullName.split('/')
       if (!owner || !repo) return
 
       setLoadingBranches(true)
@@ -79,14 +80,14 @@ export function PRPreviewDialog({
     }
 
     fetchBranches()
-  }, [suggestion.repoLink.repoFullName])
+  }, [suggestion.githubRepoLink?.repoFullName])
 
   // Reset state when suggestion changes
   useEffect(() => {
-    setTitle(suggestion.suggestedTitle)
-    setBody(suggestion.suggestedBody)
-    setBranch(suggestion.suggestedBranch || '')
-    setBaseBranch(suggestion.suggestedBaseBranch || 'main')
+    setTitle(suggestion.suggestedContent.title)
+    setBody(suggestion.suggestedContent.body)
+    setBranch(suggestion.suggestedContent.branch || '')
+    setBaseBranch(suggestion.suggestedContent.baseBranch || suggestion.githubRepoLink?.defaultBranch || 'main')
     setCreatedPR(null)
     setCreateNewBranch(true)
     setUseExistingBranch(false)
@@ -166,18 +167,20 @@ export function PRPreviewDialog({
       </div>
 
       {/* Repository */}
-      <p className='text-sm text-muted-foreground'>
-        Repository:{' '}
-        <a
-          href={`https://github.com/${suggestion.repoLink.repoFullName}`}
-          target='_blank'
-          rel='noopener noreferrer'
-          className='font-medium underline hover:no-underline'
-        >
-          {suggestion.repoLink.repoFullName}
-          <ExternalLink className='ml-1 inline h-3 w-3' />
-        </a>
-      </p>
+      {suggestion.githubRepoLink && (
+        <p className='text-sm text-muted-foreground'>
+          Repository:{' '}
+          <a
+            href={`https://github.com/${suggestion.githubRepoLink.repoFullName}`}
+            target='_blank'
+            rel='noopener noreferrer'
+            className='font-medium underline hover:no-underline'
+          >
+            {suggestion.githubRepoLink.repoFullName}
+            <ExternalLink className='ml-1 inline h-3 w-3' />
+          </a>
+        </p>
+      )}
 
       {/* Title */}
       <div className='space-y-2'>

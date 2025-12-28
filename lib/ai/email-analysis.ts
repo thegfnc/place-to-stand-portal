@@ -2,8 +2,14 @@ import 'server-only'
 
 import { generateObject } from 'ai'
 import { createGateway } from '@ai-sdk/gateway'
-import { EMAIL_ANALYSIS_SYSTEM_PROMPT, buildEmailAnalysisUserPrompt } from './prompts/email-to-tasks'
-import { emailAnalysisResultSchema, type EmailAnalysisResult } from './schemas/task-extraction'
+import {
+  EMAIL_ANALYSIS_SYSTEM_PROMPT,
+  buildEmailAnalysisUserPrompt,
+} from './prompts/email-to-tasks'
+import {
+  emailAnalysisResultSchema,
+  type EmailAnalysisResult,
+} from './schemas/task-extraction'
 
 // Vercel AI Gateway - uses AI_GATEWAY_API_KEY env var automatically
 const gateway = createGateway()

@@ -13,7 +13,7 @@ import {
   resolveClientIdentifier,
 } from '@/lib/data/clients'
 import { buildMembersByClient, listClientUsers } from '@/lib/queries/clients'
-import { getLinkedEmailsForClient } from '@/lib/queries/emails'
+import { getMessagesForClient } from '@/lib/queries/messages'
 import type { ClientRow } from '@/lib/settings/clients/client-sheet-utils'
 
 import { ClientsLandingHeader } from '../_components/clients-landing-header'
@@ -76,14 +76,14 @@ export default async function ClientDetailPage({
       ])
     : Promise.resolve(null)
 
-  const [allClients, projects, managementData, contacts, linkedEmails] = await Promise.all([
+  const [allClients, projects, managementData, contacts, messages] = await Promise.all([
     fetchClientsWithMetrics(user),
     fetchProjectsForClient(user, client.resolvedId),
     managementDataPromise,
     db.select().from(clientContacts).where(
       and(eq(clientContacts.clientId, client.resolvedId), isNull(clientContacts.deletedAt))
     ).orderBy(desc(clientContacts.isPrimary), clientContacts.email),
-    getLinkedEmailsForClient(client.resolvedId),
+    getMessagesForClient(client.resolvedId),
   ])
 
   const clientUsers = managementData
@@ -106,7 +106,7 @@ export default async function ClientDetailPage({
           client={client}
           projects={projects}
           contacts={contacts}
-          linkedEmails={linkedEmails}
+          messages={messages}
           canManageClients={canManageClients}
           clientUsers={clientUsers}
           clientMembers={clientMembers}

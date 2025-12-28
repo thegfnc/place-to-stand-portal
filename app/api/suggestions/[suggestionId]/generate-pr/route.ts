@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { requireRole } from '@/lib/auth/session'
-import { createPRSuggestionFromTask } from '@/lib/ai/pr-suggestion-service'
+import { createPRSuggestionFromTaskSuggestion } from '@/lib/ai/pr-suggestion-service'
 
 const schema = z.object({
   repoLinkId: z.string().uuid(),
@@ -28,8 +28,8 @@ export async function POST(
   }
 
   try {
-    console.log('[generate-pr] Calling createPRSuggestionFromTask...')
-    const prSuggestion = await createPRSuggestionFromTask(
+    console.log('[generate-pr] Calling createPRSuggestionFromTaskSuggestion...')
+    const prSuggestion = await createPRSuggestionFromTaskSuggestion(
       suggestionId,
       result.data.repoLinkId,
       user.id

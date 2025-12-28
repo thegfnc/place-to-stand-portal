@@ -38,5 +38,6 @@ export type NormalizedEmail = {
   date: string | null
   snippet?: string
   bodyText?: string
+  bodyHtml?: string
 }
 

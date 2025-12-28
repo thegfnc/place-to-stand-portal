@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { requireRole } from '@/lib/auth/session'
-import { approvePRSuggestion } from '@/lib/data/pr-suggestions'
+import { approveSuggestion } from '@/lib/data/suggestions'
+import type { ApprovePRModifications } from '@/lib/data/suggestions'
 
 const schema = z.object({
   title: z.string().min(1).max(100).optional(),
@@ -25,20 +26,17 @@ export async function POST(
     return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
   }
 
-  const modifications = result.data
+  const modifications: ApprovePRModifications | undefined = Object.keys(result.data).length > 0
+    ? result.data
+    : undefined
 
   try {
-    const pr = await approvePRSuggestion(
-      suggestionId,
-      user.id,
-      Object.keys(modifications).length > 0 ? modifications : undefined
-    )
+    const pr = await approveSuggestion(suggestionId, user.id, modifications)
 
     return NextResponse.json({
       success: true,
       prNumber: pr.prNumber,
       prUrl: pr.prUrl,
-      branchCreated: pr.branchCreated,
     })
   } catch (error) {
     console.error('PR approval error:', error)
