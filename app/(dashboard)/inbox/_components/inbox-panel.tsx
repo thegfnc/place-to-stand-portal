@@ -13,13 +13,12 @@ import {
   ArrowLeft,
   ArrowRight,
   Filter,
-  ChevronLeft,
-  ChevronRight,
 } from 'lucide-react'
 
 import { AppShellHeader } from '@/components/layout/app-shell'
-import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { PaginationControls } from '@/components/ui/pagination-controls'
 import {
   Sheet,
   SheetContent,
@@ -52,20 +51,22 @@ const ROWS_PER_PAGE = 25
  * - Removes potentially dangerous elements
  */
 function sanitizeEmailHtml(html: string): string {
-  return html
-    // Proxy external images through our API
-    .replace(
-      /<img\s+([^>]*?)src=["']((https?:\/\/[^"']+))["']([^>]*)>/gi,
-      (_match, before, src, _fullSrc, after) => {
-        const proxiedSrc = `/api/emails/image-proxy?url=${encodeURIComponent(src)}`
-        return `<img ${before}src="${proxiedSrc}" loading="lazy"${after}>`
-      }
-    )
-    // Remove script tags
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-    // Remove onclick and similar event handlers
-    .replace(/\s+on\w+="[^"]*"/gi, '')
-    .replace(/\s+on\w+='[^']*'/gi, '')
+  return (
+    html
+      // Proxy external images through our API
+      .replace(
+        /<img\s+([^>]*?)src=["']((https?:\/\/[^"']+))["']([^>]*)>/gi,
+        (_match, before, src, _fullSrc, after) => {
+          const proxiedSrc = `/api/emails/image-proxy?url=${encodeURIComponent(src)}`
+          return `<img ${before}src="${proxiedSrc}" loading="lazy"${after}>`
+        }
+      )
+      // Remove script tags
+      .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+      // Remove onclick and similar event handlers
+      .replace(/\s+on\w+="[^"]*"/gi, '')
+      .replace(/\s+on\w+='[^']*'/gi, '')
+  )
 }
 
 type Client = {
@@ -94,19 +95,33 @@ type InboxPanelProps = {
   isAdmin: boolean
 }
 
-export function InboxPanel({ threads: initialThreads, syncStatus, clients, isAdmin }: InboxPanelProps) {
+export function InboxPanel({
+  threads: initialThreads,
+  syncStatus,
+  clients,
+  isAdmin,
+}: InboxPanelProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { toast } = useToast()
 
   const [threads, setThreads] = useState(initialThreads)
   const [isSyncing, setIsSyncing] = useState(false)
-  const [selectedThread, setSelectedThread] = useState<ThreadSummary | null>(null)
+  const [selectedThread, setSelectedThread] = useState<ThreadSummary | null>(
+    null
+  )
   const [threadMessages, setThreadMessages] = useState<Message[]>([])
   const [isLoadingMessages, setIsLoadingMessages] = useState(false)
   const [filter, setFilter] = useState<FilterType>('all')
   const [isLinking, setIsLinking] = useState(false)
-  const [currentPage, setCurrentPage] = useState(1)
+
+  // Initialize page from URL or default to 1
+  const initialPage = useMemo(() => {
+    const pageParam = searchParams.get('page')
+    const parsed = pageParam ? parseInt(pageParam, 10) : 1
+    return Number.isNaN(parsed) || parsed < 1 ? 1 : parsed
+  }, [searchParams])
+  const [currentPage, setCurrentPage] = useState(initialPage)
 
   // AI Suggestions state (for client matching)
   const [suggestions, setSuggestions] = useState<Suggestion[]>([])
@@ -128,9 +143,30 @@ export function InboxPanel({ threads: initialThreads, syncStatus, clients, isAdm
     return filteredThreads.slice(start, start + ROWS_PER_PAGE)
   }, [filteredThreads, currentPage])
 
+  // Handle page changes with URL sync
+  const handlePageChange = useCallback(
+    (page: number) => {
+      setCurrentPage(page)
+      const params = new URLSearchParams(searchParams.toString())
+      if (page === 1) {
+        params.delete('page')
+      } else {
+        params.set('page', String(page))
+      }
+      const newUrl = params.toString()
+        ? `/inbox?${params.toString()}`
+        : '/inbox'
+      router.push(newUrl, { scroll: false })
+    },
+    [router, searchParams]
+  )
+
   // Reset to page 1 when filter changes
   useEffect(() => {
-    setCurrentPage(1)
+    if (currentPage !== 1) {
+      handlePageChange(1)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filter])
 
   // Handle URL-based thread selection on mount and URL changes
@@ -148,9 +184,14 @@ export function InboxPanel({ threads: initialThreads, syncStatus, clients, isAdm
   const handleSync = async () => {
     setIsSyncing(true)
     try {
-      const res = await fetch('/api/integrations/gmail/sync', { method: 'POST' })
+      const res = await fetch('/api/integrations/gmail/sync', {
+        method: 'POST',
+      })
       if (res.ok) {
-        toast({ title: 'Sync complete', description: 'Emails synced successfully.' })
+        toast({
+          title: 'Sync complete',
+          description: 'Emails synced successfully.',
+        })
         window.location.reload()
       }
     } catch {
@@ -160,49 +201,61 @@ export function InboxPanel({ threads: initialThreads, syncStatus, clients, isAdm
     }
   }
 
-  const handleThreadClick = useCallback(async (thread: ThreadSummary, updateUrl = true) => {
-    setSelectedThread(thread)
-    setIsLoadingMessages(true)
-    setThreadMessages([])
-    setSuggestions([])
+  const handleThreadClick = useCallback(
+    async (thread: ThreadSummary, updateUrl = true) => {
+      setSelectedThread(thread)
+      setIsLoadingMessages(true)
+      setThreadMessages([])
+      setSuggestions([])
 
-    // Update URL with thread ID
-    if (updateUrl) {
-      const params = new URLSearchParams(searchParams.toString())
-      params.set('thread', thread.id)
-      router.push(`/inbox?${params.toString()}`, { scroll: false })
-    }
-
-    try {
-      const res = await fetch(`/api/threads/${thread.id}/messages`)
-      if (res.ok) {
-        const data = await res.json()
-        setThreadMessages(data.messages || [])
-
-        // Mark as read if there are unread messages
-        const hasUnread = (data.messages || []).some((m: Message) => !m.isRead)
-        if (hasUnread) {
-          // Fire and forget - don't block UI
-          fetch(`/api/threads/${thread.id}/read`, { method: 'POST' }).then(() => {
-            // Update local thread state to show as read
-            setThreads(prev =>
-              prev.map(t =>
-                t.id === thread.id && t.latestMessage
-                  ? { ...t, latestMessage: { ...t.latestMessage, isRead: true } }
-                  : t
-              )
-            )
-            // Also update messages state
-            setThreadMessages(prev => prev.map(m => ({ ...m, isRead: true })))
-          })
-        }
+      // Update URL with thread ID
+      if (updateUrl) {
+        const params = new URLSearchParams(searchParams.toString())
+        params.set('thread', thread.id)
+        router.push(`/inbox?${params.toString()}`, { scroll: false })
       }
-    } catch (err) {
-      console.error('Failed to load messages:', err)
-    } finally {
-      setIsLoadingMessages(false)
-    }
-  }, [router, searchParams])
+
+      try {
+        const res = await fetch(`/api/threads/${thread.id}/messages`)
+        if (res.ok) {
+          const data = await res.json()
+          setThreadMessages(data.messages || [])
+
+          // Mark as read if there are unread messages
+          const hasUnread = (data.messages || []).some(
+            (m: Message) => !m.isRead
+          )
+          if (hasUnread) {
+            // Fire and forget - don't block UI
+            fetch(`/api/threads/${thread.id}/read`, { method: 'POST' }).then(
+              () => {
+                // Update local thread state to show as read
+                setThreads(prev =>
+                  prev.map(t =>
+                    t.id === thread.id && t.latestMessage
+                      ? {
+                          ...t,
+                          latestMessage: { ...t.latestMessage, isRead: true },
+                        }
+                      : t
+                  )
+                )
+                // Also update messages state
+                setThreadMessages(prev =>
+                  prev.map(m => ({ ...m, isRead: true }))
+                )
+              }
+            )
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load messages:', err)
+      } finally {
+        setIsLoadingMessages(false)
+      }
+    },
+    [router, searchParams]
+  )
 
   // Load AI suggestions when thread changes and has no client
   useEffect(() => {
@@ -252,7 +305,9 @@ export function InboxPanel({ threads: initialThreads, syncStatus, clients, isAdm
           client: client ? { id: client.id, name: client.name } : null,
         }
         setSelectedThread(updatedThread)
-        setThreads(prev => prev.map(t => (t.id === selectedThread.id ? updatedThread : t)))
+        setThreads(prev =>
+          prev.map(t => (t.id === selectedThread.id ? updatedThread : t))
+        )
         setSuggestions([]) // Clear suggestions after linking
 
         toast({ title: 'Thread linked to client' })
@@ -260,7 +315,11 @@ export function InboxPanel({ threads: initialThreads, syncStatus, clients, isAdm
         throw new Error('Failed to link')
       }
     } catch {
-      toast({ title: 'Error', description: 'Failed to link thread.', variant: 'destructive' })
+      toast({
+        title: 'Error',
+        description: 'Failed to link thread.',
+        variant: 'destructive',
+      })
     } finally {
       setIsLinking(false)
     }
@@ -283,19 +342,27 @@ export function InboxPanel({ threads: initialThreads, syncStatus, clients, isAdm
           client: null,
         }
         setSelectedThread(updatedThread)
-        setThreads(prev => prev.map(t => (t.id === selectedThread.id ? updatedThread : t)))
+        setThreads(prev =>
+          prev.map(t => (t.id === selectedThread.id ? updatedThread : t))
+        )
 
         toast({ title: 'Client unlinked' })
       }
     } catch {
-      toast({ title: 'Error', description: 'Failed to unlink.', variant: 'destructive' })
+      toast({
+        title: 'Error',
+        description: 'Failed to unlink.',
+        variant: 'destructive',
+      })
     } finally {
       setIsLinking(false)
     }
   }
 
   // Navigate between threads
-  const currentIndex = selectedThread ? filteredThreads.findIndex(t => t.id === selectedThread.id) : -1
+  const currentIndex = selectedThread
+    ? filteredThreads.findIndex(t => t.id === selectedThread.id)
+    : -1
   const canGoPrev = currentIndex > 0
   const canGoNext = currentIndex < filteredThreads.length - 1
 
@@ -321,7 +388,10 @@ export function InboxPanel({ threads: initialThreads, syncStatus, clients, isAdm
         <div className='space-y-4'>
           {/* Header Row */}
           <div className='flex flex-wrap items-center gap-4'>
-            <Select value={filter} onValueChange={v => setFilter(v as FilterType)}>
+            <Select
+              value={filter}
+              onValueChange={v => setFilter(v as FilterType)}
+            >
               <SelectTrigger className='w-40'>
                 <Filter className='mr-2 h-4 w-4' />
                 <SelectValue />
@@ -333,7 +403,7 @@ export function InboxPanel({ threads: initialThreads, syncStatus, clients, isAdm
               </SelectContent>
             </Select>
 
-            <div className='flex items-center gap-2 text-sm text-muted-foreground'>
+            <div className='text-muted-foreground flex items-center gap-2 text-sm'>
               {syncStatus.connected ? (
                 <CheckCircle className='h-4 w-4 text-green-500' />
               ) : (
@@ -349,15 +419,35 @@ export function InboxPanel({ threads: initialThreads, syncStatus, clients, isAdm
 
             <div className='ml-auto flex items-center gap-4'>
               {syncStatus.lastSyncAt && (
-                <span className='text-xs text-muted-foreground'>
-                  Last sync {formatDistanceToNow(new Date(syncStatus.lastSyncAt))} ago
+                <span className='text-muted-foreground text-xs'>
+                  Last sync{' '}
+                  {formatDistanceToNow(new Date(syncStatus.lastSyncAt))} ago
                 </span>
               )}
               {syncStatus.connected && (
-                <Button variant='outline' size='sm' onClick={handleSync} disabled={isSyncing}>
-                  <RefreshCw className={cn('mr-2 h-4 w-4', isSyncing && 'animate-spin')} />
-                  {isSyncing ? 'Syncing...' : 'Sync Now'}
+                <Button
+                  variant='outline'
+                  size='sm'
+                  onClick={handleSync}
+                  disabled={isSyncing}
+                >
+                  <RefreshCw
+                    className={cn('mr-2 h-4 w-4', isSyncing && 'animate-spin')}
+                  />
+                  {isSyncing ? 'Syncing...' : 'Sync'}
                 </Button>
+              )}
+              {/* Top Pagination - controls only, no count */}
+              {filteredThreads.length > 0 && (
+                <PaginationControls
+                  mode='paged'
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  totalItems={filteredThreads.length}
+                  pageSize={ROWS_PER_PAGE}
+                  onPageChange={handlePageChange}
+                  showCount={false}
+                />
               )}
             </div>
           </div>
@@ -365,9 +455,9 @@ export function InboxPanel({ threads: initialThreads, syncStatus, clients, isAdm
           {/* Thread List */}
           {filteredThreads.length === 0 ? (
             <div className='flex flex-col items-center justify-center rounded-lg border border-dashed p-12 text-center'>
-              <Mail className='mb-4 h-12 w-12 text-muted-foreground' />
+              <Mail className='text-muted-foreground mb-4 h-12 w-12' />
               <h3 className='text-lg font-medium'>No threads found</h3>
-              <p className='mt-1 text-sm text-muted-foreground'>
+              <p className='text-muted-foreground mt-1 text-sm'>
                 {!syncStatus.connected
                   ? 'Connect Gmail in Settings → Integrations to get started'
                   : filter === 'all'
@@ -377,7 +467,7 @@ export function InboxPanel({ threads: initialThreads, syncStatus, clients, isAdm
             </div>
           ) : (
             <>
-              <div className='rounded-lg border overflow-hidden'>
+              <div className='overflow-hidden rounded-lg border'>
                 {paginatedThreads.map((thread, idx) => (
                   <ThreadRow
                     key={thread.id}
@@ -389,83 +479,46 @@ export function InboxPanel({ threads: initialThreads, syncStatus, clients, isAdm
                 ))}
               </div>
 
-              {/* Pagination */}
-              {totalPages > 1 && (
-                <div className='flex items-center justify-between pt-2'>
-                  <p className='text-sm text-muted-foreground'>
-                    Showing {((currentPage - 1) * ROWS_PER_PAGE) + 1}–{Math.min(currentPage * ROWS_PER_PAGE, filteredThreads.length)} of {filteredThreads.length}
-                  </p>
-                  <div className='flex items-center gap-1'>
-                    <Button
-                      variant='outline'
-                      size='sm'
-                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                      disabled={currentPage === 1}
-                    >
-                      <ChevronLeft className='h-4 w-4' />
-                      <span className='sr-only'>Previous</span>
-                    </Button>
-                    <div className='flex items-center gap-1 px-2'>
-                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                        let pageNum: number
-                        if (totalPages <= 5) {
-                          pageNum = i + 1
-                        } else if (currentPage <= 3) {
-                          pageNum = i + 1
-                        } else if (currentPage >= totalPages - 2) {
-                          pageNum = totalPages - 4 + i
-                        } else {
-                          pageNum = currentPage - 2 + i
-                        }
-                        return (
-                          <Button
-                            key={pageNum}
-                            variant={currentPage === pageNum ? 'default' : 'ghost'}
-                            size='sm'
-                            className='h-8 w-8 p-0'
-                            onClick={() => setCurrentPage(pageNum)}
-                          >
-                            {pageNum}
-                          </Button>
-                        )
-                      })}
-                    </div>
-                    <Button
-                      variant='outline'
-                      size='sm'
-                      onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                      disabled={currentPage === totalPages}
-                    >
-                      <ChevronRight className='h-4 w-4' />
-                      <span className='sr-only'>Next</span>
-                    </Button>
-                  </div>
-                </div>
-              )}
+              {/* Bottom Pagination */}
+              <PaginationControls
+                mode='paged'
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalItems={filteredThreads.length}
+                pageSize={ROWS_PER_PAGE}
+                onPageChange={handlePageChange}
+              />
             </>
           )}
         </div>
       </section>
 
       {/* Thread Detail Sheet - Two Column Layout (rendered via portal) */}
-      <Sheet open={!!selectedThread} onOpenChange={(open) => !open && handleCloseSheet()}>
-        <SheetContent className='flex h-full w-full flex-col overflow-hidden p-0 sm:max-w-4xl lg:max-w-5xl'>
+      <Sheet
+        open={!!selectedThread}
+        onOpenChange={open => !open && handleCloseSheet()}
+      >
+        <SheetContent className='flex h-full w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-4xl lg:max-w-5xl'>
           {/* Custom Header - Outside the scroll area */}
-          <div className='flex-shrink-0 border-b-2 border-b-blue-500/60 bg-muted/50 px-6 pt-4 pb-3'>
+          <div className='bg-muted/50 flex-shrink-0 border-b-2 border-b-blue-500/60 px-6 pt-4 pb-3'>
             <div className='flex items-start justify-between gap-4'>
               <div className='min-w-0 flex-1 pr-10'>
                 <SheetTitle className='line-clamp-2 text-lg'>
                   {selectedThread?.subject || '(no subject)'}
                 </SheetTitle>
                 <SheetDescription className='mt-1'>
-                  {selectedThread?.messageCount} message{selectedThread?.messageCount !== 1 && 's'}
+                  {selectedThread?.messageCount} message
+                  {selectedThread?.messageCount !== 1 && 's'}
                   {selectedThread?.lastMessageAt && (
-                    <> · {format(new Date(selectedThread.lastMessageAt), 'PPp')}</>
+                    <>
+                      {' '}
+                      · {format(new Date(selectedThread.lastMessageAt), 'PPp')}
+                    </>
                   )}
                 </SheetDescription>
               </div>
               {/* Navigation arrows - positioned to avoid close button */}
-              <div className='flex items-center gap-1 flex-shrink-0'>
+              <div className='flex flex-shrink-0 items-center gap-1'>
                 <Button
                   variant='ghost'
                   size='icon'
@@ -497,15 +550,15 @@ export function InboxPanel({ threads: initialThreads, syncStatus, clients, isAdm
               <div className='p-6'>
                 {isLoadingMessages ? (
                   <div className='flex items-center justify-center py-12'>
-                    <RefreshCw className='h-6 w-6 animate-spin text-muted-foreground' />
+                    <RefreshCw className='text-muted-foreground h-6 w-6 animate-spin' />
                   </div>
                 ) : threadMessages.length === 0 ? (
-                  <div className='flex items-center justify-center py-12 text-muted-foreground'>
+                  <div className='text-muted-foreground flex items-center justify-center py-12'>
                     No messages found
                   </div>
                 ) : (
                   <div className='space-y-6'>
-                    {threadMessages.map((message) => (
+                    {threadMessages.map(message => (
                       <MessageCard key={message.id} message={message} />
                     ))}
                   </div>
@@ -514,7 +567,7 @@ export function InboxPanel({ threads: initialThreads, syncStatus, clients, isAdm
             </div>
 
             {/* Right Column - Metadata & Actions */}
-            <div className='w-80 flex-shrink-0 overflow-y-auto bg-muted/20 lg:w-96'>
+            <div className='bg-muted/20 w-80 flex-shrink-0 overflow-y-auto lg:w-96'>
               <div className='space-y-6 p-6'>
                 {/* Client Linking Section */}
                 {isAdmin && selectedThread && (
@@ -567,39 +620,49 @@ function ThreadRow({
       type='button'
       onClick={onClick}
       className={cn(
-        'flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors cursor-pointer',
+        'bg-muted/20 flex w-full cursor-pointer items-center gap-3 p-2.5 text-left transition-colors',
         'hover:bg-muted/60',
-        isUnread && 'bg-blue-50/50 dark:bg-blue-950/20 hover:bg-blue-100/50 dark:hover:bg-blue-950/40',
-        isSelected && 'bg-muted ring-1 ring-inset ring-border',
-        !isFirst && 'border-t border-border/50'
+        isUnread &&
+          'bg-blue-50/50 hover:bg-blue-100/50 dark:bg-blue-950/20 dark:hover:bg-blue-950/40',
+        isSelected && 'bg-muted ring-border ring-1 ring-inset',
+        !isFirst && 'border-border/50 border-t'
       )}
     >
       {/* Unread indicator */}
-      <div className='flex-shrink-0 w-2'>
+      <div className='w-2 flex-shrink-0'>
         {isUnread && <div className='h-2 w-2 rounded-full bg-blue-500' />}
       </div>
 
       {/* Center: Sender, count, timestamp / Subject */}
       <div className='min-w-0 flex-1'>
         <div className='flex items-center gap-2'>
-          <span className={cn('text-sm truncate', isUnread ? 'font-semibold' : 'font-medium')}>
+          <span
+            className={cn(
+              'truncate text-sm',
+              isUnread ? 'font-semibold' : 'font-medium'
+            )}
+          >
             {latestMessage?.fromName || latestMessage?.fromEmail || 'Unknown'}
           </span>
           {thread.messageCount > 1 && (
-            <Badge variant='secondary' className='text-xs tabular-nums flex-shrink-0'>
+            <span className='flex h-5 min-w-5 flex-shrink-0 items-center justify-center rounded-full bg-neutral-200 px-1.5 text-xs font-medium text-neutral-700 tabular-nums dark:bg-neutral-700 dark:text-neutral-200'>
               {thread.messageCount}
-            </Badge>
+            </span>
           )}
-          <span className='text-xs text-muted-foreground whitespace-nowrap tabular-nums flex-shrink-0'>
+          <span className='text-muted-foreground/70 flex-shrink-0 text-xs whitespace-nowrap tabular-nums'>
             {thread.lastMessageAt
-              ? formatDistanceToNow(new Date(thread.lastMessageAt), { addSuffix: false })
+              ? formatDistanceToNow(new Date(thread.lastMessageAt), {
+                  addSuffix: true,
+                })
               : ''}
           </span>
         </div>
-        <div className={cn(
-          'text-sm truncate',
-          isUnread ? 'text-foreground' : 'text-muted-foreground'
-        )}>
+        <div
+          className={cn(
+            'truncate text-sm',
+            isUnread ? 'text-foreground' : 'text-muted-foreground'
+          )}
+        >
           {thread.subject || '(no subject)'}
         </div>
       </div>
@@ -608,10 +671,10 @@ function ThreadRow({
       {thread.client && (
         <Badge
           variant='default'
-          className='flex-shrink-0 text-xs font-medium bg-blue-100 text-blue-700 hover:bg-blue-100 dark:bg-blue-900/50 dark:text-blue-300 border-0'
+          className='flex-shrink-0 border-0 bg-blue-100 text-xs font-medium text-blue-700 hover:bg-blue-100 dark:bg-blue-900/50 dark:text-blue-300'
         >
           <Building2 className='mr-1 h-3 w-3' />
-          <span className='truncate max-w-[100px]'>{thread.client.name}</span>
+          <span className='max-w-[100px] truncate'>{thread.client.name}</span>
         </Badge>
       )}
 
@@ -619,10 +682,10 @@ function ThreadRow({
       {thread.project && (
         <Badge
           variant='default'
-          className='flex-shrink-0 text-xs font-medium bg-violet-100 text-violet-700 hover:bg-violet-100 dark:bg-violet-900/50 dark:text-violet-300 border-0'
+          className='flex-shrink-0 border-0 bg-violet-100 text-xs font-medium text-violet-700 hover:bg-violet-100 dark:bg-violet-900/50 dark:text-violet-300'
         >
           <FolderKanban className='mr-1 h-3 w-3' />
-          <span className='truncate max-w-[100px]'>{thread.project.name}</span>
+          <span className='max-w-[100px] truncate'>{thread.project.name}</span>
         </Badge>
       )}
     </button>
@@ -633,12 +696,12 @@ function MessageCard({ message }: { message: Message }) {
   const [isExpanded, setIsExpanded] = useState(true)
 
   return (
-    <div className='rounded-lg border bg-card'>
+    <div className='bg-card rounded-lg border'>
       {/* Header */}
       <button
         type='button'
         onClick={() => setIsExpanded(!isExpanded)}
-        className='flex w-full items-start justify-between p-4 text-left hover:bg-muted/50'
+        className='hover:bg-muted/50 flex w-full items-start justify-between p-4 text-left'
       >
         <div className='min-w-0 flex-1'>
           <div className='flex items-center gap-2'>
@@ -646,28 +709,32 @@ function MessageCard({ message }: { message: Message }) {
               {message.fromName || message.fromEmail}
             </span>
             {message.isInbound ? (
-              <Badge variant='secondary' className='text-xs'>Received</Badge>
+              <Badge variant='secondary' className='text-xs'>
+                Received
+              </Badge>
             ) : (
-              <Badge variant='outline' className='text-xs'>Sent</Badge>
+              <Badge variant='outline' className='text-xs'>
+                Sent
+              </Badge>
             )}
           </div>
           {message.fromName && message.fromEmail && (
-            <div className='mt-0.5 text-xs text-muted-foreground'>
+            <div className='text-muted-foreground mt-0.5 text-xs'>
               {message.fromEmail}
             </div>
           )}
-          <div className='mt-1 text-sm text-muted-foreground'>
+          <div className='text-muted-foreground mt-1 text-sm'>
             To: {message.toEmails?.join(', ') || 'Unknown'}
           </div>
         </div>
-        <div className='text-xs text-muted-foreground'>
+        <div className='text-muted-foreground text-xs'>
           {format(new Date(message.sentAt), 'MMM d, yyyy h:mm a')}
         </div>
       </button>
 
       {/* Snippet preview when collapsed */}
       {!isExpanded && message.snippet && (
-        <div className='border-t px-4 py-2 text-sm text-muted-foreground'>
+        <div className='text-muted-foreground border-t px-4 py-2 text-sm'>
           {message.snippet}
         </div>
       )}
@@ -680,11 +747,13 @@ function MessageCard({ message }: { message: Message }) {
             {message.bodyHtml ? (
               <EmailIframe html={sanitizeEmailHtml(message.bodyHtml)} />
             ) : message.bodyText ? (
-              <pre className='whitespace-pre-wrap text-sm'>{message.bodyText}</pre>
+              <pre className='text-sm whitespace-pre-wrap'>
+                {message.bodyText}
+              </pre>
             ) : message.snippet ? (
-              <p className='text-sm text-muted-foreground'>{message.snippet}</p>
+              <p className='text-muted-foreground text-sm'>{message.snippet}</p>
             ) : (
-              <p className='text-sm italic text-muted-foreground'>No content</p>
+              <p className='text-muted-foreground text-sm italic'>No content</p>
             )}
           </div>
         </>

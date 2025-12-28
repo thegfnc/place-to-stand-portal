@@ -6,6 +6,7 @@ import { Plus } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { DisabledFieldTooltip } from '@/components/ui/disabled-field-tooltip'
+import { PaginationControls } from '@/components/ui/pagination-controls'
 import { useToast } from '@/components/ui/use-toast'
 import type { PageInfo } from '@/lib/pagination/cursor'
 import type {
@@ -184,41 +185,3 @@ export function ProjectsManagementSection({
   )
 }
 
-type PaginationControlsProps = {
-  hasNextPage: boolean
-  hasPreviousPage: boolean
-  onNext: () => void
-  onPrevious: () => void
-  disableAll?: boolean
-}
-
-function PaginationControls({
-  hasNextPage,
-  hasPreviousPage,
-  onNext,
-  onPrevious,
-  disableAll = false,
-}: PaginationControlsProps) {
-  const isPrevDisabled = disableAll || !hasPreviousPage
-  const isNextDisabled = disableAll || !hasNextPage
-
-  if (!hasNextPage && !hasPreviousPage) {
-    return null
-  }
-
-  return (
-    <div className='flex justify-end gap-2'>
-      <Button
-        type='button'
-        variant='outline'
-        onClick={onPrevious}
-        disabled={isPrevDisabled}
-      >
-        Previous
-      </Button>
-      <Button type='button' onClick={onNext} disabled={isNextDisabled}>
-        Next
-      </Button>
-    </div>
-  )
-}

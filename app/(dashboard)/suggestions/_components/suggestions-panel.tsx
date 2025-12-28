@@ -2,7 +2,16 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Inbox, CheckCircle2, XCircle, Sparkles, Mail, Calendar, FolderKanban, Loader2 } from 'lucide-react'
+import {
+  Inbox,
+  CheckCircle2,
+  XCircle,
+  Sparkles,
+  Mail,
+  Calendar,
+  FolderKanban,
+  Loader2,
+} from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 
 import { AppShellHeader } from '@/components/layout/app-shell'
@@ -12,7 +21,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { useToast } from '@/components/ui/use-toast'
-import type { SuggestionWithContext, TaskSuggestedContent, PRSuggestedContent } from '@/lib/types/suggestions'
+import type {
+  SuggestionWithContext,
+  TaskSuggestedContent,
+  PRSuggestedContent,
+} from '@/lib/types/suggestions'
 
 type SuggestionCounts = {
   pending: number
@@ -59,13 +72,23 @@ export function SuggestionsPanel({
       }
 
       setSuggestions(prev => prev.filter(s => s.id !== suggestionId))
-      setCounts(prev => ({ ...prev, pending: prev.pending - 1, approved: prev.approved + 1 }))
-      toast({ title: 'Suggestion approved', description: 'Task created successfully.' })
+      setCounts(prev => ({
+        ...prev,
+        pending: prev.pending - 1,
+        approved: prev.approved + 1,
+      }))
+      toast({
+        title: 'Suggestion approved',
+        description: 'Task created successfully.',
+      })
       router.refresh()
     } catch (error) {
       toast({
         title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to approve suggestion',
+        description:
+          error instanceof Error
+            ? error.message
+            : 'Failed to approve suggestion',
         variant: 'destructive',
       })
     } finally {
@@ -85,10 +108,18 @@ export function SuggestionsPanel({
       if (!response.ok) throw new Error('Failed to reject')
 
       setSuggestions(prev => prev.filter(s => s.id !== suggestionId))
-      setCounts(prev => ({ ...prev, pending: prev.pending - 1, rejected: prev.rejected + 1 }))
+      setCounts(prev => ({
+        ...prev,
+        pending: prev.pending - 1,
+        rejected: prev.rejected + 1,
+      }))
       toast({ title: 'Suggestion rejected' })
     } catch {
-      toast({ title: 'Error', description: 'Failed to reject suggestion', variant: 'destructive' })
+      toast({
+        title: 'Error',
+        description: 'Failed to reject suggestion',
+        variant: 'destructive',
+      })
     } finally {
       setProcessing(false)
       setRejectDialogOpen(null)
@@ -113,7 +144,8 @@ export function SuggestionsPanel({
         ...prev,
         pending: prev.pending - result.succeeded,
         [action === 'approve' ? 'approved' : 'rejected']:
-          prev[action === 'approve' ? 'approved' : 'rejected'] + result.succeeded,
+          prev[action === 'approve' ? 'approved' : 'rejected'] +
+          result.succeeded,
       }))
       setSelected([])
 
@@ -124,7 +156,11 @@ export function SuggestionsPanel({
       })
       router.refresh()
     } catch {
-      toast({ title: 'Error', description: 'Bulk action failed', variant: 'destructive' })
+      toast({
+        title: 'Error',
+        description: 'Bulk action failed',
+        variant: 'destructive',
+      })
     } finally {
       setProcessing(false)
     }
@@ -145,7 +181,7 @@ export function SuggestionsPanel({
   return (
     <>
       <AppShellHeader>
-        <h1 className='text-2xl font-semibold tracking-tight'>AI Suggestions</h1>
+        <h1 className='text-2xl font-semibold tracking-tight'>Suggestions</h1>
         <p className='text-muted-foreground text-sm'>
           Review AI-generated suggestions from client communications.
         </p>
@@ -170,7 +206,7 @@ export function SuggestionsPanel({
 
         {/* Bulk Actions */}
         {selected.length > 0 && (
-          <div className='flex items-center gap-2 rounded-lg bg-muted p-3'>
+          <div className='bg-muted flex items-center gap-2 rounded-lg p-3'>
             <span className='text-sm'>{selected.length} selected</span>
             <Button
               size='sm'
@@ -196,9 +232,10 @@ export function SuggestionsPanel({
         {/* Suggestion List */}
         {suggestions.length === 0 ? (
           <div className='rounded-lg border border-dashed p-8 text-center'>
-            <Sparkles className='mx-auto h-8 w-8 text-muted-foreground' />
-            <p className='mt-2 text-sm text-muted-foreground'>
-              No pending suggestions. Suggestions are generated when emails are analyzed on project boards.
+            <Sparkles className='text-muted-foreground mx-auto h-8 w-8' />
+            <p className='text-muted-foreground mt-2 text-sm'>
+              No pending suggestions. Suggestions are generated when emails are
+              analyzed on project boards.
             </p>
           </div>
         ) : (
@@ -209,7 +246,9 @@ export function SuggestionsPanel({
                   checked={selected.length === suggestions.length}
                   onCheckedChange={toggleSelectAll}
                 />
-                <span className='text-sm text-muted-foreground'>Select all</span>
+                <span className='text-muted-foreground text-sm'>
+                  Select all
+                </span>
               </div>
             )}
             {suggestions.map(suggestion => (
@@ -257,17 +296,27 @@ function SuggestionCard({
   onReject: () => void
   disabled?: boolean
 }) {
-  const content = suggestion.suggestedContent as TaskSuggestedContent | PRSuggestedContent
+  const content = suggestion.suggestedContent as
+    | TaskSuggestedContent
+    | PRSuggestedContent
   const title = 'title' in content ? content.title : 'Untitled'
-  const description = 'description' in content ? content.description : ('body' in content ? content.body : null)
+  const description =
+    'description' in content
+      ? content.description
+      : 'body' in content
+        ? content.body
+        : null
 
   const confidencePercent = Math.round(Number(suggestion.confidence) * 100)
   const confidenceColor =
-    confidencePercent >= 80 ? 'text-green-600' :
-    confidencePercent >= 60 ? 'text-amber-600' : 'text-red-600'
+    confidencePercent >= 80
+      ? 'text-green-600'
+      : confidencePercent >= 60
+        ? 'text-amber-600'
+        : 'text-red-600'
 
   return (
-    <Card className={selected ? 'ring-2 ring-primary' : ''}>
+    <Card className={selected ? 'ring-primary ring-2' : ''}>
       <CardHeader className='pb-2'>
         <div className='flex items-start gap-3'>
           <Checkbox
@@ -280,12 +329,10 @@ function SuggestionCard({
               <Badge variant='outline' className='text-xs'>
                 {suggestion.type}
               </Badge>
-              <CardTitle className='text-base font-medium'>
-                {title}
-              </CardTitle>
+              <CardTitle className='text-base font-medium'>{title}</CardTitle>
             </div>
             {suggestion.message && (
-              <div className='mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground'>
+              <div className='text-muted-foreground mt-1 flex flex-wrap items-center gap-2 text-sm'>
                 <span className='flex items-center gap-1'>
                   <Mail className='h-3 w-3' />
                   {suggestion.message.subject || '(no subject)'}
@@ -295,7 +342,10 @@ function SuggestionCard({
                 {suggestion.message.sentAt && (
                   <>
                     <span>·</span>
-                    <span>{formatDistanceToNow(new Date(suggestion.message.sentAt))} ago</span>
+                    <span>
+                      {formatDistanceToNow(new Date(suggestion.message.sentAt))}{' '}
+                      ago
+                    </span>
                   </>
                 )}
               </div>
@@ -308,7 +358,7 @@ function SuggestionCard({
       </CardHeader>
       <CardContent className='pt-0'>
         {description && (
-          <p className='mb-3 line-clamp-2 text-sm text-muted-foreground'>
+          <p className='text-muted-foreground mb-3 line-clamp-2 text-sm'>
             {description}
           </p>
         )}
@@ -334,7 +384,7 @@ function SuggestionCard({
         </div>
 
         {suggestion.reasoning && (
-          <p className='mb-3 text-xs italic text-muted-foreground'>
+          <p className='text-muted-foreground mb-3 text-xs italic'>
             &quot;{suggestion.reasoning}&quot;
           </p>
         )}
@@ -353,7 +403,9 @@ function SuggestionCard({
             onClick={onQuickApprove}
             disabled={disabled || !suggestion.projectId}
           >
-            {disabled ? <Loader2 className='mr-1 h-3 w-3 animate-spin' /> : null}
+            {disabled ? (
+              <Loader2 className='mr-1 h-3 w-3 animate-spin' />
+            ) : null}
             {suggestion.type === 'TASK' ? 'Create Task' : 'Create PR'}
           </Button>
         </div>

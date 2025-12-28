@@ -85,16 +85,16 @@ export function ThreadLinkingPanel({
     <div className='space-y-4'>
       {/* Section Header */}
       <div className='flex items-center gap-2'>
-        <Link2 className='h-4 w-4 text-muted-foreground' />
+        <Link2 className='text-muted-foreground h-4 w-4' />
         <span className='text-sm font-medium'>Client Association</span>
       </div>
 
       {/* Current Link Status */}
       {thread.client ? (
-        <div className='rounded-lg border bg-muted/30 p-3'>
+        <div className='bg-muted/30 rounded-lg border p-3'>
           <div className='flex items-center justify-between'>
             <div className='flex items-center gap-2'>
-              <Building2 className='h-4 w-4 text-muted-foreground' />
+              <Building2 className='text-muted-foreground h-4 w-4' />
               <span className='font-medium'>{thread.client.name}</span>
               <Badge variant='secondary' className='text-xs'>
                 Linked
@@ -119,15 +119,15 @@ export function ThreadLinkingPanel({
         <>
           {/* AI Suggestions */}
           <div className='space-y-2'>
-            <div className='flex items-center gap-2 text-xs text-muted-foreground'>
+            <div className='text-muted-foreground flex items-center gap-2 text-xs'>
               <Sparkles className='h-3 w-3' />
-              <span>AI Suggestions</span>
+              <span>Suggestions</span>
             </div>
 
             {suggestionsLoading ? (
-              <div className='flex items-center gap-2 rounded-lg border bg-muted/30 p-3'>
-                <Loader2 className='h-4 w-4 animate-spin text-muted-foreground' />
-                <span className='text-sm text-muted-foreground'>
+              <div className='bg-muted/30 flex items-center gap-2 rounded-lg border p-3'>
+                <Loader2 className='text-muted-foreground h-4 w-4 animate-spin' />
+                <span className='text-muted-foreground text-sm'>
                   Analyzing...
                 </span>
               </div>
@@ -136,16 +136,18 @@ export function ThreadLinkingPanel({
                 {suggestions.map(s => (
                   <div
                     key={s.clientId}
-                    className='rounded-lg border bg-muted/30 p-3'
+                    className='bg-muted/30 rounded-lg border p-3'
                   >
                     <div className='flex items-center justify-between'>
                       <div className='flex items-center gap-2'>
-                        <Building2 className='h-4 w-4 text-muted-foreground' />
-                        <span className='font-medium text-sm'>
+                        <Building2 className='text-muted-foreground h-4 w-4' />
+                        <span className='text-sm font-medium'>
                           {s.clientName}
                         </span>
                         <Badge
-                          variant={s.confidence >= 0.8 ? 'default' : 'secondary'}
+                          variant={
+                            s.confidence >= 0.8 ? 'default' : 'secondary'
+                          }
                           className='text-xs'
                         >
                           {Math.round(s.confidence * 100)}%
@@ -166,7 +168,7 @@ export function ThreadLinkingPanel({
                       </Button>
                     </div>
                     {s.reasoning && (
-                      <p className='mt-1.5 text-xs text-muted-foreground italic'>
+                      <p className='text-muted-foreground mt-1.5 text-xs italic'>
                         {s.reasoning}
                       </p>
                     )}
@@ -174,7 +176,7 @@ export function ThreadLinkingPanel({
                 ))}
               </div>
             ) : (
-              <p className='text-sm text-muted-foreground'>
+              <p className='text-muted-foreground text-sm'>
                 No client matches found.
               </p>
             )}
@@ -187,7 +189,7 @@ export function ThreadLinkingPanel({
                 <Button
                   variant='ghost'
                   size='sm'
-                  className='w-full justify-between text-xs text-muted-foreground'
+                  className='text-muted-foreground w-full justify-between text-xs'
                 >
                   <span>Link manually</span>
                   {isManualOpen ? (
@@ -199,8 +201,11 @@ export function ThreadLinkingPanel({
               </CollapsibleTrigger>
               <CollapsibleContent className='pt-2'>
                 <div className='flex gap-2'>
-                  <Select value={selectedClient} onValueChange={setSelectedClient}>
-                    <SelectTrigger className='flex-1 h-8 text-sm'>
+                  <Select
+                    value={selectedClient}
+                    onValueChange={setSelectedClient}
+                  >
+                    <SelectTrigger className='h-8 flex-1 text-sm'>
                       <SelectValue placeholder='Select client...' />
                     </SelectTrigger>
                     <SelectContent>
