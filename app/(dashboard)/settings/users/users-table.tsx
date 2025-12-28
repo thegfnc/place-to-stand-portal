@@ -8,6 +8,7 @@ import { UserPlus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { PaginationControls } from '@/components/ui/pagination-controls'
 import {
   Table,
   TableBody,
@@ -288,41 +289,3 @@ function UsersTableSection({
   )
 }
 
-type PaginationControlsProps = {
-  hasNextPage: boolean
-  hasPreviousPage: boolean
-  onNext: () => void
-  onPrevious: () => void
-  disableAll?: boolean
-}
-
-function PaginationControls({
-  hasNextPage,
-  hasPreviousPage,
-  onNext,
-  onPrevious,
-  disableAll = false,
-}: PaginationControlsProps) {
-  const isPrevDisabled = disableAll || !hasPreviousPage
-  const isNextDisabled = disableAll || !hasNextPage
-
-  if (!hasNextPage && !hasPreviousPage) {
-    return null
-  }
-
-  return (
-    <div className='flex justify-end gap-2'>
-      <Button
-        type='button'
-        variant='outline'
-        onClick={onPrevious}
-        disabled={isPrevDisabled}
-      >
-        Previous
-      </Button>
-      <Button type='button' onClick={onNext} disabled={isNextDisabled}>
-        Next
-      </Button>
-    </div>
-  )
-}

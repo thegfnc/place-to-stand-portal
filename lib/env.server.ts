@@ -13,7 +13,21 @@ const schema = z.object({
   RESEND_REPLY_TO_EMAIL: z.email(),
   AI_GATEWAY_API_KEY: z.string().min(1),
   APP_BASE_URL: z.url().optional(),
+  OAUTH_TOKEN_ENCRYPTION_KEY: z
+    .string()
+    .min(32, 'Encryption key must be at least 32 characters (base64)'),
+  GOOGLE_CLIENT_ID: z.string().min(1),
+  GOOGLE_CLIENT_SECRET: z.string().min(1),
+  GOOGLE_REDIRECT_URI: z.string().url(),
+  GITHUB_CLIENT_ID: z.string().min(1).optional(),
+  GITHUB_CLIENT_SECRET: z.string().min(1).optional(),
+  GITHUB_REDIRECT_URI: z.string().url().optional(),
 })
+
+// Helper to convert empty strings to undefined for optional env vars
+function emptyToUndefined(val: string | undefined): string | undefined {
+  return val === '' ? undefined : val
+}
 
 export const serverEnv = schema.parse({
   SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
@@ -26,4 +40,11 @@ export const serverEnv = schema.parse({
   RESEND_REPLY_TO_EMAIL: process.env.RESEND_REPLY_TO_EMAIL,
   AI_GATEWAY_API_KEY: process.env.AI_GATEWAY_API_KEY,
   APP_BASE_URL: process.env.APP_BASE_URL,
+  OAUTH_TOKEN_ENCRYPTION_KEY: process.env.OAUTH_TOKEN_ENCRYPTION_KEY,
+  GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
+  GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
+  GOOGLE_REDIRECT_URI: process.env.GOOGLE_REDIRECT_URI,
+  GITHUB_CLIENT_ID: emptyToUndefined(process.env.GITHUB_CLIENT_ID),
+  GITHUB_CLIENT_SECRET: emptyToUndefined(process.env.GITHUB_CLIENT_SECRET),
+  GITHUB_REDIRECT_URI: emptyToUndefined(process.env.GITHUB_REDIRECT_URI),
 })

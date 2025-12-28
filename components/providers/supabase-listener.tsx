@@ -46,9 +46,18 @@ export function SupabaseListener({ initialSession }: Props) {
       return;
     }
 
-    void supabase.auth.setSession({
-      access_token: initialSession.access_token,
+    // Immediately refresh the session to avoid negative timeout warnings
+    // when the token has expired while the app was idle
+    void supabase.auth.refreshSession({
       refresh_token: initialSession.refresh_token,
+    }).then(({ error }) => {
+      if (error) {
+        // Fallback to setSession if refresh fails
+        void supabase.auth.setSession({
+          access_token: initialSession.access_token,
+          refresh_token: initialSession.refresh_token,
+        });
+      }
     });
   }, [initialSession, supabase]);
 

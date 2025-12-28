@@ -1,15 +1,19 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
+import { and, eq, isNull, desc } from 'drizzle-orm'
 
 import { AppShellHeader } from '@/components/layout/app-shell'
 import { isAdmin } from '@/lib/auth/permissions'
 import { requireUser } from '@/lib/auth/session'
+import { db } from '@/lib/db'
+import { clientContacts } from '@/lib/db/schema'
 import {
   fetchClientsWithMetrics,
   fetchProjectsForClient,
   resolveClientIdentifier,
 } from '@/lib/data/clients'
 import { buildMembersByClient, listClientUsers } from '@/lib/queries/clients'
+import { getMessagesForClient } from '@/lib/queries/messages'
 import type { ClientRow } from '@/lib/settings/clients/client-sheet-utils'
 
 import { ClientsLandingHeader } from '../_components/clients-landing-header'
@@ -72,10 +76,14 @@ export default async function ClientDetailPage({
       ])
     : Promise.resolve(null)
 
-  const [allClients, projects, managementData] = await Promise.all([
+  const [allClients, projects, managementData, contacts, messages] = await Promise.all([
     fetchClientsWithMetrics(user),
     fetchProjectsForClient(user, client.resolvedId),
     managementDataPromise,
+    db.select().from(clientContacts).where(
+      and(eq(clientContacts.clientId, client.resolvedId), isNull(clientContacts.deletedAt))
+    ).orderBy(desc(clientContacts.isPrimary), clientContacts.email),
+    getMessagesForClient(client.resolvedId),
   ])
 
   const clientUsers = managementData
@@ -97,6 +105,8 @@ export default async function ClientDetailPage({
         <ClientDetail
           client={client}
           projects={projects}
+          contacts={contacts}
+          messages={messages}
           canManageClients={canManageClients}
           clientUsers={clientUsers}
           clientMembers={clientMembers}
