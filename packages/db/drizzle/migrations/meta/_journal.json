@@ -498,6 +498,13 @@
       "when": 1787929427003,
       "tag": "0070_time_logs_logged_on_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 71,
+      "version": "7",
+      "when": 1788793363585,
+      "tag": "0071_client_updates",
+      "breakpoints": true
     }
   ]
 }

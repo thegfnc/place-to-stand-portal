@@ -105,7 +105,14 @@ export function renderEmail(
 ): RenderedEmail {
   return {
     subject,
-    text: renderText({ heading, paragraphs, action, note, footerLead, replyTo }),
+    text: renderText({
+      heading,
+      paragraphs,
+      action,
+      note,
+      footerLead,
+      replyTo,
+    }),
     html: renderHtml({
       preheader,
       heading,
@@ -161,27 +168,64 @@ function renderHtml({
     )
     .join('')
 
-  // `href` is ours (a Supabase-generated link), never user input, but it is
-  // attribute-escaped anyway so a stray quote can't break out of the tag.
-  const button = action
-    ? `<p style="margin:24px 0;">
-         <a href="${escapeHtml(action.url)}" style="display:inline-block;padding:12px 22px;background:${COLORS.ink};color:${COLORS.paper};border-radius:6px;text-decoration:none;font-size:15px;font-weight:600;">${escapeHtml(action.label)}</a>
-       </p>`
-    : ''
-
-  // Some clients strip the button; the raw URL keeps the mail usable and reads
-  // as legitimate to spam filters, which distrust link-only messages.
-  const fallback = action
-    ? `<p style="margin:0 0 16px;font-size:13px;line-height:1.6;color:${COLORS.muted};">
-         Or paste this into your browser:<br />
-         <span style="color:${COLORS.faint};word-break:break-all;">${escapeHtml(action.url)}</span>
-       </p>`
-    : ''
+  const { button, fallback } = renderAction(action)
 
   const smallPrint = note
     ? `<p style="margin:0 0 16px;font-size:13px;line-height:1.6;color:${COLORS.muted};">${escapeHtml(note)}</p>`
     : ''
 
+  return renderShell({
+    preheader,
+    inner: `<h1 style="margin:0 0 16px;font-size:20px;line-height:1.3;color:${COLORS.ink};">${escapeHtml(heading)}</h1>
+                ${body}
+                ${button}
+                ${fallback}
+                ${smallPrint}`,
+    footerLead,
+    replyTo,
+  })
+}
+
+/**
+ * The call-to-action, plus the raw URL under it: some clients strip the
+ * button, and a link-only message reads as phishing to spam filters.
+ * `href` is ours, never user input, but attribute-escaped anyway.
+ */
+function renderAction(action?: EmailAction): {
+  button: string
+  fallback: string
+} {
+  if (!action) return { button: '', fallback: '' }
+  return {
+    button: `<p style="margin:24px 0;">
+         <a href="${escapeHtml(action.url)}" style="display:inline-block;padding:12px 22px;background:${COLORS.ink};color:${COLORS.paper};border-radius:6px;text-decoration:none;font-size:15px;font-weight:600;">${escapeHtml(action.label)}</a>
+       </p>`,
+    fallback: `<p style="margin:0 0 16px;font-size:13px;line-height:1.6;color:${COLORS.muted};">
+         Or paste this into your browser:<br />
+         <span style="color:${COLORS.faint};word-break:break-all;">${escapeHtml(action.url)}</span>
+       </p>`,
+  }
+}
+
+type ShellArgs = {
+  preheader: string
+  /** Already-rendered HTML placed inside the card, under the wordmark. */
+  inner: string
+  footerLead?: string
+  replyTo: string
+}
+
+/**
+ * The card itself — backdrop, paper, wordmark, rule, footer — shared by the
+ * paragraph layout and the rich-body layout so every message from us looks
+ * like the same sender.
+ */
+function renderShell({
+  preheader,
+  inner,
+  footerLead,
+  replyTo,
+}: ShellArgs): string {
   return `<!doctype html>
 <html>
   <body style="margin:0;padding:0;background:${COLORS.backdrop};">
@@ -193,11 +237,7 @@ function renderHtml({
             <tr>
               <td style="padding:28px 32px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
                 <p style="margin:0 0 24px;font-size:14px;font-weight:700;letter-spacing:0.02em;color:${COLORS.ink};">${BRAND}</p>
-                <h1 style="margin:0 0 16px;font-size:20px;line-height:1.3;color:${COLORS.ink};">${escapeHtml(heading)}</h1>
-                ${body}
-                ${button}
-                ${fallback}
-                ${smallPrint}
+                ${inner}
                 <hr style="border:none;border-top:1px solid ${COLORS.rule};margin:24px 0;" />
                 <p style="margin:0 0 8px;font-size:13px;line-height:1.6;color:${COLORS.muted};">
                   ${escapeHtml(footerLead ?? DEFAULT_FOOTER_LEAD)}
@@ -212,4 +252,85 @@ function renderHtml({
     </table>
   </body>
 </html>`
+}
+
+/**
+ * Inline rules for the tags a rich-text editor emits. Mail clients drop most
+ * of a stylesheet, so each block carries its own; colours match the paragraph
+ * layout above so a rich message and a transactional one read as one brand.
+ */
+const RICH_BLOCK_STYLES: Record<string, string> = {
+  h1: `margin:24px 0 8px;font-size:20px;line-height:1.3;font-weight:600;color:${COLORS.ink};`,
+  h2: `margin:24px 0 8px;font-size:17px;line-height:1.3;font-weight:600;color:${COLORS.ink};`,
+  h3: `margin:20px 0 6px;font-size:15px;line-height:1.3;font-weight:600;color:${COLORS.ink};`,
+  p: `margin:0 0 12px;font-size:15px;line-height:1.6;color:${COLORS.ink};`,
+  ul: `margin:0 0 18px;padding-left:22px;`,
+  ol: `margin:0 0 12px;padding-left:22px;`,
+  li: `margin:0 0 6px;font-size:15px;line-height:1.6;color:${COLORS.ink};`,
+  blockquote: `margin:0 0 12px;padding-left:12px;border-left:3px solid ${COLORS.rule};color:${COLORS.muted};`,
+  a: `color:${COLORS.ink};`,
+}
+
+export type RichEmailLayoutArgs = {
+  /** Shown as the inbox preview line. Never rendered in the body. */
+  preheader: string
+  /**
+   * Trusted, already-sanitized HTML — the editor's own output, not user
+   * input from outside. Rendered as-is with inline block styles applied.
+   */
+  bodyHtml: string
+  /** Plain text alternative for the same content. */
+  bodyText: string
+  /** Optional button after the body, same treatment as `renderEmail`. */
+  action?: EmailAction
+  footerLead?: string
+  replyTo: string
+}
+
+/**
+ * Same shell as `renderEmail`, for a body authored in a rich-text editor
+ * rather than assembled from paragraphs — a client status update, say.
+ */
+export function renderRichEmail(
+  subject: string,
+  {
+    preheader,
+    bodyHtml,
+    bodyText,
+    action,
+    footerLead,
+    replyTo,
+  }: RichEmailLayoutArgs
+): RenderedEmail {
+  const styled = bodyHtml.replace(
+    /<(h1|h2|h3|p|ul|ol|li|blockquote|a)(\s[^>]*)?>/gi,
+    (match, tag: string, attrs = '') => {
+      // Leave any existing style attribute alone rather than doubling up.
+      if (/\sstyle=/i.test(attrs)) return match
+      const name = tag.toLowerCase()
+      return `<${name}${attrs} style="${RICH_BLOCK_STYLES[name]}">`
+    }
+  )
+
+  const { button, fallback } = renderAction(action)
+  const lead = footerLead ?? DEFAULT_FOOTER_LEAD
+  const text = [
+    bodyText,
+    '',
+    ...(action ? [`${action.label}: ${action.url}`, ''] : []),
+    `${lead} ${replyTo}.`,
+    '',
+    `— The ${BRAND} Team`,
+  ].join('\n')
+
+  return {
+    subject,
+    text,
+    html: renderShell({
+      preheader,
+      inner: `${styled}${button}${fallback}`,
+      footerLead,
+      replyTo,
+    }),
+  }
 }

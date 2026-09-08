@@ -25,6 +25,7 @@ import {
   githubRepoLinks,
   leadStageHistory,
   leadUpdates,
+  clientUpdates,
   taskDeployments,
   planningSessions,
   planThreads,
@@ -64,6 +65,7 @@ export const clientsRelations = relations(clients, ({ one, many }) => ({
   contactClients: many(contactClients),
   invoices: many(invoices),
   githubAppInstallations: many(githubAppInstallations),
+  updates: many(clientUpdates),
 }))
 
 export const usersRelations = relations(users, ({ many }) => ({
@@ -105,6 +107,12 @@ export const usersRelations = relations(users, ({ many }) => ({
   oauthConnections: many(oauthConnections),
   leadStageHistory: many(leadStageHistory),
   leadUpdates: many(leadUpdates),
+  clientUpdatesCreated: many(clientUpdates, {
+    relationName: 'client_updates_createdBy_users_id',
+  }),
+  clientUpdatesSent: many(clientUpdates, {
+    relationName: 'client_updates_sentBy_users_id',
+  }),
   invoices: many(invoices),
 }))
 
@@ -184,6 +192,23 @@ export const leadUpdatesRelations = relations(leadUpdates, ({ one }) => ({
   author: one(users, {
     fields: [leadUpdates.authorId],
     references: [users.id],
+  }),
+}))
+
+export const clientUpdatesRelations = relations(clientUpdates, ({ one }) => ({
+  client: one(clients, {
+    fields: [clientUpdates.clientId],
+    references: [clients.id],
+  }),
+  createdBy: one(users, {
+    fields: [clientUpdates.createdById],
+    references: [users.id],
+    relationName: 'client_updates_createdBy_users_id',
+  }),
+  sentBy: one(users, {
+    fields: [clientUpdates.sentById],
+    references: [users.id],
+    relationName: 'client_updates_sentBy_users_id',
   }),
 }))
 

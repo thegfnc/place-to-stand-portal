@@ -49,6 +49,10 @@ import { ActivityVerbs } from '@/lib/activity/types'
 import { ClientSheet } from '../../_components/clients-sheet'
 import { ClientContactsSection } from './client-contacts-section'
 import { ClientNotesSection } from './client-notes-section'
+import {
+  ClientUpdatesSection,
+  type ClientUpdateSummary,
+} from './client-updates-section'
 
 type HydratedClientDetail = ClientDetailType & { resolvedId: string }
 
@@ -69,6 +73,7 @@ type ClientDetailProps = {
   client: HydratedClientDetail
   projects: ClientProject[]
   contacts: ContactWithClientLink[]
+  updates: ClientUpdateSummary[]
   clientRow: ClientRow
   currentUserId: string
   originationContact: OriginationContactInfo
@@ -80,6 +85,7 @@ export function ClientDetail({
   client,
   projects,
   contacts,
+  updates,
   clientRow,
   currentUserId,
   originationContact,
@@ -138,6 +144,9 @@ export function ClientDetail({
 
           {/* Contacts Section */}
           <ClientContactsSection contacts={contacts} />
+
+          {/* Updates Section */}
+          <ClientUpdatesSection clientId={client.id} updates={updates} />
         </div>
       </div>
     </div>

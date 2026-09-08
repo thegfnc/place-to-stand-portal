@@ -5,6 +5,7 @@ import { registerAuthCommands } from './commands/auth.js'
 import { registerConfigCommands } from './commands/config.js'
 import { registerResourceCommands } from './commands/resources.js'
 import { registerTaskCommands } from './commands/tasks.js'
+import { registerUpdateCommands } from './commands/updates.js'
 import { setGlobalOptions, type GlobalOptions } from './context.js'
 
 const program = new Command()
@@ -31,6 +32,7 @@ program
 registerAuthCommands(program)
 registerConfigCommands(program)
 registerTaskCommands(program)
+registerUpdateCommands(program)
 registerResourceCommands(program)
 
 async function main(): Promise<void> {
