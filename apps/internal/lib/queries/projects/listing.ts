@@ -35,31 +35,6 @@ import {
   type SelectProject,
 } from './listing-helpers'
 
-export async function listProjectsForClient(
-  user: AppUser,
-  clientId: string,
-): Promise<SelectProject[]> {
-  assertAdmin(user)
-
-  return db
-    .select(projectFields)
-    .from(projects)
-    .where(and(eq(projects.clientId, clientId), isNull(projects.deletedAt)))
-    .orderBy(asc(projects.name))
-}
-
-export async function listProjectsForUser(
-  user: AppUser,
-): Promise<SelectProject[]> {
-  assertAdmin(user)
-
-  return db
-    .select(projectFields)
-    .from(projects)
-    .where(isNull(projects.deletedAt))
-    .orderBy(asc(projects.name))
-}
-
 export async function getProjectById(
   user: AppUser,
   projectId: string,
@@ -289,7 +264,7 @@ export async function listProjectsForSettings(
 
 export type {
   ListProjectsForSettingsInput,
-  ProjectClientSummary,
+  
   ProjectsSettingsListItem,
   ProjectsSettingsResult,
   SelectProject,

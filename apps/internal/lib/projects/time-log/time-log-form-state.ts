@@ -12,7 +12,7 @@ import type {
   TimeLogFormField,
 } from './types'
 
-export const FORM_ERROR_IDS = {
+const FORM_ERROR_IDS = {
   hours: 'time-log-hours-error',
   loggedOn: 'time-log-date-error',
   user: 'time-log-user-error',

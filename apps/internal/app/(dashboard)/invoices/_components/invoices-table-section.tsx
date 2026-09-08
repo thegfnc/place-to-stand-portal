@@ -39,7 +39,7 @@ import {
   getClickableRowProps,
 } from '@/lib/table/clickable-row'
 
-export type InvoicesTableMode = 'active' | 'archive'
+type InvoicesTableMode = 'active' | 'archive'
 
 export type InvoicesTableSectionProps = {
   invoices: InvoiceWithClient[]

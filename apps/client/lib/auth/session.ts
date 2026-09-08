@@ -2,7 +2,6 @@ import 'server-only'
 
 import { cache } from 'react'
 import { redirect } from 'next/navigation'
-import type { Session } from '@supabase/supabase-js'
 import { and, eq, isNull } from 'drizzle-orm'
 
 import { db } from '@/lib/db'
@@ -20,22 +19,6 @@ export type AppUser = {
   deleted_at: string | null
   onboarding_completed_at: string | null
 }
-
-export const getSession = cache(async (): Promise<Session | null> => {
-  const supabase = getSupabaseServerClient()
-  const { data, error } = await supabase.auth.getSession()
-
-  if (error && error.name !== 'AuthSessionMissingError') {
-    console.error('Failed to resolve Supabase session', error)
-  }
-
-  if (error) {
-    return null
-  }
-
-  return data.session ?? null
-})
-
 export const getCurrentUser = cache(async (): Promise<AppUser | null> => {
   const supabase = getSupabaseServerClient()
   const {
@@ -97,7 +80,7 @@ export const getCurrentUser = cache(async (): Promise<AppUser | null> => {
   }
 })
 
-export const requireUser = async () => {
+const requireUser = async () => {
   const user = await getCurrentUser()
 
   if (!user) {

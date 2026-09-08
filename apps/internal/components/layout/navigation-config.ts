@@ -12,9 +12,10 @@ import {
   FileText,
   Receipt,
   Inbox,
+  Mail,
 } from 'lucide-react'
 
-export type NavItem = {
+type NavItem = {
   href: string
   label: string
   icon: LucideIcon
@@ -113,6 +114,12 @@ export const NAV_GROUPS: NavGroup[] = [
         href: '/settings/integrations',
         label: 'Integrations',
         icon: Plug,
+      },
+      {
+        href: '/settings/templates/emails',
+        label: 'Templates',
+        icon: Mail,
+        matchHrefs: ['/settings/templates'],
       },
     ],
   },

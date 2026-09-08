@@ -3,6 +3,7 @@
 import { headers } from "next/headers";
 import { z } from "zod";
 
+import { allowAuthEmail } from "@/lib/auth/throttle";
 import { sendPasswordResetEmail } from "@/lib/email/auth-emails";
 import { getSupabaseServiceClient } from "@/lib/supabase/service";
 import { serverEnv } from "@/lib/env.server";
@@ -56,6 +57,12 @@ export async function requestPasswordReset(
   const resetPath = result.data.redirect
     ? `/reset-password?redirect=${encodeURIComponent(result.data.redirect)}`
     : "/reset-password";
+
+  // Same response as an unknown address: "throttled" must not be
+  // distinguishable from "no account".
+  if (!(await allowAuthEmail(result.data.email.toLowerCase()))) {
+    return { success: true };
+  }
 
   try {
     const { data, error } =

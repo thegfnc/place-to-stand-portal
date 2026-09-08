@@ -18,6 +18,3 @@ export const leadConversionSchema = z.object({
 
 /** Form input type (before validation) */
 export type LeadConversionFormValues = z.input<typeof leadConversionSchema>
-
-/** Validated output type (after parsing) */
-export type LeadConversionData = z.output<typeof leadConversionSchema>

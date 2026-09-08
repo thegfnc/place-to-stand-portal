@@ -1,6 +1,6 @@
 import type { UserAssignments, UserRow } from './types'
 
-export const DEFAULT_ASSIGNMENTS = { clients: 0, projects: 0, tasks: 0 }
+const DEFAULT_ASSIGNMENTS = { clients: 0, projects: 0, tasks: 0 }
 
 const formatCount = (count: number, noun: string) =>
   `${count} ${noun}${count === 1 ? '' : 's'}`

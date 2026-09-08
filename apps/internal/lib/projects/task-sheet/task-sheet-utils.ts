@@ -48,16 +48,7 @@ export type ProjectSelectionItems = {
   items: SearchableComboboxItem[]
   groups: SearchableComboboxGroup[]
 }
-
-const tidyRole = (role: string | null | undefined) => {
-  if (!role) return null
-  return role.charAt(0) + role.slice(1).toLowerCase()
-}
-
-export const formatRoleLabel = (role: string | null | undefined) =>
-  tidyRole(role) ?? 'Unknown role'
-
-export const toDateInputValue = (value: string | null | undefined) => {
+const toDateInputValue = (value: string | null | undefined) => {
   if (!value) return ''
 
   try {

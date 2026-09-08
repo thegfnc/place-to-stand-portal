@@ -4,6 +4,7 @@ import type { AppUser } from '@/lib/auth/session'
 import { assertAdmin } from '@/lib/auth/permissions'
 import { db } from '@/lib/db'
 import { users } from '@/lib/db/schema'
+import { revokeUserOauthConnections } from '@/lib/oauth/revoke-user-connections'
 import { getSupabaseServiceClient } from '@/lib/supabase/service'
 
 import type { SetUserDisabledInput } from '../user-validation'
@@ -39,6 +40,15 @@ export async function setPortalUserDisabled(
     const banError = await setAuthBan(adminClient, input.id, DISABLED_BAN_DURATION)
     if (banError) {
       return { error: banError }
+    }
+
+    // Offboarding ends the portal's hold on the member's provider
+    // credentials too. Re-enabling requires reconnecting each account.
+    try {
+      await revokeUserOauthConnections(input.id)
+    } catch (error) {
+      console.error('Failed to revoke provider connections for disabled user', error)
+      return { error: 'User disabled, but provider connections could not be revoked.' }
     }
 
     return {}

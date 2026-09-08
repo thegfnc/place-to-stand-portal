@@ -1,5 +1,3 @@
-import { sql } from "drizzle-orm"
-
 import { clients } from "@/lib/db/schema"
 
 export type SelectClient = typeof clients.$inferSelect
@@ -37,15 +35,4 @@ export const clientGroupByColumns = [
   clients.updatedAt,
   clients.deletedAt,
 ] as const
-
-export type ClientMetricsRow = {
-  totalProjects: number | string | null
-  activeProjects: number | string | null
-}
-
 export const ACTIVE_STATUS = "ACTIVE"
-
-export const clientMetricsSelect = {
-  totalProjects: sql<number>`count(${clients.id})`,
-}
-

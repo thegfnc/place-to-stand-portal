@@ -29,7 +29,7 @@ type TaskCardOptions = {
   hideAssignees?: boolean
 }
 
-export type TaskLookupEntry = {
+type TaskLookupEntry = {
   task: TaskWithRelations
   project: ProjectWithRelations
 }

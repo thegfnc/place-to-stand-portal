@@ -7,8 +7,7 @@ import { requireUser } from '@/lib/auth/session'
 import { assertAdmin } from '@/lib/auth/permissions'
 import {
   createProductCatalogItem,
-  updateProductCatalogItem,
-  updateProductCatalogSortOrder,
+  updateProductCatalogItem
 } from '@/lib/queries/product-catalog'
 import {
   createTaxRate,
@@ -31,16 +30,6 @@ const productCatalogItemSchema = z.object({
   minQuantity: z.number().int().min(0).nullable().optional(),
   sortOrder: z.number().int().min(0),
 })
-
-const sortOrderSchema = z.object({
-  items: z.array(
-    z.object({
-      id: z.string().uuid(),
-      sortOrder: z.number().int().min(0),
-    })
-  ),
-})
-
 const taxRateSchema = z.object({
   id: z.string().uuid().optional(),
   state: z.string().trim().min(1, 'State is required').max(50),
@@ -100,27 +89,6 @@ export async function saveProductCatalogItem(
   } catch (error) {
     console.error('Failed to save product catalog item:', error)
     return { ok: false, error: 'Unable to save product. Please try again.' }
-  }
-}
-
-export async function updateProductSortOrder(
-  items: { id: string; sortOrder: number }[]
-): Promise<SaveProductResult> {
-  const user = await requireUser()
-  assertAdmin(user)
-
-  const parsed = sortOrderSchema.safeParse({ items })
-  if (!parsed.success) {
-    return { ok: false, error: 'Invalid sort order data.' }
-  }
-
-  try {
-    await updateProductCatalogSortOrder(parsed.data.items)
-    revalidatePath('/invoices/settings')
-    return { ok: true }
-  } catch (error) {
-    console.error('Failed to update sort order:', error)
-    return { ok: false, error: 'Unable to update sort order. Please try again.' }
   }
 }
 

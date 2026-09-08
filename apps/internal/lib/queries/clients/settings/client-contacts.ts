@@ -7,7 +7,7 @@ import { assertAdmin } from '@/lib/auth/permissions'
 import { db } from '@/lib/db'
 import { clientMembers, contacts, contactClients, users } from '@/lib/db/schema'
 
-export type ContactOption = {
+type ContactOption = {
   id: string
   name: string | null
   email: string
@@ -15,7 +15,7 @@ export type ContactOption = {
   hasPortalAccess: boolean
 }
 
-export type AdminUserOption = {
+type AdminUserOption = {
   id: string
   fullName: string | null
   email: string
@@ -30,7 +30,7 @@ export type ClientSheetContactData = {
 /**
  * Fetches all active contacts for use in the client sheet contact picker.
  */
-export async function listAllActiveContacts(
+async function listAllActiveContacts(
   user: AppUser
 ): Promise<ContactOption[]> {
   assertAdmin(user)
@@ -59,7 +59,7 @@ export async function listAllActiveContacts(
 /**
  * Fetches the contacts linked to a specific client.
  */
-export async function listClientContacts(
+async function listClientContacts(
   user: AppUser,
   clientId: string
 ): Promise<ContactOption[]> {
@@ -95,7 +95,7 @@ export async function listClientContacts(
 /**
  * Fetches all active ADMIN users for use in origination + closer pickers.
  */
-export async function listAllAdminUsers(
+async function listAllAdminUsers(
   user: AppUser
 ): Promise<AdminUserOption[]> {
   assertAdmin(user)

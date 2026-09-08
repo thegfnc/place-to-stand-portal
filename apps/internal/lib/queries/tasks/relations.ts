@@ -44,7 +44,7 @@ export type ProjectTaskCollections = {
   archived: RawTaskWithRelations[]
 }
 
-export async function listProjectTasksWithRelations(
+async function listProjectTasksWithRelations(
   user: AppUser,
   projectId: string,
   options: { includeArchived?: boolean } = {}

@@ -7,6 +7,7 @@
     "./schema": "./src/schema.ts",
     "./relations": "./src/relations.ts",
     "./hours": "./src/hours.ts",
+    "./rate-limit": "./src/rate-limit.ts",
     "./client": "./src/client.ts",
     "./types": "./src/types.ts"
   },

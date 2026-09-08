@@ -79,10 +79,48 @@ async function checkSupabaseAuth(req: NextRequest): Promise<{
   }
 }
 
+const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS'])
+
+/**
+ * Cross-site request forgery guard for cookie-authenticated route handlers.
+ *
+ * Server actions get an Origin check from Next.js itself; route handlers do
+ * not. The Supabase cookie is SameSite=Lax, which already keeps it off
+ * cross-site POSTs, so this is defence in depth: a state-changing request
+ * that arrives with an Origin header from another site is rejected outright.
+ * Requests without an Origin (same-origin fetches in older browsers, curl,
+ * the CLI) pass through to their own auth.
+ */
+function isCrossSiteMutation(req: NextRequest): boolean {
+  if (SAFE_METHODS.has(req.method)) return false
+  const origin = req.headers.get('origin')
+  if (!origin) return false
+
+  // Compare hosts rather than full origins: the local portless proxy and
+  // Vercel's edge terminate TLS, so the scheme the browser saw and the one
+  // this request carries can legitimately differ.
+  let originHost: string
+  try {
+    originHost = new URL(origin).host
+  } catch {
+    return true
+  }
+  const requestHost =
+    req.headers.get('x-forwarded-host') ?? req.headers.get('host') ?? ''
+  return originHost !== requestHost
+}
+
 export async function proxy(req: NextRequest) {
   const pathname = req.nextUrl.pathname
 
   const isPublic = [...PUBLIC_PATHS].some(path => pathname.startsWith(path))
+
+  if (!isPublic && isCrossSiteMutation(req)) {
+    return NextResponse.json(
+      { ok: false, error: 'Cross-site request rejected' },
+      { status: 403 }
+    )
+  }
   const { isAuthenticated, mustResetPassword, response } =
     await checkSupabaseAuth(req)
 

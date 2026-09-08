@@ -1,6 +1,4 @@
 import type { Node as TiptapNode } from "@tiptap/pm/model"
-import type { Transaction } from "@tiptap/pm/state"
-import type { NodeWithPos } from "@tiptap/react"
 import type { Editor } from "@tiptap/react"
 
 import { isValidPosition } from "./selection"
@@ -11,7 +9,7 @@ import { isValidPosition } from "./selection"
  * @param position The position in the document to find the node
  * @returns The node at the specified position, or null if not found
  */
-export function findNodeAtPosition(editor: Editor, position: number) {
+function findNodeAtPosition(editor: Editor, position: number) {
   try {
     const node = editor.state.doc.nodeAt(position)
     if (!node) {
@@ -79,54 +77,3 @@ export function findNodePosition(props: {
 
   return null
 }
-
-/**
- * Update a single attribute on multiple nodes.
- *
- * @param tr - The transaction to mutate
- * @param targets - Array of { node, pos }
- * @param attrName - Attribute key to update
- * @param next - New value OR updater function receiving previous value
- *               Pass `undefined` to remove the attribute.
- * @returns true if at least one node was updated, false otherwise
- */
-export function updateNodesAttr<A extends string = string, V = unknown>(
-  tr: Transaction,
-  targets: readonly NodeWithPos[],
-  attrName: A,
-  next: V | ((prev: V | undefined) => V | undefined)
-): boolean {
-  if (!targets.length) return false
-
-  let changed = false
-
-  for (const { pos } of targets) {
-    // Always re-read from the transaction's current doc
-    const currentNode = tr.doc.nodeAt(pos)
-    if (!currentNode) continue
-
-    const prevValue = (currentNode.attrs as Record<string, unknown>)[
-      attrName
-    ] as V | undefined
-    const resolvedNext =
-      typeof next === "function"
-        ? (next as (p: V | undefined) => V | undefined)(prevValue)
-        : next
-
-    if (prevValue === resolvedNext) continue
-
-    const nextAttrs: Record<string, unknown> = { ...currentNode.attrs }
-    if (resolvedNext === undefined) {
-      // Remove the key entirely instead of setting null
-      delete nextAttrs[attrName]
-    } else {
-      nextAttrs[attrName] = resolvedNext
-    }
-
-    tr.setNodeMarkup(pos, undefined, nextAttrs)
-    changed = true
-  }
-
-  return changed
-}
-

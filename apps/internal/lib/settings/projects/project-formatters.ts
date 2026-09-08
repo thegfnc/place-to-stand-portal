@@ -4,7 +4,7 @@ import { format, parseISO } from 'date-fns'
  * Normalizes a date string and formats it for display. Returns null when the
  * input is missing or cannot be parsed.
  */
-export function formatProjectDate(value?: string | null): string | null {
+function formatProjectDate(value?: string | null): string | null {
   if (!value) {
     return null
   }

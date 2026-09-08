@@ -23,7 +23,7 @@ const TASK_STATUS_LABELS = {
   ARCHIVED: 'Archived',
 } as const
 
-export type TaskStatusValue = keyof typeof TASK_STATUS_TOKENS
+type TaskStatusValue = keyof typeof TASK_STATUS_TOKENS
 
 export function getTaskStatusToken(value: string): string {
   const normalized = value.toUpperCase() as TaskStatusValue
@@ -83,4 +83,4 @@ export function resolveCompletedAt(
   return { completedAt: currentCompletedAt ?? null }
 }
 
-export { TASK_STATUS_TOKENS, TASK_STATUS_LABELS }
+export { TASK_STATUS_TOKENS }

@@ -104,7 +104,7 @@ export function billingTypeAsOfSql(periodStart: string) {
 /**
  * Resolves a client's billing type as of a given month start ('yyyy-MM-dd').
  */
-export async function resolveBillingTypeAsOf(
+async function resolveBillingTypeAsOf(
   clientId: string,
   periodStart: string,
   tx: DbOrTransaction = db

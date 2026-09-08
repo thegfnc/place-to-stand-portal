@@ -128,7 +128,7 @@ export const LeadCard = memo(function LeadCard({
   )
 })
 
-export function LeadCardContent({ lead }: { lead: LeadRecord }) {
+function LeadCardContent({ lead }: { lead: LeadRecord }) {
   const assigneeDisplay =
     lead.assigneeName ?? lead.assigneeEmail ?? 'Unassigned'
   const companyDisplay = lead.companyName?.trim()

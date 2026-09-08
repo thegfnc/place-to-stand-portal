@@ -314,7 +314,7 @@ export const fetchClientById = cache(
   }
 )
 
-export const fetchClientBySlug = cache(
+const fetchClientBySlug = cache(
   async (user: AppUser, slug: string): Promise<ClientDetail> => {
     const clientRow = await db
       .select({ id: clients.id })
@@ -399,40 +399,6 @@ export const fetchProjectsForClient = cache(
     }))
   }
 )
-
-export async function fetchClientsByIds(
-  clientIds: string[]
-): Promise<ClientDetail[]> {
-  if (!clientIds.length) {
-    return []
-  }
-
-  const rows = await db
-    .select({
-      id: clients.id,
-      name: clients.name,
-      slug: clients.slug,
-      notes: clients.notes,
-      website: clients.website,
-      state: clients.state,
-      originationContactId: clients.originationContactId,
-      originationUserId: clients.originationUserId,
-      closerUserId: clients.closerUserId,
-      billingType: clients.billingType,
-      createdAt: clients.createdAt,
-      updatedAt: clients.updatedAt,
-      deletedAt: clients.deletedAt,
-    })
-    .from(clients)
-    .where(and(inArray(clients.id, clientIds), isNull(clients.deletedAt)))
-
-  const lookup = new Map(rows.map(row => [row.id, row]))
-
-  return clientIds
-    .map(id => lookup.get(id))
-    .filter((row): row is ClientDetail => Boolean(row))
-}
-
 /**
  * Resolves a client identifier (slug or UUID) to the client record.
  * Returns the client detail if found, throws NotFoundError otherwise.

@@ -19,10 +19,10 @@ export type DeleteButtonState = {
 }
 
 
-export { PENDING_REASON }
-export const MISSING_CLIENT_REASON =
+
+const MISSING_CLIENT_REASON =
   'Create a client before creating invoices.'
-export const NON_EDITABLE_REASON = 'This invoice cannot be edited.'
+const NON_EDITABLE_REASON = 'This invoice cannot be edited.'
 
 const NON_EDITABLE_STATUSES = new Set(['PAID', 'VOID'])
 

@@ -41,4 +41,4 @@ export const db: ReturnType<typeof createDb> = new Proxy(
   }
 )
 
-export type { DbClient } from '@pts/db/client'
+

@@ -35,7 +35,7 @@ export function resolveAttachmentExtension(mimeType: string) {
   ]
 }
 
-export function inferAttachmentExtensionFromPath(path: string) {
+function inferAttachmentExtensionFromPath(path: string) {
   const segments = path.split('.')
   return segments.length > 1 ? (segments.pop() ?? null) : null
 }
@@ -141,7 +141,7 @@ export function generatePendingAttachmentPath({
   return `${PENDING_PREFIX}/${actorId}/${randomUUID()}.${extension}`
 }
 
-export function generateTaskAttachmentPath({
+function generateTaskAttachmentPath({
   taskId,
   extension,
 }: {
@@ -153,10 +153,6 @@ export function generateTaskAttachmentPath({
 
 export function isPendingAttachmentPath(path: string, actorId: string) {
   return path.startsWith(`${PENDING_PREFIX}/${actorId}/`)
-}
-
-export function isTaskAttachmentPath(path: string, taskId: string) {
-  return path.startsWith(`${TASK_PREFIX}/${taskId}/`)
 }
 
 export async function moveAttachmentToTaskFolder({

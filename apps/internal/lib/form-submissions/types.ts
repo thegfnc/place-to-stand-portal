@@ -10,7 +10,7 @@ import type { FormSubmission } from '@pts/db/types'
  * shape change, and `jsonb` is untyped at the Drizzle layer.
  */
 
-export type AuditAnswerType = 'single' | 'multi' | 'text'
+type AuditAnswerType = 'single' | 'multi' | 'text'
 
 export type AuditResponseItem = {
   questionId: string

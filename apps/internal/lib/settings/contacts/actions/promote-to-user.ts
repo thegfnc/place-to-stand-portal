@@ -1,5 +1,4 @@
 import { and, eq, isNull } from 'drizzle-orm'
-import { z } from 'zod'
 
 import { logActivity } from '@/lib/activity/logger'
 import { contactInvitedToPortalEvent } from '@/lib/activity/events/contacts'
@@ -14,11 +13,9 @@ import {
   type ContactMutationResult,
 } from './types'
 
-export const promoteToUserInputSchema = z.object({
-  contactId: z.string().uuid(),
-})
-
-export type PromoteToUserInput = z.infer<typeof promoteToUserInputSchema>
+export type PromoteToUserInput = {
+  contactId: string
+}
 
 export async function promoteContactToUserMutation(
   context: ContactMutationContext,

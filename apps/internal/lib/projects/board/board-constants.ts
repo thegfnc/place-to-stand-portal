@@ -44,14 +44,6 @@ const BOARD_VIEW_ENTRIES = Object.entries(BOARD_VIEW_SEGMENTS) as Array<
 const BOARD_VIEW_SEGMENT_MAP = new Map<string, BoardView>(
   BOARD_VIEW_ENTRIES.map(([view, segment]) => [segment, view])
 )
-
-const BOARD_VIEW_SET = new Set<BoardView>(
-  BOARD_VIEW_ENTRIES.map(([view]) => view)
-)
-
-export const isBoardView = (value: string): value is BoardView =>
-  BOARD_VIEW_SET.has(value as BoardView)
-
 export const getBoardViewFromPathname = (
   pathname: string
 ): BoardView | null => {

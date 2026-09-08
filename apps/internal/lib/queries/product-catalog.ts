@@ -104,27 +104,6 @@ export async function listAllProductCatalogItems(): Promise<
 // ---------------------------------------------------------------------------
 // Get single product catalog item by ID
 // ---------------------------------------------------------------------------
-
-export async function getProductCatalogItem(
-  id: string
-): Promise<ProductCatalogItemRow | null> {
-  const rows = await db
-    .select(productCatalogSelection)
-    .from(productCatalogItems)
-    .where(
-      and(
-        eq(productCatalogItems.id, id),
-        isNull(productCatalogItems.deletedAt)
-      )
-    )
-    .limit(1)
-
-  const row = rows[0]
-  if (!row) return null
-
-  return mapRow(row)
-}
-
 // ---------------------------------------------------------------------------
 // Create product catalog item
 // ---------------------------------------------------------------------------
@@ -197,22 +176,3 @@ export async function updateProductCatalogItem(
 // ---------------------------------------------------------------------------
 // Bulk update sort orders (for drag-to-reorder)
 // ---------------------------------------------------------------------------
-
-export async function updateProductCatalogSortOrder(
-  items: { id: string; sortOrder: number }[]
-): Promise<void> {
-  if (items.length === 0) return
-
-  const now = new Date().toISOString()
-
-  await db.transaction(async (tx) => {
-    await Promise.all(
-      items.map((item) =>
-        tx
-          .update(productCatalogItems)
-          .set({ sortOrder: item.sortOrder, updatedAt: now })
-          .where(eq(productCatalogItems.id, item.id))
-      )
-    )
-  })
-}

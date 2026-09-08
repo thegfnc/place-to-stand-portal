@@ -101,6 +101,7 @@ export function useProjectsBoardViewModel({
       starts_on: boardState.activeProject.starts_on,
       ends_on: boardState.activeProject.ends_on,
       githubRepos: boardState.activeProject.githubRepos,
+      integrationLinks: boardState.activeProject.integrationLinks,
       burndown: {
         totalClientRemainingHours:
           boardState.activeProject.burndown.totalClientRemainingHours,

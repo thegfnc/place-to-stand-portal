@@ -1,5 +1,3 @@
-export type LeadNotesPayload = { html: string }
-
 export function serializeLeadNotes(
   value: string | null | undefined
 ): Record<string, unknown> {

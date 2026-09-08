@@ -1,25 +1,10 @@
 import type { AssignedTaskSummary } from '@/lib/data/tasks'
-
-const ACTIVE_STATUSES = new Set([
-  'ON_DECK',
-  'IN_PROGRESS',
-  'BLOCKED',
-])
-
 const STATUS_PRIORITY: Record<string, number> = {
   BLOCKED: 0,
   IN_PROGRESS: 1,
   ON_DECK: 2,
   DONE: 3,
   ARCHIVED: 4,
-}
-
-export function isActiveAssignedTaskStatus(status: string | null): boolean {
-  if (!status) {
-    return false
-  }
-
-  return ACTIVE_STATUSES.has(status)
 }
 
 export function sortAssignedTasks(
@@ -30,7 +15,7 @@ export function sortAssignedTasks(
   return copy
 }
 
-export function compareAssignedTasks(
+function compareAssignedTasks(
   a: AssignedTaskSummary,
   b: AssignedTaskSummary
 ) {

@@ -5,14 +5,13 @@ import { Sheet, SheetContent } from '@/components/ui/sheet'
 import { SheetFormHeader } from '@/components/sheets/sheet-form-header'
 import {
   useContactSheetState,
-  type ContactSheetInput,
   type UseContactSheetStateOptions,
 } from '@/lib/settings/contacts/use-contact-sheet-state'
 
 import { ContactSheetForm } from './contact-sheet/contact-sheet-form'
 import { PromoteToUserDialog } from './contact-sheet/promote-to-user-dialog'
 
-export type { ContactSheetInput }
+
 
 const ARCHIVE_CONTACT_DIALOG_TITLE = 'Archive contact?'
 const ARCHIVE_CONTACT_CONFIRM_LABEL = 'Archive'

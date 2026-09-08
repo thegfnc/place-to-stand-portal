@@ -22,6 +22,11 @@ import {
   type TaskRow,
 } from './relations/tasks'
 import { getReposForProjects } from '@/lib/data/github-repos'
+import { getIntegrationLinksForProjects } from '@/lib/data/project-integration-links'
+import {
+  toIntegrationLinkSummary,
+  type ProjectIntegrationLinkSummary,
+} from '@/lib/types/integrations'
 
 export type ProjectRelationsFetchArgs = {
   projectIds: string[]
@@ -41,6 +46,7 @@ export type ProjectRelationsFetchResult = {
   tasks: RawTaskWithRelations[]
   archivedTasks: RawTaskWithRelations[]
   githubReposByProject: Map<string, GitHubRepoLinkSummary[]>
+  integrationLinksByProject: Map<string, ProjectIntegrationLinkSummary[]>
 }
 
 export async function loadOwners(ownerIds: string[]): Promise<ProjectOwner[]> {
@@ -83,17 +89,20 @@ export async function fetchProjectRelations({
   ])
 
   const githubReposPromise = getReposForProjects(projectIds)
+  const integrationLinksPromise = getIntegrationLinksForProjects(projectIds)
   const ownersPromise = loadOwners(ownerIds)
 
   const [
     [clientRows, memberRows],
     [activeTaskRows, archivedTaskRows],
     githubReposMap,
+    integrationLinksMap,
     owners,
   ] = await Promise.all([
     clientDataPromise,
     taskDataPromise,
     githubReposPromise,
+    integrationLinksPromise,
     ownersPromise,
   ])
 
@@ -126,6 +135,17 @@ export async function fetchProjectRelations({
     )
   })
 
+  const integrationLinksByProject = new Map<
+    string,
+    ProjectIntegrationLinkSummary[]
+  >()
+  integrationLinksMap.forEach((links, projectId) => {
+    integrationLinksByProject.set(
+      projectId,
+      links.map(toIntegrationLinkSummary)
+    )
+  })
+
   return {
     clients,
     owners,
@@ -133,5 +153,6 @@ export async function fetchProjectRelations({
     tasks,
     archivedTasks,
     githubReposByProject,
+    integrationLinksByProject,
   }
 }

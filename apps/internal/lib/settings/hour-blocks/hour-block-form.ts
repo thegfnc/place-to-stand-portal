@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-export const DEFAULT_HOURS_PURCHASED = 5
+const DEFAULT_HOURS_PURCHASED = 5
 
 export const HOUR_BLOCK_NOTES_MAX_LENGTH = 2000
 

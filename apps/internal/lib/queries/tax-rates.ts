@@ -1,6 +1,6 @@
 import 'server-only'
 
-import { asc, and, eq, sql } from 'drizzle-orm'
+import { asc, eq, sql } from 'drizzle-orm'
 
 import { db } from '@/lib/db'
 import { taxRates } from '@/lib/db/schema'
@@ -51,22 +51,6 @@ export async function listTaxRates(): Promise<TaxRateRow[]> {
     .orderBy(asc(taxRates.state))
 
   return rows.map(mapTaxRateRow)
-}
-
-export async function fetchTaxRateByState(
-  state: string
-): Promise<TaxRateRow | null> {
-  const rows = await db
-    .select(taxRateSelection)
-    .from(taxRates)
-    .where(and(eq(taxRates.state, state), eq(taxRates.isActive, true)))
-    .limit(1)
-
-  if (!rows.length) {
-    return null
-  }
-
-  return mapTaxRateRow(rows[0]!)
 }
 
 export async function createTaxRate(input: TaxRateInput): Promise<TaxRateRow> {

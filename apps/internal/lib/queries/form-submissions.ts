@@ -72,7 +72,8 @@ function buildFilters({
       ? or(
           ilike(formSubmissions.contactName, searchPattern),
           ilike(formSubmissions.contactEmail, searchPattern),
-          ilike(formSubmissions.contactCompany, searchPattern)
+          ilike(formSubmissions.contactCompany, searchPattern),
+          ilike(formSubmissions.subject, searchPattern)
         )
       : undefined
   )
@@ -162,6 +163,7 @@ export async function upsertFormSubmission(row: NewFormSubmission) {
         contactEmail: sql`COALESCE(excluded.contact_email, ${formSubmissions.contactEmail})`,
         contactCompany: sql`COALESCE(excluded.contact_company, ${formSubmissions.contactCompany})`,
         contactWebsite: sql`COALESCE(excluded.contact_website, ${formSubmissions.contactWebsite})`,
+        subject: sql`COALESCE(excluded.subject, ${formSubmissions.subject})`,
         message: sql`COALESCE(excluded.message, ${formSubmissions.message})`,
         marketingConsent: sql`COALESCE(excluded.marketing_consent, ${formSubmissions.marketingConsent})`,
 
@@ -431,6 +433,7 @@ export async function destroyFormSubmission(id: string) {
         contactEmail: null,
         contactCompany: null,
         contactWebsite: null,
+        subject: null,
         message: null,
         marketingConsent: null,
         responses: null,

@@ -27,7 +27,7 @@ import {
   getClickableRowProps,
 } from '@/lib/table/clickable-row'
 
-export type HourBlocksTableMode = 'active' | 'archive'
+type HourBlocksTableMode = 'active' | 'archive'
 
 export type HourBlocksTableSectionProps = {
   hourBlocks: HourBlockWithClient[]

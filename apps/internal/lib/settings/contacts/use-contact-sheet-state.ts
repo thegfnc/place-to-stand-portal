@@ -25,7 +25,7 @@ import type { ContactsTableContact } from '@/lib/settings/contacts/use-contacts-
 import type { ContactClientOption } from '@/app/(dashboard)/contacts/_components/contact-sheet/contact-client-picker'
 import { PENDING_REASON } from '@/lib/forms/form-controls'
 
-export const contactFormSchema = z.object({
+const contactFormSchema = z.object({
   email: z.string().email({ message: 'Valid email is required' }),
   name: z.string().min(1, 'Name is required').max(160),
   phone: z.string().max(40).optional(),

@@ -7,6 +7,7 @@ import {
   clientMembers,
   taskAssignees,
 } from '@/lib/db/schema'
+import { revokeUserOauthConnections } from '@/lib/oauth/revoke-user-connections'
 import { getSupabaseServiceClient } from '@/lib/supabase/service'
 import { softDeleteUser } from '@/lib/queries/users'
 
@@ -58,6 +59,13 @@ export async function softDeletePortalUser(
       console.error(`Failed to remove user ${context}`, error)
       return { error: `Unable to remove user ${context}.` }
     }
+  }
+
+  try {
+    await revokeUserOauthConnections(input.id)
+  } catch (error) {
+    console.error('Failed to revoke provider connections for archived user', error)
+    return { error: 'Unable to revoke user provider connections.' }
   }
 
   const adminUpdate = await adminClient.auth.admin.updateUserById(input.id, {

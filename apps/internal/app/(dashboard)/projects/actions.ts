@@ -1,9 +1,9 @@
 export { saveTask } from './actions/save-task'
-export { changeTaskStatus } from './actions/change-task-status'
+
 export { removeTask } from './actions/remove-task'
 export { acceptTask } from './actions/accept-task'
 export { acceptDoneTasks } from './actions/accept-done-tasks'
 export { unacceptTask } from './actions/unaccept-task'
 export { restoreTask } from './actions/restore-task'
 export { destroyTask } from './actions/destroy-task'
-export { changeTaskDueDate } from './actions/change-task-due-date'
+

@@ -21,7 +21,7 @@ export function isClientBilling(
 
 // PRD 004 §03: per-view sort allowlist (D6/R5). Each field here has a
 // matching descriptor (order expr + cursor encode/compare) in the query.
-export const CLIENT_SORT_FIELDS = ['name', 'created'] as const
+const CLIENT_SORT_FIELDS = ['name', 'created'] as const
 export type ClientSortField = (typeof CLIENT_SORT_FIELDS)[number]
 
 /**
@@ -31,7 +31,7 @@ export type ClientSortField = (typeof CLIENT_SORT_FIELDS)[number]
  * Those fields live HERE only — `CLIENT_SORT_FIELDS` stays the keyset-safe
  * set the archive query resolves against `CLIENT_SORT_DESCRIPTORS`.
  */
-export const CLIENT_LANDING_SORT_FIELDS = [
+const CLIENT_LANDING_SORT_FIELDS = [
   ...CLIENT_SORT_FIELDS,
   'billing',
   'projects',

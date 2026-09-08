@@ -31,7 +31,7 @@ export function getModelLabel(tier: PlanningModelTier): string {
 }
 
 /** Type guard: is the given string a valid planning tier? */
-export function isPlanningModelTier(value: unknown): value is PlanningModelTier {
+function isPlanningModelTier(value: unknown): value is PlanningModelTier {
   return (
     typeof value === 'string' &&
     PLANNING_MODEL_TIERS.includes(value as PlanningModelTier)

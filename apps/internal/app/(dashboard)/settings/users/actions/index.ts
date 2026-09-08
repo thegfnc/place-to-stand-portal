@@ -5,4 +5,4 @@ export { restoreUser } from './restore-user'
 export { destroyUser } from './destroy-user'
 export { setUserDisabled } from './set-user-disabled'
 
-export type { ActionResult } from './types'
+

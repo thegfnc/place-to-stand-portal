@@ -147,6 +147,8 @@ interface AuditProgressPayload {
     name: string
     email: string
     company: string | null
+    // Optional free-text note from the capture form; stored in `message`.
+    message?: string | null
     marketingConsent: boolean
   } | null
 
@@ -234,6 +236,8 @@ interface ContactSubmissionPayload {
     email: string
     company: string | null
     website: string | null
+    // A preset ("Referral Program") or the visitor's own free-form subject.
+    subject?: string | null
     message: string
     marketingConsent: boolean
   }
@@ -352,7 +356,7 @@ curl -i -X POST https://<portal-host>/api/integrations/contact-submissions \
     "submittedAt": "2026-07-30T18:00:00.000Z",
     "contact": {
       "name": "Test Person", "email": "test@example.com",
-      "company": null, "website": null,
+      "company": null, "website": null, "subject": "Other",
       "message": "Connection test.", "marketingConsent": false
     },
     "analytics": { "posthogDistinctId": null, "posthogSessionId": null, "posthogReplayUrl": null },

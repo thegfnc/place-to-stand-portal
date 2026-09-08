@@ -8,14 +8,14 @@ import type { BoardColumnId } from '../board-constants'
 import { compareTasksByRank } from '../board-utils'
 import type { TaskLookup } from './types'
 
-export type TaskDragData = {
+type TaskDragData = {
   type: 'task'
   taskId: string
   projectId: string
   columnId?: BoardColumnId
 }
 
-export type ColumnDropData = {
+type ColumnDropData = {
   type: 'column'
   columnId: BoardColumnId
 }
@@ -69,13 +69,13 @@ export const extractSortableMeta = (payload: unknown): SortableMeta | null => {
   }
 }
 
-export const getColumnTasks = (
+const getColumnTasks = (
   projectTasks: TaskWithRelations[],
   columnId: BoardColumnId
 ) =>
   projectTasks.filter(task => task.status === columnId).sort(compareTasksByRank)
 
-export const resolveDestinationColumnId = (
+const resolveDestinationColumnId = (
   over: DragEndEvent['over'],
   fallback: BoardColumnId
 ): BoardColumnId | null => {

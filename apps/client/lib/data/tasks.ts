@@ -40,7 +40,7 @@ const STATUS_ORDER: Record<string, number> = {
  * Shared so the dashboard's inline task list and the project page present the
  * same work in the same order.
  */
-export function sortCurrentTasks<T extends { status: string }>(rows: T[]): T[] {
+function sortCurrentTasks<T extends { status: string }>(rows: T[]): T[] {
   return [...rows].sort(
     (a, b) => (STATUS_ORDER[a.status] ?? 99) - (STATUS_ORDER[b.status] ?? 99)
   )

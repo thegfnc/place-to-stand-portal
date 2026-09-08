@@ -3,7 +3,7 @@ import { z } from 'zod'
 
 import { getCurrentUser } from '@/lib/auth/session'
 import { fetchClientInvoiceForPdf } from '@/lib/data/invoices'
-import { generateInvoicePdf } from '@/lib/invoices/invoice-pdf'
+import { generateInvoicePdf } from '@pts/pdf'
 
 export const dynamic = 'force-dynamic'
 

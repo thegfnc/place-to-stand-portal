@@ -12,9 +12,9 @@ import {
   type TimeframeValue,
 } from "./constants"
 
-export type SummaryStatus = "idle" | "loading" | "success" | "error"
+type SummaryStatus = "idle" | "loading" | "success" | "error"
 
-export type ActivityMetrics = {
+type ActivityMetrics = {
   tasksDone: number
   newLeads: number
   activeProjects: number
@@ -28,7 +28,7 @@ export type SummaryState = {
   error: string | null
 }
 
-export type CacheMeta = {
+type CacheMeta = {
   cacheStatus: "hit" | "miss" | null
   cachedAt?: string | null
   expiresAt?: string | null

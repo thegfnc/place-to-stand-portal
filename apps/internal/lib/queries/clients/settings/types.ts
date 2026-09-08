@@ -7,7 +7,7 @@ import type {
 
 import type { SelectClient } from '../selectors'
 
-export type ClientListMetrics = {
+type ClientListMetrics = {
   totalProjects: number
   activeProjects: number
 }

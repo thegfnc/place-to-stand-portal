@@ -1,6 +1,6 @@
 import 'server-only'
 
-import { and, eq, inArray, isNull, sql } from 'drizzle-orm'
+import { and, inArray, isNull, sql } from 'drizzle-orm'
 
 import { db } from '@/lib/db'
 import { timeLogs } from '@/lib/db/schema'
@@ -11,27 +11,6 @@ type ProjectTimeLogAggregateRow = {
   totalHours: string | null
   monthToDateHours: string | null
   lastLogAt: string | null
-}
-
-type SumOfHoursRow = {
-  totalHours: string | null
-}
-
-export async function getSumOfHoursForProject(
-  projectId: string,
-): Promise<number> {
-  const [row] = await db
-    .select({
-      totalHours: sql<string | null>`COALESCE(SUM(${timeLogs.hours}), '0')`,
-    })
-    .from(timeLogs)
-    .where(and(eq(timeLogs.projectId, projectId), isNull(timeLogs.deletedAt)))
-    .limit(1) as SumOfHoursRow[]
-
-  const total = row?.totalHours ?? '0'
-  const parsed = Number(total)
-
-  return Number.isFinite(parsed) ? parsed : 0
 }
 
 export async function getTimeLogSummariesForProjects(

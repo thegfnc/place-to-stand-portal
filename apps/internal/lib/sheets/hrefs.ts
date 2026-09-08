@@ -16,10 +16,6 @@ export const invoiceHref = (id: string) => `/invoices?invoice=${id}`
 
 export const hourBlockHref = (id: string) => `/hour-blocks?hour-block=${id}`
 
-export const userSheetHref = (id: string) => `/settings/users?user=${id}`
-
-export const projectSheetHref = (id: string) => `/projects?project=${id}`
-
 /** Client detail page; slugs are canonical but the page also resolves ids. */
 export const clientDetailHref = (client: { slug: string | null; id: string }) =>
   `/clients/${client.slug ?? client.id}`
@@ -37,10 +33,6 @@ export const leadHref = (
 }
 
 export const newLeadHref = () => `/leads?lead=${NEW_SHEET_VALUE}`
-
-export const submissionHref = (id: string, options?: { archived?: boolean }) =>
-  `${options?.archived ? '/submissions/archive' : '/submissions'}?submission=${id}`
-
 /**
  * Rebuilds a page's query string for a server-side `redirect()`. Redirects
  * must carry the whole query across — the sheet stack and any filters live

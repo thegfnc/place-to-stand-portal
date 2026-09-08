@@ -1,0 +1,19 @@
+{
+  "name": "@pts/pdf",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "type-check": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^26.4.1",
+    "typescript": "^6.0.3"
+  },
+  "dependencies": {
+    "jspdf": "^4.2.1"
+  }
+}

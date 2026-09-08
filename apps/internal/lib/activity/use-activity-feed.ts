@@ -8,7 +8,7 @@ import type {
 
 const ACTIVITY_FEED_QUERY_KEY = 'activity-feed' as const
 
-export type ActivityFeedQueryTarget =
+type ActivityFeedQueryTarget =
   | ActivityTargetType
   | string
   | ReadonlyArray<ActivityTargetType | string>
@@ -141,7 +141,7 @@ export function useActivityFeed(
   }
 }
 
-export type ActivityApiResponse = {
+type ActivityApiResponse = {
   logs: ActivityLogWithActor[]
   hasMore: boolean
   nextCursor: string | null

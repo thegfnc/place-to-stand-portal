@@ -16,9 +16,7 @@ import {
   type FormSubmissionStatus,
 } from '@/lib/form-submissions/constants'
 
-export const ACKNOWLEDGEMENT_VALUES = ['unacknowledged', 'acknowledged'] as const
-
-export type AcknowledgementFilter = (typeof ACKNOWLEDGEMENT_VALUES)[number]
+type AcknowledgementFilter = 'unacknowledged' | 'acknowledged'
 
 const ACKNOWLEDGEMENT_OPTIONS = [
   { value: 'unacknowledged', label: 'Unacknowledged' },

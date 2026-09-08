@@ -12,7 +12,7 @@ import type {
   ProjectTypeValue,
 } from '@/lib/types'
 
-export type ProjectRow = DbProject
+type ProjectRow = DbProject
 export type ClientRow = Pick<DbClient, 'id' | 'name' | 'deleted_at'>
 
 export type ProjectOwnerSummary = {
@@ -135,7 +135,7 @@ export const PROJECT_FORM_FIELDS: Array<keyof ProjectSheetFormValues> = [
   'ownerId',
 ]
 
-export const deriveInitialStatus = (
+const deriveInitialStatus = (
   project: ProjectWithClient | null
 ): ProjectStatusValue => {
   if (

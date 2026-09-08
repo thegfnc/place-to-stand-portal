@@ -1,6 +1,6 @@
 'use client'
 
-import { siGithub, siSupabase, siVercel } from 'simple-icons/icons'
+import { siGithub } from 'simple-icons/icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
@@ -14,15 +14,10 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@pts/ui/tooltip'
-import {
   ConnectedAccountsList,
   type ConnectedAccount,
 } from '@/components/integrations/connected-accounts-list'
+import { TokenIntegrationCard } from '@/components/integrations/token-integration-card'
 
 function SimpleIcon({
   icon,
@@ -347,71 +342,15 @@ export function IntegrationsPanel() {
           </CardContent>
         </Card>
 
-        {/* Vercel Card - Coming Soon */}
-        <Card>
-          <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
-            <div className='flex flex-col space-y-1.5'>
-              <CardTitle className='flex items-center gap-2'>
-                <SimpleIcon icon={siVercel} className='h-5 w-5' />
-                Vercel
-              </CardTitle>
-              <CardDescription>
-                Connect your Vercel account to sync deployments and analytics.
-              </CardDescription>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span>
-                    <Button variant='outline' disabled>
-                      Connect Vercel Account
-                    </Button>
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Coming soon</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          </CardContent>
-        </Card>
+        <TokenIntegrationCard
+          provider='VERCEL'
+          description='Connect your Vercel account to link deployments to projects.'
+        />
 
-        {/* Supabase Card - Coming Soon */}
-        <Card>
-          <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
-            <div className='flex flex-col space-y-1.5'>
-              <CardTitle className='flex items-center gap-2'>
-                <SimpleIcon
-                  icon={siSupabase}
-                  className='h-5 w-5'
-                  color='#3ECF8E'
-                />
-                Supabase
-              </CardTitle>
-              <CardDescription>
-                Connect your Supabase account to sync database and auth.
-              </CardDescription>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span>
-                    <Button variant='outline' disabled>
-                      Connect Supabase Account
-                    </Button>
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Coming soon</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          </CardContent>
-        </Card>
+        <TokenIntegrationCard
+          provider='SUPABASE'
+          description='Connect your Supabase account to link databases to projects.'
+        />
       </div>
     </div>
   )

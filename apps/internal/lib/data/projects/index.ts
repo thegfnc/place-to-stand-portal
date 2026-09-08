@@ -17,6 +17,8 @@ import { assembleProjectsWithRelations } from './assemble-projects'
 import { fetchBaseProjects } from './fetch-base-projects'
 import { fetchProjectRelations, loadOwners } from './fetch-project-relations'
 import { getReposForProjects } from '@/lib/data/github-repos'
+import { getIntegrationLinksForProjects } from '@/lib/data/project-integration-links'
+import { toIntegrationLinkSummary } from '@/lib/types/integrations'
 import { loadClientRows, mapClientRows } from './relations/clients'
 export { fetchProjectCalendarTasks } from './fetch-project-calendar-tasks'
 
@@ -54,40 +56,6 @@ export type FetchProjectsWithRelationsOptions = {
    */
   includeArchivedTasks?: boolean
 }
-
-export const fetchProjectsWithRelations = cache(
-  async (
-    options: FetchProjectsWithRelationsOptions = {}
-  ): Promise<ProjectWithRelations[]> => {
-    // The internal portal is admin-only, so results are no longer scoped to
-    // the requesting user; `forUserId` is kept for call-site compatibility.
-    const baseProjects = await fetchBaseProjects({
-      statuses: options.statuses,
-      search: options.search,
-    })
-
-    const relations = await fetchProjectRelations({
-      projectIds: baseProjects.projectIds,
-      clientIds: baseProjects.clientIds,
-      ownerIds: baseProjects.ownerIds,
-      includeArchivedTasks: options.includeArchivedTasks,
-    })
-
-    const [timeLogSummaries, clientHours] = await Promise.all([
-      getTimeLogSummariesForProjects(baseProjects.projectIds),
-      getClientHoursTotals(db, baseProjects.clientIds),
-    ])
-
-    return assembleProjectsWithRelations({
-      projects: baseProjects.projects,
-      projectClientLookup: baseProjects.projectClientLookup,
-      relations,
-      timeLogSummaries,
-      clientHours,
-    })
-  }
-)
-
 /**
  * All non-deleted projects with clients hydrated but NO task/member/repo
  * relations — for project switchers and sheet selectors, which only read
@@ -110,6 +78,7 @@ export const fetchProjectsLite = cache(
         tasks: [],
         archivedTasks: [],
         githubReposByProject: new Map(),
+        integrationLinksByProject: new Map(),
       },
       timeLogSummaries: new Map(),
       // Switchers/selectors read identity fields only; burndown is unused.
@@ -118,7 +87,7 @@ export const fetchProjectsLite = cache(
   }
 )
 
-export type LandingTaskProgress = { done: number; total: number }
+type LandingTaskProgress = { done: number; total: number }
 
 export type LandingProject = ProjectWithRelations & {
   taskProgress: LandingTaskProgress
@@ -137,10 +106,12 @@ export async function fetchProjectsForLanding(
     search: options.search,
   })
 
-  const [clients, owners, reposMap, progressRows] = await Promise.all([
+  const [clients, owners, reposMap, integrationLinksMap, progressRows] =
+    await Promise.all([
     loadClientRows(baseProjects.clientIds),
     loadOwners(baseProjects.ownerIds),
     getReposForProjects(baseProjects.projectIds),
+    getIntegrationLinksForProjects(baseProjects.projectIds),
     baseProjects.projectIds.length
       ? db
           .select({
@@ -170,6 +141,13 @@ export async function fetchProjectsForLanding(
     ])
   )
 
+  const integrationLinksByProject = new Map(
+    Array.from(integrationLinksMap.entries(), ([projectId, links]) => [
+      projectId,
+      links.map(toIntegrationLinkSummary),
+    ])
+  )
+
   const progressByProject = new Map(
     progressRows.map(row => [
       row.projectId,
@@ -187,6 +165,7 @@ export async function fetchProjectsForLanding(
       tasks: [],
       archivedTasks: [],
       githubReposByProject,
+      integrationLinksByProject,
     },
     timeLogSummaries: new Map(),
     // The landing page reads client hours from `fetchClientsWithMetrics`, not
@@ -288,7 +267,7 @@ export const fetchLandingProjectCounts = cache(
 /**
  * Fetch a project by ID
  */
-export const fetchProjectById = cache(
+const fetchProjectById = cache(
   async (user: AppUser, projectId: string): Promise<ProjectDetail> => {
     await ensureProjectAccess(user, projectId)
 
@@ -322,7 +301,7 @@ export const fetchProjectById = cache(
 /**
  * Fetch a project by slug
  */
-export const fetchProjectBySlug = cache(
+const fetchProjectBySlug = cache(
   async (user: AppUser, slug: string): Promise<ProjectDetail> => {
     const projectRow = await db
       .select({ id: projects.id })

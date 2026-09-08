@@ -26,11 +26,6 @@ export interface PendingRepo {
   sourceId?: string
 }
 
-export interface RemovedRepo {
-  id: string
-  repoFullName: string
-}
-
 interface GitHubReposSectionProps {
   projectId?: string
   disabled?: boolean

@@ -18,4 +18,4 @@ if (process.env.NODE_ENV !== 'production') {
   globalThis.__drizzle_db__ = db
 }
 
-export type { DbClient } from '@pts/db/client'
+

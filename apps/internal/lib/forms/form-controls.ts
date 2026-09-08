@@ -42,20 +42,3 @@ export const getSubmitLabel = ({
 
   return isEditing ? updateLabel : createLabel
 }
-
-/**
- * The reason a control is disabled, or null when it isn't. `pending` is
- * checked first: an in-flight request explains the disabled state no matter
- * what other restriction also applies.
- */
-export const getDisabledReason = ({
-  pending,
-  restriction = null,
-}: {
-  pending: boolean
-  /** A non-transient reason, e.g. 'You cannot delete your own account.' */
-  restriction?: string | null
-}): string | null => {
-  if (pending) return PENDING_REASON
-  return restriction
-}

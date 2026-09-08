@@ -13,9 +13,14 @@ const schema = z.object({
   RESEND_REPLY_TO_EMAIL: z.email(),
   AI_GATEWAY_API_KEY: z.string().min(1),
   APP_BASE_URL: z.url().optional(),
+  // AES-256-GCM needs exactly 32 key bytes. Checking the decoded length here
+  // fails at boot instead of on the first token encrypt.
   OAUTH_TOKEN_ENCRYPTION_KEY: z
     .string()
-    .min(32, 'Encryption key must be at least 32 characters (base64)'),
+    .refine(value => Buffer.from(value, 'base64').length === 32, {
+      message:
+        'OAUTH_TOKEN_ENCRYPTION_KEY must be 32 bytes, base64-encoded (openssl rand -base64 32)',
+    }),
   GOOGLE_CLIENT_ID: z.string().min(1),
   GOOGLE_CLIENT_SECRET: z.string().min(1),
   GOOGLE_REDIRECT_URI: z.string().url(),

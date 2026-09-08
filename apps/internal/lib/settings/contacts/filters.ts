@@ -3,7 +3,7 @@ import { UUID_PATTERN } from '@/lib/sheets/entities'
 
 // PRD 004 §03: per-view sort allowlist (D6/R5). Each field here has a
 // matching descriptor (order expr + cursor encode/compare) in the query.
-export const CONTACT_SORT_FIELDS = [
+const CONTACT_SORT_FIELDS = [
   'name',
   'email',
   'phone',

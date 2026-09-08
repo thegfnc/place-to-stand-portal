@@ -1,6 +1,6 @@
 import { revalidatePath } from 'next/cache'
 
-export const USERS_PATH = '/settings/users'
+const USERS_PATH = '/settings/users'
 const RELATED_SETTINGS_PATHS = [
   '/clients',
   '/clients/archive',

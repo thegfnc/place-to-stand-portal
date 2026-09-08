@@ -76,7 +76,22 @@ export const leadSourceType = pgEnum('lead_source_type', [
 ])
 
 // OAuth enums
-export const oauthProvider = pgEnum('oauth_provider', ['GOOGLE', 'GITHUB'])
+export const oauthProvider = pgEnum('oauth_provider', [
+  'GOOGLE',
+  'GITHUB',
+  'VERCEL',
+  'SUPABASE',
+])
+
+/**
+ * Hosting/infra providers a portal project can be linked to. Kept separate
+ * from `oauth_provider` because not every OAuth provider hosts projects
+ * (Google) and the link table should not accept them.
+ */
+export const integrationProvider = pgEnum('integration_provider', [
+  'VERCEL',
+  'SUPABASE',
+])
 
 /**
  * OAuth connection status values.
@@ -1484,6 +1499,71 @@ export const githubRepoLinks = pgTable(
 )
 
 // =============================================================================
+// PROJECT INTEGRATION LINKS (Vercel / Supabase projects tagged onto projects)
+// =============================================================================
+
+/**
+ * A portal project's link to an external hosting project (a Vercel project,
+ * a Supabase project). Rows store only external identifiers, never the
+ * credential used to find them: staff members' personal tokens reach
+ * different sets of teams/orgs, so access is resolved per viewer at read
+ * time rather than pinned to whoever created the link.
+ */
+export const projectIntegrationLinks = pgTable(
+  'project_integration_links',
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    projectId: uuid('project_id').notNull(),
+    provider: integrationProvider().notNull(),
+    // Vercel: project id (prj_…). Supabase: project ref.
+    externalId: text('external_id').notNull(),
+    externalName: text('external_name').notNull(),
+    // Vercel: team id (null for a personal scope). Supabase: organization id.
+    ownerId: text('owner_id'),
+    ownerSlug: text('owner_slug'),
+    ownerName: text('owner_name'),
+    url: text().notNull(),
+    // Provider-specific extras (framework, region, repo, production domain).
+    metadata: jsonb().default({}).notNull(),
+    linkedBy: uuid('linked_by').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+    deletedAt: timestamp('deleted_at', { withTimezone: true, mode: 'string' }),
+  },
+  table => [
+    unique('project_integration_links_project_provider_external_key').on(
+      table.projectId,
+      table.provider,
+      table.externalId
+    ),
+    index('idx_project_integration_links_project')
+      .using('btree', table.projectId.asc().nullsLast().op('uuid_ops'))
+      .where(sql`(deleted_at IS NULL)`),
+    index('idx_project_integration_links_external')
+      .using(
+        'btree',
+        table.provider.asc().nullsLast(),
+        table.externalId.asc().nullsLast().op('text_ops')
+      )
+      .where(sql`(deleted_at IS NULL)`),
+    foreignKey({
+      columns: [table.projectId],
+      foreignColumns: [projects.id],
+      name: 'project_integration_links_project_id_fkey',
+    }).onDelete('cascade'),
+    foreignKey({
+      columns: [table.linkedBy],
+      foreignColumns: [users.id],
+      name: 'project_integration_links_linked_by_fkey',
+    }),
+  ]
+)
+
+// =============================================================================
 // TASK DEPLOYMENTS (GitHub issue-based worker deployments per task)
 // =============================================================================
 
@@ -1903,6 +1983,11 @@ export const formSubmissions = pgTable(
     contactEmail: text('contact_email'),
     contactCompany: text('contact_company'),
     contactWebsite: text('contact_website'),
+    // Contact form only: a preset ("Referral Program") or the visitor's own
+    // free-form subject. Audit rows leave it null.
+    subject: text('subject'),
+    // Free text from the visitor: the contact form's message, or the optional
+    // "anything else we should know" note on the audit capture step.
     message: text('message'),
     marketingConsent: boolean('marketing_consent'),
 
@@ -1981,6 +2066,36 @@ export const formSubmissions = pgTable(
     index('idx_form_submissions_contact_email')
       .using('btree', table.contactEmail.asc().nullsLast().op('text_ops'))
       .where(sql`(deleted_at IS NULL AND contact_email IS NOT NULL)`),
+  ]
+)
+
+// =============================================================================
+// RATE LIMITING
+// =============================================================================
+
+/**
+ * Fixed-window counters for throttling unauthenticated actions (auth email
+ * dispatch). Keyed by a caller-chosen string such as `auth-email:<address>`
+ * or `auth-email-ip:<ip>`. Rows are transient: `consumeRateLimit` in
+ * `@pts/db/rate-limit` resets expired windows in place and sweeps stale rows.
+ */
+export const rateLimitBuckets = pgTable(
+  'rate_limit_buckets',
+  {
+    key: text().primaryKey().notNull(),
+    windowStart: timestamp('window_start', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+    count: integer().default(0).notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+  },
+  table => [
+    index('idx_rate_limit_buckets_window_start').using(
+      'btree',
+      table.windowStart.asc().nullsLast()
+    ),
   ]
 )
 

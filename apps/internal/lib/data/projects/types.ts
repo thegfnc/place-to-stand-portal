@@ -1,7 +1,7 @@
 import type { DbClientMember, DbTask, DbUser } from '@/lib/types'
 export type MemberWithUser = DbClientMember & { user: DbUser | null }
 
-export type RawTaskAttachment = {
+type RawTaskAttachment = {
   id: string
   task_id: string
   storage_path: string

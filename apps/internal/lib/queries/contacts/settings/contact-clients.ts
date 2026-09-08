@@ -59,7 +59,7 @@ export async function listAllActiveClients(
 /**
  * Fetches the clients linked to a specific contact.
  */
-export async function listContactClients(
+async function listContactClients(
   user: AppUser,
   contactId: string
 ): Promise<ClientOption[]> {
@@ -86,59 +86,6 @@ export async function listContactClients(
     name: row.name,
     slug: row.slug ?? row.id,
   }))
-}
-
-/**
- * Links a client to a contact.
- */
-export async function linkClientToContact(
-  user: AppUser,
-  contactId: string,
-  clientId: string
-): Promise<{ ok: boolean; error?: string }> {
-  assertAdmin(user)
-
-  try {
-    await db.insert(contactClients).values({
-      contactId,
-      clientId,
-    })
-    return { ok: true }
-  } catch (error) {
-    // Handle unique constraint violation
-    if (
-      error instanceof Error &&
-      error.message.includes('unique constraint')
-    ) {
-      return { ok: true } // Already linked, treat as success
-    }
-    return { ok: false, error: 'Failed to link client to contact.' }
-  }
-}
-
-/**
- * Unlinks a client from a contact.
- */
-export async function unlinkClientFromContact(
-  user: AppUser,
-  contactId: string,
-  clientId: string
-): Promise<{ ok: boolean; error?: string }> {
-  assertAdmin(user)
-
-  try {
-    await db
-      .delete(contactClients)
-      .where(
-        and(
-          eq(contactClients.contactId, contactId),
-          eq(contactClients.clientId, clientId)
-        )
-      )
-    return { ok: true }
-  } catch {
-    return { ok: false, error: 'Failed to unlink client from contact.' }
-  }
 }
 
 /**

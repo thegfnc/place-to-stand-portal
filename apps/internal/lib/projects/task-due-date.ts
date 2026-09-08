@@ -12,7 +12,7 @@ export const TASK_DUE_TONE_CLASSES = {
   overdue: 'text-destructive font-medium',
 } as const
 
-export type TaskDueTone = keyof typeof TASK_DUE_TONE_CLASSES
+type TaskDueTone = keyof typeof TASK_DUE_TONE_CLASSES
 
 export type TaskDueMeta = {
   label: string

@@ -22,11 +22,11 @@ import { fetchMonthlyCloseReport } from './monthly-close'
 import { computeDeltas } from './close-drift'
 import type { MonthlyCloseReport } from './types'
 
-export const SNAPSHOT_SCHEMA_VERSION = 1
+const SNAPSHOT_SCHEMA_VERSION = 1
 
 // The snapshot shape and the pure snapshot-vs-live comparison live in
 // ./close-drift so they can be exercised without a database or a session.
-export type { CloseDriftDelta, SnapshotReport } from './close-drift'
+
 import type { CloseDriftDelta, SnapshotReport } from './close-drift'
 
 // ---------------------------------------------------------------------------
@@ -162,7 +162,7 @@ const snapshotEnvelopeSchema = z.object({
   report: snapshotReportSchema,
 })
 
-export type SnapshotParseResult =
+type SnapshotParseResult =
   | { ok: true; report: SnapshotReport }
   | { ok: false; error: string }
 
@@ -172,7 +172,7 @@ export type SnapshotParseResult =
  * version or failed parse returns an explicit error the UI renders as
  * "snapshot unreadable — reopen to re-derive".
  */
-export function parseSnapshotReport(payload: unknown): SnapshotParseResult {
+function parseSnapshotReport(payload: unknown): SnapshotParseResult {
   const parsed = snapshotEnvelopeSchema.safeParse(payload)
 
   if (!parsed.success) {
@@ -210,11 +210,11 @@ const MONTH_NAMES = [
   'December',
 ] as const
 
-export function periodLabel(year: number, month: number): string {
+function periodLabel(year: number, month: number): string {
   return `${MONTH_NAMES[month - 1] ?? `Month ${month}`} ${year}`
 }
 
-export function monthDateRange(
+function monthDateRange(
   year: number,
   month: number
 ): { startDate: string; endDate: string } {
@@ -455,7 +455,7 @@ export async function closedMonthWarning(
 // Snapshot-aware report view + drift detection (F2/F8)
 // ---------------------------------------------------------------------------
 
-export type CloseDriftLateRecord = {
+type CloseDriftLateRecord = {
   kind: 'time_log' | 'hour_block'
   id: string
   clientName: string | null

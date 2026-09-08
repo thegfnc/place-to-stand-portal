@@ -5,5 +5,3 @@ export type Json =
   | null
   | { [key: string]: Json | undefined }
   | Json[]
-
-export type JsonValue = Json

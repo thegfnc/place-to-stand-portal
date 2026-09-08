@@ -13,9 +13,6 @@ import {
 import type { ClientRow } from './client-sheet-utils'
 import { useClientSheetSelection } from './use-client-sheet-selection'
 import { PENDING_REASON } from '@/lib/forms/form-controls'
-
-export type ClientsTab = 'clients' | 'archive' | 'activity'
-
 export type ClientsTableClient = ClientRow & {
   metrics: {
     active_projects: number

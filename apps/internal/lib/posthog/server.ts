@@ -11,14 +11,6 @@ import {
 import type { InteractionEventName } from '@/lib/posthog/types'
 import { INTERACTION_EVENTS } from '@/lib/posthog/types'
 import type { TrackServerSettingsInteractionOptions } from '@/lib/posthog/settings-types'
-
-type ServerEventOptions = {
-  event: string
-  properties?: Record<string, unknown>
-  distinctId?: string
-  groups?: Record<string, string | number>
-}
-
 type ServerInteractionOptions = {
   metadata?: InteractionMetadata
   baseProperties?: InteractionProperties
@@ -56,22 +48,7 @@ async function flushAndClose(client: PostHog) {
   await client.shutdown()
 }
 
-export async function captureServerEvent(options: ServerEventOptions) {
-  const client = createPostHogClient()
-
-  try {
-    client.capture({
-      event: options.event,
-      distinctId: options.distinctId ?? 'server',
-      properties: options.properties,
-      groups: options.groups,
-    })
-  } finally {
-    await flushAndClose(client)
-  }
-}
-
-export async function trackServerInteraction<T>(
+async function trackServerInteraction<T>(
   name: InteractionEventName,
   callback: (client: PostHog) => Promise<T>,
   options?: ServerInteractionOptions,

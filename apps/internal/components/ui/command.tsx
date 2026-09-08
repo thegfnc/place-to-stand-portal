@@ -5,6 +5,7 @@ import { Command as CommandPrimitive } from 'cmdk'
 import { SearchIcon } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
+import { scoreSearchMatch } from '@/lib/utils/search-match'
 import {
   Dialog,
   DialogContent,
@@ -15,11 +16,15 @@ import {
 
 function Command({
   className,
+  // Plain substring/token matching instead of cmdk's fuzzy scorer — see
+  // lib/utils/search-match.ts. Callers can still pass their own `filter`.
+  filter = scoreSearchMatch,
   ...props
 }: React.ComponentProps<typeof CommandPrimitive>) {
   return (
     <CommandPrimitive
       data-slot='command'
+      filter={filter}
       className={cn(
         'bg-popover text-popover-foreground flex h-full w-full flex-col overflow-hidden rounded-md',
         className

@@ -38,7 +38,7 @@ export function isUserAccess(
 
 // PRD 004 §03: per-view sort allowlist (D6/R5). Each field here has a
 // matching descriptor (order expr + cursor encode/compare) in the query.
-export const USER_SORT_FIELDS = ['name', 'created'] as const
+const USER_SORT_FIELDS = ['name', 'created'] as const
 export type UserSortField = (typeof USER_SORT_FIELDS)[number]
 
 export const DEFAULT_USERS_SORT = {

@@ -1,37 +1,5 @@
-import { AllSelection, NodeSelection, Selection, TextSelection } from "@tiptap/pm/state"
+import { AllSelection, NodeSelection, TextSelection } from "@tiptap/pm/state"
 import type { Editor } from "@tiptap/react"
-
-/**
- * Moves the focus to the next node in the editor
- * @param editor - The editor instance
- * @returns boolean indicating if the focus was moved
- */
-export function focusNextNode(editor: Editor) {
-  const { state, view } = editor
-  const { doc, selection } = state
-
-  const nextSel = Selection.findFrom(selection.$to, 1, true)
-  if (nextSel) {
-    view.dispatch(state.tr.setSelection(nextSel).scrollIntoView())
-    return true
-  }
-
-  const paragraphType = state.schema.nodes.paragraph
-  if (!paragraphType) {
-    console.warn("No paragraph node type found in schema.")
-    return false
-  }
-
-  const end = doc.content.size
-  const para = paragraphType.create()
-  let tr = state.tr.insert(end, para)
-
-  // Place the selection inside the new paragraph
-  const $inside = tr.doc.resolve(end + 1)
-  tr = tr.setSelection(TextSelection.near($inside)).scrollIntoView()
-  view.dispatch(tr)
-  return true
-}
 
 /**
  * Checks if a value is a valid number (not null, undefined, or NaN)
@@ -115,45 +83,3 @@ export function selectionWithinConvertibleTypes(
 
   return false
 }
-
-/**
- * Selects the entire content of the current block node if the selection is empty.
- * If the selection is not empty, it does nothing.
- * @param editor The Tiptap editor instance
- */
-export function selectCurrentBlockContent(editor: Editor) {
-  const { selection, doc } = editor.state
-
-  if (!selection.empty) return
-
-  const $pos = selection.$from
-  let blockNode = null
-  let blockPos = -1
-
-  for (let depth = $pos.depth; depth >= 0; depth--) {
-    const node = $pos.node(depth)
-    const pos = $pos.start(depth)
-
-    if (node.isBlock && node.textContent.trim()) {
-      blockNode = node
-      blockPos = pos
-      break
-    }
-  }
-
-  if (blockNode && blockPos >= 0) {
-    const from = blockPos
-    const to = blockPos + blockNode.nodeSize - 2 // -2 to exclude the closing tag
-
-    if (from < to) {
-      const $from = doc.resolve(from)
-      const $to = doc.resolve(to)
-      const newSelection = TextSelection.between($from, $to, 1)
-
-      if (newSelection && !selection.eq(newSelection)) {
-        editor.view.dispatch(editor.state.tr.setSelection(newSelection))
-      }
-    }
-  }
-}
-

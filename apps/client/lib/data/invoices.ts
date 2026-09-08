@@ -7,7 +7,7 @@ import { db } from '@/lib/db'
 import { clients, invoiceLineItems, invoices } from '@pts/db/schema'
 import type { AppUser } from '@/lib/auth/session'
 import { resolvePortalScope } from '@/lib/auth/view-as'
-import type { InvoiceWithLineItems } from '@/lib/invoices/invoice-types'
+import type { InvoiceWithLineItems } from '@pts/pdf'
 
 /**
  * Statuses a client may see. DRAFT is excluded everywhere in this file — an
@@ -15,7 +15,7 @@ import type { InvoiceWithLineItems } from '@/lib/invoices/invoice-types'
  * query rather than the component means there is no route (list *or* PDF) that
  * can surface one.
  */
-export type ClientInvoiceStatusValue = 'SENT' | 'VIEWED' | 'PAID' | 'VOID'
+type ClientInvoiceStatusValue = 'SENT' | 'VIEWED' | 'PAID' | 'VOID'
 
 export type ClientInvoice = {
   id: string
@@ -139,7 +139,7 @@ export const fetchClientInvoiceSummary = cache(
 )
 
 /**
- * One invoice with its line items, in the snake_case shape `invoice-pdf.ts`
+ * One invoice with its line items, in the snake_case shape `@pts/pdf`
  * expects.
  *
  * Returns null rather than throwing when the invoice is out of scope, missing,

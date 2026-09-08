@@ -10,7 +10,7 @@
  * route via `claimsPathname`.
  */
 
-export const SHEET_ENTITY_KEYS = [
+const SHEET_ENTITY_KEYS = [
   'task',
   'lead',
   'client',

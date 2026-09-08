@@ -10,13 +10,13 @@ import { createSearchPattern } from '@/lib/pagination/cursor'
 
 const RESULT_LIMIT = 8
 
-export type PaletteClientResult = {
+type PaletteClientResult = {
   id: string
   name: string
   slug: string | null
 }
 
-export type PaletteProjectResult = {
+type PaletteProjectResult = {
   id: string
   name: string
   /** URL client segment: client slug, 'internal', or 'personal'. */
@@ -26,7 +26,7 @@ export type PaletteProjectResult = {
   clientLabel: string | null
 }
 
-export type PaletteContactResult = {
+type PaletteContactResult = {
   id: string
   name: string
   email: string

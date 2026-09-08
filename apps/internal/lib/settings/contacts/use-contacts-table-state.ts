@@ -14,9 +14,6 @@ import { useSheetParamSelection } from '@/lib/sheets/use-sheet-params'
 
 import type { ContactSheetInput } from './use-contact-sheet-state'
 import { PENDING_REASON } from '@/lib/forms/form-controls'
-
-export type ContactsTab = 'contacts' | 'archive' | 'activity'
-
 export type ContactsTableContact = {
   id: string
   email: string

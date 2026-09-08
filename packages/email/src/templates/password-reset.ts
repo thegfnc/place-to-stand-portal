@@ -1,8 +1,4 @@
-import {
-  formatExpiryWindow,
-  renderEmail,
-  type RenderedEmail,
-} from '../layout'
+import { formatExpiryWindow, renderEmail, type RenderedEmail } from '../layout'
 
 export type PasswordResetEmailArgs = {
   /** One-time link from `admin.generateLink({ type: 'recovery' })`. */

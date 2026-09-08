@@ -20,7 +20,7 @@ type ProtocolConfig = Array<ProtocolOptions | string>
 const ATTR_WHITESPACE =
   /[\u0000-\u0020\u00A0\u1680\u180E\u2000-\u2029\u205F\u3000]/g
 
-export function isAllowedUri(
+function isAllowedUri(
   uri: string | undefined,
   protocols?: ProtocolConfig
 ) {

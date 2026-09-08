@@ -16,7 +16,7 @@ export const PRODUCTION_API_URL = 'https://portal.placetostandagency.com'
 export const LOCAL_API_URL = 'http://localhost:3000'
 
 /** Production, so a teammate's fresh install works with no setup at all. */
-export const DEFAULT_API_URL = PRODUCTION_API_URL
+const DEFAULT_API_URL = PRODUCTION_API_URL
 
 export type StoredCredentials = {
   email: string
@@ -27,7 +27,7 @@ export type StoredCredentials = {
 /** Keyed by portal URL so local and production sessions can coexist. */
 type CredentialsFile = Record<string, StoredCredentials>
 
-export function normalizeApiUrl(url: string): string {
+function normalizeApiUrl(url: string): string {
   return url.replace(/\/+$/, '')
 }
 

@@ -1,8 +1,7 @@
 import { z } from 'zod'
 
 import {
-  CLIENT_BILLING_TYPE_VALUES,
-  type ClientBillingTypeValue,
+  CLIENT_BILLING_TYPE_VALUES
 } from './billing-types'
 
 export const clientSheetFormSchema = z.object({
@@ -26,4 +25,3 @@ export const clientSheetFormSchema = z.object({
 })
 
 export type ClientSheetFormValues = z.infer<typeof clientSheetFormSchema>
-export type ClientSheetBillingTypeValue = ClientBillingTypeValue

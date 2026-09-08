@@ -90,7 +90,7 @@ export const CLIENT_SORT_DESCRIPTORS: Record<
   },
 }
 
-export const DEFAULT_LIMITS = { defaultLimit: 20, maxLimit: 100 } as const
+const DEFAULT_LIMITS = { defaultLimit: 20, maxLimit: 100 } as const
 
 export function resolvePaginationLimit(limit: number | null | undefined) {
   return clampLimit(limit, DEFAULT_LIMITS)

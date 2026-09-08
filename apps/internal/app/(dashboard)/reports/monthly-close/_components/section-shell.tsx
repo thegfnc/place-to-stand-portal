@@ -144,7 +144,7 @@ export function formatCurrency(amount: number): string {
     : centsCurrencyFormatter.format(amount)
 }
 
-export function formatHours(hours: number): string {
+function formatHours(hours: number): string {
   return hours.toFixed(2)
 }
 

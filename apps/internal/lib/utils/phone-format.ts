@@ -23,23 +23,3 @@ export function formatPhoneUS(value: string): string {
 export function unformatPhone(value: string): string {
   return value.replace(/\D/g, '').slice(0, 10)
 }
-
-/**
- * Validates a US phone number (10 digits)
- */
-export function isValidUSPhone(value: string): boolean {
-  const digits = value.replace(/\D/g, '')
-  return digits.length === 10
-}
-
-/**
- * Formats phone for display (returns formatted or original if incomplete)
- */
-export function displayPhone(value: string | null | undefined): string {
-  if (!value) return ''
-  const digits = value.replace(/\D/g, '')
-  if (digits.length === 10) {
-    return formatPhoneUS(digits)
-  }
-  return value
-}

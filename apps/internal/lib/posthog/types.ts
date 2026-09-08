@@ -9,6 +9,3 @@ export const INTERACTION_EVENTS = {
 
 export type InteractionEventName =
   (typeof INTERACTION_EVENTS)[keyof typeof INTERACTION_EVENTS];
-
-export type PostHogEventProperties = Record<string, unknown>;
-

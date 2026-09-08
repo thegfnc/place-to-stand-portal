@@ -6,7 +6,7 @@ import type { ProductCatalogItemRow } from '@/lib/queries/product-catalog'
 // Row types (snake_case, matching query layer)
 // ---------------------------------------------------------------------------
 
-export type InvoiceRow = {
+type InvoiceRow = {
   id: string
   invoice_number: string | null
   status: string
@@ -67,7 +67,7 @@ export type InvoiceWithLineItems = InvoiceWithClient & {
 // Zod schemas
 // ---------------------------------------------------------------------------
 
-export const invoiceLineItemFormSchema = z.object({
+const invoiceLineItemFormSchema = z.object({
   id: z.string().uuid().optional(),
   productCatalogItemId: z.string().uuid().optional().nullable(),
   description: z.string().min(1, 'Description is required'),
@@ -166,7 +166,7 @@ export const buildInvoiceFormDefaults = (
 // Save payload
 // ---------------------------------------------------------------------------
 
-export type InvoiceLineItemSavePayload = {
+type InvoiceLineItemSavePayload = {
   id?: string
   productCatalogItemId: string | null
   description: string

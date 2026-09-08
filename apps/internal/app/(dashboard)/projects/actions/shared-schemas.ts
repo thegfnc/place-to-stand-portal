@@ -16,7 +16,7 @@ const attachmentToAttachSchema = z.object({
   fileSize: z.number().int().min(1),
 })
 
-export const attachmentsSchema = z.object({
+const attachmentsSchema = z.object({
   toAttach: z.array(attachmentToAttachSchema).default([]),
   toRemove: z.array(z.string().uuid()).default([]),
 })

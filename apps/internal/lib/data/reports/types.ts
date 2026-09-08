@@ -7,7 +7,7 @@ export type MonthCursor = {
   month: number // 1-indexed (1 = January, 12 = December)
 }
 
-export type OriginatorKind = 'user' | 'contact'
+type OriginatorKind = 'user' | 'contact'
 
 // Payroll
 export type PayrollRow = {
@@ -117,7 +117,7 @@ export type Net30Data = {
 
 // Partner Payouts — lump-sum view. Groups Payroll + Origination + Closer
 // by payee so the bookkeeper has one row per check to cut.
-export type PartnerPayoutPayeeKind = 'user' | 'contact'
+type PartnerPayoutPayeeKind = 'user' | 'contact'
 
 export type PartnerPayoutRow = {
   /** `${kind}:${id}` — unique across users and contacts. */

@@ -47,10 +47,6 @@ export const cliUpdateTaskSchema = z
   .refine(payload => Object.keys(payload).length > 0, {
     message: 'Provide at least one field to update.',
   })
-
-export type CliCreateTaskInput = z.infer<typeof cliCreateTaskSchema>
-export type CliUpdateTaskInput = z.infer<typeof cliUpdateTaskSchema>
-
 export const cliTaskListQuerySchema = z.object({
   project: projectRefSchema.optional(),
   status: statusSchema.optional(),

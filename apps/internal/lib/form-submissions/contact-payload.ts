@@ -32,6 +32,8 @@ export const contactPayloadSchema = z.object({
     email: z.email().max(320),
     company: shortText.nullable(),
     website: z.string().trim().max(2048).nullable(),
+    // Optional so a marketing deploy that predates the field still lands.
+    subject: shortText.nullable().optional(),
     message: z.string().trim().max(10000),
     marketingConsent: z.boolean(),
   }),
@@ -78,6 +80,7 @@ export function toContactSubmissionRow(
     contactEmail: contact.email,
     contactCompany: contact.company,
     contactWebsite: contact.website,
+    subject: contact.subject ?? null,
     message: contact.message,
     marketingConsent: contact.marketingConsent,
 

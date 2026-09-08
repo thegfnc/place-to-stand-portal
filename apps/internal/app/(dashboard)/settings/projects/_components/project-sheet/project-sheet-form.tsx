@@ -42,6 +42,11 @@ import type {
 import { useSheetFormControls } from '@/lib/hooks/use-sheet-form-controls'
 import type { ProjectSheetFieldState } from './project-sheet-field-state'
 import { GitHubReposSection, type PendingRepo } from './github-repos-section'
+import {
+  IntegrationLinksSection,
+  type PendingIntegrationLink,
+} from './integration-links-section'
+import type { ProjectSheetLinkChanges } from '@/lib/settings/projects/use-project-sheet-state'
 
 const PROJECT_FORM_ID = 'project-form'
 
@@ -57,8 +62,7 @@ export type ProjectSheetFormProps = {
   deleteButton: DeleteButtonState
   onSubmit: (
     values: ProjectSheetFormValues,
-    pendingRepos: PendingRepo[],
-    removedRepoIds: string[]
+    changes: ProjectSheetLinkChanges
   ) => void
   onRequestDelete: () => void
   onReposDirtyChange: (isDirty: boolean) => void
@@ -89,9 +93,16 @@ export function ProjectSheetForm(props: ProjectSheetFormProps) {
   const [pendingRepos, setPendingRepos] = useState<PendingRepo[]>([])
   const [removedRepoIds, setRemovedRepoIds] = useState<Set<string>>(new Set())
 
+  // Hosting links (Vercel, Supabase) follow the same deferred-apply pattern.
+  const [pendingLinks, setPendingLinks] = useState<PendingIntegrationLink[]>([])
+  const [removedLinkIds, setRemovedLinkIds] = useState<Set<string>>(new Set())
+  const [reposDirty, setReposDirty] = useState(false)
+
   // Refs for accessing current state in submit handler
   const pendingReposRef = useRef<PendingRepo[]>([])
   const removedRepoIdsRef = useRef<Set<string>>(new Set())
+  const pendingLinksRef = useRef<PendingIntegrationLink[]>([])
+  const removedLinkIdsRef = useRef<Set<string>>(new Set())
 
   // Keep refs in sync with state
   useEffect(() => {
@@ -101,6 +112,20 @@ export function ProjectSheetForm(props: ProjectSheetFormProps) {
   useEffect(() => {
     removedRepoIdsRef.current = removedRepoIds
   }, [removedRepoIds])
+
+  useEffect(() => {
+    pendingLinksRef.current = pendingLinks
+  }, [pendingLinks])
+
+  useEffect(() => {
+    removedLinkIdsRef.current = removedLinkIds
+  }, [removedLinkIds])
+
+  // The parent tracks one "links dirty" flag covering repos and hosting.
+  const linksDirty = pendingLinks.length > 0 || removedLinkIds.size > 0
+  useEffect(() => {
+    onReposDirtyChange(reposDirty || linksDirty)
+  }, [reposDirty, linksDirty, onReposDirtyChange])
 
   const handlePendingReposChange = useCallback((repos: PendingRepo[]) => {
     setPendingRepos(repos)
@@ -114,9 +139,13 @@ export function ProjectSheetForm(props: ProjectSheetFormProps) {
     (e?: React.BaseSyntheticEvent) => {
       e?.preventDefault()
       // Convert removedRepoIds Set to array for submission
-      const removedRepoIdsArray = Array.from(removedRepoIdsRef.current)
       form.handleSubmit(values =>
-        onSubmit(values, pendingReposRef.current, removedRepoIdsArray)
+        onSubmit(values, {
+          pendingRepos: pendingReposRef.current,
+          removedRepoIds: Array.from(removedRepoIdsRef.current),
+          pendingIntegrationLinks: pendingLinksRef.current,
+          removedIntegrationLinkIds: Array.from(removedLinkIdsRef.current),
+        })
       )(e)
     },
     [form, onSubmit]
@@ -129,12 +158,16 @@ export function ProjectSheetForm(props: ProjectSheetFormProps) {
   type ReposExternalState = {
     pendingRepos: PendingRepo[]
     removedRepoIds: string[]
+    pendingLinks?: PendingIntegrationLink[]
+    removedLinkIds?: string[]
   }
 
   const getExternalState = useCallback(
     (): ReposExternalState => ({
       pendingRepos: pendingReposRef.current,
       removedRepoIds: Array.from(removedRepoIdsRef.current),
+      pendingLinks: pendingLinksRef.current,
+      removedLinkIds: Array.from(removedLinkIdsRef.current),
     }),
     []
   )
@@ -144,6 +177,8 @@ export function ProjectSheetForm(props: ProjectSheetFormProps) {
     if (reposState) {
       setPendingRepos(reposState.pendingRepos)
       setRemovedRepoIds(new Set(reposState.removedRepoIds))
+      setPendingLinks(reposState.pendingLinks ?? [])
+      setRemovedLinkIds(new Set(reposState.removedLinkIds ?? []))
     }
   }, [])
 
@@ -161,7 +196,13 @@ export function ProjectSheetForm(props: ProjectSheetFormProps) {
   // Notify undo/redo system when repos change
   useEffect(() => {
     notifyExternalChange()
-  }, [pendingRepos, removedRepoIds, notifyExternalChange])
+  }, [
+    pendingRepos,
+    removedRepoIds,
+    pendingLinks,
+    removedLinkIds,
+    notifyExternalChange,
+  ])
 
   const firstFieldRef = useRef<HTMLInputElement>(null)
   const projectType =
@@ -463,7 +504,25 @@ export function ProjectSheetForm(props: ProjectSheetFormProps) {
             removedRepoIds={removedRepoIds}
             onPendingReposChange={handlePendingReposChange}
             onRemovedRepoIdsChange={handleRemovedRepoIdsChange}
-            onDirtyChange={onReposDirtyChange}
+            onDirtyChange={setReposDirty}
+          />
+
+          <IntegrationLinksSection
+            provider='VERCEL'
+            projectId={projectId}
+            pendingLinks={pendingLinks}
+            removedLinkIds={removedLinkIds}
+            onPendingLinksChange={setPendingLinks}
+            onRemovedLinkIdsChange={setRemovedLinkIds}
+          />
+
+          <IntegrationLinksSection
+            provider='SUPABASE'
+            projectId={projectId}
+            pendingLinks={pendingLinks}
+            removedLinkIds={removedLinkIds}
+            onPendingLinksChange={setPendingLinks}
+            onRemovedLinkIdsChange={setRemovedLinkIds}
           />
 
           {feedback ? (

@@ -9,7 +9,7 @@ import { LEAD_UPDATE_TYPES } from '@/lib/leads/updates'
 
 // The body is TipTap HTML (like task_comments), so markup overhead counts
 // toward this — same ceiling as the comments API.
-export const MAX_UPDATE_BODY_LENGTH = 10_000
+const MAX_UPDATE_BODY_LENGTH = 10_000
 
 export const leadUpdateTypeSchema = z.enum(LEAD_UPDATE_TYPES)
 

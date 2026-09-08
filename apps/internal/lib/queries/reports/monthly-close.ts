@@ -38,7 +38,7 @@ type PayrollQueryRow = {
   totalHours: string | null
 }
 
-export type OriginatorKind = 'user' | 'contact'
+type OriginatorKind = 'user' | 'contact'
 
 export type OriginationQueryRow = {
   originatorKind: OriginatorKind

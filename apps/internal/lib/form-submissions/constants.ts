@@ -57,7 +57,7 @@ export const FORM_SUBMISSION_KIND_TOKENS: Record<FormSubmissionKind, string> = {
  * `apps/internal/lib/queries/form-submissions.ts` (`buildFilters`
  * unacknowledgedOnly + `countUnacknowledgedFormSubmissions`).
  */
-export const ATTENTION_AUDIT_STATUSES = [
+const ATTENTION_AUDIT_STATUSES = [
   'completed',
   'captured',
 ] as const satisfies readonly FormSubmissionStatus[]

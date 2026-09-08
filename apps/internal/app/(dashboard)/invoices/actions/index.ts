@@ -7,14 +7,4 @@ export { archiveInvoice } from './archive-invoice'
 export { restoreInvoice } from './restore-invoice'
 export { destroyInvoice } from './destroy-invoice'
 
-export type {
-  ActionResult,
-  SendResult,
-  InvoiceInput,
-  DeleteInput,
-  RestoreInput,
-  DestroyInput,
-  SendInput,
-  UnsendInput,
-  VoidInput,
-} from './types'
+

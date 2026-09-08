@@ -1,8 +1,6 @@
 import {
   activitySource,
   clientBillingType,
-  leadSourceType,
-  leadStatus,
   projectType,
   taskStatus,
   userRole,
@@ -11,12 +9,10 @@ import {
 
 export type UserRoleValue = (typeof userRole.enumValues)[number]
 export type ActivitySourceValue = (typeof activitySource.enumValues)[number]
-export type TaskStatusValue = (typeof taskStatus.enumValues)[number]
+type TaskStatusValue = (typeof taskStatus.enumValues)[number]
 export type ClientBillingTypeValue =
   (typeof clientBillingType.enumValues)[number]
 export type ProjectTypeValue = (typeof projectType.enumValues)[number]
-export type LeadStatusValue = (typeof leadStatus.enumValues)[number]
-export type LeadSourceTypeValue = (typeof leadSourceType.enumValues)[number]
 export type WorkerStatusValue = (typeof workerStatus.enumValues)[number]
 
 export type DbClient = {
@@ -95,7 +91,7 @@ export type DbUser = {
   disabled_at?: string | null
 }
 
-export type DbTaskComment = {
+type DbTaskComment = {
   id: string
   task_id: string
   author_id: string
@@ -105,7 +101,7 @@ export type DbTaskComment = {
   deleted_at: string | null
 }
 
-export type DbTimeLog = {
+type DbTimeLog = {
   id: string
   project_id: string
   user_id: string
@@ -116,16 +112,6 @@ export type DbTimeLog = {
   updated_at: string
   deleted_at: string | null
 }
-
-export type DbTimeLogTask = {
-  id: string
-  time_log_id: string
-  task_id: string
-  created_at: string
-  updated_at: string
-  deleted_at: string | null
-}
-
 export type DbTaskAttachment = {
   id: string
   task_id: string
@@ -180,25 +166,6 @@ export type TaskWithRelations = DbTask & {
   loggedHours: number
   attachments?: DbTaskAttachment[]
 }
-
-export type DbLead = {
-  id: string
-  contact_name: string
-  status: LeadStatusValue
-  source_type: LeadSourceTypeValue | null
-  source_detail: string | null
-  assignee_id: string | null
-  contact_email: string | null
-  contact_phone: string | null
-  company_name: string | null
-  company_website: string | null
-  notes: Record<string, unknown>
-  created_at: string
-  updated_at: string
-  deleted_at: string | null
-  rank: string
-}
-
 export type TaskCommentAuthor = {
   id: string
   full_name: string | null
@@ -214,7 +181,7 @@ export type TimeLogWithUser = DbTimeLog & {
   user: DbUser | null
 }
 
-export type ProjectBurndownSummary = {
+type ProjectBurndownSummary = {
   totalClientPurchasedHours: number
   totalClientLoggedHours: number
   totalClientRemainingHours: number
@@ -222,6 +189,8 @@ export type ProjectBurndownSummary = {
   projectMonthToDateLoggedHours: number
   lastLogAt: string | null
 }
+
+import type { ProjectIntegrationLinkSummary } from '@/lib/types/integrations'
 
 export type GitHubRepoLinkSummary = {
   id: string
@@ -244,4 +213,5 @@ export type ProjectWithRelations = DbProject & {
   acceptedTasks: TaskWithRelations[]
   burndown: ProjectBurndownSummary
   githubRepos: GitHubRepoLinkSummary[]
+  integrationLinks: ProjectIntegrationLinkSummary[]
 }

@@ -17,7 +17,6 @@ import {
 } from '@/lib/db/schema'
 import { NotFoundError } from '@/lib/errors/http'
 import type { TimeLogEntry } from '@/lib/projects/time-log/types'
-import type { DbTimeLog } from '@/lib/types'
 import type { UserRoleValue } from '@/lib/types'
 
 const DEFAULT_HISTORY_LIMIT = 10
@@ -57,19 +56,6 @@ type TimeLogTaskSelection = {
     deletedAt: string | null
   } | null
 }
-
-type DbTimeLogSelection = {
-  id: string
-  projectId: string
-  userId: string
-  hours: string | null
-  loggedOn: string
-  note: string | null
-  createdAt: string
-  updatedAt: string
-  deletedAt: string | null
-}
-
 export type ProjectTimeLogList = {
   logs: TimeLogEntry[]
   totalCount: number
@@ -300,47 +286,3 @@ export async function getTimeLogEntryById(
 
   return entry
 }
-
-export async function getTimeLogById(
-  user: AppUser,
-  timeLogId: string,
-): Promise<DbTimeLog> {
-  await ensureTimeLogAccess(user, timeLogId)
-
-  const rows = (await db
-    .select({
-      id: timeLogs.id,
-      projectId: timeLogs.projectId,
-      userId: timeLogs.userId,
-      hours: timeLogs.hours,
-      loggedOn: timeLogs.loggedOn,
-      note: timeLogs.note,
-      createdAt: timeLogs.createdAt,
-      updatedAt: timeLogs.updatedAt,
-      deletedAt: timeLogs.deletedAt,
-    })
-    .from(timeLogs)
-    .where(eq(timeLogs.id, timeLogId))
-    .limit(1)) as DbTimeLogSelection[]
-
-  if (!rows.length) {
-    throw new NotFoundError('Time log not found')
-  }
-
-  return mapDbTimeLogSelection(rows[0]!)
-}
-
-function mapDbTimeLogSelection(selection: DbTimeLogSelection): DbTimeLog {
-  return {
-    id: selection.id,
-    project_id: selection.projectId,
-    user_id: selection.userId,
-    hours: Number(selection.hours ?? '0'),
-    logged_on: selection.loggedOn,
-    note: selection.note,
-    created_at: selection.createdAt,
-    updated_at: selection.updatedAt,
-    deleted_at: selection.deletedAt,
-  }
-}
-

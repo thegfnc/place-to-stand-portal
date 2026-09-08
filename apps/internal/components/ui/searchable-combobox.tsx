@@ -100,6 +100,13 @@ export const SearchableCombobox = React.forwardRef<
     const [open, setOpen] = React.useState(false)
     const triggerRef = React.useRef<HTMLButtonElement | null>(null)
     const [contentWidth, setContentWidth] = React.useState<number>()
+    // Natural width of the popup measured once per open, while every option
+    // is still rendered. Freezing it stops the popup from reflowing as
+    // filtering hides the widest options.
+    const [lockedWidth, setLockedWidth] = React.useState<number>()
+    const contentRef = React.useCallback((node: HTMLDivElement | null) => {
+      setLockedWidth(node ? node.offsetWidth : undefined)
+    }, [])
 
     const mergedRef = React.useMemo(() => {
       if (!forwardedRef) {
@@ -194,8 +201,9 @@ export const SearchableCombobox = React.forwardRef<
         // Min-width (not width): the popover never shrinks below the
         // trigger but grows to fit no-wrap options (My Tasks person list).
         ...(contentWidth ? { minWidth: contentWidth } : {}),
+        ...(lockedWidth ? { width: lockedWidth } : {}),
       }
-    }, [contentWidth])
+    }, [contentWidth, lockedWidth])
 
     const selectedTextClasses = 'font-medium'
     const placeholderTextClasses = 'text-muted-foreground'
@@ -255,6 +263,7 @@ export const SearchableCombobox = React.forwardRef<
             )}
           </PopoverTrigger>
           <PopoverContent
+            ref={contentRef}
             align='start'
             className='w-full max-w-full overflow-hidden p-0'
             sideOffset={8}

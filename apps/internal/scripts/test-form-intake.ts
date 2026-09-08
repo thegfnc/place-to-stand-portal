@@ -247,7 +247,7 @@ async function main() {
       progress: { furthestStepIndex: 3, stepsTotal: 4, answeredCount: 4, questionsTotal: 4, percentComplete: 100, durationMs: 30_000 },
       responses: responses(4),
       result: RESULT,
-      lead: { name: 'Dana Reed', email: `dana+${sessionId.slice(0, 8)}@example.com`, company: 'Acme Co.', marketingConsent: true },
+      lead: { name: 'Dana Reed', email: `dana+${sessionId.slice(0, 8)}@example.com`, company: 'Acme Co.', message: 'We run everything on spreadsheets.', marketingConsent: true },
     }),
   ]) {
     const { status } = await submitAudit(beacon)
@@ -261,6 +261,7 @@ async function main() {
   check('top service denormalized to highest score', captured?.topServiceId === 'workflow-automation', captured?.topServiceId)
   check('phase denormalized', captured?.phaseId === 'growth', captured?.phaseId)
   check('contact captured', captured?.contactName === 'Dana Reed', captured?.contactName)
+  check('lead message stored', captured?.message === 'We run everything on spreadsheets.', captured?.message)
   check('captured_at set', captured?.capturedAt !== null)
   // Real beacons arrive via the marketing site's proxy route, so OUR request
   // header is that proxy's Node fetch agent. The visitor's browser UA only
@@ -324,6 +325,7 @@ async function main() {
       email: `sam+${submissionId.slice(0, 8)}@example.com`,
       company: null,
       website: null,
+      subject: 'Referral Program',
       message: 'Interested in a workflow audit.',
       marketingConsent: false,
     },
@@ -336,6 +338,7 @@ async function main() {
   const contactRow = await readRow(submissionId)
   check('kind is contact', contactRow?.kind === 'contact', contactRow?.kind)
   check('status is captured', contactRow?.status === 'captured', contactRow?.status)
+  check('subject stored', contactRow?.subject === 'Referral Program', contactRow?.subject)
   check('message stored', contactRow?.message === 'Interested in a workflow audit.')
   check('attribution stored', contactRow?.utmCampaign === 'ai-audit-q3', contactRow?.utmCampaign)
   check('audit columns null', contactRow?.responses === null && contactRow?.percentComplete === null)

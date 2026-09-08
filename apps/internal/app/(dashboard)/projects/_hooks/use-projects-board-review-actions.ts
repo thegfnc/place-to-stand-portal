@@ -11,8 +11,8 @@ import {
 } from '../actions'
 import type { ActionResult } from '../actions/action-types'
 
-export type ReviewActionKind = 'accept' | 'unaccept' | 'restore' | 'destroy'
-export type ReviewActionState = { type: ReviewActionKind; taskId: string }
+type ReviewActionKind = 'accept' | 'unaccept' | 'restore' | 'destroy'
+type ReviewActionState = { type: ReviewActionKind; taskId: string }
 
 export type UseProjectsBoardReviewActionsArgs = {
   activeProjectId: string | null

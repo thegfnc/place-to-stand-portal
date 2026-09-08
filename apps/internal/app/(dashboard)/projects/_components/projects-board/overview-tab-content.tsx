@@ -3,6 +3,8 @@
 import Link from 'next/link'
 import { Calendar, Info } from 'lucide-react'
 import { siGithub } from 'simple-icons/icons'
+import { IntegrationProviderIcon } from '@/components/integrations/provider-icon'
+import { formatIntegrationLinkLabel } from '@/lib/types/integrations'
 
 import { Avatar, AvatarFallback, AvatarImage } from '@pts/ui/avatar'
 import { Badge } from '@/components/ui/badge'
@@ -200,6 +202,30 @@ function ProjectDetailsWidget({
                 >
                   <SimpleIcon icon={siGithub} className='h-3.5 w-3.5' />
                   <span className='font-medium'>{repo.repoFullName}</span>
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
+        {project.integrationLinks.length > 0 && (
+          <div className='flex items-center gap-3 px-4 py-2.5'>
+            <span className='text-muted-foreground text-sm'>Hosting</span>
+            <div className='ml-auto flex flex-col items-end gap-1'>
+              {project.integrationLinks.map(link => (
+                <a
+                  key={link.id}
+                  href={link.url}
+                  target='_blank'
+                  rel='noopener noreferrer'
+                  className='text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-sm transition-colors'
+                >
+                  <IntegrationProviderIcon
+                    provider={link.provider}
+                    className='h-3.5 w-3.5'
+                  />
+                  <span className='font-medium'>
+                    {formatIntegrationLinkLabel(link)}
+                  </span>
                 </a>
               ))}
             </div>

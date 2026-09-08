@@ -32,21 +32,3 @@ export class NotFoundError extends HttpError {
     super(message, 404, options)
   }
 }
-
-export type HttpException =
-  | BadRequestError
-  | UnauthorizedError
-  | ForbiddenError
-  | NotFoundError
-  | HttpError
-
-export function toResponsePayload(error: HttpException) {
-  return {
-    status: error.status,
-    body: {
-      ok: false,
-      error: error.message,
-    },
-  }
-}
-

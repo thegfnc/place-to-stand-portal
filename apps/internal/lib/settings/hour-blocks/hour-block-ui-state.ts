@@ -19,8 +19,8 @@ export type DeleteButtonState = {
 }
 
 
-export { PENDING_REASON }
-export const MISSING_CLIENT_REASON =
+
+const MISSING_CLIENT_REASON =
   'Create a client before logging hour blocks.'
 
 export const deriveClientFieldState = (

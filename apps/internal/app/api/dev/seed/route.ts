@@ -13,6 +13,11 @@ import {
 import { and, eq, isNull } from 'drizzle-orm'
 
 export async function POST() {
+  // Hard guard: never available in production (matches dev/make-me-admin)
+  if (process.env.NODE_ENV === 'production') {
+    return NextResponse.json({ error: 'Not available' }, { status: 404 })
+  }
+
   const user = await requireUser()
   assertAdmin(user)
 

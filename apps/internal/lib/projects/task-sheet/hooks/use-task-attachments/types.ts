@@ -24,7 +24,7 @@ export type AttachmentItem = {
   url: string | null
 }
 
-export type AttachmentSubmission = {
+type AttachmentSubmission = {
   toAttach: Array<{
     path: string
     originalName: string

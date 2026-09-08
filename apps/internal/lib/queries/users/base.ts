@@ -1,25 +1,14 @@
 import 'server-only'
 
-import { and, desc, eq, isNull, sql } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
 
 import type { AppUser } from '@/lib/auth/session'
 import { assertAdmin } from '@/lib/auth/permissions'
 import { db } from '@/lib/db'
-import { clientMembers, taskAssignees, users } from '@/lib/db/schema'
+import { users } from '@/lib/db/schema'
 import { NotFoundError } from '@/lib/errors/http'
 
 import { userFields, type SelectUser } from './fields'
-
-export type UserWithAssignmentCounts = SelectUser & {
-  clientsCount: number
-  tasksCount: number
-}
-
-export async function listUsers(user: AppUser): Promise<SelectUser[]> {
-  assertAdmin(user)
-
-  return db.select(userFields).from(users).orderBy(desc(users.createdAt))
-}
 
 export async function getUserById(
   user: AppUser,
@@ -39,54 +28,3 @@ export async function getUserById(
 
   return result[0]
 }
-
-export async function listUsersWithAssignmentCounts(
-  user: AppUser,
-): Promise<UserWithAssignmentCounts[]> {
-  assertAdmin(user)
-
-  const rows = await db
-    .select({
-      user: userFields,
-      clientsCount: sql<number>`count(distinct ${clientMembers.id})`,
-      tasksCount: sql<number>`count(distinct ${taskAssignees.id})`,
-    })
-    .from(users)
-    .leftJoin(
-      clientMembers,
-      and(eq(clientMembers.userId, users.id), isNull(clientMembers.deletedAt)),
-    )
-    .leftJoin(
-      taskAssignees,
-      and(eq(taskAssignees.userId, users.id), isNull(taskAssignees.deletedAt)),
-    )
-    .groupBy(
-      users.id,
-      users.email,
-      users.fullName,
-      users.avatarUrl,
-      users.role,
-      users.createdAt,
-      users.updatedAt,
-      users.deletedAt,
-      users.disabledAt,
-      users.onboardingCompletedAt,
-    )
-    .orderBy(desc(users.createdAt))
-
-  return rows.map(row => ({
-    id: row.user.id,
-    email: row.user.email,
-    fullName: row.user.fullName,
-    avatarUrl: row.user.avatarUrl,
-    role: row.user.role,
-    createdAt: row.user.createdAt,
-    updatedAt: row.user.updatedAt,
-    deletedAt: row.user.deletedAt,
-    disabledAt: row.user.disabledAt,
-    onboardingCompletedAt: row.user.onboardingCompletedAt,
-    clientsCount: Number(row.clientsCount ?? 0),
-    tasksCount: Number(row.tasksCount ?? 0),
-  }))
-}
-

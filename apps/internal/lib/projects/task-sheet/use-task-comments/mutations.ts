@@ -18,7 +18,7 @@ import type { CommentActivityMetadata } from './types'
 type CommentsCache = InfiniteData<TaskCommentsPage, string | null>
 
 /** Marks a row that exists only until the server round-trip lands. */
-export const OPTIMISTIC_COMMENT_ID_PREFIX = 'optimistic-'
+const OPTIMISTIC_COMMENT_ID_PREFIX = 'optimistic-'
 
 export function isOptimisticComment(commentId: string): boolean {
   return commentId.startsWith(OPTIMISTIC_COMMENT_ID_PREFIX)

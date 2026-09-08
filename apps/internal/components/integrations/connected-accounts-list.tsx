@@ -9,6 +9,13 @@ import { Badge } from '@/components/ui/badge'
 import { formatCalendarDate } from '@/lib/dates'
 import { ConfirmDialog } from '@pts/ui/confirm-dialog'
 
+const PROVIDER_NAMES = {
+  google: 'Google',
+  github: 'GitHub',
+  vercel: 'Vercel',
+  supabase: 'Supabase',
+} as const
+
 export interface ConnectedAccount {
   id: string
   email: string | null
@@ -25,7 +32,7 @@ export interface ConnectedAccount {
 }
 
 interface ConnectedAccountsListProps {
-  provider: 'google' | 'github'
+  provider: 'google' | 'github' | 'vercel' | 'supabase'
   accounts: ConnectedAccount[]
   onDisconnect: (id: string) => Promise<void>
   onAddAccount: () => void
@@ -91,7 +98,7 @@ export function ConnectedAccountsList({
   const formatDate = (dateString: string) =>
     formatCalendarDate(dateString) ?? '—'
 
-  const providerName = provider === 'google' ? 'Google' : 'GitHub'
+  const providerName = PROVIDER_NAMES[provider]
   const activeAccounts = accounts.filter(a => a.status === 'ACTIVE')
 
   if (activeAccounts.length === 0) {
@@ -177,16 +184,6 @@ export function ConnectedAccountsList({
             </div>
           )
         })}
-
-        <Button
-          onClick={onAddAccount}
-          variant="outline"
-          size="sm"
-          className="w-full"
-        >
-          <Plus className="mr-2 h-4 w-4" />
-          Add Another {providerName} Account
-        </Button>
       </div>
 
       <ConfirmDialog

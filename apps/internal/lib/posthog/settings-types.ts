@@ -3,11 +3,11 @@ import type {
   InteractionProperties,
 } from '@/lib/perf/interaction-marks'
 
-export type SettingsEntity = 'client' | 'contact' | 'project' | 'hour_block' | 'invoice' | 'user'
+type SettingsEntity = 'client' | 'contact' | 'project' | 'hour_block' | 'invoice' | 'user'
 
-export type SettingsMode = 'create' | 'edit' | 'delete' | 'restore' | 'destroy' | 'send' | 'unsend' | 'void'
+type SettingsMode = 'create' | 'edit' | 'delete' | 'restore' | 'destroy' | 'send' | 'unsend' | 'void'
 
-export type SettingsInteractionContext = {
+type SettingsInteractionContext = {
   entity: SettingsEntity
   mode: SettingsMode
   targetId?: string | null

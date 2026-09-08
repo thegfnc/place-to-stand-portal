@@ -20,8 +20,6 @@ export function generateTemporaryPassword() {
   return randomBytes(18).toString('base64url').slice(0, 18)
 }
 
-export const userAdminClient = getSupabaseServiceClient
-
 export async function finalizeUserAvatar(options: {
   client: ReturnType<typeof getSupabaseServiceClient>
   avatarPath?: string | null

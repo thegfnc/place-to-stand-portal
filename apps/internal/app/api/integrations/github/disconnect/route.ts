@@ -54,10 +54,16 @@ export async function POST(request: Request) {
     })
   }
 
-  // Soft delete from database
+  // Soft delete and drop the ciphertext: a disconnected row must not keep a
+  // working credential around (matches lib/integrations/connections.ts).
   await db
     .update(oauthConnections)
-    .set({ deletedAt: new Date().toISOString() })
+    .set({
+      accessToken: '',
+      refreshToken: null,
+      status: 'REVOKED',
+      deletedAt: new Date().toISOString(),
+    })
     .where(eq(oauthConnections.id, connection.id))
 
   // Log activity

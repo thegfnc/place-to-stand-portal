@@ -9,6 +9,7 @@ import {
   sendPasswordChangedEmail,
   sendPasswordResetEmail,
 } from '@/lib/email/auth-emails'
+import { allowAuthEmail } from '@/lib/auth/throttle'
 import { getEnv } from '@/lib/env.server'
 import { getSupabaseServerClient } from '@/lib/supabase/server'
 import { getSupabaseServiceClient } from '@/lib/supabase/service'
@@ -72,11 +73,10 @@ export async function notifyPasswordChanged(): Promise<AuthEmailResult> {
 /**
  * Mints a one-time token and mails it with our own template.
  *
- * NOTE: this path uses the admin API, which does *not* consume Supabase's
- * per-hour `email_sent` rate limit — the limit that used to throttle these
- * forms. The sign-in page's client-side cooldown is now the only brake, and it
- * is trivially bypassed, so nothing server-side stops repeated requests from
- * mailing a known address. Worth a real throttle before the portal has clients.
+ * This path uses the admin API, which does *not* consume Supabase's per-hour
+ * `email_sent` rate limit, so `allowAuthEmail` provides the server-side brake
+ * (per address and per IP) that the sign-in page's client-side cooldown only
+ * pretends to.
  */
 async function dispatch(
   email: string,
@@ -91,6 +91,10 @@ async function dispatch(
   // is neither, and letting it fall through there turns a broken deployment into
   // a cheerful "check your inbox" with nothing behind it.
   assertAuthEmailConfigured()
+
+  // Same silent return as an unknown address: the caller must not be able to
+  // tell "throttled" from "no account".
+  if (!(await allowAuthEmail(parsed.data))) return
 
   try {
     const { data, error } = await getSupabaseServiceClient().auth.admin.generateLink(

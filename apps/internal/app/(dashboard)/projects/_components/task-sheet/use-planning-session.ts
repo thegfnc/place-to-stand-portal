@@ -10,7 +10,7 @@ import {
 } from '../../actions/planning'
 import { DEFAULT_PLANNING_TIER, getModelLabel } from '@/lib/planning/models'
 
-export const PLANNING_SESSION_KEY = 'planning-session'
+const PLANNING_SESSION_KEY = 'planning-session'
 
 const DEFAULT_MODEL = DEFAULT_PLANNING_TIER
 const DEFAULT_LABEL = getModelLabel(DEFAULT_PLANNING_TIER)

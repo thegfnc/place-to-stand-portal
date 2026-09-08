@@ -17,8 +17,8 @@ import { sendEmail } from "@/lib/email/send";
  */
 const LINK_EXPIRY_MINUTES = 60;
 
-/** How the internal app refers to itself in mail — not the client portal. */
-const DESTINATION = "the Place To Stand internal portal";
+/** How the admin portal refers to itself in mail — not the client portal. */
+const DESTINATION = "the Place To Stand admin portal";
 
 type AuthEmailTemplate = (args: {
   actionLink: string;

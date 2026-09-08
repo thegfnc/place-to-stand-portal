@@ -302,7 +302,7 @@ export const useTaskAttachments = ({
 
 export type {
   AttachmentItem,
-  AttachmentSubmission,
+  
   UseTaskAttachmentsArgs,
   UseTaskAttachmentsReturn,
 } from './types'

@@ -9,7 +9,7 @@ import {
   type SearchableComboboxItem,
 } from '@/components/ui/searchable-combobox'
 
-export const ALL_CLIENTS_VALUE = 'all'
+const ALL_CLIENTS_VALUE = 'all'
 
 export type ClientSelectorOption = {
   id: string

@@ -39,10 +39,6 @@ export function parseSortParam<F extends string>(
   return { field: field as F, direction }
 }
 
-export function serializeSort(sort: ParsedSort): string {
-  return `${sort.field}:${sort.direction}`
-}
-
 /**
  * Field-tagged cursor payload: the active sort identity (field + direction)
  * plus the boundary row's value and id tie-breaker. `value: null` marks a

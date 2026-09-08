@@ -7,7 +7,7 @@ const schema = z.object({
 
 let _env: z.infer<typeof schema> | undefined
 
-export function getEnv() {
+function getEnv() {
   if (!_env) {
     _env = schema.parse({
       NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,

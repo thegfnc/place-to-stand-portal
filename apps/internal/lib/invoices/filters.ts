@@ -24,7 +24,7 @@ export function isInvoiceStatus(
 
 // PRD 004 §03: per-view sort allowlist (D6/R5). Offset pagination — each
 // field maps to an ORDER BY swap in `listInvoices`.
-export const INVOICE_SORT_FIELDS = ['created', 'number'] as const
+const INVOICE_SORT_FIELDS = ['created', 'number'] as const
 export type InvoiceSortField = (typeof INVOICE_SORT_FIELDS)[number]
 
 export const DEFAULT_INVOICES_SORT = {

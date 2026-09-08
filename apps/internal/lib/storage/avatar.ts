@@ -69,7 +69,7 @@ export function resolveAvatarExtension(mimeType: string) {
   return ACCEPTED_AVATAR_EXTENSIONS[mimeType as keyof typeof ACCEPTED_AVATAR_EXTENSIONS];
 }
 
-export function inferAvatarExtensionFromPath(path: string) {
+function inferAvatarExtensionFromPath(path: string) {
   const segments = path.split(".");
   return segments.length > 1 ? segments.pop() ?? null : null;
 }

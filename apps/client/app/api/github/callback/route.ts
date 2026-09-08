@@ -5,6 +5,7 @@ import { eq } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { githubAppInstallations } from '@pts/db/schema'
 import { getCurrentUser } from '@/lib/auth/session'
+import { safeRedirectPath } from '@/lib/auth/callback'
 import { ensureClientAccess } from '@/lib/auth/permissions'
 import { getEnv } from '@/lib/env.server'
 import { getInstallationById } from '@pts/github/app-auth'
@@ -27,7 +28,10 @@ export async function GET(request: NextRequest) {
   const cookieStore = await cookies()
   const returnClientId = cookieStore.get('github_app_return_client')?.value
   const returnProjectId = cookieStore.get('github_app_return_project')?.value
-  const returnTo = cookieStore.get('github_app_return_to')?.value
+  const rawReturnTo = cookieStore.get('github_app_return_to')?.value
+  // The install route only stores relative paths, but the cookie is still
+  // client-controlled, so re-check before resolving it against request.url.
+  const returnTo = rawReturnTo ? safeRedirectPath(rawReturnTo) : null
 
   // Build redirect paths — returnTo cookie takes precedence, then projectId,
   // then home (there is no standalone GitHub setup page in this app; the
@@ -35,7 +39,7 @@ export async function GET(request: NextRequest) {
   let errorPath: string
   let successPath: string
 
-  if (returnTo) {
+  if (returnTo && returnTo !== '/') {
     errorPath = `${returnTo}?github=error`
     successPath = `${returnTo}?github=installed`
   } else if (returnProjectId) {

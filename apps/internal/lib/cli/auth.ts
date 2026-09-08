@@ -6,7 +6,7 @@ import { getSupabaseServiceClient } from '@/lib/supabase/service'
 
 const SIGN_IN_HINT = 'Run `pts login` to authenticate.'
 
-export function readBearerToken(request: Request): string | null {
+function readBearerToken(request: Request): string | null {
   const header = request.headers.get('authorization')
 
   if (!header) {

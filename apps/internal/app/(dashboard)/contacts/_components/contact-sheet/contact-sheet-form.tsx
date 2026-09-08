@@ -30,7 +30,7 @@ import {
 const FEEDBACK_CLASSES =
   'border-destructive/40 bg-destructive/10 text-destructive rounded-md border px-3 py-2 text-sm'
 
-export const CONTACT_FORM_ID = 'contact-form'
+const CONTACT_FORM_ID = 'contact-form'
 
 type ContactFormValues = {
   email: string

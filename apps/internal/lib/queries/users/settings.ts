@@ -18,7 +18,7 @@ import {
   type UsersSettingsAssignments,
 } from './assignments'
 
-export type UsersSettingsListItem = SelectUser
+type UsersSettingsListItem = SelectUser
 
 export type ListUsersForSettingsInput = {
   status?: 'active' | 'archived'

@@ -46,7 +46,7 @@ import { getSubmitLabel } from '@/lib/forms/form-controls'
 const FEEDBACK_CLASSES =
   'border-destructive/40 bg-destructive/10 text-destructive rounded-md border px-3 py-2 text-sm'
 
-export const CLIENT_FORM_ID = 'client-form'
+const CLIENT_FORM_ID = 'client-form'
 
 /** "Sep 1, 2026"-style label for the first of the month `offset` months out. */
 function formatMonthStart(offset: number): string {

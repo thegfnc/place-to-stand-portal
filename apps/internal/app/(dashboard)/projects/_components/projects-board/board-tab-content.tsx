@@ -1,4 +1,5 @@
 import { useCallback, useRef, type RefObject, type UIEventHandler } from 'react'
+import type { ProjectIntegrationLinkSummary } from '@/lib/types/integrations'
 import {
   DndContext,
   type CollisionDetection,
@@ -38,6 +39,7 @@ export type ProjectsBoardActiveProject = {
   starts_on: string | null
   ends_on: string | null
   githubRepos: { id: string; repoFullName: string; defaultBranch: string }[]
+  integrationLinks: ProjectIntegrationLinkSummary[]
   burndown: {
     totalClientRemainingHours: number
     totalProjectLoggedHours: number

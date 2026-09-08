@@ -2,7 +2,7 @@ import { parseSortParam, type ParsedSort } from '@/lib/pagination/sort'
 
 // PRD 004 §03: per-view sort allowlist (D6/R5). The single field has a
 // matching descriptor (order expr + cursor encode/compare) in the query.
-export const HOUR_BLOCK_SORT_FIELDS = ['created'] as const
+const HOUR_BLOCK_SORT_FIELDS = ['created'] as const
 export type HourBlockSortField = (typeof HOUR_BLOCK_SORT_FIELDS)[number]
 
 export const DEFAULT_HOUR_BLOCKS_SORT = {

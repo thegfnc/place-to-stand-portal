@@ -1,9 +1,6 @@
 import 'server-only'
 
 import { and, inArray, isNull, sql } from 'drizzle-orm'
-
-import type { AppUser } from '@/lib/auth/session'
-import { assertAdmin } from '@/lib/auth/permissions'
 import { db } from '@/lib/db'
 import { clientMembers, taskAssignees } from '@/lib/db/schema'
 
@@ -71,40 +68,3 @@ export async function buildAssignmentsForUsers(
 
   return assignments
 }
-
-export async function getActiveClientMembershipCounts(user: AppUser) {
-  assertAdmin(user)
-
-  const rows = await db
-    .select({
-      userId: clientMembers.userId,
-      total: sql<number>`count(*)`.mapWith(Number).as('total'),
-    })
-    .from(clientMembers)
-    .where(isNull(clientMembers.deletedAt))
-    .groupBy(clientMembers.userId)
-
-  return rows.reduce<Record<string, number>>((acc, row) => {
-    acc[row.userId] = row.total
-    return acc
-  }, {})
-}
-
-export async function getActiveTaskAssignmentCounts(user: AppUser) {
-  assertAdmin(user)
-
-  const rows = await db
-    .select({
-      userId: taskAssignees.userId,
-      total: sql<number>`count(*)`.mapWith(Number).as('total'),
-    })
-    .from(taskAssignees)
-    .where(isNull(taskAssignees.deletedAt))
-    .groupBy(taskAssignees.userId)
-
-  return rows.reduce<Record<string, number>>((acc, row) => {
-    acc[row.userId] = row.total
-    return acc
-  }, {})
-}
-

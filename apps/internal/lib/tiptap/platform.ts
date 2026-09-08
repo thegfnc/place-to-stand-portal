@@ -10,7 +10,7 @@ export function cn(
  * Determines if the current platform is macOS
  * @returns boolean indicating if the current platform is Mac
  */
-export function isMac(): boolean {
+function isMac(): boolean {
   return (
     typeof navigator !== "undefined" &&
     navigator.platform.toLowerCase().includes("mac")
@@ -24,7 +24,7 @@ export function isMac(): boolean {
  * @param capitalize - Whether to capitalize the key (default: true)
  * @returns Formatted shortcut key symbol
  */
-export const formatShortcutKey = (
+const formatShortcutKey = (
   key: string,
   isMacPlatform: boolean,
   capitalize: boolean = true

@@ -10,7 +10,7 @@ export type LinkedClient = {
   slug: string
 }
 
-export type ContactListMetrics = {
+type ContactListMetrics = {
   totalClients: number
   clients: LinkedClient[]
 }

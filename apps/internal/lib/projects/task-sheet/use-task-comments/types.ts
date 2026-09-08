@@ -1,6 +1,4 @@
 import type { TaskCommentWithAuthor } from '@/lib/types'
-import type { Json } from '@/lib/types/json'
-
 export type UseTaskCommentsOptions = {
   taskId: string | null
   projectId: string
@@ -56,11 +54,4 @@ export type CommentActivityMetadata = {
   taskId: string
   commentId: string
   bodyLength?: number
-}
-
-export type ActivityPayload = {
-  actorId: string
-  targetProjectId: string
-  targetClientId: string | null
-  metadata: Json
 }

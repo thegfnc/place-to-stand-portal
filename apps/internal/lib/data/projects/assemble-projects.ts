@@ -70,6 +70,8 @@ export function assembleProjectsWithRelations({
       timeLogTotalsByProject
     ),
     githubRepos: relations.githubReposByProject.get(project.id) ?? [],
+    integrationLinks:
+      relations.integrationLinksByProject.get(project.id) ?? [],
   }))
 }
 

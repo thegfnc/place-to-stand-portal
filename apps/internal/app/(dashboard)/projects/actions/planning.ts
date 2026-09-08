@@ -9,8 +9,7 @@ import {
   createSession,
   getThreadsForSession,
   createThread,
-  getRevisions,
-  getMessages,
+  getRevisions
 } from '@/lib/queries/planning'
 
 // ---------------------------------------------------------------------------
@@ -22,7 +21,7 @@ const getOrCreateSessionSchema = z.object({
   repoLinkId: z.string().uuid(),
 })
 
-export type PlanThreadGenerationStatus = 'idle' | 'streaming' | 'error'
+type PlanThreadGenerationStatus = 'idle' | 'streaming' | 'error'
 
 export type PlanningSessionData = {
   sessionId: string
@@ -134,7 +133,7 @@ const fetchRevisionsSchema = z.object({
   threadId: z.string().uuid(),
 })
 
-export type PlanRevisionData = {
+type PlanRevisionData = {
   id: string
   version: number
   content: string
@@ -168,21 +167,3 @@ export async function fetchPlanRevisions(input: {
 // ---------------------------------------------------------------------------
 // Fetch Messages (for resuming conversation context)
 // ---------------------------------------------------------------------------
-
-export async function fetchPlanMessages(input: { threadId: string }) {
-  await requireUser()
-
-  const parsed = fetchRevisionsSchema.safeParse(input)
-  if (!parsed.success) return { error: 'Invalid payload.' }
-
-  const messages = await getMessages(parsed.data.threadId)
-
-  return {
-    messages: messages.map(m => ({
-      id: m.id,
-      role: m.role,
-      content: m.content,
-      createdAt: m.createdAt,
-    })),
-  }
-}

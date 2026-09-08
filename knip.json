@@ -1,0 +1,22 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "ignore": [
+    "apps/internal/lib/supabase/types.ts",
+    "apps/internal/components/ui/**",
+    "apps/client/components/ui/**",
+    "apps/internal/components/tiptap-*/**",
+    "apps/internal/hooks/use-composed-ref.ts",
+    "apps/internal/hooks/use-element-rect.ts",
+    "apps/internal/hooks/use-throttled-callback.ts",
+    "apps/internal/hooks/use-unmount.ts"
+  ],
+  "ignoreDependencies": ["server-only", "postcss-load-config"],
+  "workspaces": {
+    ".": {},
+    "apps/internal": {
+      "entry": ["scripts/*.{ts,tsx}"],
+      "ignoreDependencies": ["prettier-plugin-tailwindcss"],
+      "ignoreBinaries": ["tsx"]
+    }
+  }
+}

@@ -1,7 +1,7 @@
 import type { ActivitySourceValue, UserRoleValue } from '@/lib/types'
 import type { Json } from '@/lib/types/json'
 
-export type DbActivityLog = {
+type DbActivityLog = {
   id: string
   actor_id: string | null
   actor_role: UserRoleValue | null
@@ -99,6 +99,8 @@ export const ActivityVerbs = {
   GITHUB_REPO_LINKED: 'GITHUB_REPO_LINKED',
   GITHUB_REPO_UNLINKED: 'GITHUB_REPO_UNLINKED',
   GITHUB_PR_CREATED: 'GITHUB_PR_CREATED',
+  INTEGRATION_PROJECT_LINKED: 'INTEGRATION_PROJECT_LINKED',
+  INTEGRATION_PROJECT_UNLINKED: 'INTEGRATION_PROJECT_UNLINKED',
   PR_SUGGESTION_CREATED: 'PR_SUGGESTION_CREATED',
   PR_SUGGESTION_APPROVED: 'PR_SUGGESTION_APPROVED',
   PR_SUGGESTION_REJECTED: 'PR_SUGGESTION_REJECTED',

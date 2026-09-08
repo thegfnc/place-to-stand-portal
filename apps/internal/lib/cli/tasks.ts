@@ -24,7 +24,7 @@ export async function resolveProjectId(
   return project.resolvedId
 }
 
-export async function loadSerializedTask(
+async function loadSerializedTask(
   user: AppUser,
   taskId: string
 ): Promise<CliTask> {

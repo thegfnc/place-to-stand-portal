@@ -18,7 +18,7 @@ import {
   PopoverTrigger,
 } from '@pts/ui/popover'
 
-export type ClientContactOption = {
+type ClientContactOption = {
   id: string
   name: string | null
   email: string

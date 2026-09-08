@@ -20,7 +20,7 @@ const TASK_STATUS_TOKENS = {
   DONE: 'border-transparent bg-slate-200 text-slate-700 dark:bg-slate-700/60 dark:text-slate-200',
 } as const
 
-export type ClientTaskStatus = keyof typeof TASK_STATUS_LABELS
+type ClientTaskStatus = keyof typeof TASK_STATUS_LABELS
 
 export function getTaskStatusLabel(value: string): string {
   return value in TASK_STATUS_LABELS

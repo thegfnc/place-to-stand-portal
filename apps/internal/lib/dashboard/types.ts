@@ -1,11 +1,3 @@
-export type RecentlyViewedSummary = {
-  id: string
-  name: string
-  href: string
-  touchedAt: string
-  contextLabel?: string | null
-}
-
 export type MonthCursor = {
   month: number
   year: number

@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/searchable-combobox'
 import type { DbUser } from '@/lib/types'
 
-export const ALL_TASKS_VALUE = 'all'
+const ALL_TASKS_VALUE = 'all'
 
 type PersonSelectorProps = {
   admins: DbUser[]

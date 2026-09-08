@@ -26,7 +26,7 @@ function singularizeLabel(label: string) {
   return label.endsWith('s') ? label.slice(0, -1) : label
 }
 
-export type PageShellCount = {
+type PageShellCount = {
   /** Plural noun, e.g. 'clients'. */
   label: string
   total: number

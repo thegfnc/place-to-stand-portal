@@ -5,7 +5,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { fetchPlanRevisions } from '../../actions/planning'
 
-export const PLAN_REVISIONS_KEY = 'plan-revisions'
+const PLAN_REVISIONS_KEY = 'plan-revisions'
 
 export function usePlanRevisions(threadId: string | null, enabled: boolean) {
   const queryClient = useQueryClient()

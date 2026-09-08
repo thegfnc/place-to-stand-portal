@@ -134,6 +134,65 @@ export function TaskSheetFormFields(props: TaskSheetFormFieldsProps) {
       <div className='grid gap-4 sm:grid-cols-2'>
         <FormField
           control={form.control}
+          name='projectId'
+          render={({ field }) => {
+            const disabled = isPending || !canManage
+            const reason = resolveDisabledReason(disabled)
+            const selectedValue = field.value ?? ''
+
+            return (
+              <FormItem>
+                <FormLabel>Project</FormLabel>
+                <FormControl>
+                  <DisabledFieldTooltip disabled={disabled} reason={reason}>
+                    <SearchableCombobox
+                      items={projectItems}
+                      groups={projectGroups}
+                      value={selectedValue}
+                      onChange={field.onChange}
+                      onBlur={field.onBlur}
+                      name={field.name}
+                      placeholder='Select project'
+                      searchPlaceholder='Search projects...'
+                      emptyMessage='No projects found.'
+                      disabled={disabled}
+                    />
+                  </DisabledFieldTooltip>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )
+          }}
+        />
+        <FormField
+          control={form.control}
+          name='dueOn'
+          render={({ field }) => {
+            const disabled = isPending || !canManage
+            const reason = resolveDisabledReason(disabled)
+
+            return (
+              <FormItem>
+                <FormLabel>Due date</FormLabel>
+                <FormControl>
+                  <DisabledFieldTooltip disabled={disabled} reason={reason}>
+                    <Input
+                      type='date'
+                      value={field.value ?? ''}
+                      onChange={field.onChange}
+                      disabled={disabled}
+                    />
+                  </DisabledFieldTooltip>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )
+          }}
+        />
+      </div>
+      <div className='grid gap-4 sm:grid-cols-2'>
+        <FormField
+          control={form.control}
           name='status'
           render={({ field }) => {
             const disabled = isPending || !canManage
@@ -192,33 +251,6 @@ export function TaskSheetFormFields(props: TaskSheetFormFieldsProps) {
         />
         <FormField
           control={form.control}
-          name='dueOn'
-          render={({ field }) => {
-            const disabled = isPending || !canManage
-            const reason = resolveDisabledReason(disabled)
-
-            return (
-              <FormItem>
-                <FormLabel>Due date</FormLabel>
-                <FormControl>
-                  <DisabledFieldTooltip disabled={disabled} reason={reason}>
-                    <Input
-                      type='date'
-                      value={field.value ?? ''}
-                      onChange={field.onChange}
-                      disabled={disabled}
-                    />
-                  </DisabledFieldTooltip>
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )
-          }}
-        />
-      </div>
-      <div className='grid gap-4 sm:grid-cols-2'>
-        <FormField
-          control={form.control}
           name='assigneeId'
           render={({ field }) => {
             const disabled = isPending || !canManage
@@ -245,38 +277,6 @@ export function TaskSheetFormFields(props: TaskSheetFormFieldsProps) {
                       placeholder='Select assignee'
                       searchPlaceholder='Search collaborators...'
                       emptyMessage='No eligible collaborators found.'
-                      disabled={disabled}
-                    />
-                  </DisabledFieldTooltip>
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )
-          }}
-        />
-        <FormField
-          control={form.control}
-          name='projectId'
-          render={({ field }) => {
-            const disabled = isPending || !canManage
-            const reason = resolveDisabledReason(disabled)
-            const selectedValue = field.value ?? ''
-
-            return (
-              <FormItem>
-                <FormLabel>Project</FormLabel>
-                <FormControl>
-                  <DisabledFieldTooltip disabled={disabled} reason={reason}>
-                    <SearchableCombobox
-                      items={projectItems}
-                      groups={projectGroups}
-                      value={selectedValue}
-                      onChange={field.onChange}
-                      onBlur={field.onBlur}
-                      name={field.name}
-                      placeholder='Select project'
-                      searchPlaceholder='Search projects...'
-                      emptyMessage='No projects found.'
                       disabled={disabled}
                     />
                   </DisabledFieldTooltip>

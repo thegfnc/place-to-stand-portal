@@ -4,7 +4,7 @@ import { parseSortParam, type ParsedSort } from '@/lib/pagination/sort'
 // paginated, so each field here needs only a matching ORDER BY expression in
 // the query — no cursor descriptors. `received` maps to last_activity_at,
 // the column the Received column renders and today's hardcoded order.
-export const SUBMISSION_SORT_FIELDS = ['received'] as const
+const SUBMISSION_SORT_FIELDS = ['received'] as const
 export type SubmissionSortField = (typeof SUBMISSION_SORT_FIELDS)[number]
 
 export const DEFAULT_SUBMISSIONS_SORT = {

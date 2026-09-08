@@ -9,7 +9,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
  * changes can never read as "filtered" (no `Showing N of M`, no
  * filtered-empty messaging).
  */
-export type ListFilterConfig = {
+type ListFilterConfig = {
   /** Raw-value validator; invalid params don't count as active (PRD-003 R4). */
   isValid?: (value: string) => boolean
   /**

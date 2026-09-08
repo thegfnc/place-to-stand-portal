@@ -9,7 +9,7 @@ import type { ClientTask, ProjectTasks } from '@/lib/data/tasks'
  * Shared by the project page (inside a bordered card) and the dashboard's
  * expandable project rows, so both render the same work identically.
  */
-export function TaskRows({ tasks }: { tasks: ClientTask[] }) {
+function TaskRows({ tasks }: { tasks: ClientTask[] }) {
   return (
     <ul className="divide-y divide-border">
       {tasks.map(task => (

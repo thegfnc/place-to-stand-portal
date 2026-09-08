@@ -1,5 +1,3 @@
-import { sql } from 'drizzle-orm'
-
 import { clients, projects, users } from '@/lib/db/schema'
 import type { ProjectStatusValue } from '@/lib/constants'
 import type { ProjectTypeValue } from '@/lib/types'
@@ -113,29 +111,3 @@ export type ProjectSelectionResult = {
   updatedAt: string
   deletedAt: string | null
 }
-
-export function buildProjectCursorCondition(
-  direction: CursorDirection,
-  cursor: { name?: string | null; id?: string | null } | null,
-) {
-  if (!cursor) {
-    return null
-  }
-
-  const nameValue =
-    typeof cursor.name === 'string' ? cursor.name : (cursor.name ?? '')
-  const idValue = typeof cursor.id === 'string' ? cursor.id : ''
-
-  if (!idValue) {
-    return null
-  }
-
-  const normalizedName = sql`coalesce(${projects.name}, '')`
-
-  if (direction === 'forward') {
-    return sql`${normalizedName} > ${nameValue} OR (${normalizedName} = ${nameValue} AND ${projects.id} > ${idValue})`
-  }
-
-  return sql`${normalizedName} < ${nameValue} OR (${normalizedName} = ${nameValue} AND ${projects.id} < ${idValue})`
-}
-

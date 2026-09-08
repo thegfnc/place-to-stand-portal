@@ -20,7 +20,7 @@ export const buildClientOptions = (clients: ClientRow[]): ClientOption[] =>
     keywords: client.deleted_at ? [client.name, 'archived'] : [client.name],
   }))
 
-export const NO_INVOICE_OPTION: InvoiceOption = {
+const NO_INVOICE_OPTION: InvoiceOption = {
   value: '',
   label: 'No invoice',
   keywords: ['none', 'no invoice'],

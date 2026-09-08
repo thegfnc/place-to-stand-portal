@@ -38,7 +38,7 @@ export type AdminUserForOwner = {
   avatar_url: string | null
 }
 
-export const UNASSIGNED_OWNER_OPTION: OwnerOption = {
+const UNASSIGNED_OWNER_OPTION: OwnerOption = {
   value: '',
   label: 'Unassigned',
   keywords: ['unassigned', 'none', 'no owner'],

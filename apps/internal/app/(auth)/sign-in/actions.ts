@@ -5,6 +5,8 @@ import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 
+import { allowAuthEmail } from "@/lib/auth/throttle";
+
 import { ensureUserProfile } from "@/lib/auth/profile";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
@@ -138,6 +140,12 @@ export async function sendMagicLink(input: {
     headersList.get("origin") ??
     serverEnv.APP_BASE_URL ??
     "http://localhost:3000";
+
+  // Same response as an unknown address: "throttled" must not be
+  // distinguishable from "no account".
+  if (!(await allowAuthEmail(email.toLowerCase()))) {
+    return { success: true };
+  }
 
   try {
     // `generateLink` never creates an account, which is what `shouldCreateUser:

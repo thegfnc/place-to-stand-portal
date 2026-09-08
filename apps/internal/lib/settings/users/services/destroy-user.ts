@@ -8,6 +8,7 @@ import {
   taskAssignees,
   users,
 } from '@/lib/db/schema'
+import { revokeUserOauthConnections } from '@/lib/oauth/revoke-user-connections'
 import { getSupabaseServiceClient } from '@/lib/supabase/service'
 import { getUserById } from '@/lib/queries/users'
 
@@ -53,6 +54,15 @@ export async function destroyPortalUser(
       console.error(`Failed to remove user ${context}`, error)
       return { error: `Unable to remove user ${context}.` }
     }
+  }
+
+  // The users FK cascades oauth_connections away, but revoke at the
+  // providers first while the ciphertext still exists to decrypt.
+  try {
+    await revokeUserOauthConnections(input.id)
+  } catch (error) {
+    console.error('Failed to revoke provider connections before destroy', error)
+    return { error: 'Unable to revoke user provider connections.' }
   }
 
   try {

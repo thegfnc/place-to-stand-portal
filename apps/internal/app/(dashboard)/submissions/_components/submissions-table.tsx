@@ -49,7 +49,7 @@ import {
   getClickableRowProps,
 } from '@/lib/table/clickable-row'
 
-export type SubmissionsTableMode = 'active' | 'archive'
+type SubmissionsTableMode = 'active' | 'archive'
 
 const EMPTY_STATE_COPY: Record<SubmissionsTableMode, string> = {
   active: 'No submissions yet.',

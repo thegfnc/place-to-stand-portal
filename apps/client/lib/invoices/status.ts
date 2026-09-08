@@ -22,7 +22,7 @@ const INVOICE_STATUS_TOKENS = {
   VOID: 'border-transparent bg-slate-200 text-slate-700 dark:bg-slate-700/60 dark:text-slate-200',
 } as const
 
-export type ClientInvoiceStatus = keyof typeof INVOICE_STATUS_LABELS
+type ClientInvoiceStatus = keyof typeof INVOICE_STATUS_LABELS
 
 export function getInvoiceStatusLabel(value: string): string {
   return value in INVOICE_STATUS_LABELS

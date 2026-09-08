@@ -3,6 +3,7 @@ import { cookies } from 'next/headers'
 import { nanoid } from 'nanoid'
 
 import { getCurrentUser } from '@/lib/auth/session'
+import { safeRedirectPath } from '@/lib/auth/callback'
 import { ensureClientAccess } from '@/lib/auth/permissions'
 import { getEnv } from '@/lib/env.server'
 
@@ -67,8 +68,10 @@ export async function GET(request: Request) {
     })
   }
 
+  // Relative paths only: the callback resolves this against the request URL,
+  // so an absolute value here would become an open redirect off the portal.
   const returnTo = url.searchParams.get('returnTo')
-  if (returnTo) {
+  if (returnTo && safeRedirectPath(returnTo) === returnTo) {
     cookieStore.set('github_app_return_to', returnTo, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',

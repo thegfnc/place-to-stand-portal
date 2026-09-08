@@ -32,7 +32,7 @@ export function getProjectStatusLabel(value: string): string {
     .join(" ");
 }
 
-export const PROJECT_STATUS_TOKENS: Record<ProjectStatusValue, string> = {
+const PROJECT_STATUS_TOKENS: Record<ProjectStatusValue, string> = {
   ONBOARDING:
     "border-transparent bg-blue-100 text-blue-800 dark:bg-blue-500/10 dark:text-blue-300",
   ACTIVE:
@@ -52,7 +52,7 @@ export function getProjectStatusToken(value: string): string {
   return "border border-border bg-accent text-accent-foreground";
 }
 
-export const STATUS_BADGE_TOKENS = {
+const STATUS_BADGE_TOKENS = {
   active: PROJECT_STATUS_TOKENS.ACTIVE,
   depleted:
     "border-transparent bg-amber-100 text-amber-800 dark:bg-amber-500/10 dark:text-amber-300",
@@ -62,7 +62,7 @@ export const STATUS_BADGE_TOKENS = {
     "border-transparent bg-slate-200 text-slate-900 dark:bg-slate-500/10 dark:text-slate-200",
 } as const;
 
-export type StatusBadgeValue = keyof typeof STATUS_BADGE_TOKENS;
+type StatusBadgeValue = keyof typeof STATUS_BADGE_TOKENS;
 
 export function getStatusBadgeToken(value: string): string {
   const normalized = value.toLowerCase() as StatusBadgeValue;

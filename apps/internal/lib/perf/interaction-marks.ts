@@ -3,7 +3,7 @@ import type { InteractionEventName } from "@/lib/posthog/types";
 export type InteractionMetadata = Record<string, unknown>;
 export type InteractionProperties = Record<string, unknown>;
 
-export type InteractionEmitPayload = {
+type InteractionEmitPayload = {
   name: InteractionEventName;
   metadata?: InteractionMetadata;
   properties?: InteractionProperties;
@@ -61,21 +61,3 @@ export function startInteraction(
     },
   };
 }
-
-export async function measureInteraction<T>(
-  name: InteractionEventName,
-  callback: () => Promise<T>,
-  options?: InteractionOptions
-): Promise<T> {
-  const handle = startInteraction(name, options);
-
-  try {
-    const result = await callback();
-    handle.end({ status: "success" });
-    return result;
-  } catch (error) {
-    handle.end({ status: "error" });
-    throw error;
-  }
-}
-

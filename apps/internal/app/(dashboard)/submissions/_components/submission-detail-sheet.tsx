@@ -375,6 +375,12 @@ export function SubmissionDetailSheet({
                   label='Website'
                   value={value(displaySubmission.contactWebsite)}
                 />
+                {!isAudit && (
+                  <Field
+                    label='Subject'
+                    value={value(displaySubmission.subject)}
+                  />
+                )}
                 <Field
                   label='Marketing consent'
                   value={value(displaySubmission.marketingConsent)}

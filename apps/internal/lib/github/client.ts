@@ -137,34 +137,6 @@ export async function getRepo(
 }
 
 /**
- * Create a pull request
- */
-export async function createPullRequest(
-  userId: string,
-  owner: string,
-  repo: string,
-  params: {
-    title: string
-    body: string
-    head: string
-    base: string
-    draft?: boolean
-  },
-  auth?: GitHubAuth
-): Promise<{ number: number; html_url: string }> {
-  return githubFetch(
-    userId,
-    `/repos/${owner}/${repo}/pulls`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(params),
-    },
-    auth
-  )
-}
-
-/**
  * Get repository branches
  */
 export async function listBranches(
@@ -174,83 +146,6 @@ export async function listBranches(
   auth?: GitHubAuth
 ): Promise<GitHubBranch[]> {
   return githubFetch(userId, `/repos/${owner}/${repo}/branches`, {}, auth)
-}
-
-/**
- * Get a specific branch (to get its SHA)
- */
-export async function getBranch(
-  userId: string,
-  owner: string,
-  repo: string,
-  branch: string,
-  auth?: GitHubAuth
-): Promise<GitHubBranch> {
-  return githubFetch(
-    userId,
-    `/repos/${owner}/${repo}/branches/${encodeURIComponent(branch)}`,
-    {},
-    auth
-  )
-}
-
-/**
- * Create a new branch from a base branch
- */
-export async function createBranch(
-  userId: string,
-  owner: string,
-  repo: string,
-  params: {
-    newBranch: string
-    baseBranch: string
-  },
-  auth?: GitHubAuth
-): Promise<{ ref: string; sha: string }> {
-  // First, get the SHA of the base branch
-  const baseBranchInfo = await getBranch(userId, owner, repo, params.baseBranch, auth)
-  const sha = baseBranchInfo.commit.sha
-
-  // Create the new branch reference
-  const result = await githubFetch<{ ref: string; object: { sha: string } }>(
-    userId,
-    `/repos/${owner}/${repo}/git/refs`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        ref: `refs/heads/${params.newBranch}`,
-        sha,
-      }),
-    },
-    auth
-  )
-
-  return { ref: result.ref, sha: result.object.sha }
-}
-
-/**
- * Check if a branch exists
- * Returns false only for 404 (not found), rethrows other errors (auth, rate limit, network)
- */
-export async function branchExists(
-  userId: string,
-  owner: string,
-  repo: string,
-  branch: string,
-  auth?: GitHubAuth
-): Promise<boolean> {
-  try {
-    await getBranch(userId, owner, repo, branch, auth)
-    return true
-  } catch (error) {
-    // Only treat 404 as "branch doesn't exist"
-    // Rethrow auth errors, rate limits, network errors, etc.
-    if (error instanceof Error && error.message.includes('(404)')) {
-      return false
-    }
-    throw error
-  }
 }
 
 // ---------------------------------------------------------------------------

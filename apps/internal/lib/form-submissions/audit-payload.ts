@@ -90,6 +90,9 @@ export const auditPayloadSchema = z.object({
       name: shortText,
       email: z.email().max(320),
       company: shortText.nullable(),
+      // Optional "anything else we should know" note from the capture form.
+      // Optional so a marketing deploy that predates the field still lands.
+      message: z.string().trim().max(10000).nullable().optional(),
       marketingConsent: z.boolean(),
     })
     .nullable(),
@@ -136,7 +139,8 @@ export function toAuditSubmissionRow(
     contactEmail: lead?.email ?? null,
     contactCompany: lead?.company ?? null,
     contactWebsite: null,
-    message: null,
+    subject: null,
+    message: lead?.message ?? null,
     marketingConsent: lead?.marketingConsent ?? null,
 
     posthogDistinctId: analytics.posthogDistinctId,

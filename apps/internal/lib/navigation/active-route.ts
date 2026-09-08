@@ -10,7 +10,7 @@ type Matchable = {
   matchHrefs?: string[]
 }
 
-export function matchesPath(pathname: string, target: string): boolean {
+function matchesPath(pathname: string, target: string): boolean {
   if (!target) return false
   return pathname === target || pathname.startsWith(`${target}/`)
 }
@@ -18,18 +18,4 @@ export function matchesPath(pathname: string, target: string): boolean {
 export function isNavItemActive(pathname: string, item: Matchable): boolean {
   const candidates = [item.href, ...(item.matchHrefs ?? [])]
   return candidates.some(candidate => matchesPath(pathname, candidate))
-}
-
-export function findActiveNavItem<T extends Matchable>(
-  pathname: string,
-  groups: ReadonlyArray<{ items: readonly T[] }>
-): T | null {
-  for (const group of groups) {
-    for (const item of group.items) {
-      if (isNavItemActive(pathname, item)) {
-        return item
-      }
-    }
-  }
-  return null
 }

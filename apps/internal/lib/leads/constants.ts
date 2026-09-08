@@ -15,7 +15,7 @@ export const LEAD_STATUS_LABELS: Record<LeadStatusValue, string> = {
   UNQUALIFIED: 'Unqualified',
 }
 
-export const LEAD_STATUS_TOKENS: Record<LeadStatusValue, string> = {
+const LEAD_STATUS_TOKENS: Record<LeadStatusValue, string> = {
   NEW_OPPORTUNITIES:
     'border-transparent bg-sky-100 text-sky-800 dark:bg-sky-900/40 dark:text-sky-200',
   ACTIVE_OPPORTUNITIES:
@@ -75,10 +75,6 @@ export const LEAD_BOARD_COLUMNS = [
 
 export const LEAD_STATUS_ORDER = LEAD_BOARD_COLUMNS.map(column => column.id)
 
-export function getLeadStatusLabel(status: LeadStatusValue): string {
-  return LEAD_STATUS_LABELS[status] ?? status
-}
-
 export function getLeadStatusToken(status: LeadStatusValue): string {
   return LEAD_STATUS_TOKENS[status] ?? ''
 }
@@ -99,42 +95,6 @@ export function getLeadSourceLabel(source?: LeadSourceTypeValue | null): string 
   }
 
   return LEAD_SOURCE_LABELS[source] ?? source
-}
-
-/**
- * Definition for a lead board column.
- */
-export type LeadBoardColumn = {
-  id: LeadStatusValue
-  label: string
-  description: string
-}
-
-/**
- * Get the description for a lead status.
- */
-export function getLeadStatusDescription(status: LeadStatusValue): string {
-  const column = LEAD_BOARD_COLUMNS.find(col => col.id === status)
-  return column?.description ?? ''
-}
-
-/**
- * Check if a status represents an open (active) lead.
- */
-export function isOpenLeadStatus(status: LeadStatusValue): boolean {
-  return (
-    status === 'NEW_OPPORTUNITIES' ||
-    status === 'ACTIVE_OPPORTUNITIES' ||
-    status === 'PROPOSAL_SENT' ||
-    status === 'ON_ICE'
-  )
-}
-
-/**
- * Check if a status represents a closed lead.
- */
-export function isClosedLeadStatus(status: LeadStatusValue): boolean {
-  return status === 'CLOSED_WON' || status === 'CLOSED_LOST'
 }
 
 /**

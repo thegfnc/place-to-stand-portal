@@ -20,7 +20,7 @@ import { cn } from '@/lib/utils'
 
 const ALL = 'all'
 
-export type FilterOption = {
+type FilterOption = {
   value: string
   label: string
   /** Optional badge class token for multi-mode triggers (project statuses). */

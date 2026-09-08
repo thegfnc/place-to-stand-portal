@@ -9,7 +9,7 @@ import * as schema from '@pts/db/schema'
  * app writes through), free (no round trip), and — importantly — means the CLI
  * exposes no SQL execution surface at all.
  */
-export type CliColumn = {
+type CliColumn = {
   name: string
   sqlType: string
   nullable: boolean
@@ -19,7 +19,7 @@ export type CliColumn = {
   enumValues: string[] | null
 }
 
-export type CliForeignKey = {
+type CliForeignKey = {
   columns: string[]
   referencesTable: string
   referencesColumns: string[]

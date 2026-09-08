@@ -76,12 +76,13 @@ Turbo v2 uses strict mode by default — only env vars listed in `turbo.json` ar
 - **Framework**: Next.js 16 (App Router) with Turbopack
 - **Database**: PostgreSQL via Supabase with Drizzle ORM (schema in `packages/db`)
 - **Auth**: Supabase Auth with session-based authentication
-- **Storage**: Supabase Storage (buckets: `user-avatars`, `task-attachments`, `email-attachments`)
+- **Storage**: Supabase Storage (buckets: `user-avatars`, `task-attachments`)
 - **State**: React Server Components + TanStack React Query
 - **Styling**: Tailwind CSS v4, Radix UI, shadcn/ui components
 - **Analytics**: PostHog (client and server-side)
 - **Email**: Resend
 - **GitHub Integration**: GitHub App for repo linking (`packages/github`)
+- **Vercel / Supabase linking**: staff personal access tokens stored encrypted in `oauth_connections`; provider adapters in `apps/internal/lib/integrations/`, routes under `api/integrations/[provider]/`
 
 ### Route Organization
 
@@ -158,6 +159,7 @@ Portal access is controlled via `client_members` table. Contacts promoted to por
 - `oauth_connections` - Google/GitHub OAuth connections
 - `github_app_installations` - GitHub App installs per client
 - `github_repo_links` - Repository links per project
+- `project_integration_links` - Vercel/Supabase projects linked to projects (external ids only; access resolved per viewer from their own token in `oauth_connections`)
 - `activity_logs` + `activity_overview_cache` - Activity audit trail
 
 **Key patterns:**
@@ -181,7 +183,7 @@ Portal access is controlled via `client_members` table. Contacts promoted to por
 2. **Data layer** (`apps/internal/lib/data/`) - Business logic assembly
    - Combines multiple queries
    - Enforces permissions
-   - Example: `fetchProjectsWithRelations()` calls `fetchBaseProjects()`, then parallel fetches relations, then assembles final structure
+   - Example: `fetchProjectsForLanding()` calls `fetchBaseProjects()`, then parallel fetches relations, then assembles final structure
    - Uses React `cache()` for automatic deduplication
 
 **Access control:**
@@ -219,9 +221,8 @@ This project does NOT use PostgreSQL Row Level Security. All access control is h
 - `requireRole()` - Role-based access control (defense-in-depth on admin pages)
 
 **Permission helpers** (`apps/internal/lib/auth/permissions.ts`) — all take the `AppUser` object, not a bare user id:
-- `isAdmin(user)` - Boolean role check
 - `assertAdmin(user)` - Throws ForbiddenError if not admin
-- `ensure{Project,Task,TaskComment,TaskAttachment,TimeLog,TimeLogTask}Access(user, id)` - Assert admin + verify the entity exists and is not soft-deleted (NotFoundError)
+- `ensure{Project,Task,TimeLog}Access(user, id)` - Assert admin + verify the entity exists and is not soft-deleted (NotFoundError)
 
 **Roles:**
 - `ADMIN` - Full access to the internal portal
@@ -267,12 +268,10 @@ API responses follow `{ ok: boolean, data?: T, error?: string }` pattern.
 **Supabase Storage setup:**
 - **Bucket: `user-avatars`** - Private bucket with authenticated access (must be created manually)
 - **Bucket: `task-attachments`** - Task files
-- **Bucket: `email-attachments`** - Email attachments (Gmail integration)
 
 **Storage utilities:**
 - `apps/internal/lib/storage/avatar.ts` - Upload/delete user avatars
 - `apps/internal/lib/storage/task-attachments.ts` - Upload/delete task files
-- `apps/internal/lib/storage/email-attachments.ts` - Email attachment storage
 - Signed URLs generated for secure access
 
 ### Activity System
