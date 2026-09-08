@@ -9,6 +9,7 @@ import {
   type RenderedEmail,
 } from '@pts/email'
 import { serverEnv } from '@/lib/env.server'
+import { renderUpdateEmail } from '@/lib/updates/render-email'
 
 export type EmailPortal = 'internal' | 'client'
 
@@ -198,6 +199,61 @@ export function buildEmailTemplateCatalog(): EmailTemplateEntry[] {
             temporaryPassword: 'sample-temporary-password',
             signInUrl: `${internalOrigin}/sign-in`,
             replyTo,
+          }),
+        },
+      ],
+    },
+    {
+      id: 'client-update',
+      status: 'active',
+      name: 'Client update',
+      description:
+        'A status email to a client: numbered items about recent work, the remaining prepaid hours, and one button into the client portal. Drafted with `pts updates draft` or from the client page, reviewed at /updates/[id], and sent through the admin’s own Gmail — not Resend.',
+      portals: ['internal'],
+      triggers: [
+        'Send on the update composer at /updates/[id]',
+        'Send test on the same page (to the signed-in admin only, subject prefixed [Test])',
+      ],
+      recipient:
+        'The client’s linked contacts, with other staff cc’d — both editable before sending',
+      from: 'The signed-in admin’s Gmail address',
+      replyTo: 'The signed-in admin’s Gmail address',
+      delivery:
+        'Gmail API through lib/gmail/client.ts using the admin’s Google connection; lands in their Sent folder',
+      attachments: null,
+      source: 'apps/internal/lib/updates/render-email.ts',
+      variants: [
+        {
+          label: 'Client',
+          sample: renderUpdateEmail({
+            subject: 'Sample Co updates',
+            greetingName: 'Jordan',
+            intro:
+              'Here is an update on the last three items from the website audit; all are live as of today.',
+            items: [
+              {
+                id: 'sample-1',
+                taskId: null,
+                label: 'Site speed',
+                body: 'The homepage loads noticeably faster, and images now load at the correct size and only when needed. **Note:** some images still need alt text, which you can add under Content > Files.',
+              },
+              {
+                id: 'sample-2',
+                taskId: null,
+                label: 'AI assistant info',
+                body: 'The site now has a description that AI assistants read when someone asks about Sample Co. Let me know when the flavor list or policies change so we can keep it current.',
+              },
+              {
+                id: 'sample-3',
+                taskId: null,
+                label: 'Product URLs',
+                body: 'Seven products flagged as duplicates were real products with “copy” in their web addresses. All seven now have proper addresses, and the old links redirect.',
+              },
+            ],
+            hoursRemaining: 1.25,
+            closing: 'Let me know if you have any questions.',
+            portalHref: clientOrigin,
+            replyTo: 'admin@example.com',
           }),
         },
       ],
