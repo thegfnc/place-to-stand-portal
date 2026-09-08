@@ -43,7 +43,10 @@ export async function resolveUpdateWindow(
 
   const lastPeriodEnd = await fetchLastSentPeriodEnd(clientId)
   if (lastPeriodEnd) {
-    return { periodStart: shiftCalendarDate(lastPeriodEnd, 1), periodEnd }
+    // A second update on the same day would otherwise start tomorrow and end
+    // today; clamp to a one-day window instead.
+    const next = shiftCalendarDate(lastPeriodEnd, 1)
+    return { periodStart: next > periodEnd ? periodEnd : next, periodEnd }
   }
 
   return {
