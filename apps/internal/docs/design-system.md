@@ -102,3 +102,13 @@ Ensure any links inside the card match the standard interaction style:
   View Details
 </Link>
 ```
+
+## Table Column Widths
+
+Every list table renders `<Table density='compact' layout='fixed'>`. Under `table-layout: fixed` the header row alone decides column widths, so the header must describe every column deliberately. The rule that keeps tables proportional at any viewport:
+
+1. **Content-sized columns get a fixed `rem` width, never a percentage.** Badges, toggles, icon-plus-count cells, dates, avatars, currency or hour figures, and the Actions column. Size to the widest realistic content plus cell padding: a lone badge `w-20`–`w-24`, a toggle with its label `w-28`, an icon-plus-count `w-16`–`w-20`, a short date `w-28`, two icon buttons `w-24`, three `w-32`. A percentage on a narrow column scales with the viewport instead of its content and is what leaves empty air beside a single icon on small screens.
+2. **Text columns get no width class at all.** Names, emails, titles, notes. Columns without a declared width split the leftover space equally, so they absorb whatever the viewport gives and truncate. If one text column should dominate, give only that one a percentage (`w-[40%]`); never more than one percentage column per table. Every text cell keeps `truncate` (and `min-w-0` when the cell wraps a flex row).
+3. **Hide secondary columns below `md`.** Put `hidden md:table-cell` on the `TableHead` *and* on every `TableCell` of that column. Candidates: created/joined dates, a secondary identifier when the identity column already shows the name (email, phone), origination/closer, share links. Never hide the identity column or Actions. Empty-state rows keep `colSpan` at the full column count; browsers clamp it when columns are hidden.
+
+`components/ui/pagination-controls.tsx` and `packages/ui/src/table.tsx` carry the matching comments; `app/(dashboard)/settings/users/_components/users-table-section.tsx` is the reference table.

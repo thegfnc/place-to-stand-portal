@@ -10,8 +10,9 @@ type TableDensity = 'default' | 'compact'
 
 // 'fixed' opts into table-layout: fixed so column widths come from the
 // header row alone — sorting/paging in new rows can't reflow the grid.
-// Opt-in: columns without a declared width split the leftover space
-// equally, so a table must set header widths before switching.
+// Width rule (apps/internal/docs/design-system.md → Table Column Widths):
+// content-sized columns take a fixed rem width, text columns take none so
+// they split the leftover, and secondary columns hide below `md`.
 type TableLayout = 'auto' | 'fixed'
 
 const TableDensityContext = React.createContext<TableDensity>('default')

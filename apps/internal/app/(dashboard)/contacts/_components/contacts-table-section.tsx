@@ -35,6 +35,15 @@ import {
   getClickableRowProps,
 } from '@/lib/table/clickable-row'
 
+/**
+ * The one row action that creates something (a portal user) gets a pale
+ * green tint so it scans apart from the neutral preview button and the
+ * destructive archive button beside it — a warm tint read as another
+ * destructive action.
+ */
+const PROMOTE_BUTTON_CLASS =
+  'border-emerald-500/40 bg-emerald-500/10 text-emerald-700 hover:border-emerald-500/60 hover:bg-emerald-500/20 hover:text-emerald-800 dark:text-emerald-300 dark:hover:text-emerald-200'
+
 export type ContactsTableSectionProps = {
   contacts: ContactsTableContact[]
   mode: 'active' | 'archive'
@@ -90,7 +99,6 @@ export function ContactsTableSection({
               sort={sort}
               defaultSort='name:asc'
               onSortChange={next => update({ sort: next })}
-              className='w-[28%]'
             >
               Name
             </SortableTableHead>
@@ -99,7 +107,7 @@ export function ContactsTableSection({
               sort={sort}
               defaultSort='name:asc'
               onSortChange={next => update({ sort: next })}
-              className='w-[30%]'
+              className='hidden md:table-cell'
             >
               Email
             </SortableTableHead>
@@ -108,7 +116,7 @@ export function ContactsTableSection({
               sort={sort}
               defaultSort='name:asc'
               onSortChange={next => update({ sort: next })}
-              className='w-[18%]'
+              className='hidden w-40 md:table-cell'
             >
               Phone
             </SortableTableHead>
@@ -117,6 +125,7 @@ export function ContactsTableSection({
               sort={sort}
               defaultSort='name:asc'
               onSortChange={next => update({ sort: next })}
+              className='w-24'
             >
               Clients
             </SortableTableHead>
@@ -179,7 +188,7 @@ export function ContactsTableSection({
                     <span className='truncate font-medium'>{contact.name}</span>
                   </div>
                 </TableCell>
-                <TableCell className='text-muted-foreground text-sm'>
+                <TableCell className='text-muted-foreground hidden text-sm md:table-cell'>
                   <a
                     href={`mailto:${contact.email}`}
                     className='hover:text-foreground inline-flex max-w-full items-center gap-1.5 transition'
@@ -188,7 +197,7 @@ export function ContactsTableSection({
                     <span className='truncate'>{contact.email}</span>
                   </a>
                 </TableCell>
-                <TableCell className='text-muted-foreground text-sm'>
+                <TableCell className='text-muted-foreground hidden text-sm md:table-cell'>
                   {contact.phone ? (
                     <a
                       href={`tel:${contact.phone}`}
@@ -219,7 +228,9 @@ export function ContactsTableSection({
                           size='icon-sm'
                           onClick={() => onRequestPromote(contact)}
                           title='Create portal account'
+                          aria-label='Create portal account'
                           disabled={promoteDisabled}
+                          className={PROMOTE_BUTTON_CLASS}
                         >
                           <UserPlus className='h-4 w-4' />
                         </Button>
