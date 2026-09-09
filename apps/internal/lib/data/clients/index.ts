@@ -282,7 +282,7 @@ export const fetchClientHoursSummaries = cache(
   }
 )
 
-const fetchClientById = cache(
+export const fetchClientById = cache(
   async (user: AppUser, clientId: string): Promise<ClientDetail> => {
     assertAdmin(user)
 

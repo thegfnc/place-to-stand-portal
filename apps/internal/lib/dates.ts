@@ -9,7 +9,7 @@
  * and timestamps are pinned to the company timezone.
  */
 
-const COMPANY_TIME_ZONE = 'America/Los_Angeles'
+export const COMPANY_TIME_ZONE = 'America/Los_Angeles'
 
 const DATE_ONLY_RE = /^\d{4}-\d{2}-\d{2}$/
 

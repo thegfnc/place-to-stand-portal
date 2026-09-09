@@ -526,6 +526,13 @@
       "when": 1788448104551,
       "tag": "0074_rate_limit_buckets",
       "breakpoints": true
+    },
+    {
+      "idx": 75,
+      "version": "7",
+      "when": 1788883755816,
+      "tag": "0075_client_updates",
+      "breakpoints": true
     }
   ]
 }

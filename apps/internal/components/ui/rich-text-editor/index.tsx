@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { EditorContent, EditorContext } from '@tiptap/react'
 
 import { cn } from '@/lib/utils'
@@ -59,6 +59,13 @@ export type RichTextEditorProps = {
   disabled?: boolean
   className?: string
   contentMinHeightClassName?: string
+  /**
+   * Static chrome rendered on the page around the editable area — under the
+   * toolbar, so it reads as part of the document rather than the controls.
+   * Used by the update composer to show the email's wordmark and footer.
+   */
+  contentHeader?: ReactNode
+  contentFooter?: ReactNode
 }
 
 const ClearFormattingButton = () => {
@@ -104,9 +111,7 @@ const MainToolbarContent = ({
           the toolbar's own padding already sets the left inset. */}
       <ToolbarGroup>
         <HeadingDropdownMenu levels={[1, 2, 3, 4]} />
-        <ListDropdownMenu
-          types={['bulletList', 'orderedList', 'taskList']}
-        />
+        <ListDropdownMenu types={['bulletList', 'orderedList', 'taskList']} />
         <BlockquoteButton />
         <CodeBlockButton />
       </ToolbarGroup>
@@ -195,6 +200,8 @@ export function RichTextEditor({
   disabled = false,
   className,
   contentMinHeightClassName = '[&_.ProseMirror]:min-h-[160px]',
+  contentHeader,
+  contentFooter,
 }: RichTextEditorProps) {
   useEffect(() => {
     ensureEditorStyles()
@@ -312,7 +319,9 @@ export function RichTextEditor({
           )}
         </Toolbar>
 
+        {contentHeader}
         <EditorContent editor={editor} className={contentClasses} />
+        {contentFooter}
 
         {/* Link floating menu - appears on hover or when cursor is in a link */}
         <LinkFloatingMenu editor={editor} />

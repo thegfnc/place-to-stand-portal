@@ -75,6 +75,10 @@ pts tasks edit <taskId> [--title] [--project] [--description] [--status] [--due]
 pts tasks comment <taskId> --body <text>
 pts tasks comments <taskId> [--limit n]
 
+pts updates draft --client <slug|uuid> [--items <file|->] [--subject] [--intro] [--closing] [--since]
+pts updates list [--client <slug|uuid>] [--status DRAFT|SENT] [--limit n]
+pts updates show <updateId>
+
 pts projects list | show <slug|uuid>
 pts clients list | pts contacts list | pts invoices list | pts users list
 pts time list --project <slug|uuid>
@@ -84,6 +88,22 @@ pts schema tables | pts schema describe <table>
 Projects take a UUID or a slug — slugs are globally unique. Assignees take a UUID or an email
 address; an unmatched reference is an error rather than a silent no-op, so a typo can't
 quietly unassign everyone.
+
+`updates draft` creates a client status email as a draft in the portal and prints the URL where
+you review recipients, edit, and send it from your own Gmail. The CLI never sends. Pass `--items`
+with what you did — a JSON array of `{ taskId?, label, body? }`, body in minimal markdown (bold,
+italic, links, line breaks) — because the session that did the work is the only thing that knows
+what to tell the client. Each item with a `taskId` links to that task in the client portal. The
+greeting, hours balance, and branded footer are added by the portal. Without `--items` the draft
+is scaffolded with one empty item per task that moved since the last sent update (or `--since`).
+
+```json
+[
+  { "taskId": "8b515d81-…", "label": "Site speed",
+    "body": "The homepage loads noticeably faster. **Note:** some images still need alt text, which you can add under Content > Files." },
+  { "label": "Product title", "body": "We also removed a duplicate title above product photos." }
+]
+```
 
 `tasks edit` is a genuine partial update: fields you omit keep their current values, and
 `--clear-description` / `--clear-due` are how you blank one. This matters because the

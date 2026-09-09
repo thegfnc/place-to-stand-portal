@@ -118,6 +118,32 @@
   --sidebar-ring: oklch(0.556 0 0);
 }
 
+/*
+ * Email paper: pins the light tokens on a subtree so an email being composed
+ * or reviewed renders the way a mail client will — white, dark ink — even when
+ * the app is in dark mode. Only the tokens the editor and its toolbar read.
+ */
+.email-paper {
+  color-scheme: light;
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+}
+
 /* Remove decorative backticks from inline code in prose */
 .prose :where(code)::before,
 .prose :where(code)::after {

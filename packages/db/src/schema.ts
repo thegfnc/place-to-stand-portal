@@ -138,6 +138,10 @@ export const leadUpdateType = pgEnum('lead_update_type', [
   'EMAIL',
   'NOTE',
 ])
+export const clientUpdateStatus = pgEnum('client_update_status', [
+  'DRAFT',
+  'SENT',
+])
 
 
 export const workerStatus = pgEnum('worker_status', [
@@ -1121,6 +1125,82 @@ export const leadUpdates = pgTable(
       columns: [table.authorId],
       foreignColumns: [users.id],
       name: 'lead_updates_author_id_fkey',
+    }).onDelete('restrict'),
+  ]
+)
+
+/**
+ * A client-facing status email, drafted in the portal and sent through the
+ * admin's own Gmail. The draft is the row itself — Gmail is only touched at
+ * send time — and the email is rendered from `items` plus a generated frame
+ * (greeting, hours balance, footer) rather than stored as HTML.
+ */
+export const clientUpdates = pgTable(
+  'client_updates',
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    clientId: uuid('client_id').notNull(),
+    status: clientUpdateStatus().default('DRAFT').notNull(),
+    subject: text().notNull(),
+    /** Opening line under the greeting. The greeting itself is derived at render. */
+    intro: text().default('').notNull(),
+    /**
+     * The substance: one entry per thing we want to tell the client, usually
+     * anchored to a task so the email can link to it in the client portal.
+     * `ClientUpdateItem[]` — `{ id, taskId, label, body }`, body in the
+     * minimal markdown `lib/updates/markdown.ts` accepts.
+     */
+    items: jsonb().default([]).notNull(),
+    /** Sign-off line(s) above the branded footer. */
+    closing: text().default('').notNull(),
+    /**
+     * The reporting window the scaffold was generated from. Informational —
+     * editing items does not move these — but the next draft for the same
+     * client starts the day after the last sent `period_end`.
+     */
+    periodStart: date('period_start').notNull(),
+    periodEnd: date('period_end').notNull(),
+    /** `{ to: string[]; cc: string[] }` — email addresses, resolved at draft time. */
+    recipients: jsonb().default({ to: [], cc: [] }).notNull(),
+    createdById: uuid('created_by_id').notNull(),
+    sentById: uuid('sent_by_id'),
+    sentAt: timestamp('sent_at', { withTimezone: true, mode: 'string' }),
+    gmailMessageId: text('gmail_message_id'),
+    gmailThreadId: text('gmail_thread_id'),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+    deletedAt: timestamp('deleted_at', { withTimezone: true, mode: 'string' }),
+  },
+  table => [
+    // Serves the client page's recent-updates list and the "last sent" lookup
+    // that seeds the next draft's window.
+    index('idx_client_updates_client_created')
+      .using(
+        'btree',
+        table.clientId.asc().nullsLast().op('uuid_ops'),
+        table.createdAt.desc().nullsLast().op('timestamptz_ops')
+      )
+      .where(sql`(deleted_at IS NULL)`),
+    foreignKey({
+      columns: [table.clientId],
+      foreignColumns: [clients.id],
+      name: 'client_updates_client_id_fkey',
+    }).onDelete('cascade'),
+    // RESTRICT for the same reason as lead_updates: a sent update is a record
+    // of who told the client what, and users are disabled rather than deleted.
+    foreignKey({
+      columns: [table.createdById],
+      foreignColumns: [users.id],
+      name: 'client_updates_created_by_id_fkey',
+    }).onDelete('restrict'),
+    foreignKey({
+      columns: [table.sentById],
+      foreignColumns: [users.id],
+      name: 'client_updates_sent_by_id_fkey',
     }).onDelete('restrict'),
   ]
 )

@@ -8,6 +8,7 @@ import { requireUser } from '@/lib/auth/session'
 import { assertAdmin } from '@/lib/auth/permissions'
 import { db } from '@/lib/db'
 import { clients } from '@/lib/db/schema'
+import { createUpdateDraft } from '@/lib/updates'
 const updateClientNotesSchema = z.object({
   clientId: z.string().uuid('Invalid client ID'),
   notes: z.string().nullable(),
@@ -66,3 +67,34 @@ export async function updateClientNotes(
 // ─────────────────────────────────────────────────────────────────────────────
 // Contact Selector Actions
 // ─────────────────────────────────────────────────────────────────────────────
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Client Updates
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type DraftUpdateResult =
+  | { success: true; id: string }
+  | { success: false; error: string }
+
+/**
+ * Starts a draft update for the client. The draft is generated the same way
+ * as `pts updates draft` — see `lib/updates` — and the caller navigates to it.
+ */
+export async function draftUpdateForClient(
+  clientId: string
+): Promise<DraftUpdateResult> {
+  const user = await requireUser()
+  assertAdmin(user)
+
+  const parsed = z.string().uuid().safeParse(clientId)
+  if (!parsed.success) return { success: false, error: 'Invalid client id' }
+
+  try {
+    const update = await createUpdateDraft(user, { clientRef: parsed.data })
+    revalidatePath(`/clients`)
+    return { success: true, id: update.id }
+  } catch (error) {
+    console.error('Failed to draft client update:', error)
+    return { success: false, error: 'Failed to generate the draft. Please try again.' }
+  }
+}

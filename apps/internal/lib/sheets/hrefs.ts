@@ -15,6 +15,14 @@ export const contactSheetHref = (id: string) => `/contacts?contact=${id}`
 export const invoiceHref = (id: string) => `/invoices?invoice=${id}`
 
 export const hourBlockHref = (id: string) => `/hour-blocks?hour-block=${id}`
+
+/** Client detail page; slugs are canonical but the page also resolves ids. */
+export const clientDetailHref = (client: { slug: string | null; id: string }) =>
+  `/clients/${client.slug ?? client.id}`
+
+/** The client-update composer — a full page, not a sheet. */
+export const updateComposerHref = (id: string) => `/updates/${id}`
+
 export const leadHref = (
   id: string,
   options?: { archived?: boolean; convert?: boolean }

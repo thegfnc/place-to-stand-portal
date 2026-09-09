@@ -88,6 +88,32 @@ export async function exchangeCodeForTokens(
 }
 
 /**
+ * Refresh an access token using refresh token. Used by the Gmail client when
+ * a stored token is within a few minutes of expiry.
+ */
+export async function refreshAccessToken(
+  refreshToken: string
+): Promise<GoogleTokenResponse> {
+  const response = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id: serverEnv.GOOGLE_CLIENT_ID,
+      client_secret: serverEnv.GOOGLE_CLIENT_SECRET,
+      grant_type: 'refresh_token',
+      refresh_token: refreshToken,
+    }),
+  })
+
+  if (!response.ok) {
+    const error = await response.text()
+    throw new Error(`Token refresh failed: ${error}`)
+  }
+
+  return response.json()
+}
+
+/**
  * Get user info from Google
  */
 export async function getGoogleUserInfo(
