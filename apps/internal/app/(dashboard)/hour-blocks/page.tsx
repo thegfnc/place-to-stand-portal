@@ -11,6 +11,7 @@ import {
 import { resolveSheetDeepLink } from '@/lib/sheets/resolve-deep-link'
 import { hourBlockHref } from '@/lib/sheets/hrefs'
 import { parseHourBlocksSearchParams } from '@/lib/settings/hour-blocks/filters'
+import { readPageSize } from '@/lib/pagination/page-size.server'
 
 import { HourBlocksAddButton } from './_components/hour-blocks-add-button'
 import { HourBlocksFilters } from './_components/hour-blocks-filters'
@@ -21,7 +22,6 @@ export const metadata: Metadata = {
   title: 'Hour Blocks | Settings',
 }
 
-const PAGE_SIZE = 20
 
 const firstParam = (value: string | string[] | undefined) =>
   Array.isArray(value) ? value[0] : value
@@ -35,9 +35,10 @@ export default async function HourBlocksPage({
 }: HourBlocksPageProps) {
   const currentUser = await requireRole('ADMIN')
   const params = searchParams ? await searchParams : {}
+  const pageSize = await readPageSize()
 
   const { page: currentPage, search, sort } = parseHourBlocksSearchParams(params)
-  const offset = (currentPage - 1) * PAGE_SIZE
+  const offset = (currentPage - 1) * pageSize
 
   const [
     { items, clients, totalCount, unfilteredTotalCount },
@@ -46,14 +47,14 @@ export default async function HourBlocksPage({
     listHourBlocksForSettings(currentUser, {
       status: 'active',
       offset,
-      limit: PAGE_SIZE,
+      limit: pageSize,
       search,
       sort,
     }),
     listHourBlockInvoiceDirectory(currentUser),
   ])
 
-  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE))
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize))
 
   // The list is paginated and filterable, so resolve `?hour-block=` by id —
   // a shared link must open even when the row isn't on this page.
@@ -88,7 +89,7 @@ export default async function HourBlocksPage({
           totalCount={totalCount}
           currentPage={currentPage}
           totalPages={totalPages}
-          pageSize={PAGE_SIZE}
+          pageSize={pageSize}
           mode='active'
           basePath='/hour-blocks'
           deepLinkedHourBlock={deepLinkedHourBlock}

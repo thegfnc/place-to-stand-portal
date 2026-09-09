@@ -29,6 +29,8 @@ type ProjectsManagementSectionProps = {
   contractorUsers: ContractorUserSummary[]
   membersByProject: Record<string, ContractorUserSummary[]>
   pageInfo: PageInfo
+  /** Rows-per-page the list was served with (drives the footer selector). */
+  pageSize: number
   /** Toolbar row (FilterBar) rendered inside the card, above the table. */
   filters?: ReactNode
   /**
@@ -45,6 +47,7 @@ export function ProjectsManagementSection({
   contractorUsers,
   membersByProject,
   pageInfo,
+  pageSize,
   filters,
 }: ProjectsManagementSectionProps) {
   const router = useRouter()
@@ -142,6 +145,8 @@ export function ProjectsManagementSection({
           onNext={() => handlePaginate('forward')}
           onPrevious={() => handlePaginate('backward')}
           disableAll={isPending}
+          pageSize={pageSize}
+          itemCount={projects.length}
         />
       </section>
       <ProjectSheet

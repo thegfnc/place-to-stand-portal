@@ -11,6 +11,7 @@ import { DEFAULT_USERS_SORT } from '@/lib/settings/users/filters'
 import type { UserRoleValue } from '@/lib/types'
 import { clampLimit, createSearchPattern } from '@/lib/pagination/cursor'
 import type { ParsedSort } from '@/lib/pagination/sort'
+import { PAGE_SIZE_LIMITS } from '@/lib/pagination/page-size'
 
 import { userSortExpression, type SelectUser } from './fields'
 import {
@@ -71,7 +72,7 @@ export async function listUsersForSettings(
 ): Promise<UsersSettingsResult> {
   assertAdmin(user)
 
-  const limit = clampLimit(input.limit, { defaultLimit: 20, maxLimit: 100 })
+  const limit = clampLimit(input.limit, PAGE_SIZE_LIMITS)
   const normalizedStatus = input.status === 'archived' ? 'archived' : 'active'
   const sort = input.sort ?? DEFAULT_USERS_SORT
   const descriptor = USER_SORT_DESCRIPTORS[sort.field]

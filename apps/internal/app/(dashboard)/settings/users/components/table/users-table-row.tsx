@@ -7,6 +7,7 @@ import { TableCell, TableRow } from '@pts/ui/table'
 import { Button } from '@pts/ui/button'
 import { DisabledFieldTooltip } from '@/components/ui/disabled-field-tooltip'
 import { Switch } from '@pts/ui/switch'
+import type { UserAssignmentSummary } from '@/lib/queries/users/assignments'
 import { USER_ROLE_LABELS } from '@/lib/settings/users/filters'
 
 import type { UserRowState } from '@/lib/settings/users/state/use-users-table-state'
@@ -18,14 +19,18 @@ import {
   getClickableRowProps,
 } from '@/lib/table/clickable-row'
 
+import { UserAssignmentsCell } from './user-assignments-cell'
+
 type UsersTableRowProps = {
   row: UserRowState
+  assignment: UserAssignmentSummary | undefined
   selfDeleteReason: string
   mode: 'active' | 'archive'
 }
 
 export function UsersTableRow({
   row,
+  assignment,
   selfDeleteReason,
   mode,
 }: UsersTableRowProps) {
@@ -94,6 +99,9 @@ export function UsersTableRow({
         ) : (
           <span className='text-muted-foreground text-xs'>—</span>
         )}
+      </TableCell>
+      <TableCell>
+        <UserAssignmentsCell assignment={assignment} />
       </TableCell>
       <TableCell className='text-muted-foreground text-sm'>
         {formatCalendarDate(user.created_at)}

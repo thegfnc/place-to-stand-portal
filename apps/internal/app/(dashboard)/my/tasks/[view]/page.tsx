@@ -15,6 +15,10 @@ import {
 import { fetchAdminUsers } from '@/lib/data/users'
 import { fetchClientDirectory } from '@/lib/queries/clients'
 import {
+  HIDE_PARAM,
+  parseHiddenProjectTypes,
+} from '@/lib/my-tasks/project-scope'
+import {
   getActiveTaskProjectId,
   listAssignedTaskSummaries,
 } from '@/lib/data/tasks'
@@ -34,6 +38,8 @@ type PageParams = {
 type PageSearchParams = {
   assignee?: string
   clientId?: string
+  /** Comma list of `personal,internal` — project types to withhold. */
+  [HIDE_PARAM]?: string
   task?: string
 }
 
@@ -90,6 +96,12 @@ export default async function MyTasksViewRoute({
       ? requestedClientId
       : null
 
+  // Optional project-type scope (`?hide=personal,internal`). Junk tokens are
+  // dropped by the parser, so a hand-edited value can't widen the filter.
+  const hiddenProjectTypes = parseHiddenProjectTypes(
+    resolvedSearchParams[HIDE_PARAM]
+  )
+
   // The Done column starts at one window and widens on demand via
   // /api/my-tasks/done-window, so the first load never carries the whole
   // completed archive.
@@ -102,6 +114,7 @@ export default async function MyTasksViewRoute({
   const assignedSummaries = await listAssignedTaskSummaries({
     userId: selectedAssigneeId === 'all' ? null : selectedAssigneeId,
     clientId: selectedClientId,
+    hiddenProjectTypes,
     limit: null,
     doneSince: isBoardView
       ? resolveDoneWindowStart(DONE_WINDOW_WEEKS, now)
@@ -170,6 +183,7 @@ export default async function MyTasksViewRoute({
       view={viewParam}
       selectedAssigneeId={selectedAssigneeId}
       selectedClientId={selectedClientId ?? 'all'}
+      hiddenProjectTypes={hiddenProjectTypes}
       clients={activeClients.map(client => ({
         id: client.id,
         name: client.name,

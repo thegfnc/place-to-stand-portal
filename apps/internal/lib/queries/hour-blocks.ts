@@ -6,6 +6,7 @@ import type { AppUser } from '@/lib/auth/session'
 import { assertAdmin } from '@/lib/auth/permissions'
 import { db } from '@/lib/db'
 import { clients, hourBlocks, invoices } from '@/lib/db/schema'
+import { PAGE_SIZE_LIMITS } from '@/lib/pagination/page-size'
 
 import type {
   ClientRow,
@@ -140,7 +141,7 @@ export async function listHourBlocksForSettings(
   assertAdmin(user)
 
   const direction = resolveDirection(input.direction)
-  const limit = clampLimit(input.limit, { defaultLimit: 20, maxLimit: 100 })
+  const limit = clampLimit(input.limit, PAGE_SIZE_LIMITS)
   const normalizedStatus = input.status === 'archived' ? 'archived' : 'active'
   const searchQuery = input.search?.trim() ?? ''
   const sort = input.sort ?? DEFAULT_HOUR_BLOCKS_SORT

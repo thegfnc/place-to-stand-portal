@@ -6,6 +6,7 @@ import { requireRole } from '@/lib/auth/session'
 import { listContactsForSettings, listAllActiveClients } from '@/lib/queries/contacts'
 import { parseContactsSearchParams } from '@/lib/settings/contacts/filters'
 import { serverEnv } from '@/lib/env.server'
+import { readPageSize } from '@/lib/pagination/page-size.server'
 
 import { CONTACTS_TABS } from '../_lib/tabs'
 import { ContactsAddButton } from '../_components/contacts-add-button'
@@ -22,20 +23,20 @@ export const metadata: Metadata = {
   title: 'Contact Archive | Place to Stand Portal',
 }
 
-const PAGE_SIZE = 20
 
 export default async function ContactsArchivePage({
   searchParams,
 }: ContactsArchivePageProps) {
   const admin = await requireRole('ADMIN')
   const params = searchParams ? await searchParams : {}
+  const pageSize = await readPageSize()
   const {
     page: currentPage,
     search,
     clientId,
     sort,
   } = parseContactsSearchParams(params)
-  const offset = (currentPage - 1) * PAGE_SIZE
+  const offset = (currentPage - 1) * pageSize
 
   // Share links: `?contact=<id>` opens the edit sheet even when the row sits
   // on another page (redirects to the active tab when it isn't archived).
@@ -53,14 +54,14 @@ export default async function ContactsArchivePage({
         search,
         clientId,
         offset,
-        limit: PAGE_SIZE,
+        limit: pageSize,
         sort,
       }),
       listAllActiveClients(admin),
     ])
 
   const contactsForTable = items.map(mapContactToTableRow)
-  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE))
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize))
   // The sheet only needs the minimal row — it self-fetches its client links.
   const deepLinkedContact = deepLink.record
     ? {
@@ -95,7 +96,7 @@ export default async function ContactsArchivePage({
           totalCount={totalCount}
           currentPage={currentPage}
           totalPages={totalPages}
-          pageSize={PAGE_SIZE}
+          pageSize={pageSize}
           mode='archive'
           allClients={allClients}
           basePath='/contacts/archive'

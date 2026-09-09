@@ -35,6 +35,7 @@ const CLIENT_LANDING_SORT_FIELDS = [
   ...CLIENT_SORT_FIELDS,
   'billing',
   'projects',
+  'contacts',
   'hours',
   'origination',
   'closer',

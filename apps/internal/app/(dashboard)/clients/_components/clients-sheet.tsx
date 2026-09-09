@@ -45,6 +45,7 @@ export function ClientSheet(props: ClientSheetProps) {
     contactsAddButtonDisabledReason,
     handleContactPickerOpenChange,
     handleAddContact,
+    handleCreateContact,
     handleRemoveContact,
     // Origination
     originationMode,
@@ -106,6 +107,7 @@ export function ClientSheet(props: ClientSheetProps) {
             isContactPickerOpen={isContactPickerOpen}
             onContactPickerOpenChange={handleContactPickerOpenChange}
             onAddContact={handleAddContact}
+            onCreateContact={handleCreateContact}
             onRemoveContact={handleRemoveContact}
             originationMode={originationMode}
             selectedOriginationUser={selectedOriginationUser}

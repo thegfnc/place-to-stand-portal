@@ -9,6 +9,7 @@ import {
 } from '@/lib/form-submissions/constants'
 import { parseSubmissionsSort } from '@/lib/form-submissions/filters'
 import { crumbsForNav } from '@/lib/navigation/breadcrumbs'
+import { readPageSize } from '@/lib/pagination/page-size.server'
 
 import { SubmissionsFilters } from '../_components/submissions-filters'
 import { SubmissionsTable } from '../_components/submissions-table'
@@ -19,7 +20,6 @@ export const metadata: Metadata = {
   title: 'Submissions Archive',
 }
 
-const PAGE_SIZE = 25
 
 type SubmissionsArchivePageProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>
@@ -36,6 +36,7 @@ export default async function SubmissionsArchivePage({
 }: SubmissionsArchivePageProps) {
   const currentUser = await requireRole('ADMIN')
   const params = searchParams ? await searchParams : {}
+  const pageSize = await readPageSize()
 
   const currentPage = Math.max(
     1,
@@ -60,7 +61,7 @@ export default async function SubmissionsArchivePage({
   const { items, totalCount, unfilteredTotalCount, totalPages } =
     await fetchFormSubmissions(currentUser, {
       page: currentPage,
-      pageSize: PAGE_SIZE,
+      pageSize: pageSize,
       kind,
       status,
       archived: true,
@@ -91,7 +92,7 @@ export default async function SubmissionsArchivePage({
           totalCount={totalCount}
           currentPage={currentPage}
           totalPages={totalPages}
-          pageSize={PAGE_SIZE}
+          pageSize={pageSize}
           mode='archive'
           basePath='/submissions/archive'
           deepLinkedSubmission={deepLink.submission}

@@ -1,12 +1,13 @@
 'use client'
 
+import { useState } from 'react'
 import { ChevronsUpDown, UserCheck, Users, X } from 'lucide-react'
 
 import { Button } from '@pts/ui/button'
+import { CommandCreateRows } from '@/components/ui/command-create-rows'
 import { DisabledFieldTooltip } from '@/components/ui/disabled-field-tooltip'
 import {
   Command,
-  CommandEmpty,
   CommandGroup,
   CommandInput,
   CommandItem,
@@ -42,6 +43,8 @@ export type ClientContactPickerProps = {
   onPickerOpenChange: (open: boolean) => void
   onAddContact: (contact: ClientContactOption) => void
   onRequestRemoval: (contact: ClientContactOption) => void
+  /** Open the contact create sheet, prefilled with the typed query. */
+  onCreateContact: (query: string) => void
 }
 
 export function ClientContactPicker({
@@ -55,7 +58,10 @@ export function ClientContactPicker({
   onPickerOpenChange,
   onAddContact,
   onRequestRemoval,
+  onCreateContact,
 }: ClientContactPickerProps) {
+  const [query, setQuery] = useState('')
+
   return (
     <div className='space-y-2'>
       <Popover open={isPickerOpen} onOpenChange={onPickerOpenChange} modal>
@@ -84,8 +90,11 @@ export function ClientContactPicker({
         </DisabledFieldTooltip>
         <PopoverContent className='w-[var(--radix-popover-trigger-width)] p-0' align='start'>
           <Command>
-            <CommandInput placeholder='Search contacts...' />
-            <CommandEmpty>No matching contacts.</CommandEmpty>
+            <CommandInput
+              placeholder='Search contacts...'
+              value={query}
+              onValueChange={setQuery}
+            />
             <CommandList>
               <CommandGroup heading='Contacts'>
                 {availableContacts.map(contact => (
@@ -124,6 +133,11 @@ export function ClientContactPicker({
                   </CommandItem>
                 ))}
               </CommandGroup>
+              <CommandCreateRows
+                query={query}
+                entityLabel='contact'
+                onCreate={onCreateContact}
+              />
             </CommandList>
           </Command>
         </PopoverContent>

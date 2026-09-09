@@ -9,10 +9,8 @@ import { PaginationControls } from '@/components/ui/pagination-controls'
 
 import { UserSheet } from '../users-sheet'
 import { isUserAccess, isUserRole } from '@/lib/settings/users/filters'
-import {
-  useUsersTableState,
-  type UserAssignments,
-} from '@/lib/settings/users/state/use-users-table-state'
+import type { UsersSettingsAssignments } from '@/lib/queries/users/assignments'
+import { useUsersTableState } from '@/lib/settings/users/state/use-users-table-state'
 import type { UserRow } from '@/lib/settings/users/state/types'
 
 import { UsersTableSection } from './users-table-section'
@@ -20,7 +18,7 @@ import { UsersTableSection } from './users-table-section'
 type UsersManagementTableProps = {
   users: UserRow[]
   currentUserId: string
-  assignments: UserAssignments
+  assignments: UsersSettingsAssignments
   page: number
   pageSize: number
   totalPages: number
@@ -143,6 +141,7 @@ export function UsersManagementTable({
       <UsersTableSection
         basePath={basePath}
         rows={filteredRows}
+        assignments={assignments}
         mode={mode}
         emptyMessage={emptyMessage}
         selfDeleteReason={selfDeleteReason}

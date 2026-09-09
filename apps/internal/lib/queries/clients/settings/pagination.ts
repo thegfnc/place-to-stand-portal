@@ -3,6 +3,7 @@ import 'server-only'
 import { sql, type SQL } from 'drizzle-orm'
 
 import { clients } from '@/lib/db/schema'
+import { PAGE_SIZE_LIMITS } from '@/lib/pagination/page-size'
 import {
   clampLimit,
   createSearchPattern,
@@ -90,10 +91,9 @@ export const CLIENT_SORT_DESCRIPTORS: Record<
   },
 }
 
-const DEFAULT_LIMITS = { defaultLimit: 20, maxLimit: 100 } as const
 
 export function resolvePaginationLimit(limit: number | null | undefined) {
-  return clampLimit(limit, DEFAULT_LIMITS)
+  return clampLimit(limit, PAGE_SIZE_LIMITS)
 }
 
 export function resolveClientDirection(direction: CursorDirection | null | undefined) {

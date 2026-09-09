@@ -10,6 +10,7 @@ import {
   type CursorDirection,
 } from '@/lib/pagination/cursor'
 import type { ContactSortField } from '@/lib/settings/contacts/filters'
+import { PAGE_SIZE_LIMITS } from '@/lib/pagination/page-size'
 
 import type { ContactsSettingsListItem } from './types'
 
@@ -161,10 +162,9 @@ export const CONTACT_SORT_DESCRIPTORS: Record<
   },
 }
 
-const DEFAULT_LIMITS = { defaultLimit: 20, maxLimit: 100 } as const
 
 export function resolvePaginationLimit(limit: number | null | undefined) {
-  return clampLimit(limit, DEFAULT_LIMITS)
+  return clampLimit(limit, PAGE_SIZE_LIMITS)
 }
 
 export function resolveContactDirection(direction: CursorDirection | null | undefined) {

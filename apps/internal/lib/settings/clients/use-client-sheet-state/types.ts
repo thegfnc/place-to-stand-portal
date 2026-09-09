@@ -41,6 +41,10 @@ export type UseClientSheetStateArgs = {
   onOpenChange: (open: boolean) => void
   onComplete: () => void
   onArchived?: () => void
+  /** Name prefill for the create sheet (create-from-picker). */
+  initialName?: string
+  /** Fires once with the new client after a successful create (not on edit). */
+  onCreated?: (client: { id: string; name: string; slug: string }) => void
   client: ClientRow | null
   /** All available contacts for the contact picker (optional - will be fetched if not provided) */
   allContacts?: ClientContactOption[]
@@ -70,6 +74,8 @@ export type BaseFormState = {
   isLoadingContacts: boolean
   handleContactPickerOpenChange: (open: boolean) => void
   handleAddContact: (contact: ClientContactOption) => void
+  /** Open the contact create sheet on top, prefilled with the typed query. */
+  handleCreateContact: (query: string) => void
   handleRemoveContact: (contact: ClientContactOption) => void
   // Origination
   originationMode: OriginationMode
@@ -158,6 +164,8 @@ export type UseClientSheetStateReturn = {
   isLoadingContacts: boolean
   handleContactPickerOpenChange: (open: boolean) => void
   handleAddContact: (contact: ClientContactOption) => void
+  /** Open the contact create sheet on top, prefilled with the typed query. */
+  handleCreateContact: (query: string) => void
   handleRemoveContact: (contact: ClientContactOption) => void
   // Origination
   originationMode: OriginationMode

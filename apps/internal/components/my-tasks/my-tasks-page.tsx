@@ -56,6 +56,8 @@ type MyTasksPageProps = {
   selectedAssigneeId: string
   /** A client id, or `'all'` when unscoped. */
   selectedClientId: string
+  /** Project types withheld from the board (`?hide=`); empty = show all. */
+  hiddenProjectTypes: ProjectTypeValue[]
   clients: ClientSelectorOption[]
   /** Server-rendered instant the board's Done window measures back from. */
   now: string
@@ -73,6 +75,7 @@ export function MyTasksPage({
   view,
   selectedAssigneeId,
   selectedClientId,
+  hiddenProjectTypes,
   clients,
   now,
   initialOlderDoneCount,
@@ -155,11 +158,17 @@ export function MyTasksPage({
     setEntries(sanitizedEntries)
   }
 
-  // Switching whose board you're viewing is a different Done history; carrying
-  // the previous person's loaded slices over would show their tasks.
-  const [prevAssigneeId, setPrevAssigneeId] = useState(selectedAssigneeId)
-  if (prevAssigneeId !== selectedAssigneeId) {
-    setPrevAssigneeId(selectedAssigneeId)
+  // Switching whose board you're viewing — or which projects it scopes to —
+  // is a different Done history; carrying the previous scope's loaded slices
+  // over would keep showing tasks the new scope excludes.
+  const scopeKey = [
+    selectedAssigneeId,
+    selectedClientId,
+    hiddenProjectTypes.join(','),
+  ].join('|')
+  const [prevScopeKey, setPrevScopeKey] = useState(scopeKey)
+  if (prevScopeKey !== scopeKey) {
+    setPrevScopeKey(scopeKey)
     setDoneWeeks(DONE_WINDOW_WEEKS)
     setOlderDoneCount(initialOlderDoneCount)
     setOlderEntries([])
@@ -207,6 +216,7 @@ export function MyTasksPage({
           // window matches what the board is showing.
           assigneeId: selectedAssigneeId,
           clientId: selectedClientId === 'all' ? null : selectedClientId,
+          hiddenProjectTypes,
           fromWeeks: doneWeeks,
           toWeeks,
           now: windowAnchor,
@@ -249,7 +259,14 @@ export function MyTasksPage({
     } finally {
       setIsLoadingOlderDone(false)
     }
-  }, [doneWeeks, isLoadingOlderDone, selectedAssigneeId, selectedClientId, windowAnchor])
+  }, [
+    doneWeeks,
+    hiddenProjectTypes,
+    isLoadingOlderDone,
+    selectedAssigneeId,
+    selectedClientId,
+    windowAnchor,
+  ])
 
   // Drop the create seed defaults once the create sheet's param is gone.
   const [prevTaskParam, setPrevTaskParam] = useState(taskParam)
@@ -442,6 +459,7 @@ export function MyTasksPage({
           <ClientSelector
             clients={clients}
             selectedClientId={selectedClientId}
+            hiddenProjectTypes={hiddenProjectTypes}
           />
           <PersonSelector
             admins={admins}

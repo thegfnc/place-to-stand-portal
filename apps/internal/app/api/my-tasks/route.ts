@@ -2,6 +2,10 @@ import { NextResponse } from 'next/server'
 
 import { requireUser } from '@/lib/auth/session'
 import { listAssignedTaskSummaries } from '@/lib/data/tasks'
+import {
+  HIDE_PARAM,
+  parseHiddenProjectTypes,
+} from '@/lib/my-tasks/project-scope'
 
 export async function GET(request: Request) {
   const user = await requireUser()
@@ -22,6 +26,8 @@ export async function GET(request: Request) {
   try {
     const result = await listAssignedTaskSummaries({
       userId: user.id,
+      // Same `?hide=personal,internal` shape as the board URL.
+      hiddenProjectTypes: parseHiddenProjectTypes(searchParams.get(HIDE_PARAM)),
       limit,
     })
 

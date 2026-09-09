@@ -13,7 +13,13 @@ import {
 } from '@pts/db/hours'
 import { NotFoundError } from '@/lib/errors/http'
 import { createSearchPattern } from '@/lib/pagination/cursor'
+import {
+  fetchContactSummariesByClient,
+  type ClientContactSummary,
+} from '@/lib/queries/clients/contact-summaries'
 import type { ProjectStatusValue } from '@/lib/constants'
+
+export type { ClientContactSummary }
 
 export type ClientProjectSummary = {
   id: string
@@ -47,6 +53,8 @@ export type ClientWithMetrics = {
   activeProjectCount: number
   activeProjects: ClientProjectSummary[]
   allProjects: ClientProjectSummary[]
+  /** Live contacts linked through `contact_clients`, name-ordered. */
+  contacts: ClientContactSummary[]
   totalHoursPurchased: number
   totalHoursUsed: number
   hoursRemaining: number
@@ -150,7 +158,7 @@ export const fetchClientsWithMetrics = cache(
     // Fetch every non-deleted project per client (any status). The active
     // list is derived below — the definition of "active" (ACTIVE/ONBOARDING)
     // is unchanged; "total" is any status, deletedAt IS NULL.
-    const [clientHours, projectsData] = await Promise.all([
+    const [clientHours, projectsData, contactsByClient] = await Promise.all([
       getClientHoursTotals(db, clientIds),
       db
         .select({
@@ -165,6 +173,7 @@ export const fetchClientsWithMetrics = cache(
           and(inArray(projects.clientId, clientIds), isNull(projects.deletedAt))
         )
         .orderBy(asc(projects.name)),
+      fetchContactSummariesByClient(clientIds),
     ])
 
     // Group projects by client ID
@@ -218,6 +227,7 @@ export const fetchClientsWithMetrics = cache(
         activeProjectCount: activeProjects.length,
         activeProjects,
         allProjects,
+        contacts: contactsByClient.get(row.id) ?? [],
         totalHoursPurchased,
         totalHoursUsed,
         hoursRemaining,

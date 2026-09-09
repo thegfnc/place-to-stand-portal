@@ -16,6 +16,7 @@ import type {
   ProjectWithClient,
 } from '@/lib/settings/projects/project-sheet-form'
 import type { AdminUserForOwner } from '@/lib/settings/projects/project-sheet-ui-state'
+import { readPageSize } from '@/lib/pagination/page-size.server'
 
 export const metadata: Metadata = {
   title: 'Project Archive | Place to Stand Portal',
@@ -30,6 +31,7 @@ export default async function ProjectsArchivePage({
 }: ProjectsArchivePageProps) {
   const admin = await requireRole('ADMIN')
   const params = searchParams ? await searchParams : {}
+  const preferredPageSize = await readPageSize()
   const { searchQuery, cursor, direction, limit, sort } =
     parseProjectsSearchParams(params)
 
@@ -39,7 +41,7 @@ export default async function ProjectsArchivePage({
       search: searchQuery ?? '',
       cursor,
       direction,
-      limit,
+      limit: limit ?? preferredPageSize,
       sort,
     }),
     fetchAdminUsers(),
@@ -81,6 +83,7 @@ export default async function ProjectsArchivePage({
         contractorUsers={[]}
         membersByProject={{}}
         pageInfo={archiveResult.pageInfo}
+        pageSize={limit ?? preferredPageSize}
         filters={
           <ProjectsArchiveFilters search={searchQuery ?? undefined} />
         }

@@ -4,6 +4,7 @@ import { PageShell } from '@/components/layout/page-shell'
 import { crumbsForNav } from '@/lib/navigation/breadcrumbs'
 import { requireUser } from '@/lib/auth/session'
 import { fetchClientsWithMetrics } from '@/lib/data/clients'
+import { readPageSize } from '@/lib/pagination/page-size.server'
 import { countClientsForSettings } from '@/lib/queries/clients'
 import {
   parseClientsLandingSort,
@@ -30,6 +31,12 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
   const params = searchParams ? await searchParams : {}
   const { billing, search } = parseClientsSearchParams(params)
   const landingSort = parseClientsLandingSort(params)
+  const pageParam = Number.parseInt(
+    (Array.isArray(params.page) ? params.page[0] : params.page) ?? '1',
+    10
+  )
+  const requestedPage = Math.max(1, Number.isFinite(pageParam) ? pageParam : 1)
+  const pageSize = await readPageSize()
 
   // Share links: `?client=<id>` opens the edit sheet even when the filtered
   // landing list doesn't contain that row (redirects to the archive tab when
@@ -46,7 +53,15 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
     countClientsForSettings(user, { status: 'active', billing, search }),
   ])
 
+  // The landing sorts on in-memory metrics (hours, project counts) that have
+  // no keyset equivalent, so it pages the sorted list instead of the query.
   const sortedClients = sortLandingClients(clients, landingSort)
+  const totalPages = Math.max(1, Math.ceil(sortedClients.length / pageSize))
+  const currentPage = Math.min(requestedPage, totalPages)
+  const pageClients = sortedClients.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  )
 
   return (
     <PageShell
@@ -63,9 +78,13 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
       <section className='bg-background space-y-4 rounded-xl border p-4 shadow-sm'>
         <ClientsFilters basePath='/clients' search={search} billing={billing} />
         <ClientsLanding
-          clients={sortedClients}
+          clients={pageClients}
           deepLinkedClient={deepLink.record}
           clientNotFound={deepLink.notFound}
+          currentPage={currentPage}
+          totalPages={totalPages}
+          pageSize={pageSize}
+          totalCount={sortedClients.length}
         />
       </section>
     </PageShell>
