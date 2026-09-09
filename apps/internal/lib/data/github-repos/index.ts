@@ -2,7 +2,11 @@ import { eq, and, isNull, inArray } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { githubRepoLinks } from '@/lib/db/schema'
 import { logActivity } from '@/lib/activity/logger'
+import type { AppUser } from '@/lib/auth/session'
 import type { GitHubRepoLink } from '@/lib/types/github'
+
+/** The signed-in user performing the link/unlink; the role is never assumed. */
+export type RepoLinkActor = Pick<AppUser, 'id' | 'role'>
 
 /**
  * Get repos linked to a project
@@ -64,7 +68,7 @@ export async function linkRepoToProject(
     repoId: number
     defaultBranch: string
   },
-  userId: string
+  actor: RepoLinkActor
 ): Promise<GitHubRepoLink> {
   const [link] = await db
     .insert(githubRepoLinks)
@@ -77,13 +81,13 @@ export async function linkRepoToProject(
       repoFullName: repo.repoFullName,
       repoId: repo.repoId,
       defaultBranch: repo.defaultBranch,
-      linkedBy: userId,
+      linkedBy: actor.id,
     })
     .returning()
 
   await logActivity({
-    actorId: userId,
-    actorRole: 'ADMIN',
+    actorId: actor.id,
+    actorRole: actor.role,
     verb: 'GITHUB_REPO_LINKED',
     summary: `Linked repository ${repo.repoFullName} to project`,
     targetType: 'PROJECT',
@@ -98,7 +102,10 @@ export async function linkRepoToProject(
 /**
  * Unlink a repository from a project
  */
-export async function unlinkRepo(linkId: string, userId: string): Promise<void> {
+export async function unlinkRepo(
+  linkId: string,
+  actor: RepoLinkActor
+): Promise<void> {
   const [link] = await db
     .select()
     .from(githubRepoLinks)
@@ -116,8 +123,8 @@ export async function unlinkRepo(linkId: string, userId: string): Promise<void> 
     .where(eq(githubRepoLinks.id, linkId))
 
   await logActivity({
-    actorId: userId,
-    actorRole: 'ADMIN',
+    actorId: actor.id,
+    actorRole: actor.role,
     verb: 'GITHUB_REPO_UNLINKED',
     summary: `Unlinked repository ${link.repoFullName}`,
     targetType: 'PROJECT',

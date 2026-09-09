@@ -3,6 +3,10 @@ import 'server-only'
 import { and, eq, isNull } from 'drizzle-orm'
 
 import { logActivity } from '@/lib/activity/logger'
+import {
+  oauthConnectedEvent,
+  oauthDisconnectedEvent,
+} from '@/lib/activity/events'
 import type { AppUser } from '@/lib/auth/session'
 import { db } from '@/lib/db'
 import { oauthConnections } from '@/lib/db/schema'
@@ -143,7 +147,7 @@ export async function connectIntegrationWithToken(
   const now = new Date().toISOString()
 
   const [existing] = await db
-    .select({ id: oauthConnections.id })
+    .select({ id: oauthConnections.id, deletedAt: oauthConnections.deletedAt })
     .from(oauthConnections)
     .where(
       and(
@@ -153,6 +157,10 @@ export async function connectIntegrationWithToken(
       )
     )
     .limit(1)
+
+  // Re-pasting a token for a live connection is a refresh, not a new
+  // connection; only a first connect or a reconnect after disconnect logs.
+  const alreadyConnected = Boolean(existing && !existing.deletedAt)
 
   const values = {
     accessToken: encrypted,
@@ -185,16 +193,22 @@ export async function connectIntegrationWithToken(
     connectionId = inserted.id
   }
 
-  await logActivity({
-    actorId: user.id,
-    actorRole: user.role,
-    source: 'SYSTEM',
-    verb: 'OAUTH_CONNECTED',
-    summary: `Connected ${INTEGRATION_PROVIDERS[provider].label} account (${account.displayName})`,
-    targetType: 'SETTINGS',
-    targetId: user.id,
-    metadata: { provider, displayName: account.displayName },
-  })
+  if (!alreadyConnected) {
+    const event = oauthConnectedEvent({
+      provider,
+      accountLabel: account.displayName,
+    })
+
+    await logActivity({
+      actorId: user.id,
+      actorRole: user.role,
+      verb: event.verb,
+      summary: event.summary,
+      targetType: 'SETTINGS',
+      targetId: user.id,
+      metadata: event.metadata,
+    })
+  }
 
   return {
     id: connectionId,
@@ -248,16 +262,19 @@ export async function disconnectIntegration(
     })
     .where(eq(oauthConnections.id, connection.id))
 
+  const event = oauthDisconnectedEvent({
+    provider,
+    accountLabel: connection.displayName,
+  })
+
   await logActivity({
     actorId: user.id,
     actorRole: user.role,
-    verb: 'OAUTH_DISCONNECTED',
-    summary: `Disconnected ${INTEGRATION_PROVIDERS[provider].label} account${
-      connection.displayName ? ` (${connection.displayName})` : ''
-    }`,
+    verb: event.verb,
+    summary: event.summary,
     targetType: 'SETTINGS',
     targetId: user.id,
-    metadata: { provider, displayName: connection.displayName },
+    metadata: event.metadata,
   })
 
   return true

@@ -1220,47 +1220,34 @@ export const activityLogs = pgTable(
     targetProjectId: uuid('target_project_id'),
     contextRoute: text('context_route'),
     metadata: jsonb().default({}).notNull(),
+    // Append-only: rows are never updated or soft-deleted, only pruned by the
+    // retention cron, so there is no updated_at / deleted_at pair here.
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
       .default(sql`timezone('utc'::text, now())`)
       .notNull(),
-    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' })
-      .default(sql`timezone('utc'::text, now())`)
-      .notNull(),
-    deletedAt: timestamp('deleted_at', { withTimezone: true, mode: 'string' }),
-    restoredAt: timestamp('restored_at', {
-      withTimezone: true,
-      mode: 'string',
-    }),
   },
   table => [
-    index('idx_activity_logs_actor_id')
-      .using('btree', table.actorId.asc().nullsLast().op('uuid_ops'))
-      .where(sql`(deleted_at IS NULL)`),
-    index('idx_activity_logs_client')
-      .using(
-        'btree',
-        table.targetClientId.asc().nullsLast().op('uuid_ops'),
-        table.createdAt.desc().nullsFirst().op('timestamptz_ops')
-      )
-      .where(sql`(deleted_at IS NULL)`),
     index('idx_activity_logs_created_at').using(
       'btree',
       table.createdAt.desc().nullsFirst().op('timestamptz_ops')
     ),
-    index('idx_activity_logs_project')
-      .using(
-        'btree',
-        table.targetProjectId.asc().nullsLast().op('uuid_ops'),
-        table.createdAt.desc().nullsFirst().op('timestamptz_ops')
-      )
-      .where(sql`(deleted_at IS NULL)`),
-    index('idx_activity_logs_target')
-      .using(
-        'btree',
-        table.targetType.asc().nullsLast().op('text_ops'),
-        table.targetId.asc().nullsLast().op('uuid_ops')
-      )
-      .where(sql`(deleted_at IS NULL)`),
+    // Global per-entity feeds (/projects/activity, /clients/activity, …)
+    // filter on target_type alone and page by created_at.
+    index('idx_activity_logs_type_created_at').using(
+      'btree',
+      table.targetType.asc().nullsLast().op('text_ops'),
+      table.createdAt.desc().nullsFirst().op('timestamptz_ops')
+    ),
+    index('idx_activity_logs_project').using(
+      'btree',
+      table.targetProjectId.asc().nullsLast().op('uuid_ops'),
+      table.createdAt.desc().nullsFirst().op('timestamptz_ops')
+    ),
+    index('idx_activity_logs_target').using(
+      'btree',
+      table.targetType.asc().nullsLast().op('text_ops'),
+      table.targetId.asc().nullsLast().op('uuid_ops')
+    ),
     foreignKey({
       columns: [table.actorId],
       foreignColumns: [users.id],
@@ -1275,7 +1262,7 @@ export const activityOverviewCache = pgTable(
     id: uuid().defaultRandom().primaryKey().notNull(),
     userId: uuid('user_id').notNull(),
     timeframeDays: smallint('timeframe_days').notNull(),
-    summary: text().notNull(),
+    summary: jsonb().notNull(),
     cachedAt: timestamp('cached_at', { withTimezone: true, mode: 'string' })
       .default(sql`timezone('utc'::text, now())`)
       .notNull(),

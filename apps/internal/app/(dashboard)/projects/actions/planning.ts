@@ -1,8 +1,13 @@
 'use server'
 
+import { eq } from 'drizzle-orm'
 import { z } from 'zod'
+import { planningSessionCreatedEvent } from '@/lib/activity/events'
+import { logActivity } from '@/lib/activity/logger'
 import { requireUser } from '@/lib/auth/session'
 import { ensureTaskAccess } from '@/lib/auth/permissions'
+import { db } from '@/lib/db'
+import { projects, tasks } from '@/lib/db/schema'
 import { NotFoundError, ForbiddenError } from '@/lib/errors/http'
 import {
   getSessionByTaskId,
@@ -62,6 +67,33 @@ export async function getOrCreatePlanningSession(input: {
 
   if (!session) {
     session = await createSession(taskId, repoLinkId, user.id)
+
+    const [task] = await db
+      .select({
+        title: tasks.title,
+        projectId: tasks.projectId,
+        clientId: projects.clientId,
+      })
+      .from(tasks)
+      .leftJoin(projects, eq(projects.id, tasks.projectId))
+      .where(eq(tasks.id, taskId))
+      .limit(1)
+
+    const event = planningSessionCreatedEvent({
+      taskId,
+      taskTitle: task?.title ?? 'Untitled task',
+    })
+    await logActivity({
+      actorId: user.id,
+      actorRole: user.role,
+      verb: event.verb,
+      summary: event.summary,
+      targetType: 'PLAN',
+      targetId: session.id,
+      targetProjectId: task?.projectId ?? null,
+      targetClientId: task?.clientId ?? null,
+      metadata: event.metadata,
+    })
   }
 
   const threads = await getThreadsForSession(session.id)

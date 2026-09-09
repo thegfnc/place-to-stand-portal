@@ -108,6 +108,12 @@ export async function createTaskForActor({
       actorId: actor.id,
       actorRole: actor.role,
       attachmentsInput: attachments,
+      activity: {
+        taskTitle: title,
+        projectId,
+        clientId: projectContext[0].clientId ?? null,
+        source,
+      },
     })
   } catch (assigneeError) {
     console.error('Failed to sync task assignees', assigneeError)

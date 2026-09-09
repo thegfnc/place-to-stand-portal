@@ -15,16 +15,13 @@ export type Database = {
           actor_role: Database['public']['Enums']['user_role']
           context_route: string | null
           created_at: string
-          deleted_at: string | null
           id: string
           metadata: Json
-          restored_at: string | null
           summary: string
           target_client_id: string | null
           target_id: string | null
           target_project_id: string | null
           target_type: string
-          updated_at: string
           verb: string
         }
         Insert: {
@@ -32,16 +29,13 @@ export type Database = {
           actor_role?: Database['public']['Enums']['user_role']
           context_route?: string | null
           created_at?: string
-          deleted_at?: string | null
           id?: string
           metadata?: Json
-          restored_at?: string | null
           summary: string
           target_client_id?: string | null
           target_id?: string | null
           target_project_id?: string | null
           target_type: string
-          updated_at?: string
           verb: string
         }
         Update: {
@@ -49,16 +43,13 @@ export type Database = {
           actor_role?: Database['public']['Enums']['user_role']
           context_route?: string | null
           created_at?: string
-          deleted_at?: string | null
           id?: string
           metadata?: Json
-          restored_at?: string | null
           summary?: string
           target_client_id?: string | null
           target_id?: string | null
           target_project_id?: string | null
           target_type?: string
-          updated_at?: string
           verb?: string
         }
         Relationships: [

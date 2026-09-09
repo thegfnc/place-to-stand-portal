@@ -3,16 +3,28 @@
 import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
 
-import { requireUser } from '@/lib/auth/session'
+import { requireUser, type AppUser } from '@/lib/auth/session'
 import { assertAdmin } from '@/lib/auth/permissions'
+import { logActivity } from '@/lib/activity/logger'
+import {
+  productCatalogItemCreatedEvent,
+  productCatalogItemUpdatedEvent,
+  taxRateCreatedEvent,
+  taxRateUpdatedEvent,
+} from '@/lib/activity/events'
+import type { ActivityEvent } from '@/lib/activity/types'
 import {
   createProductCatalogItem,
-  updateProductCatalogItem
+  getProductCatalogItemById,
+  updateProductCatalogItem,
+  type ProductCatalogItemRow,
 } from '@/lib/queries/product-catalog'
 import {
   createTaxRate,
+  getTaxRateById,
   updateTaxRate,
   toggleTaxRateActive,
+  type TaxRateRow,
 } from '@/lib/queries/tax-rates'
 
 // ---------------------------------------------------------------------------
@@ -39,6 +51,79 @@ const taxRateSchema = z.object({
 })
 
 // ---------------------------------------------------------------------------
+// Diff helpers
+// ---------------------------------------------------------------------------
+
+type Diff = {
+  changedFields: string[]
+  details: { before: Record<string, unknown>; after: Record<string, unknown> }
+}
+
+/**
+ * Compares two rows field by field. `fields` maps the row key to the
+ * human-readable label used in `changedFields`; `details` keeps the raw
+ * values under the camelCase form of the row key so the feed can format
+ * them like every other domain's diff.
+ */
+const toCamel = (key: string) =>
+  key.replace(/_([a-z])/g, (_, char: string) => char.toUpperCase())
+
+function diffRows<T extends object>(
+  before: T,
+  after: T,
+  fields: Record<string, string>
+): Diff {
+  const diff: Diff = { changedFields: [], details: { before: {}, after: {} } }
+
+  for (const [key, label] of Object.entries(fields)) {
+    const previous = (before as Record<string, unknown>)[key] ?? null
+    const next = (after as Record<string, unknown>)[key] ?? null
+
+    if (previous !== next) {
+      diff.changedFields.push(label)
+      diff.details.before[toCamel(key)] = previous
+      diff.details.after[toCamel(key)] = next
+    }
+  }
+
+  return diff
+}
+
+async function logSettingsEvent(
+  user: AppUser,
+  targetId: string,
+  event: ActivityEvent
+) {
+  await logActivity({
+    actorId: user.id,
+    actorRole: user.role,
+    verb: event.verb,
+    summary: event.summary,
+    targetType: 'SETTINGS',
+    targetId,
+    metadata: event.metadata,
+  })
+}
+
+const PRODUCT_FIELDS: Partial<Record<keyof ProductCatalogItemRow, string>> = {
+  name: 'name',
+  description: 'description',
+  unit_price: 'unit price',
+  unit_label: 'unit label',
+  creates_hour_block_default: 'hour block default',
+  is_active: 'active',
+  min_quantity: 'minimum quantity',
+  sort_order: 'sort order',
+}
+
+const TAX_RATE_FIELDS: Partial<Record<keyof TaxRateRow, string>> = {
+  label: 'label',
+  state: 'state',
+  rate: 'rate',
+  is_active: 'active',
+}
+
+// ---------------------------------------------------------------------------
 // Product Catalog Actions
 // ---------------------------------------------------------------------------
 
@@ -55,33 +140,55 @@ export async function saveProductCatalogItem(
     return { ok: false, error: parsed.error.issues[0]?.message ?? 'Invalid input.' }
   }
 
+  const values = {
+    name: parsed.data.name,
+    description: parsed.data.description ?? null,
+    unitPrice: parsed.data.unitPrice,
+    unitLabel: parsed.data.unitLabel,
+    createsHourBlockDefault: parsed.data.createsHourBlockDefault,
+    isActive: parsed.data.isActive,
+    minQuantity: parsed.data.minQuantity ?? null,
+    sortOrder: parsed.data.sortOrder,
+  }
+
   try {
     if (parsed.data.id) {
-      const updated = await updateProductCatalogItem(parsed.data.id, {
-        name: parsed.data.name,
-        description: parsed.data.description ?? null,
-        unitPrice: parsed.data.unitPrice,
-        unitLabel: parsed.data.unitLabel,
-        createsHourBlockDefault: parsed.data.createsHourBlockDefault,
-        isActive: parsed.data.isActive,
-        minQuantity: parsed.data.minQuantity ?? null,
-        sortOrder: parsed.data.sortOrder,
-      })
+      const existing = await getProductCatalogItemById(parsed.data.id)
+      if (!existing) {
+        return { ok: false, error: 'Product not found.' }
+      }
+
+      const updated = await updateProductCatalogItem(parsed.data.id, values)
 
       if (!updated) {
         return { ok: false, error: 'Product not found.' }
       }
+
+      const diff = diffRows(existing, updated, PRODUCT_FIELDS)
+      if (diff.changedFields.length > 0) {
+        await logSettingsEvent(
+          user,
+          updated.id,
+          productCatalogItemUpdatedEvent({
+            name: updated.name,
+            changedFields: diff.changedFields,
+            details: diff.details,
+          })
+        )
+      }
     } else {
-      await createProductCatalogItem({
-        name: parsed.data.name,
-        description: parsed.data.description ?? null,
-        unitPrice: parsed.data.unitPrice,
-        unitLabel: parsed.data.unitLabel,
-        createsHourBlockDefault: parsed.data.createsHourBlockDefault,
-        isActive: parsed.data.isActive,
-        minQuantity: parsed.data.minQuantity ?? null,
-        sortOrder: parsed.data.sortOrder,
-      })
+      const created = await createProductCatalogItem(values)
+
+      await logSettingsEvent(
+        user,
+        created.id,
+        productCatalogItemCreatedEvent({
+          name: created.name,
+          unitPrice: created.unit_price,
+          unitLabel: created.unit_label,
+          isActive: created.is_active,
+        })
+      )
     }
 
     revalidatePath('/invoices/settings')
@@ -109,21 +216,47 @@ export async function saveTaxRate(
     return { ok: false, error: parsed.error.issues[0]?.message ?? 'Invalid input.' }
   }
 
+  const values = {
+    state: parsed.data.state,
+    rate: parsed.data.rate,
+    label: parsed.data.label,
+    isActive: parsed.data.isActive,
+  }
+
   try {
     if (parsed.data.id) {
-      await updateTaxRate(parsed.data.id, {
-        state: parsed.data.state,
-        rate: parsed.data.rate,
-        label: parsed.data.label,
-        isActive: parsed.data.isActive,
-      })
+      const existing = await getTaxRateById(parsed.data.id)
+      if (!existing) {
+        return { ok: false, error: 'Tax rate not found.' }
+      }
+
+      const updated = await updateTaxRate(parsed.data.id, values)
+
+      const diff = diffRows(existing, updated, TAX_RATE_FIELDS)
+      if (diff.changedFields.length > 0) {
+        await logSettingsEvent(
+          user,
+          updated.id,
+          taxRateUpdatedEvent({
+            label: updated.label,
+            changedFields: diff.changedFields,
+            details: diff.details,
+          })
+        )
+      }
     } else {
-      await createTaxRate({
-        state: parsed.data.state,
-        rate: parsed.data.rate,
-        label: parsed.data.label,
-        isActive: parsed.data.isActive,
-      })
+      const created = await createTaxRate(values)
+
+      await logSettingsEvent(
+        user,
+        created.id,
+        taxRateCreatedEvent({
+          label: created.label,
+          state: created.state,
+          rate: created.rate,
+          isActive: created.is_active,
+        })
+      )
     }
 
     revalidatePath('/invoices/settings')
@@ -142,7 +275,28 @@ export async function toggleTaxRateActiveAction(
   assertAdmin(user)
 
   try {
-    await toggleTaxRateActive(id, isActive)
+    const existing = await getTaxRateById(id)
+    if (!existing) {
+      return { ok: false, error: 'Tax rate not found.' }
+    }
+
+    const updated = await toggleTaxRateActive(id, isActive)
+
+    if (existing.is_active !== updated.is_active) {
+      await logSettingsEvent(
+        user,
+        updated.id,
+        taxRateUpdatedEvent({
+          label: updated.label,
+          changedFields: ['active'],
+          details: {
+            before: { isActive: existing.is_active },
+            after: { isActive: updated.is_active },
+          },
+        })
+      )
+    }
+
     revalidatePath('/invoices/settings')
     return { ok: true }
   } catch (error) {

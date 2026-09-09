@@ -1,5 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 
+import { submissionsAbandonedEvent } from '@/lib/activity/events'
+import { logActivity } from '@/lib/activity/logger'
 import { serverEnv } from '@/lib/env.server'
 import { verifyIntakeToken } from '@/lib/integrations/verify-intake-token'
 import { abandonStaleFormSubmissions } from '@/lib/queries/form-submissions'
@@ -32,6 +34,19 @@ export async function GET(request: NextRequest) {
       console.log(
         `Abandoned ${abandonedCount} stale in-progress submission(s)`
       )
+
+      const event = submissionsAbandonedEvent({
+        count: abandonedCount,
+        staleAfterHours: STALE_AFTER_HOURS,
+      })
+      await logActivity({
+        actorId: null,
+        source: 'SYSTEM',
+        verb: event.verb,
+        summary: event.summary,
+        targetType: 'SUBMISSION',
+        metadata: event.metadata,
+      })
     }
 
     return NextResponse.json({ ok: true, data: { abandonedCount } })

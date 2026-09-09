@@ -3,6 +3,8 @@ import { sql } from 'drizzle-orm'
 
 import type { AppUser } from '@/lib/auth/session'
 import { assertAdmin } from '@/lib/auth/permissions'
+import { logActivity } from '@/lib/activity/logger'
+import { userRestoredEvent } from '@/lib/activity/events'
 import { db } from '@/lib/db'
 import { users } from '@/lib/db/schema'
 import { getSupabaseServiceClient } from '@/lib/supabase/service'
@@ -10,6 +12,15 @@ import { getSupabaseServiceClient } from '@/lib/supabase/service'
 import { dispatchPortalInvite } from '../user-service'
 import { createPortalUser } from './create-user'
 import type { UserServiceResult } from '../types'
+
+export type FindOrCreatePortalUserResult = UserServiceResult & {
+  /**
+   * True when this call inserted a `users` row (fresh account or a missing
+   * profile for an existing auth user). False for a found or restored row, so
+   * the caller can log USER_CREATED only when a user actually came into being.
+   */
+  created?: boolean
+}
 
 /**
  * Finds an existing portal user by email or creates a new one.
@@ -21,7 +32,7 @@ import type { UserServiceResult } from '../types'
 export async function findOrCreatePortalUser(
   actor: AppUser,
   input: { email: string; fullName: string | null }
-): Promise<UserServiceResult> {
+): Promise<FindOrCreatePortalUserResult> {
   assertAdmin(actor)
 
   // 1. Check our users table for an active user
@@ -32,7 +43,7 @@ export async function findOrCreatePortalUser(
     .limit(1)
 
   if (existingUser) {
-    return { userId: existingUser.id }
+    return { userId: existingUser.id, created: false }
   }
 
   // 2. Try creating through the normal flow (handles auth + DB + invite)
@@ -43,7 +54,7 @@ export async function findOrCreatePortalUser(
   })
 
   if (!createResult.error) {
-    return createResult
+    return { ...createResult, created: true }
   }
 
   // 3. If "already registered", the auth user exists but our DB doesn't have them
@@ -68,12 +79,29 @@ export async function findOrCreatePortalUser(
     .where(eq(users.id, authUserId))
     .limit(1)
 
+  let created = false
+
   if (deletedUser) {
     // Restore the soft-deleted row
     await db
       .update(users)
       .set({ deletedAt: null, updatedAt: new Date().toISOString() })
       .where(eq(users.id, authUserId))
+
+    const restored = userRestoredEvent({
+      fullName: input.fullName ?? input.email,
+      email: input.email,
+      role: 'CLIENT',
+    })
+    await logActivity({
+      actorId: actor.id,
+      actorRole: actor.role,
+      verb: restored.verb,
+      summary: restored.summary,
+      targetType: 'USER',
+      targetId: authUserId,
+      metadata: restored.metadata,
+    })
   } else {
     // Create the missing users table row
     await db.insert(users).values({
@@ -82,6 +110,7 @@ export async function findOrCreatePortalUser(
       fullName: input.fullName ?? input.email,
       role: 'CLIENT',
     })
+    created = true
   }
 
   // 6. Confirm the account and send an invite so they can sign in.
@@ -119,5 +148,5 @@ export async function findOrCreatePortalUser(
     // already associated. They can request a link from the sign-in page.
   }
 
-  return { userId: authUserId }
+  return { userId: authUserId, created }
 }

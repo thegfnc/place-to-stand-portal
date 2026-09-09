@@ -56,9 +56,10 @@ export const taskStatusChangedEvent = (args: {
   verb: ActivityVerbs.TASK_STATUS_CHANGED,
   summary: `Moved task "${args.title}" from ${getTaskStatusLabel(args.fromStatus)} to ${getTaskStatusLabel(args.toStatus)}`,
   metadata: toMetadata({
-    status: {
-      from: args.fromStatus,
-      to: args.toStatus,
+    changedFields: ['status'],
+    details: {
+      before: { status: args.fromStatus },
+      after: { status: args.toStatus },
     },
   }),
 })
@@ -143,6 +144,38 @@ export const taskCommentDeletedEvent = (
     ? `Removed a comment from "${args.taskTitle}"`
     : 'Removed a comment',
 })
+
+export const taskAttachmentsAddedEvent = (args: {
+  taskTitle: string
+  fileNames: string[]
+}): ActivityEvent => {
+  const count = args.fileNames.length
+  const plural = count === 1 ? '' : 's'
+
+  return {
+    verb: ActivityVerbs.TASK_ATTACHMENT_ADDED,
+    summary: `Added ${count} attachment${plural} to "${args.taskTitle}"`,
+    metadata: toMetadata({
+      attachments: { added: args.fileNames, removed: [] },
+    }),
+  }
+}
+
+export const taskAttachmentsRemovedEvent = (args: {
+  taskTitle: string
+  fileNames: string[]
+}): ActivityEvent => {
+  const count = args.fileNames.length
+  const plural = count === 1 ? '' : 's'
+
+  return {
+    verb: ActivityVerbs.TASK_ATTACHMENT_REMOVED,
+    summary: `Removed ${count} attachment${plural} from "${args.taskTitle}"`,
+    metadata: toMetadata({
+      attachments: { added: [], removed: args.fileNames },
+    }),
+  }
+}
 
 export const workerPlanRequestedEvent = (args: {
   taskTitle: string

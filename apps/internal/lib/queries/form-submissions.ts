@@ -128,8 +128,24 @@ function buildFilters({
  * unique `submissionId`, so they never conflict and every rule above is a
  * no-op for them.
  */
-export async function upsertFormSubmission(row: NewFormSubmission) {
-  await db
+export type UpsertFormSubmissionResult = {
+  id: string
+  kind: 'audit' | 'contact'
+  status: string
+  /** True on first insert; false when an existing row was updated. */
+  inserted: boolean
+}
+
+/**
+ * Returns null when the upsert was a no-op (a stale beacon rejected by
+ * `setWhere`, or a tombstoned session). `inserted` distinguishes the first
+ * beacon of a session from a later update via Postgres's `xmax = 0`
+ * (a freshly inserted tuple has no updating transaction id).
+ */
+export async function upsertFormSubmission(
+  row: NewFormSubmission
+): Promise<UpsertFormSubmissionResult | null> {
+  const [result] = await db
     .insert(formSubmissions)
     .values(row)
     .onConflictDoUpdate({
@@ -213,6 +229,14 @@ export async function upsertFormSubmission(row: NewFormSubmission) {
       // beacon can't repopulate or resurrect a permanently deleted session.
       setWhere: sql`excluded.last_activity_at >= ${formSubmissions.lastActivityAt} AND ${formSubmissions.destroyedAt} IS NULL`,
     })
+    .returning({
+      id: formSubmissions.id,
+      kind: formSubmissions.kind,
+      status: formSubmissions.status,
+      inserted: sql<boolean>`(xmax = 0)`,
+    })
+
+  return result ?? null
 }
 
 // R5 (offset variant): each allowlisted sort field maps to its ORDER BY

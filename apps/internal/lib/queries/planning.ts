@@ -5,6 +5,8 @@ import {
   planThreads,
   planRevisions,
   planMessages,
+  projects,
+  tasks,
 } from '@/lib/db/schema'
 
 // ---------------------------------------------------------------------------
@@ -49,6 +51,29 @@ export async function updateSessionStatus(
     .update(planningSessions)
     .set({ status, updatedAt: new Date().toISOString() })
     .where(eq(planningSessions.id, sessionId))
+}
+
+/**
+ * Activity-log context for a thread: the owning session plus the task's
+ * project/client so PLAN events land in the right feeds.
+ */
+export async function getPlanningContextForThread(threadId: string) {
+  const [row] = await db
+    .select({
+      sessionId: planThreads.sessionId,
+      taskId: tasks.id,
+      taskTitle: tasks.title,
+      projectId: tasks.projectId,
+      clientId: projects.clientId,
+    })
+    .from(planThreads)
+    .innerJoin(planningSessions, eq(planningSessions.id, planThreads.sessionId))
+    .innerJoin(tasks, eq(tasks.id, planningSessions.taskId))
+    .leftJoin(projects, eq(projects.id, tasks.projectId))
+    .where(eq(planThreads.id, threadId))
+    .limit(1)
+
+  return row ?? null
 }
 
 // ---------------------------------------------------------------------------

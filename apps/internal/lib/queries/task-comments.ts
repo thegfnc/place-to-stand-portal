@@ -2,17 +2,36 @@ import 'server-only'
 
 import { and, desc, eq, isNull, sql, type SQL } from 'drizzle-orm'
 
+import {
+  taskCommentCreatedEvent,
+  taskCommentDeletedEvent,
+  taskCommentUpdatedEvent,
+} from '@/lib/activity/events'
+import { logActivity } from '@/lib/activity/logger'
 import type { AppUser } from '@/lib/auth/session'
 import { ensureTaskAccess } from '@/lib/auth/permissions'
 import { db } from '@/lib/db'
-import { taskComments, users } from '@/lib/db/schema'
+import { projects, taskComments, tasks, users } from '@/lib/db/schema'
 import { NotFoundError } from '@/lib/errors/http'
 import {
   clampLimit,
   decodeCursor,
   encodeCursor,
 } from '@/lib/pagination/cursor'
-import type { TaskCommentAuthor, TaskCommentWithAuthor } from '@/lib/types'
+import type {
+  ActivitySourceValue,
+  TaskCommentAuthor,
+  TaskCommentWithAuthor,
+} from '@/lib/types'
+
+/**
+ * Comment mutations are reached from the browser API routes and from the CLI;
+ * the activity row is written here so neither caller has to remember it, and
+ * only the source differs between them.
+ */
+export type TaskCommentMutationOptions = {
+  source?: ActivitySourceValue
+}
 
 type CommentSelection = {
   id: string
@@ -83,6 +102,57 @@ async function getCommentSelectionById(commentId: string): Promise<CommentSelect
     .limit(1)
 
   return rows[0] ?? null
+}
+
+type CommentTaskContext = {
+  title: string
+  projectId: string
+  clientId: string | null
+}
+
+async function getCommentTaskContext(
+  taskId: string
+): Promise<CommentTaskContext | null> {
+  const rows = await db
+    .select({
+      title: tasks.title,
+      projectId: tasks.projectId,
+      clientId: projects.clientId,
+    })
+    .from(tasks)
+    .leftJoin(projects, eq(projects.id, tasks.projectId))
+    .where(eq(tasks.id, taskId))
+    .limit(1)
+
+  const row = rows[0]
+
+  return row
+    ? { title: row.title, projectId: row.projectId, clientId: row.clientId ?? null }
+    : null
+}
+
+async function logCommentActivity(args: {
+  user: AppUser
+  source?: ActivitySourceValue
+  taskId: string
+  commentId: string
+  buildEvent: typeof taskCommentCreatedEvent
+}): Promise<void> {
+  const context = await getCommentTaskContext(args.taskId)
+  const event = args.buildEvent({ taskTitle: context?.title ?? null })
+
+  await logActivity({
+    actorId: args.user.id,
+    actorRole: args.user.role,
+    source: args.source,
+    verb: event.verb,
+    summary: event.summary,
+    targetType: 'COMMENT',
+    targetId: args.commentId,
+    targetProjectId: context?.projectId ?? null,
+    targetClientId: context?.clientId ?? null,
+    metadata: { taskId: args.taskId, commentId: args.commentId },
+  })
 }
 
 export type ListTaskCommentsInput = {
@@ -186,6 +256,7 @@ export async function createTaskComment(
     taskId: string
     body: string
   },
+  options: TaskCommentMutationOptions = {},
 ): Promise<{ commentId: string }> {
   await ensureTaskAccess(user, input.taskId)
 
@@ -204,6 +275,14 @@ export async function createTaskComment(
     throw new NotFoundError('Failed to create comment.')
   }
 
+  await logCommentActivity({
+    user,
+    source: options.source,
+    taskId: input.taskId,
+    commentId: comment.id,
+    buildEvent: taskCommentCreatedEvent,
+  })
+
   return { commentId: comment.id }
 }
 
@@ -213,6 +292,7 @@ export async function updateTaskComment(
     commentId: string
     body: string
   },
+  options: TaskCommentMutationOptions = {},
 ): Promise<void> {
   const comment = await getCommentSelectionById(input.commentId)
 
@@ -222,6 +302,11 @@ export async function updateTaskComment(
 
   await ensureTaskAccess(user, comment.taskId)
 
+  // Re-saving an unchanged body is a no-op: no write, no activity row.
+  if (comment.body === input.body) {
+    return
+  }
+
   await db
     .update(taskComments)
     .set({
@@ -229,11 +314,20 @@ export async function updateTaskComment(
       updatedAt: new Date().toISOString(),
     })
     .where(eq(taskComments.id, input.commentId))
+
+  await logCommentActivity({
+    user,
+    source: options.source,
+    taskId: comment.taskId,
+    commentId: input.commentId,
+    buildEvent: taskCommentUpdatedEvent,
+  })
 }
 
 export async function softDeleteTaskComment(
   user: AppUser,
   commentId: string,
+  options: TaskCommentMutationOptions = {},
 ): Promise<void> {
   const comment = await getCommentSelectionById(commentId)
 
@@ -252,4 +346,12 @@ export async function softDeleteTaskComment(
       updatedAt: now,
     })
     .where(eq(taskComments.id, commentId))
+
+  await logCommentActivity({
+    user,
+    source: options.source,
+    taskId: comment.taskId,
+    commentId,
+    buildEvent: taskCommentDeletedEvent,
+  })
 }

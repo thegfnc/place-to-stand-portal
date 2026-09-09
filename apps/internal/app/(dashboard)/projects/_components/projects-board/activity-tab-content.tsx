@@ -40,7 +40,7 @@ export function ActivityTabContent(props: ActivityTabContentProps) {
           </div>
           <div className='mt-3'>
             <ActivityFeed
-              targetType={['PROJECT', 'TASK', 'COMMENT']}
+              targetType={['PROJECT', 'TASK', 'COMMENT', 'TIME_LOG']}
               projectId={activeProject.id}
               clientId={activityTargetClientId}
               emptyState='No project activity yet.'

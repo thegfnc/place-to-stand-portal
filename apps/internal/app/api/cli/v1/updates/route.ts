@@ -35,6 +35,7 @@ export const POST = withCliAuth(async ({ user, request }) => {
     intro: payload.intro,
     items: payload.items,
     closing: payload.closing,
+    source: 'CLI',
   })
 
   return jsonOk(serializeClientUpdate(update), { status: 201 })

@@ -1,4 +1,8 @@
-import { taskUpdatedEvent } from '@/lib/activity/events'
+import {
+  taskStatusChangedEvent,
+  taskUpdatedEvent,
+} from '@/lib/activity/events'
+import type { ActivityEvent } from '@/lib/activity/types'
 
 export type TaskSnapshot = {
   title: string
@@ -9,13 +13,15 @@ export type TaskSnapshot = {
   assigneeIds: string[]
 }
 
-type TaskUpdateEvent = ReturnType<typeof taskUpdatedEvent>
-
 /**
  * Diff two task snapshots into an activity event, or `null` when nothing
  * changed. `taskUpdatedEvent` only formats — computing what actually differs
  * is the caller's job, and this is that job in one place so the CLI and the
  * browser produce identical audit trails.
+ *
+ * A save whose only change is the status collapses to TASK_STATUS_CHANGED, so
+ * a sheet save and a board drag leave the same event behind. Status changes
+ * alongside other fields stay inside the single TASK_UPDATED diff.
  *
  * Callers must normalise nullable fields (`?? null`) before building a
  * snapshot, so that `undefined` and `null` do not read as a change.
@@ -23,7 +29,7 @@ type TaskUpdateEvent = ReturnType<typeof taskUpdatedEvent>
 export function buildTaskUpdateEvent(
   before: TaskSnapshot,
   after: TaskSnapshot
-): TaskUpdateEvent | null {
+): ActivityEvent | null {
   const changedFields: string[] = []
   const previousDetails: Record<string, unknown> = {}
   const nextDetails: Record<string, unknown> = {}
@@ -73,6 +79,14 @@ export function buildTaskUpdateEvent(
 
   if (!changedFields.length) {
     return null
+  }
+
+  if (changedFields.length === 1 && changedFields[0] === 'status') {
+    return taskStatusChangedEvent({
+      title: after.title,
+      fromStatus: before.status,
+      toStatus: after.status,
+    })
   }
 
   const hasDetailChanges =

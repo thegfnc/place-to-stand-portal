@@ -3,15 +3,12 @@
 import { useMutation, type QueryClient } from '@tanstack/react-query'
 import type { Dispatch, SetStateAction } from 'react'
 
-import { logClientActivity } from '@/lib/activity/client'
-import { timeLogCreatedEvent } from '@/lib/activity/events'
 import type { ToastOptions } from '@/components/ui/use-toast'
 import type {
   FieldError,
   TimeLogFormErrors,
   TimeLogFormField,
 } from './types'
-import type { Json } from '@/lib/types/json'
 
 const SUCCESS_TOAST: ToastOptions = {
   title: 'Time logged',
@@ -168,29 +165,6 @@ export function useProjectTimeLogMutation(
 
       if (!resolvedTimeLogId) {
         throw new Error('Time log mutation did not return an identifier.')
-      }
-
-      if (!isEditMode) {
-        const event = timeLogCreatedEvent({
-          hours: parsedHours,
-          projectName: project.name,
-          linkedTaskCount: selectedTaskIds.length,
-        })
-
-        const metadata = {
-          taskIds: selectedTaskIds,
-          notePresent: Boolean(formValues.noteInput.trim()),
-          loggedOn: formValues.loggedOnInput,
-        }
-
-        await logClientActivity(event, {
-          actorId: logUserId,
-          targetType: 'TIME_LOG',
-          targetId: resolvedTimeLogId,
-          targetProjectId: project.id,
-          targetClientId: project.clientId ?? null,
-          metadata: JSON.parse(JSON.stringify(metadata)) as Json,
-        })
       }
 
       // PRD 002 section 05: closed-month warning riding the API response.

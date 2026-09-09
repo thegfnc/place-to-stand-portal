@@ -8,6 +8,8 @@ import { db } from '@/lib/db'
 import { clients, contactClients, contacts } from '@/lib/db/schema'
 import { NotFoundError } from '@/lib/errors/http'
 
+import { logContactClientLinkChanges } from './contact-client-link-activity'
+
 export type ClientOption = {
   id: string
   name: string
@@ -162,7 +164,8 @@ export async function getContactDeepLinkRowById(
 
 /**
  * Syncs the client links for a contact.
- * Adds new links and removes unlinked ones.
+ * Adds new links and removes unlinked ones. `user` is the acting admin the
+ * server action resolved — it is the actor on the link activity rows.
  */
 export async function syncContactClients(
   user: AppUser,
@@ -170,6 +173,9 @@ export async function syncContactClients(
   clientIds: string[]
 ): Promise<{ ok: boolean; error?: string }> {
   assertAdmin(user)
+
+  let toAdd: string[] = []
+  let toRemove: string[] = []
 
   try {
     // Get current links
@@ -182,8 +188,8 @@ export async function syncContactClients(
     const newIds = new Set(clientIds)
 
     // Find links to add and remove
-    const toAdd = clientIds.filter(id => !currentIds.has(id))
-    const toRemove = [...currentIds].filter(id => !newIds.has(id))
+    toAdd = clientIds.filter(id => !currentIds.has(id))
+    toRemove = [...currentIds].filter(id => !newIds.has(id))
 
     // Perform the updates
     if (toAdd.length > 0) {
@@ -205,9 +211,19 @@ export async function syncContactClients(
           )
         )
     }
-
-    return { ok: true }
   } catch {
     return { ok: false, error: 'Failed to update client links.' }
   }
+
+  // The links are committed; a logging failure must not report the sync as failed.
+  await logContactClientLinkChanges(user, [
+    ...toAdd.map(clientId => ({ contactId, clientId, action: 'linked' as const })),
+    ...toRemove.map(clientId => ({
+      contactId,
+      clientId,
+      action: 'unlinked' as const,
+    })),
+  ])
+
+  return { ok: true }
 }

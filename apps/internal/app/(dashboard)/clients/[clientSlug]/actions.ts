@@ -4,11 +4,14 @@ import { revalidatePath } from 'next/cache'
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 
+import { clientUpdatedEvent } from '@/lib/activity/events'
+import { logActivity } from '@/lib/activity/logger'
 import { requireUser } from '@/lib/auth/session'
 import { assertAdmin } from '@/lib/auth/permissions'
 import { db } from '@/lib/db'
 import { clients } from '@/lib/db/schema'
 import { createUpdateDraft } from '@/lib/updates'
+
 const updateClientNotesSchema = z.object({
   clientId: z.string().uuid('Invalid client ID'),
   notes: z.string().nullable(),
@@ -40,6 +43,22 @@ export async function updateClientNotes(
   const normalizedNotes = notes?.trim() || null
 
   try {
+    const [existing] = await db
+      .select({ name: clients.name, notes: clients.notes })
+      .from(clients)
+      .where(eq(clients.id, clientId))
+      .limit(1)
+
+    if (!existing) {
+      return { success: false, error: 'Client not found.' }
+    }
+
+    const previousNotes = existing.notes ?? null
+
+    if (previousNotes === normalizedNotes) {
+      return { success: true }
+    }
+
     await db
       .update(clients)
       .set({
@@ -47,6 +66,26 @@ export async function updateClientNotes(
         updatedAt: new Date().toISOString(),
       })
       .where(eq(clients.id, clientId))
+
+    const event = clientUpdatedEvent({
+      name: existing.name,
+      changedFields: ['notes'],
+      details: {
+        before: { notes: previousNotes },
+        after: { notes: normalizedNotes },
+      },
+    })
+
+    await logActivity({
+      actorId: user.id,
+      actorRole: user.role,
+      verb: event.verb,
+      summary: event.summary,
+      targetType: 'CLIENT',
+      targetId: clientId,
+      targetClientId: clientId,
+      metadata: event.metadata,
+    })
 
     revalidatePath(`/clients`)
     revalidatePath(`/clients/${clientId}`)

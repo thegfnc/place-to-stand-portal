@@ -13,6 +13,7 @@ import {
 } from '@/lib/oauth/google'
 import { encryptToken } from '@/lib/oauth/encryption'
 import { logActivity } from '@/lib/activity/logger'
+import { oauthConnectedEvent } from '@/lib/activity/events'
 
 export async function GET(request: NextRequest) {
   const user = await requireUser()
@@ -60,11 +61,18 @@ export async function GET(request: NextRequest) {
       ? encryptToken(tokens.refresh_token)
       : null
 
-    // Upsert connection by providerAccountId (supports multi-account)
+    // Upsert connection by providerAccountId (supports multi-account). A
+    // re-auth of a live connection refreshes tokens without logging a second
+    // OAUTH_CONNECTED; reconnecting a disconnected account does log.
+    let alreadyConnected = false
+
     await db.transaction(async tx => {
       // Check if this specific Google account already exists
       const [existing] = await tx
-        .select({ id: oauthConnections.id })
+        .select({
+          id: oauthConnections.id,
+          deletedAt: oauthConnections.deletedAt,
+        })
         .from(oauthConnections)
         .where(
           and(
@@ -74,6 +82,8 @@ export async function GET(request: NextRequest) {
           )
         )
         .limit(1)
+
+      alreadyConnected = Boolean(existing && !existing.deletedAt)
 
       if (existing) {
         // Update existing connection (re-auth flow)
@@ -116,17 +126,22 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    // Log activity
-    await logActivity({
-      actorId: user.id,
-      actorRole: user.role,
-      source: 'SYSTEM',
-      verb: 'OAUTH_CONNECTED',
-      summary: `Connected Google account (${userInfo.email})`,
-      targetType: 'SETTINGS',
-      targetId: user.id,
-      metadata: { provider: 'GOOGLE', email: userInfo.email },
-    })
+    if (!alreadyConnected) {
+      const event = oauthConnectedEvent({
+        provider: 'GOOGLE',
+        accountLabel: userInfo.email,
+      })
+
+      await logActivity({
+        actorId: user.id,
+        actorRole: user.role,
+        verb: event.verb,
+        summary: event.summary,
+        targetType: 'SETTINGS',
+        targetId: user.id,
+        metadata: event.metadata,
+      })
+    }
 
     return NextResponse.redirect(
       new URL('/settings/integrations?success=google_connected', request.url)

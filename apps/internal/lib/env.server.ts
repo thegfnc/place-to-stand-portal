@@ -36,6 +36,9 @@ const schema = z.object({
   AUDIT_INTAKE_TOKEN: z.string().min(1).optional(),
   CONTACT_INTAKE_TOKEN: z.string().min(1).optional(),
   CRON_SECRET: z.string().min(1).optional(),
+  // How long activity_logs rows are kept before the weekly prune cron
+  // deletes them. Defaults to two years.
+  ACTIVITY_LOG_RETENTION_DAYS: z.coerce.number().int().positive().default(730),
 })
 
 // Helper to convert empty strings to undefined for optional env vars
@@ -72,4 +75,7 @@ export const serverEnv = schema.parse({
   AUDIT_INTAKE_TOKEN: emptyToUndefined(process.env.AUDIT_INTAKE_TOKEN),
   CONTACT_INTAKE_TOKEN: emptyToUndefined(process.env.CONTACT_INTAKE_TOKEN),
   CRON_SECRET: emptyToUndefined(process.env.CRON_SECRET),
+  ACTIVITY_LOG_RETENTION_DAYS: emptyToUndefined(
+    process.env.ACTIVITY_LOG_RETENTION_DAYS
+  ),
 })

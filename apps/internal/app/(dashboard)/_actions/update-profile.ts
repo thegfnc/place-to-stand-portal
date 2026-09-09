@@ -3,7 +3,12 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
-import { requireUser } from "@/lib/auth/session";
+import { requireUser, type AppUser } from "@/lib/auth/session";
+import { logActivity } from "@/lib/activity/logger";
+import {
+  userPasswordChangedEvent,
+  userUpdatedEvent,
+} from "@/lib/activity/events";
 import { sendPasswordChangedEmail } from "@/lib/email/auth-emails";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { getSupabaseServiceClient } from "@/lib/supabase/service";
@@ -110,6 +115,14 @@ export async function updateProfile(input: UpdateProfileInput): Promise<UpdatePr
     return { error: authError.message };
   }
 
+  await logProfileActivity({
+    user,
+    fullName,
+    email: isEmailChange ? email : undefined,
+    nextAvatarPath,
+    passwordChanged: Boolean(password),
+  });
+
   // Goes to the address on file, not `email`: a new address is unconfirmed at
   // this point, so notifying it would tell whoever owns it about a change to an
   // account that isn't theirs yet — and leave the real owner unaware.
@@ -124,4 +137,83 @@ export async function updateProfile(input: UpdateProfileInput): Promise<UpdatePr
   revalidatePath("/settings/users");
 
   return { emailConfirmationSent: Boolean(isEmailChange) };
+}
+
+type ProfileActivityArgs = {
+  user: AppUser;
+  fullName: string;
+  /** Only set when the address actually changed. */
+  email: string | undefined;
+  nextAvatarPath: string | null;
+  passwordChanged: boolean;
+};
+
+/**
+ * One row per semantic change: profile fields land on USER_UPDATED (same
+ * shape as the admin edit in settings/users) and a password change gets its
+ * own USER_PASSWORD_CHANGED row. Avatar is recorded as a presence flag, never
+ * the storage path.
+ */
+async function logProfileActivity(args: ProfileActivityArgs) {
+  const { user } = args;
+  const changedFields: string[] = [];
+  const before: Record<string, unknown> = {};
+  const after: Record<string, unknown> = {};
+
+  const previousFullName = user.full_name ?? null;
+  if (previousFullName !== args.fullName) {
+    changedFields.push("name");
+    before.fullName = previousFullName;
+    after.fullName = args.fullName;
+  }
+
+  if (args.email) {
+    changedFields.push("email");
+    before.email = user.email;
+    after.email = args.email;
+  }
+
+  const previousAvatar = user.avatar_url ?? null;
+  if (previousAvatar !== args.nextAvatarPath) {
+    changedFields.push("avatar");
+    before.hasAvatar = Boolean(previousAvatar);
+    after.hasAvatar = Boolean(args.nextAvatarPath);
+  }
+
+  const displayName = args.fullName || previousFullName || user.email;
+
+  if (changedFields.length > 0) {
+    const event = userUpdatedEvent({
+      fullName: displayName,
+      changedFields,
+      details: { before, after },
+    });
+
+    await logActivity({
+      actorId: user.id,
+      actorRole: user.role,
+      verb: event.verb,
+      summary: event.summary,
+      targetType: "USER",
+      targetId: user.id,
+      metadata: event.metadata,
+    });
+  }
+
+  if (args.passwordChanged) {
+    const event = userPasswordChangedEvent({
+      fullName: displayName,
+      context: "profile",
+    });
+
+    await logActivity({
+      actorId: user.id,
+      actorRole: user.role,
+      verb: event.verb,
+      summary: event.summary,
+      targetType: "USER",
+      targetId: user.id,
+      metadata: event.metadata,
+    });
+  }
 }

@@ -6,6 +6,7 @@ import type { AppUser } from '@/lib/auth/session'
 import { assertAdmin } from '@/lib/auth/permissions'
 import { db } from '@/lib/db'
 import { clientMembers, contacts, contactClients, users } from '@/lib/db/schema'
+import { logContactClientLinkChanges } from '@/lib/queries/contacts/settings/contact-client-link-activity'
 
 type ContactOption = {
   id: string
@@ -140,6 +141,8 @@ export async function getClientSheetContactData(
  * Syncs the contact links for a client.
  * Adds new links and removes unlinked ones.
  * Also manages client_members for contacts that have portal accounts.
+ * `user` is the acting admin the server action resolved — it is the actor on
+ * the link activity rows.
  */
 export async function syncClientContacts(
   user: AppUser,
@@ -147,6 +150,9 @@ export async function syncClientContacts(
   contactIds: string[]
 ): Promise<{ ok: boolean; error?: string }> {
   assertAdmin(user)
+
+  let toAdd: string[] = []
+  let toRemove: string[] = []
 
   try {
     // Get current links
@@ -159,8 +165,8 @@ export async function syncClientContacts(
     const newIds = new Set(contactIds)
 
     // Find links to add and remove
-    const toAdd = contactIds.filter(id => !currentIds.has(id))
-    const toRemove = [...currentIds].filter(id => !newIds.has(id))
+    toAdd = contactIds.filter(id => !currentIds.has(id))
+    toRemove = [...currentIds].filter(id => !newIds.has(id))
 
     // Perform the contact-client link updates
     if (toAdd.length > 0) {
@@ -185,11 +191,21 @@ export async function syncClientContacts(
 
     // Sync client_members for contacts with portal accounts
     await syncPortalMemberships(clientId, toAdd, toRemove)
-
-    return { ok: true }
   } catch {
     return { ok: false, error: 'Failed to update contact links.' }
   }
+
+  // The links are committed; a logging failure must not report the sync as failed.
+  await logContactClientLinkChanges(user, [
+    ...toAdd.map(contactId => ({ contactId, clientId, action: 'linked' as const })),
+    ...toRemove.map(contactId => ({
+      contactId,
+      clientId,
+      action: 'unlinked' as const,
+    })),
+  ])
+
+  return { ok: true }
 }
 
 /**

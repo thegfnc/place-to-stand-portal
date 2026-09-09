@@ -3,6 +3,12 @@
 import { and, eq, isNull } from 'drizzle-orm'
 import { z } from 'zod'
 
+import {
+  leadCreatedEvent,
+  leadStatusChangedEvent,
+  leadUpdatedEvent,
+} from '@/lib/activity/events'
+import { logActivity } from '@/lib/activity/logger'
 import { requireUser } from '@/lib/auth/session'
 import { assertAdmin } from '@/lib/auth/permissions'
 import { db } from '@/lib/db'
@@ -14,7 +20,7 @@ import {
   type LeadSourceTypeValue,
   type LeadStatusValue,
 } from '@/lib/leads/constants'
-import { serializeLeadNotes } from '@/lib/leads/notes'
+import { extractLeadNotes, serializeLeadNotes } from '@/lib/leads/notes'
 import { resolveNextLeadRank } from '@/lib/leads/rank'
 
 import { revalidateLeadsPath } from './utils'
@@ -102,12 +108,33 @@ export async function saveLead(input: SaveLeadInput): Promise<LeadActionResult> 
           changedAt: timestamp,
           changedBy: user.id,
         })
+
+        await logActivity({
+          actorId: user.id,
+          actorRole: user.role,
+          targetType: 'LEAD',
+          targetId: createdLeadId,
+          ...leadCreatedEvent({
+            name: normalized.contactName,
+            source: normalized.sourceType,
+            status: normalized.status,
+          }),
+        })
       }
     } else {
       const existingRows = await db
         .select({
           id: leads.id,
+          contactName: leads.contactName,
           status: leads.status,
+          sourceType: leads.sourceType,
+          sourceDetail: leads.sourceDetail,
+          assigneeId: leads.assigneeId,
+          contactEmail: leads.contactEmail,
+          contactPhone: leads.contactPhone,
+          companyName: leads.companyName,
+          companyWebsite: leads.companyWebsite,
+          notes: leads.notes,
           rank: leads.rank,
         })
         .from(leads)
@@ -122,6 +149,7 @@ export async function saveLead(input: SaveLeadInput): Promise<LeadActionResult> 
 
       let rank = existing.rank
       const statusChanged = existing.status !== normalized.status
+      const diff = diffLeadFields(existing, normalized)
 
       if (statusChanged) {
         rank = await resolveNextLeadRank(normalized.status)
@@ -173,6 +201,35 @@ export async function saveLead(input: SaveLeadInput): Promise<LeadActionResult> 
           changedBy: user.id,
         })
       }
+
+      // Status-only edits read as a stage move; anything else is a field diff
+      // that carries status inside it when both changed. A no-op save logs
+      // nothing.
+      if (diff.changedFields.length === 1 && statusChanged) {
+        await logActivity({
+          actorId: user.id,
+          actorRole: user.role,
+          targetType: 'LEAD',
+          targetId: normalized.id,
+          ...leadStatusChangedEvent({
+            name: normalized.contactName,
+            fromStatus: existing.status,
+            toStatus: normalized.status,
+          }),
+        })
+      } else if (diff.changedFields.length > 0) {
+        await logActivity({
+          actorId: user.id,
+          actorRole: user.role,
+          targetType: 'LEAD',
+          targetId: normalized.id,
+          ...leadUpdatedEvent({
+            name: normalized.contactName,
+            changedFields: diff.changedFields,
+            details: { before: diff.before, after: diff.after },
+          }),
+        })
+      }
     }
   } catch (error) {
     console.error('Failed to save lead', error)
@@ -184,6 +241,71 @@ export async function saveLead(input: SaveLeadInput): Promise<LeadActionResult> 
 
   revalidateLeadsPath()
   return { success: true, leadId: createdLeadId }
+}
+
+type NormalizedLead = ReturnType<typeof normalizeLeadPayload>
+
+type ExistingLead = {
+  contactName: string
+  status: LeadStatusValue
+  sourceType: LeadSourceTypeValue | null
+  sourceDetail: string | null
+  assigneeId: string | null
+  contactEmail: string | null
+  contactPhone: string | null
+  companyName: string | null
+  companyWebsite: string | null
+  notes: unknown
+}
+
+/**
+ * Field-by-field comparison of the editable lead columns. Labels in
+ * `changedFields` are the human phrases the summary joins; the `before`/`after`
+ * records keep raw column values (enums and ids unresolved) for the feed.
+ */
+function diffLeadFields(
+  existing: ExistingLead,
+  next: NormalizedLead
+): {
+  changedFields: string[]
+  before: Record<string, unknown>
+  after: Record<string, unknown>
+} {
+  const changedFields: string[] = []
+  const before: Record<string, unknown> = {}
+  const after: Record<string, unknown> = {}
+
+  const compare = (
+    label: string,
+    key: keyof ExistingLead,
+    previous: unknown,
+    current: unknown
+  ) => {
+    if (previous === current) {
+      return
+    }
+    changedFields.push(label)
+    before[key] = previous
+    after[key] = current
+  }
+
+  compare('name', 'contactName', existing.contactName, next.contactName)
+  compare('status', 'status', existing.status, next.status)
+  compare('source', 'sourceType', existing.sourceType, next.sourceType)
+  compare('source detail', 'sourceDetail', existing.sourceDetail, next.sourceDetail)
+  compare('assignee', 'assigneeId', existing.assigneeId, next.assigneeId)
+  compare('email', 'contactEmail', existing.contactEmail, next.contactEmail)
+  compare('phone', 'contactPhone', existing.contactPhone, next.contactPhone)
+  compare('company', 'companyName', existing.companyName, next.companyName)
+  compare('website', 'companyWebsite', existing.companyWebsite, next.companyWebsite)
+  compare(
+    'notes',
+    'notes',
+    extractLeadNotes(existing.notes) || null,
+    next.notes
+  )
+
+  return { changedFields, before, after }
 }
 
 function normalizeLeadPayload(

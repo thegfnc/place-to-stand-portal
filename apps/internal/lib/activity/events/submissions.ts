@@ -72,3 +72,32 @@ export const submissionRestoredEvent = (
   summary: `Restored ${describeSubmission(args)}`,
   metadata: toMetadata({ status: args.status }),
 })
+
+/**
+ * Machine-emitted on first insert only (never on a later audit beacon).
+ * PII-free like `submissionDestroyedEvent`: the row itself carries the
+ * contact details, and the audit trail must not outlive a "Delete forever".
+ */
+export const submissionReceivedEvent = (args: {
+  formType: 'audit' | 'contact'
+  status: string
+}): ActivityEvent => ({
+  verb: ActivityVerbs.SUBMISSION_RECEIVED,
+  summary: `Received a new ${args.formType} submission`,
+  metadata: toMetadata({ formType: args.formType, status: args.status }),
+})
+
+/** One row per cron sweep that actually flipped something. */
+export const submissionsAbandonedEvent = (args: {
+  count: number
+  staleAfterHours: number
+}): ActivityEvent => ({
+  verb: ActivityVerbs.SUBMISSIONS_ABANDONED,
+  summary: `Marked ${args.count} stale in-progress audit submission${
+    args.count === 1 ? '' : 's'
+  } as abandoned`,
+  metadata: toMetadata({
+    count: args.count,
+    staleAfterHours: args.staleAfterHours,
+  }),
+})

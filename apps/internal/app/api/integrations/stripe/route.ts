@@ -37,14 +37,15 @@ async function markInvoicePaid(
       })
       .where(eq(invoices.id, invoice.id))
 
-    // Log activity (fire-and-forget — acceptable for non-critical logging)
+    // Awaited before the response goes out: a fire-and-forget promise here
+    // can be cut off when the serverless function terminates.
     const paidEvent = invoicePaidEvent({
       invoiceNumber: invoice.invoice_number,
       total: invoice.total,
       clientName: invoice.client?.name,
     })
 
-    logActivity({
+    await logActivity({
       actorId: null,
       source: 'SYSTEM',
       verb: paidEvent.verb,
@@ -53,7 +54,7 @@ async function markInvoicePaid(
       targetId: invoice.id,
       targetClientId: invoice.client_id,
       metadata: paidEvent.metadata,
-    }).catch(console.error)
+    })
 
     // Notify the team in Google Chat (fire-and-forget — non-critical).
     // Guarded by status !== 'PAID' so retried webhooks don't re-notify.

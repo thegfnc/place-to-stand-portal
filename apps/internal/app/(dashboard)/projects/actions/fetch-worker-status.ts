@@ -3,10 +3,12 @@
 import { eq, desc } from 'drizzle-orm'
 import { z } from 'zod'
 
+import { taskWorkerStatusChangedEvent } from '@/lib/activity/events'
+import { logActivity } from '@/lib/activity/logger'
 import { requireUser } from '@/lib/auth/session'
 import { ensureTaskAccess } from '@/lib/auth/permissions'
 import { db } from '@/lib/db'
-import { tasks, taskDeployments } from '@/lib/db/schema'
+import { tasks, taskDeployments, projects } from '@/lib/db/schema'
 import { NotFoundError, ForbiddenError } from '@/lib/errors/http'
 import { getRepoLinkById } from '@/lib/data/github-repos'
 import { listIssueComments, resolveRepoLinkAuth, type GitHubComment } from '@/lib/github/client'
@@ -181,10 +183,44 @@ export async function fetchWorkerStatus(input: {
 
   // Persist the latest worker status to the deployment
   if (latestStatus && latestStatus !== 'unknown') {
+    const previousStatus = deployment.workerStatus
+
     await db
       .update(taskDeployments)
       .set({ workerStatus: latestStatus, prUrl: prUrl, updatedAt: new Date().toISOString() })
       .where(eq(taskDeployments.id, deploymentId))
+
+    // This poll runs constantly; only a real transition is an event.
+    if (previousStatus !== latestStatus) {
+      const [task] = await db
+        .select({
+          title: tasks.title,
+          projectId: tasks.projectId,
+          clientId: projects.clientId,
+        })
+        .from(tasks)
+        .leftJoin(projects, eq(projects.id, tasks.projectId))
+        .where(eq(tasks.id, deployment.taskId))
+        .limit(1)
+
+      const event = taskWorkerStatusChangedEvent({
+        taskTitle: task?.title ?? 'Untitled task',
+        issueNumber: deployment.githubIssueNumber,
+        before: previousStatus,
+        after: latestStatus,
+      })
+      await logActivity({
+        actorId: null,
+        source: 'SYSTEM',
+        verb: event.verb,
+        summary: event.summary,
+        targetType: 'TASK',
+        targetId: deployment.taskId,
+        targetProjectId: task?.projectId ?? null,
+        targetClientId: task?.clientId ?? null,
+        metadata: event.metadata,
+      })
+    }
 
     // Sync task cached fields if this is the latest deployment
     const [latest] = await db

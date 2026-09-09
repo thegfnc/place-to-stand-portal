@@ -3,10 +3,13 @@
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 
+import { leadUpdateEditedEvent } from '@/lib/activity/events'
+import { logActivity } from '@/lib/activity/logger'
 import { assertAdmin } from '@/lib/auth/permissions'
 import { requireUser } from '@/lib/auth/session'
 import { db } from '@/lib/db'
 import { leadUpdates } from '@/lib/db/schema'
+import { LEAD_UPDATE_LABELS } from '@/lib/leads/updates'
 import { getLeadUpdateForLead } from '@/lib/queries/lead-updates'
 
 import type { LeadActionResult } from '../types'
@@ -58,6 +61,32 @@ export async function updateLeadUpdate(
     return { success: false, error: 'Update not found.' }
   }
 
+  const changedFields: string[] = []
+  const before: Record<string, unknown> = {}
+  const after: Record<string, unknown> = {}
+
+  if (existing.type !== type) {
+    changedFields.push('type')
+    before.type = existing.type
+    after.type = type
+  }
+
+  if (existing.body !== body) {
+    changedFields.push('body')
+    before.body = existing.body
+    after.body = body
+  }
+
+  if (!sameInstant(existing.occurredAt, occurredAt)) {
+    changedFields.push('date')
+    before.occurredAt = existing.occurredAt
+    after.occurredAt = occurredAt
+  }
+
+  if (!changedFields.length) {
+    return { success: true, leadId }
+  }
+
   try {
     await db
       .update(leadUpdates)
@@ -69,6 +98,20 @@ export async function updateLeadUpdate(
       })
       .where(eq(leadUpdates.id, id))
 
+    await logActivity({
+      actorId: user.id,
+      actorRole: user.role,
+      targetType: 'LEAD',
+      targetId: leadId,
+      ...leadUpdateEditedEvent({
+        contactName: lead.contactName,
+        updateId: id,
+        typeLabel: LEAD_UPDATE_LABELS[type],
+        changedFields,
+        details: { before, after },
+      }),
+    })
+
     revalidateLeadsPath()
 
     return { success: true, leadId }
@@ -79,4 +122,14 @@ export async function updateLeadUpdate(
       error: 'Unable to save update. Please try again.',
     }
   }
+}
+
+/**
+ * Postgres returns timestamptz as a string that need not match the ISO form
+ * the browser sent, so compare the instants rather than the strings.
+ */
+function sameInstant(left: string, right: string): boolean {
+  const a = new Date(left).getTime()
+  const b = new Date(right).getTime()
+  return Number.isNaN(a) || Number.isNaN(b) ? left === right : a === b
 }

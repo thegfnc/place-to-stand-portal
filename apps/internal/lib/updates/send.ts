@@ -1,7 +1,10 @@
 import 'server-only'
 
+import { clientUpdateSentEvent } from '@/lib/activity/events'
+import { logActivity } from '@/lib/activity/logger'
 import { assertAdmin } from '@/lib/auth/permissions'
 import type { AppUser } from '@/lib/auth/session'
+import { fetchClientById } from '@/lib/data/clients'
 import { BadRequestError } from '@/lib/errors/http'
 import {
   OAuthReconnectRequiredError,
@@ -9,6 +12,7 @@ import {
   type SendEmailParams,
   type SendEmailResult,
 } from '@/lib/gmail/client'
+import type { ActivitySourceValue } from '@/lib/types'
 
 import { buildUpdateEmailContent } from './content'
 import { fetchClientUpdate, markClientUpdateSent } from './queries'
@@ -58,7 +62,8 @@ export async function sendClientUpdateTest(
  */
 export async function sendClientUpdate(
   user: AppUser,
-  id: string
+  id: string,
+  options: { source?: ActivitySourceValue } = {}
 ): Promise<ClientUpdateRow> {
   assertAdmin(user)
 
@@ -103,11 +108,35 @@ export async function sendClientUpdate(
     throw error
   }
 
-  return markClientUpdateSent(id, {
+  const sentUpdate = await markClientUpdateSent(id, {
     sentById: user.id,
     gmailMessageId: sent.id,
     gmailThreadId: sent.threadId,
   })
+
+  // `fetchClientById` is request-cached, so this reuses the content build's read.
+  const client = await fetchClientById(user, sentUpdate.clientId)
+  const event = clientUpdateSentEvent({
+    clientName: client.name,
+    subject: sentUpdate.subject,
+    recipients: sentUpdate.recipients,
+    itemCount: sentUpdate.items.length,
+    gmailMessageId: sentUpdate.gmailMessageId,
+  })
+
+  await logActivity({
+    actorId: user.id,
+    actorRole: user.role,
+    source: options.source,
+    verb: event.verb,
+    summary: event.summary,
+    targetType: 'CLIENT_UPDATE',
+    targetId: sentUpdate.id,
+    targetClientId: sentUpdate.clientId,
+    metadata: event.metadata,
+  })
+
+  return sentUpdate
 }
 
 /** Gmail send with the connection failures turned into a message a person can act on. */

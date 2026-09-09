@@ -57,7 +57,9 @@ function TaskListItem({ task }: { task: AssignedTaskSummary }) {
       {hasTaskLink ? (
         <Link
           href={linkMeta.href!}
-          className='hover:bg-muted/60 focus-visible:ring-primary focus-visible:ring-offset-background absolute inset-0 z-0 rounded-lg px-4 py-2.5 transition focus-visible:ring-2 focus-visible:ring-offset-2'
+          // Full-bleed so the highlight meets the row dividers and the card's own
+          // clipped corners; a per-row radius left square gaps at every edge.
+          className='hover:bg-muted/60 focus-visible:ring-primary absolute inset-0 z-0 transition focus-visible:ring-2 focus-visible:ring-inset'
           aria-label={`View task: ${task.title}`}
         />
       ) : null}

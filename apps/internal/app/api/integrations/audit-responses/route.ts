@@ -6,6 +6,8 @@ import {
   auditPayloadSchema,
   toAuditSubmissionRow,
 } from '@/lib/form-submissions/audit-payload'
+import { submissionReceivedEvent } from '@/lib/activity/events'
+import { logActivity } from '@/lib/activity/logger'
 import { upsertFormSubmission } from '@/lib/queries/form-submissions'
 
 /**
@@ -48,9 +50,27 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    await upsertFormSubmission(
+    const result = await upsertFormSubmission(
       toAuditSubmissionRow(parsed.data, request.headers.get('user-agent'))
     )
+
+    // Only the first insert is an event; later beacons for the same session
+    // are updates and would otherwise flood the feed.
+    if (result?.inserted) {
+      const event = submissionReceivedEvent({
+        formType: result.kind,
+        status: result.status,
+      })
+      await logActivity({
+        actorId: null,
+        source: 'SYSTEM',
+        verb: event.verb,
+        summary: event.summary,
+        targetType: 'SUBMISSION',
+        targetId: result.id,
+        metadata: event.metadata,
+      })
+    }
   } catch (error) {
     console.error('Failed to record audit submission', error)
     return NextResponse.json(

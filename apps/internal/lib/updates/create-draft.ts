@@ -2,6 +2,8 @@ import 'server-only'
 
 import { and, eq, inArray, isNull } from 'drizzle-orm'
 
+import { clientUpdateDraftedEvent } from '@/lib/activity/events'
+import { logActivity } from '@/lib/activity/logger'
 import { assertAdmin } from '@/lib/auth/permissions'
 import type { AppUser } from '@/lib/auth/session'
 import { resolveClientIdentifier } from '@/lib/data/clients'
@@ -9,6 +11,7 @@ import { db } from '@/lib/db'
 import { projects, tasks } from '@/lib/db/schema'
 import { BadRequestError } from '@/lib/errors/http'
 import { fetchContactsForClient } from '@/lib/queries/clients/contacts'
+import type { ActivitySourceValue } from '@/lib/types'
 
 import { scaffoldItems } from './assemble'
 import { recipientsFromContacts } from './default-recipients'
@@ -38,11 +41,14 @@ type CreateUpdateDraftInput = {
    */
   items?: DraftItemInput[] | null
   closing?: string | null
+  /** Where the request came from, for the activity log. Defaults to the admin UI. */
+  source?: ActivitySourceValue
 }
 
 /**
  * The one entry point for starting an update, shared by the CLI route and the
- * client page button so both produce identical drafts.
+ * client page button so both produce identical drafts (and identical activity
+ * rows — the log lives here so the two callers cannot diverge).
  */
 export async function createUpdateDraft(
   user: AppUser,
@@ -62,7 +68,7 @@ export async function createUpdateDraft(
       : scaffoldItems(user, clientId, window),
   ])
 
-  return createClientUpdate({
+  const update = await createClientUpdate({
     clientId,
     subject: input.subject?.trim() || `${client.name} updates`,
     intro: input.intro ?? DEFAULT_INTRO,
@@ -73,6 +79,29 @@ export async function createUpdateDraft(
     recipients: recipientsFromContacts(contacts, staff, user.id),
     createdById: user.id,
   })
+
+  const event = clientUpdateDraftedEvent({
+    clientName: client.name,
+    subject: update.subject,
+    recipients: update.recipients,
+    itemCount: update.items.length,
+    periodStart: update.periodStart,
+    periodEnd: update.periodEnd,
+  })
+
+  await logActivity({
+    actorId: user.id,
+    actorRole: user.role,
+    source: input.source,
+    verb: event.verb,
+    summary: event.summary,
+    targetType: 'CLIENT_UPDATE',
+    targetId: update.id,
+    targetClientId: clientId,
+    metadata: event.metadata,
+  })
+
+  return update
 }
 
 /**

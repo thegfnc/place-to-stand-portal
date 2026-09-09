@@ -82,7 +82,7 @@ export async function POST(
           repoId: repoDetails.id,
           defaultBranch: repoDetails.default_branch,
         },
-        user.id
+        user
       )
 
       return NextResponse.json({ success: true, link })
@@ -128,7 +128,7 @@ export async function POST(
         repoId: repoDetails.id,
         defaultBranch: repoDetails.default_branch,
       },
-      user.id
+      user
     )
 
     return NextResponse.json({ success: true, link })

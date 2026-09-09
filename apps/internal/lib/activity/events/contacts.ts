@@ -59,10 +59,40 @@ export const contactDeletedEvent = (args: {
 export const contactInvitedToPortalEvent = (args: {
   email: string
   name: string | null
+  /** Clients the new portal user was granted access to. */
+  clientIds?: string[]
 }): ActivityEvent => ({
   verb: ActivityVerbs.CONTACT_INVITED_TO_PORTAL,
   summary: `Invited contact "${args.name || args.email}" to the client portal`,
   metadata: toMetadata({
     contact: { email: args.email, name: args.name },
+    clientIds: args.clientIds,
+  }),
+})
+
+type ContactClientLinkArgs = {
+  contact: { name: string | null; email: string }
+  client: { name: string }
+}
+
+export const contactClientLinkedEvent = (
+  args: ContactClientLinkArgs
+): ActivityEvent => ({
+  verb: ActivityVerbs.CONTACT_CLIENT_LINKED,
+  summary: `Linked contact "${args.contact.name || args.contact.email}" to ${args.client.name}`,
+  metadata: toMetadata({
+    contact: { name: args.contact.name, email: args.contact.email },
+    client: { name: args.client.name },
+  }),
+})
+
+export const contactClientUnlinkedEvent = (
+  args: ContactClientLinkArgs
+): ActivityEvent => ({
+  verb: ActivityVerbs.CONTACT_CLIENT_UNLINKED,
+  summary: `Unlinked contact "${args.contact.name || args.contact.email}" from ${args.client.name}`,
+  metadata: toMetadata({
+    contact: { name: args.contact.name, email: args.contact.email },
+    client: { name: args.client.name },
   }),
 })

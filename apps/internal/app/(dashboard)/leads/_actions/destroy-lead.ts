@@ -3,6 +3,8 @@
 import { and, eq, isNotNull } from 'drizzle-orm'
 import { z } from 'zod'
 
+import { leadDeletedEvent } from '@/lib/activity/events'
+import { logActivity } from '@/lib/activity/logger'
 import { requireUser } from '@/lib/auth/session'
 import { assertAdmin } from '@/lib/auth/permissions'
 import { db } from '@/lib/db'
@@ -36,11 +38,23 @@ export async function destroyLead(
     const result = await db
       .delete(leads)
       .where(and(eq(leads.id, parsed.data.leadId), isNotNull(leads.deletedAt)))
-      .returning({ id: leads.id })
+      // RETURNING captures the name from the row being deleted so it is
+      // available for the audit entry after the row is gone.
+      .returning({ id: leads.id, contactName: leads.contactName })
 
-    if (!result.length) {
+    const deleted = result[0]
+
+    if (!deleted) {
       return { success: false, error: 'Lead not found in archive.' }
     }
+
+    await logActivity({
+      actorId: user.id,
+      actorRole: user.role,
+      targetType: 'LEAD',
+      targetId: deleted.id,
+      ...leadDeletedEvent({ name: deleted.contactName }),
+    })
   } catch (error) {
     console.error('Failed to permanently delete lead', error)
     return {

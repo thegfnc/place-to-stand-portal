@@ -4,6 +4,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 
+import { leadCreatedEvent } from '@/lib/activity/events'
+import { logActivity } from '@/lib/activity/logger'
 import { db } from '@/lib/db'
 import { leads } from '@/lib/db/schema'
 import { serializeLeadNotes } from '@/lib/leads/notes'
@@ -103,8 +105,10 @@ async function upsertLeadFromPayload(payload: IntakePayload) {
   const trimmedMessage = payload.message?.trim() ?? ''
   const notesHtml = trimmedMessage ? buildNotesHtml(trimmedMessage) : ''
 
-  await db.insert(leads).values({
-    contactName: payload.name.trim(),
+  const contactName = payload.name.trim()
+
+  const [inserted] = await db.insert(leads).values({
+    contactName,
     contactEmail: payload.email.trim(),
     contactPhone: null,
     companyName: trimmedCompany,
@@ -117,6 +121,18 @@ async function upsertLeadFromPayload(payload: IntakePayload) {
     rank,
     createdAt: timestamp,
     updatedAt: timestamp,
+  }).returning({ id: leads.id })
+
+  if (!inserted) {
+    throw new Error('Lead insert returned no rows')
+  }
+
+  await logActivity({
+    actorId: null,
+    source: 'SYSTEM',
+    targetType: 'LEAD',
+    targetId: inserted.id,
+    ...leadCreatedEvent({ name: contactName, source: SOURCE_TYPE_WEBSITE }),
   })
 }
 

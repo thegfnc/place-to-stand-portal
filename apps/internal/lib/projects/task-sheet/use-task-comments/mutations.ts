@@ -2,18 +2,9 @@ import { useMutation } from '@tanstack/react-query'
 import type { InfiniteData, QueryClient } from '@tanstack/react-query'
 import type { useRouter } from 'next/navigation'
 
-import { logClientActivity } from '@/lib/activity/client'
-import {
-  taskCommentCreatedEvent,
-  taskCommentDeletedEvent,
-  taskCommentUpdatedEvent,
-} from '@/lib/activity/events'
 import type { useToast } from '@/components/ui/use-toast'
 import type { TaskCommentsPage } from '@/lib/queries/task-comments'
 import type { TaskCommentWithAuthor } from '@/lib/types'
-
-import { serializeCommentMetadata } from './helpers'
-import type { CommentActivityMetadata } from './types'
 
 type CommentsCache = InfiniteData<TaskCommentsPage, string | null>
 
@@ -29,10 +20,7 @@ type ToastFn = ReturnType<typeof useToast>['toast']
 
 type BaseMutationArgs = {
   taskId: string | null
-  projectId: string
-  clientId: string | null
   currentUserId: string
-  taskTitle?: string | null
   queryKey: readonly [string, string, string | null]
   queryClient: QueryClient
   router: RouterInstance
@@ -55,29 +43,6 @@ type UpdateMutationArgs = BaseMutationArgs & {
 
 type DeleteMutationArgs = BaseMutationArgs & {
   onSuccess?: () => void
-}
-
-const logCommentActivity = async (
-  metadata: CommentActivityMetadata,
-  args: Pick<
-    BaseMutationArgs,
-    'currentUserId' | 'projectId' | 'clientId' | 'taskTitle'
-  >,
-  eventFactory:
-    | typeof taskCommentCreatedEvent
-    | typeof taskCommentUpdatedEvent
-    | typeof taskCommentDeletedEvent
-) => {
-  const event = eventFactory({ taskTitle: args.taskTitle })
-
-  await logClientActivity(event, {
-    actorId: args.currentUserId,
-    targetType: 'COMMENT',
-    targetId: metadata.commentId,
-    targetProjectId: args.projectId,
-    targetClientId: args.clientId,
-    metadata: serializeCommentMetadata(metadata),
-  })
 }
 
 /**
@@ -106,11 +71,8 @@ function resolveOptimisticAuthor(
 
 export function useCreateTaskCommentMutation({
   taskId,
-  projectId,
-  clientId,
   currentUserId,
   currentUserName,
-  taskTitle,
   queryKey,
   queryClient,
   router,
@@ -142,12 +104,6 @@ export function useCreateTaskCommentMutation({
       if (!payload?.commentId) {
         throw new Error('Comment was created without an identifier.')
       }
-
-      await logCommentActivity(
-        { taskId, commentId: payload.commentId, bodyLength: body.length },
-        { currentUserId, projectId, clientId, taskTitle },
-        taskCommentCreatedEvent
-      )
 
       return payload.commentId
     },
@@ -229,10 +185,6 @@ export function useCreateTaskCommentMutation({
 
 export function useUpdateTaskCommentMutation({
   taskId,
-  projectId,
-  clientId,
-  currentUserId,
-  taskTitle,
   queryKey,
   queryClient,
   router,
@@ -252,12 +204,6 @@ export function useUpdateTaskCommentMutation({
       })
 
       await ensureOk(response, 'Failed to update comment.')
-
-      await logCommentActivity(
-        { taskId: taskId ?? '', commentId: id, bodyLength: body.length },
-        { currentUserId, projectId, clientId, taskTitle },
-        taskCommentUpdatedEvent
-      )
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey })
@@ -284,10 +230,6 @@ export function useUpdateTaskCommentMutation({
 
 export function useDeleteTaskCommentMutation({
   taskId,
-  projectId,
-  clientId,
-  currentUserId,
-  taskTitle,
   queryKey,
   queryClient,
   router,
@@ -305,12 +247,6 @@ export function useDeleteTaskCommentMutation({
       })
 
       await ensureOk(response, 'Failed to delete comment.')
-
-      await logCommentActivity(
-        { taskId: taskId ?? '', commentId: id },
-        { currentUserId, projectId, clientId, taskTitle },
-        taskCommentDeletedEvent
-      )
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey })
