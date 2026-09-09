@@ -1,12 +1,7 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import {
-  Building2,
-  FolderKanban,
-  ListTodo,
-  type LucideIcon,
-} from 'lucide-react'
+import { Building2, FolderKanban, type LucideIcon } from 'lucide-react'
 
 import {
   LinkedRecordsHoverCell,
@@ -18,7 +13,6 @@ import type {
   UserAssignedProject,
   UserAssignmentSummary,
 } from '@/lib/queries/users/assignments'
-import { cn } from '@/lib/utils'
 
 const EMPTY_SUMMARY: UserAssignmentSummary = {
   clients: 0,
@@ -68,9 +62,10 @@ type UserAssignmentsCellProps = {
 }
 
 /**
- * Icon + count per assignment kind. Clients and projects open a hover list
- * (coordinated so sliding between them never shows both); tasks is a plain
- * count — there is no per-user task list to link into from here.
+ * Icon + count for clients and projects, each opening a hover list
+ * (coordinated so sliding between them never shows both). The task count in
+ * the summary is deliberately not shown here — it only feeds the archive
+ * confirmation sentence.
  */
 export function UserAssignmentsCell({ assignment }: UserAssignmentsCellProps) {
   const summary = assignment ?? EMPTY_SUMMARY
@@ -105,18 +100,6 @@ export function UserAssignmentsCell({ assignment }: UserAssignmentsCellProps) {
           }))}
           {...bind('projects')}
         />
-      </AssignmentPair>
-      <AssignmentPair icon={ListTodo} title='Tasks'>
-        <span
-          className={cn(
-            summary.tasks === 0
-              ? 'text-muted-foreground/50'
-              : 'text-muted-foreground'
-          )}
-          aria-label={`${summary.tasks} ${summary.tasks === 1 ? 'task' : 'tasks'}`}
-        >
-          {summary.tasks}
-        </span>
       </AssignmentPair>
     </div>
   )
