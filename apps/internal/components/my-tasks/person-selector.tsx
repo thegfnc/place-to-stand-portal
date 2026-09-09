@@ -9,6 +9,7 @@ import {
   type SearchableComboboxItem,
 } from '@/components/ui/searchable-combobox'
 import type { DbUser } from '@/lib/types'
+import { isSelectableUser } from '@/lib/users/selectable'
 
 const ALL_TASKS_VALUE = 'all'
 
@@ -32,12 +33,19 @@ export function PersonSelector({
 
   const items: SearchableComboboxItem[] = useMemo(
     () => {
-      const mappedItems = admins.map(admin => ({
-        value: admin.id,
-        label: admin.full_name ?? admin.email ?? 'Unknown',
-        avatarUrl: admin.avatar_url,
-        userId: admin.id,
-      }))
+      // Disabled admins are not offered, but a board already scoped to one
+      // (via the URL) keeps them as a disabled entry so the trigger is named.
+      const mappedItems = admins
+        .filter(
+          admin => isSelectableUser(admin) || admin.id === selectedUserId
+        )
+        .map(admin => ({
+          value: admin.id,
+          label: admin.full_name ?? admin.email ?? 'Unknown',
+          avatarUrl: admin.avatar_url,
+          userId: admin.id,
+          disabled: !isSelectableUser(admin),
+        }))
 
       // Sort: current user first, then alphabetically by label
       mappedItems.sort((a, b) => {
@@ -57,7 +65,7 @@ export function PersonSelector({
         ...mappedItems,
       ]
     },
-    [admins, currentUserId]
+    [admins, currentUserId, selectedUserId]
   )
 
   const handleChange = useCallback(

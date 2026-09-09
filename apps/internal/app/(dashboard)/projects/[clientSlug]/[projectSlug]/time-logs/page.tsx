@@ -63,6 +63,7 @@ export default async function ProjectTimeLogsRoute({ params }: PageProps) {
     full_name: admin.full_name,
     email: admin.email,
     avatar_url: admin.avatar_url,
+    disabled_at: admin.disabled_at ?? null,
   }))
 
   const project = liteProjects.find(item => item.slug === projectSlug)

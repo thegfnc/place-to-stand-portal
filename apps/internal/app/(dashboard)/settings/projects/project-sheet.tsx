@@ -57,9 +57,10 @@ export function ProjectSheet(props: Props) {
     [clientOptions, isPending, requiresClientSelection]
   )
 
+  const currentOwnerId = form.watch('ownerId')
   const ownerOptions = useMemo(
-    () => buildOwnerOptions(props.adminUsers ?? []),
-    [props.adminUsers]
+    () => buildOwnerOptions(props.adminUsers ?? [], currentOwnerId || null),
+    [currentOwnerId, props.adminUsers]
   )
 
   return (

@@ -20,6 +20,7 @@ type AdminUserOption = {
   id: string
   fullName: string | null
   email: string
+  disabledAt: string | null
 }
 
 export type ClientSheetContactData = {
@@ -106,6 +107,7 @@ async function listAllAdminUsers(
       id: users.id,
       fullName: users.fullName,
       email: users.email,
+      disabledAt: users.disabledAt,
     })
     .from(users)
     .where(and(eq(users.role, 'ADMIN'), isNull(users.deletedAt)))
@@ -115,6 +117,7 @@ async function listAllAdminUsers(
     id: row.id,
     fullName: row.fullName,
     email: row.email,
+    disabledAt: row.disabledAt,
   }))
 }
 

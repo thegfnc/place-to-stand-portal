@@ -203,6 +203,7 @@ export const fetchLeadAssignees = cache(async (): Promise<LeadAssigneeOption[]> 
     name: admin.full_name ?? admin.email,
     email: admin.email,
     avatarUrl: admin.avatar_url,
+    disabledAt: admin.disabled_at ?? null,
   }))
 })
 

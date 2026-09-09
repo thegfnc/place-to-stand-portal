@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo } from 'react'
-import type { Control } from 'react-hook-form'
+import { useWatch, type Control } from 'react-hook-form'
 
 import { Badge } from '@/components/ui/badge'
 import {
@@ -24,6 +24,7 @@ import {
   SelectValue,
 } from '@pts/ui/select'
 import { cn } from '@/lib/utils'
+import { isSelectableUser } from '@/lib/users/selectable'
 import {
   LEAD_SOURCE_LABELS,
   LEAD_SOURCE_TYPES,
@@ -48,6 +49,9 @@ export function LeadSheetFormFields({
   assignees,
   selectedSourceType,
 }: LeadSheetFormFieldsProps) {
+  // Disabled admins are not offered, but a lead they already hold keeps
+  // them as a disabled entry so the picker still names the assignee.
+  const currentAssigneeId = useWatch({ control, name: 'assigneeId' }) ?? null
   const assigneeItems = useMemo(
     () => [
       {
@@ -55,15 +59,21 @@ export function LeadSheetFormFields({
         label: 'Unassigned',
         description: 'Leave unassigned for now.',
       },
-      ...assignees.map(assignee => ({
-        value: assignee.id,
-        label: assignee.name,
-        description: assignee.email ?? undefined,
-        userId: assignee.id,
-        avatarUrl: assignee.avatarUrl,
-      })),
+      ...assignees
+        .filter(
+          assignee =>
+            isSelectableUser(assignee) || assignee.id === currentAssigneeId
+        )
+        .map(assignee => ({
+          value: assignee.id,
+          label: assignee.name,
+          description: assignee.email ?? undefined,
+          userId: assignee.id,
+          avatarUrl: assignee.avatarUrl,
+          disabled: !isSelectableUser(assignee),
+        })),
     ],
-    [assignees]
+    [assignees, currentAssigneeId]
   )
 
   const leadStatuses = useMemo(

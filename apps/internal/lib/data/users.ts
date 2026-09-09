@@ -19,6 +19,7 @@ export const fetchAdminUsers = cache(async (): Promise<DbUser[]> => {
       createdAt: usersTable.createdAt,
       updatedAt: usersTable.updatedAt,
       deletedAt: usersTable.deletedAt,
+      disabledAt: usersTable.disabledAt,
     })
     .from(usersTable)
     .where(and(eq(usersTable.role, 'ADMIN'), isNull(usersTable.deletedAt)))
@@ -33,5 +34,6 @@ export const fetchAdminUsers = cache(async (): Promise<DbUser[]> => {
     created_at: row.createdAt,
     updated_at: row.updatedAt,
     deleted_at: row.deletedAt,
+    disabled_at: row.disabledAt,
   }))
 })

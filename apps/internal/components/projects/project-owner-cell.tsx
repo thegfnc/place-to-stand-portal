@@ -57,7 +57,10 @@ export function ProjectOwnerCell({
     setOptimisticOwnerId(serverOwnerId)
   }
 
-  const ownerOptions = useMemo(() => buildOwnerOptions(admins), [admins])
+  const ownerOptions = useMemo(
+    () => buildOwnerOptions(admins, optimisticOwnerId),
+    [admins, optimisticOwnerId]
+  )
 
   // While optimistic, the new owner's display data comes from the admin
   // directory; once the refresh lands, the server row takes over again.
