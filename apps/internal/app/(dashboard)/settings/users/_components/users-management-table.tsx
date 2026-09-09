@@ -8,7 +8,11 @@ import { ConfirmDialog } from '@pts/ui/confirm-dialog'
 import { PaginationControls } from '@/components/ui/pagination-controls'
 
 import { UserSheet } from '../users-sheet'
-import { isUserAccess, isUserRole } from '@/lib/settings/users/filters'
+import {
+  DEFAULT_USER_ACCESS,
+  isUserAccess,
+  isUserRole,
+} from '@/lib/settings/users/filters'
 import type { UsersSettingsAssignments } from '@/lib/queries/users/assignments'
 import { useUsersTableState } from '@/lib/settings/users/state/use-users-table-state'
 import type { UserRow } from '@/lib/settings/users/state/types'
@@ -61,6 +65,7 @@ export function UsersManagementTable({
     sheet,
     deleteDialog,
     destroyDialog,
+    disableDialog,
     selfDeleteReason,
   } = useUsersTableState({
     users,
@@ -82,9 +87,10 @@ export function UsersManagementTable({
   // Run raw params through the type guards (R4): ?role=SUPERADMIN is ignored
   // by the server, so it must not count as an active filter — an unfiltered
   // empty list would otherwise show the wrong message.
+  const accessParam = searchParams.get('access') ?? undefined
   const hasActiveFilter =
     isUserRole(searchParams.get('role') ?? undefined) ||
-    isUserAccess(searchParams.get('access') ?? undefined) ||
+    (isUserAccess(accessParam) && accessParam !== DEFAULT_USER_ACCESS) ||
     Boolean(searchParams.get('q')?.trim())
 
   const emptyMessage = hasActiveFilter
@@ -127,6 +133,16 @@ export function UsersManagementTable({
         confirmDisabled={deleteDialog.confirmDisabled}
         onCancel={deleteDialog.onCancel}
         onConfirm={deleteDialog.onConfirm}
+      />
+      <ConfirmDialog
+        open={disableDialog.open}
+        title='Disable sign-in?'
+        description={disableDialog.description}
+        confirmLabel='Disable'
+        confirmVariant='destructive'
+        confirmDisabled={disableDialog.confirmDisabled}
+        onCancel={disableDialog.onCancel}
+        onConfirm={disableDialog.onConfirm}
       />
       <ConfirmDialog
         open={destroyDialog.open}

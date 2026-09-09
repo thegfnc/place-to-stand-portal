@@ -26,11 +26,19 @@ export function isUserRole(
   )
 }
 
-export const USER_ACCESS_VALUES = ['enabled', 'disabled'] as const
+export const USER_ACCESS_VALUES = ['all', 'enabled', 'disabled'] as const
 
 export type UserAccessFilter = (typeof USER_ACCESS_VALUES)[number]
 
+/**
+ * Absent `?access=` means Enabled: departed (disabled) staff stay out of
+ * the default list the same way the projects landing hides completed
+ * projects. Showing everyone is the explicit `?access=all`.
+ */
+export const DEFAULT_USER_ACCESS: UserAccessFilter = 'enabled'
+
 export const USER_ACCESS_LABELS: Record<UserAccessFilter, string> = {
+  all: 'All access',
   enabled: 'Enabled',
   disabled: 'Disabled',
 }
@@ -69,7 +77,8 @@ export type UsersSearchParams = {
   page: number
   limit: number | undefined
   role: UserRoleValue | undefined
-  access: UserAccessFilter | undefined
+  /** Never undefined: an absent or invalid param resolves to the default. */
+  access: UserAccessFilter
   search: string | undefined
   sort: ParsedSort<UserSortField>
   /** Raw validated `?sort=` value for the client controls (undefined = default). */
@@ -105,7 +114,7 @@ export function parseUsersSearchParams(params: RawSearchParams): UsersSearchPara
     page: Number.isFinite(pageParam) && pageParam > 0 ? pageParam : 1,
     limit: Number.isFinite(limitParam) ? limitParam : undefined,
     role: isUserRole(roleParam) ? roleParam : undefined,
-    access: isUserAccess(accessParam) ? accessParam : undefined,
+    access: isUserAccess(accessParam) ? accessParam : DEFAULT_USER_ACCESS,
     search: searchParam || undefined,
     sort,
     sortParam: rawSort && isUserSortValue(rawSort) ? rawSort : undefined,

@@ -62,6 +62,7 @@ export type UsersTableState = {
   sheet: SheetState
   deleteDialog: DeleteDialogState
   destroyDialog: DeleteDialogState
+  disableDialog: DeleteDialogState
   onOpenCreate: () => void
   selfDeleteReason: string
   isPending: boolean

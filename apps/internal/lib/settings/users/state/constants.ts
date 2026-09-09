@@ -22,6 +22,12 @@ export const buildDeleteDialogDescription = (
   return `Archiving ${targetName} removes their access. They are currently assigned to ${formatCount(summary.clients, 'client')}, ${formatCount(summary.projects, 'project')}, and ${formatCount(summary.tasks, 'task')}. Archiving this user will keep those assignments until permanently deleted.`
 }
 
+export const buildDisableDialogDescription = (target: UserRow | null) => {
+  const targetName = target?.full_name ?? target?.email ?? 'This user'
+
+  return `${targetName} won't be able to sign in and will drop off this list. History stays intact; re-enable from the Disabled view.`
+}
+
 export const buildDestroyDialogDescription = (target: UserRow | null) => {
   if (!target) {
     return 'Permanently deleting a user removes their profile, memberships, and activity history. This cannot be undone.'

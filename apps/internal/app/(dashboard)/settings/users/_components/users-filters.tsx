@@ -6,6 +6,7 @@ import { ResetFiltersButton } from '@/components/table-toolbar/reset-filters-but
 import { SearchInput } from '@/components/table-toolbar/search-input'
 import { useListParams } from '@/hooks/use-list-params'
 import {
+  DEFAULT_USER_ACCESS,
   isUserAccess,
   isUserRole,
   USER_ACCESS_LABELS,
@@ -21,14 +22,17 @@ const ROLE_OPTIONS = USER_ROLE_VALUES.map(value => ({
   label: USER_ROLE_LABELS[value],
 }))
 
-const ACCESS_OPTIONS = USER_ACCESS_VALUES.map(value => ({
-  value,
-  label: USER_ACCESS_LABELS[value],
-}))
+// `all` is the select's placeholder row, not a listed option.
+const ACCESS_OPTIONS = USER_ACCESS_VALUES.filter(value => value !== 'all').map(
+  value => ({
+    value,
+    label: USER_ACCESS_LABELS[value],
+  })
+)
 
 type UsersFiltersProps = {
   role?: UserRoleValue
-  /** Access filter value — active tab only (archived rows render `—`). */
+  /** Resolved access filter (defaults to enabled) — active tab only. */
   access?: UserAccessFilter
   search?: string
   showAccessFilter: boolean
@@ -48,7 +52,10 @@ export function UsersFilters({
     resetKeys: ['page'],
     filters: {
       role: { isValid: value => isUserRole(value) },
-      access: { isValid: value => isUserAccess(value) },
+      access: {
+        isValid: value => isUserAccess(value),
+        defaultValue: DEFAULT_USER_ACCESS,
+      },
       q: {},
     },
   })
@@ -68,9 +75,16 @@ export function UsersFilters({
       />
       {showAccessFilter ? (
         <FilterSelect
-          value={access}
-          onChange={value => update({ access: value })}
-          placeholder='All access'
+          value={access === 'all' ? undefined : access}
+          onChange={value =>
+            // Enabled is the implicit default (clean URL); "All access" must
+            // be explicit or removing the param would snap back to enabled.
+            update({
+              access:
+                value === DEFAULT_USER_ACCESS ? undefined : (value ?? 'all'),
+            })
+          }
+          placeholder={USER_ACCESS_LABELS.all}
           options={ACCESS_OPTIONS}
         />
       ) : null}

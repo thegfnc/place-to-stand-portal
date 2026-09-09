@@ -11,6 +11,7 @@ import { useSetUserDisabledAction } from './user-mutation/use-set-user-disabled-
 export type UserMutationState = {
   deleteDialog: DeleteDialogState
   destroyDialog: DeleteDialogState
+  disableDialog: DeleteDialogState
   requestDelete: (user: UserRow) => void
   requestDestroy: (user: UserRow) => void
   restore: (user: UserRow) => void
@@ -54,6 +55,7 @@ export const useUserMutationState = ({
   return {
     deleteDialog: deleteAction.deleteDialog,
     destroyDialog: destroyAction.destroyDialog,
+    disableDialog: disableAction.disableDialog,
     requestDelete: deleteAction.requestDelete,
     requestDestroy: destroyAction.requestDestroy,
     restore: restoreAction.restore,
