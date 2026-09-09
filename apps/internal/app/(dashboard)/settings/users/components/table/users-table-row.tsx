@@ -73,10 +73,10 @@ export function UsersTableRow({
           <span className='truncate font-medium'>{displayName}</span>
         </div>
       </TableCell>
-      <TableCell className='text-muted-foreground truncate text-sm'>
+      <TableCell className='text-muted-foreground hidden truncate text-sm md:table-cell'>
         {user.email}
       </TableCell>
-      <TableCell>
+      <TableCell className='hidden md:table-cell'>
         <Badge
           variant='outline'
           className={cn('text-xs', USER_ROLE_BADGE_CLASSES[user.role])}
@@ -111,10 +111,10 @@ export function UsersTableRow({
           <span className='text-muted-foreground text-xs'>—</span>
         )}
       </TableCell>
-      <TableCell>
+      <TableCell className='hidden md:table-cell'>
         <UserAssignmentsCell assignment={assignment} role={user.role} />
       </TableCell>
-      <TableCell className='text-muted-foreground text-sm'>
+      <TableCell className='text-muted-foreground hidden truncate text-sm md:table-cell'>
         {formatCalendarDate(user.created_at)}
       </TableCell>
       <TableCell className='text-right'>

@@ -44,6 +44,7 @@ import {
 import { SubmissionArchiveDialog } from './submission-archive-dialog'
 import { SubmissionDetailSheet } from './submission-detail-sheet'
 import { ARCHIVED_ROW_CLASS } from '@/lib/table/archived-row'
+import { FullWidthCell } from '@/components/table-toolbar/full-width-cell'
 import {
   CLICKABLE_ROW_CLASS,
   getClickableRowProps,
@@ -120,7 +121,6 @@ export function SubmissionsTable({
   const [, startTransition] = useTransition()
 
   // The archive tab shows when each row was archived; active mode doesn't.
-  const columnCount = mode === 'archive' ? 10 : 9
 
   // Sort changes route through useListParams so they reset offset paging
   // (PRD 004 §03); row-selection and page pushes keep the local helper.
@@ -333,31 +333,33 @@ export function SubmissionsTable({
                 sort={sort}
                 defaultSort='received:desc'
                 onSortChange={next => updateListParams({ sort: next })}
-                className='w-[11%]'
+                className='hidden w-40 xl:table-cell'
               >
                 Received
               </SortableTableHead>
-              <TableHead className='w-[9%]'>Form</TableHead>
-              <TableHead className='w-[18%]'>Contact</TableHead>
-              <TableHead className='w-[12%]'>Company</TableHead>
-              <TableHead className='w-[10%]'>Status</TableHead>
-              <TableHead className='w-[10%]'>Progress</TableHead>
-              <TableHead>Phase</TableHead>
+              <TableHead className='hidden w-20 md:table-cell'>Form</TableHead>
+              <TableHead>Contact</TableHead>
+              <TableHead className='hidden md:table-cell'>Company</TableHead>
+              <TableHead className='w-24'>Status</TableHead>
+              <TableHead className='hidden w-32 xl:table-cell'>Progress</TableHead>
+              <TableHead className='hidden xl:table-cell'>Phase</TableHead>
               {mode === 'archive' ? (
-                <TableHead className='w-[10%]'>Archived</TableHead>
+                <TableHead className='hidden w-40 xl:table-cell'>
+                  Archived
+                </TableHead>
               ) : null}
-              <TableHead className='w-32 text-right'>Actions</TableHead>
+              <TableHead className='w-24 text-right'>Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {submissions.length === 0 ? (
               <TableRow>
-                <TableCell
-                  colSpan={columnCount}
+                <FullWidthCell
+                  counts={{ base: 4, md: 6, xl: mode === 'archive' ? 10 : 9 }}
                   className='text-muted-foreground py-10 text-center text-sm'
                 >
                   {emptyMessage}
-                </TableCell>
+                </FullWidthCell>
               </TableRow>
             ) : (
               submissions.map(submission => {
@@ -387,13 +389,13 @@ export function SubmissionsTable({
                         </>
                       ) : null}
                     </TableCell>
-                    <TableCell className='whitespace-nowrap'>
+                    <TableCell className='hidden truncate xl:table-cell'>
                       {formatDistanceToNow(
                         new Date(submission.lastActivityAt),
                         { addSuffix: true }
                       )}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className='hidden md:table-cell'>
                       <Badge
                         variant='outline'
                         className={cn(
@@ -424,7 +426,7 @@ export function SubmissionsTable({
                         </span>
                       )}
                     </TableCell>
-                    <TableCell className='truncate'>
+                    <TableCell className='hidden truncate md:table-cell'>
                       {submission.contactCompany ?? '—'}
                     </TableCell>
                     <TableCell>
@@ -437,7 +439,7 @@ export function SubmissionsTable({
                         {FORM_SUBMISSION_STATUS_LABELS[submission.status]}
                       </Badge>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className='hidden xl:table-cell'>
                       {submission.percentComplete === null ? (
                         <span className='text-muted-foreground'>—</span>
                       ) : (
@@ -452,14 +454,14 @@ export function SubmissionsTable({
                         </div>
                       )}
                     </TableCell>
-                    <TableCell className='truncate'>
+                    <TableCell className='hidden truncate xl:table-cell'>
                       {submission.result?.phaseName ??
                         submission.phaseId ?? (
                           <span className='text-muted-foreground'>—</span>
                         )}
                     </TableCell>
                     {mode === 'archive' ? (
-                      <TableCell className='text-muted-foreground text-sm whitespace-nowrap'>
+                      <TableCell className='text-muted-foreground hidden truncate text-sm xl:table-cell'>
                         {submission.deletedAt
                           ? formatDistanceToNow(
                               new Date(submission.deletedAt),

@@ -104,7 +104,7 @@ export function ProjectsTableRow({
           <span className='truncate font-medium'>{project.name}</span>
         </div>
       </TableCell>
-      <TableCell>
+      <TableCell className='hidden md:table-cell'>
         <div className='flex min-w-0 items-center gap-2 text-sm'>
           <ownerDisplay.Icon className='text-muted-foreground h-4 w-4 shrink-0' />
           <span className='truncate'>{ownerDisplay.label}</span>
@@ -112,7 +112,7 @@ export function ProjectsTableRow({
         {ownerDisplay.message ? (
           <p
             className={cn(
-              'text-xs',
+              'truncate text-xs',
               ownerDisplay.messageTone === 'destructive'
                 ? 'text-destructive'
                 : 'text-muted-foreground'
@@ -125,7 +125,7 @@ export function ProjectsTableRow({
       <TableCell>
         <Badge className={cn('text-xs', statusTone)}>{statusLabel}</Badge>
       </TableCell>
-      <TableCell className='text-muted-foreground text-sm'>
+      <TableCell className='text-muted-foreground hidden truncate text-sm md:table-cell'>
         {formatProjectDateRange(project.starts_on, project.ends_on)}
       </TableCell>
       <TableCell className='text-right'>

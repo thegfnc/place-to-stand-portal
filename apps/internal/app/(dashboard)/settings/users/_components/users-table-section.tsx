@@ -5,7 +5,6 @@ import { useListParams } from '@/hooks/use-list-params'
 import {
   Table,
   TableBody,
-  TableCell,
   TableHead,
   TableHeader,
   TableRow,
@@ -13,6 +12,7 @@ import {
 import type { UsersSettingsAssignments } from '@/lib/queries/users/assignments'
 import { isUserSortValue } from '@/lib/settings/users/filters'
 import type { UserRowState } from '@/lib/settings/users/state/use-users-table-state'
+import { FullWidthCell } from '@/components/table-toolbar/full-width-cell'
 
 import { UsersTableRow } from '../components/table/users-table-row'
 
@@ -52,24 +52,23 @@ export function UsersTableSection({
               sort={sort}
               defaultSort='name:asc'
               onSortChange={next => update({ sort: next })}
-              className='w-[20%]'
             >
               Name
             </SortableTableHead>
-            <TableHead className='w-[22%]'>Email</TableHead>
-            <TableHead className='w-[8%]'>Role</TableHead>
-            <TableHead className='w-[12%]'>Access</TableHead>
-            <TableHead className='w-[14%]'>Clients</TableHead>
+            <TableHead className='hidden md:table-cell'>Email</TableHead>
+            <TableHead className='hidden w-20 md:table-cell'>Role</TableHead>
+            <TableHead className='w-28'>Access</TableHead>
+            <TableHead className='hidden w-16 md:table-cell'>Clients</TableHead>
             <SortableTableHead
               field='created'
               sort={sort}
               defaultSort='name:asc'
               onSortChange={next => update({ sort: next })}
-              className='w-28'
+              className='hidden w-28 md:table-cell'
             >
               Joined
             </SortableTableHead>
-            <TableHead className='w-32 text-right'>Actions</TableHead>
+            <TableHead className='w-24 text-right'>Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -84,12 +83,12 @@ export function UsersTableSection({
           ))}
           {rows.length === 0 ? (
             <TableRow>
-              <TableCell
-                colSpan={7}
+              <FullWidthCell
+                counts={{ base: 3, md: 7 }}
                 className='text-muted-foreground py-10 text-center text-sm'
               >
                 {emptyMessage}
-              </TableCell>
+              </FullWidthCell>
             </TableRow>
           ) : null}
         </TableBody>

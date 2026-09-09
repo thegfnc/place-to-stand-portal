@@ -25,6 +25,7 @@ import {
   type ClientBillingTypeValue,
 } from '@/lib/settings/clients/billing-types'
 import { ARCHIVED_ROW_CLASS } from '@/lib/table/archived-row'
+import { FullWidthCell } from '@/components/table-toolbar/full-width-cell'
 import {
   CLICKABLE_ROW_CLASS,
   getClickableRowProps,
@@ -86,13 +87,16 @@ export function ClientsTableSection({
               sort={sort}
               defaultSort='name:asc'
               onSortChange={next => update({ sort: next })}
-              className='w-[34%]'
             >
               Name
             </SortableTableHead>
-            <TableHead className='w-[20%]'>Billing type</TableHead>
-            <TableHead className='w-[18%]'>Active projects</TableHead>
-            <TableHead>Status</TableHead>
+            <TableHead className='hidden w-28 md:table-cell'>
+              Billing type
+            </TableHead>
+            <TableHead className='hidden w-32 md:table-cell'>
+              Active projects
+            </TableHead>
+            <TableHead className='w-24'>Status</TableHead>
             <TableHead className='w-32 text-right'>Actions</TableHead>
           </TableRow>
         </TableHeader>
@@ -150,10 +154,12 @@ export function ClientsTableSection({
                     <span className='truncate font-medium'>{client.name}</span>
                   </div>
                 </TableCell>
-                <TableCell className='text-muted-foreground text-sm'>
+                <TableCell className='text-muted-foreground hidden text-sm md:table-cell'>
                   {BILLING_TYPE_LABELS[client.billing_type] ?? '—'}
                 </TableCell>
-                <TableCell className='text-sm'>{activeProjects}</TableCell>
+                <TableCell className='hidden text-sm md:table-cell'>
+                  {activeProjects}
+                </TableCell>
                 <TableCell>
                   <Badge
                     className={cn('text-xs', getStatusBadgeToken(statusTone))}
@@ -224,12 +230,12 @@ export function ClientsTableSection({
           })}
           {clients.length === 0 ? (
             <TableRow>
-              <TableCell
-                colSpan={5}
+              <FullWidthCell
+                counts={{ base: 3, md: 5 }}
                 className='text-muted-foreground py-10 text-center text-sm'
               >
                 {emptyMessage}
-              </TableCell>
+              </FullWidthCell>
             </TableRow>
           ) : null}
         </TableBody>

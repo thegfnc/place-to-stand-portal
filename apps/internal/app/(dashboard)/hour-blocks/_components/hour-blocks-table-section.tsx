@@ -22,6 +22,7 @@ import {
 import type { HourBlockWithClient } from '@/lib/settings/hour-blocks/hour-block-form'
 import { cn } from '@/lib/utils'
 import { ARCHIVED_ROW_CLASS } from '@/lib/table/archived-row'
+import { FullWidthCell } from '@/components/table-toolbar/full-width-cell'
 import {
   CLICKABLE_ROW_CLASS,
   getClickableRowProps,
@@ -77,18 +78,21 @@ export function HourBlocksTableSection({
       <Table density='compact' layout='fixed'>
         <TableHeader>
           <TableRow className='bg-muted/40'>
-            <TableHead className='w-[34%]'>Client</TableHead>
-            <TableHead className='w-[18%]'>Invoice #</TableHead>
-            <TableHead className='w-[18%]'>Hours purchased</TableHead>
+            <TableHead>Client</TableHead>
+            <TableHead className='hidden w-28 md:table-cell'>
+              Invoice #
+            </TableHead>
+            <TableHead className='w-32'>Hours purchased</TableHead>
             <SortableTableHead
               field='created'
               sort={sort}
               defaultSort='created:desc'
               onSortChange={next => update({ sort: next })}
+              className='hidden w-28 md:table-cell'
             >
               Created on
             </SortableTableHead>
-            <TableHead className='w-32 text-right'>Actions</TableHead>
+            <TableHead className='w-24 text-right'>Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -150,7 +154,7 @@ export function HourBlocksTableSection({
                     <p className='text-destructive text-xs'>Client archived</p>
                   ) : null}
                 </TableCell>
-                <TableCell className='text-sm'>
+                <TableCell className='hidden truncate text-sm md:table-cell'>
                   {block.invoice_id && block.invoice_number ? (
                     <Link
                       href={invoiceHref(block.invoice_id)}
@@ -182,7 +186,7 @@ export function HourBlocksTableSection({
                     ) : null}
                   </span>
                 </TableCell>
-                <TableCell className='text-muted-foreground text-sm'>
+                <TableCell className='text-muted-foreground hidden text-sm md:table-cell'>
                   {formatTimestamp(block.created_at)}
                 </TableCell>
                 <TableCell className='text-right'>
@@ -248,12 +252,12 @@ export function HourBlocksTableSection({
           })}
           {hourBlocks.length === 0 ? (
             <TableRow>
-              <TableCell
-                colSpan={5}
+              <FullWidthCell
+                counts={{ base: 3, md: 5 }}
                 className='text-muted-foreground py-10 text-center text-sm'
               >
                 {emptyMessage}
-              </TableCell>
+              </FullWidthCell>
             </TableRow>
           ) : null}
         </TableBody>

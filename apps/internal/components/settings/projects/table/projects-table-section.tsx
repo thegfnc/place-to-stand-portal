@@ -1,9 +1,9 @@
 import { SortableTableHead } from '@/components/table-toolbar/sortable-table-head'
 import { useListParams } from '@/hooks/use-list-params'
+import { FullWidthCell } from '@/components/table-toolbar/full-width-cell'
 import {
   Table,
   TableBody,
-  TableCell,
   TableHead,
   TableHeader,
   TableRow,
@@ -66,21 +66,21 @@ export function ProjectsTableSection({
               sort={sort}
               defaultSort='name:asc'
               onSortChange={next => update({ sort: next })}
-              className='w-[32%]'
             >
               Name
             </SortableTableHead>
-            <TableHead className='w-[20%]'>Owner</TableHead>
-            <TableHead className='w-[14%]'>Status</TableHead>
+            <TableHead className='hidden md:table-cell'>Owner</TableHead>
+            <TableHead className='w-28'>Status</TableHead>
             <SortableTableHead
               field='created'
               sort={sort}
               defaultSort='name:asc'
               onSortChange={next => update({ sort: next })}
+              className='hidden w-52 md:table-cell'
             >
               Timeline
             </SortableTableHead>
-            <TableHead className='w-32 text-right'>Actions</TableHead>
+            <TableHead className='w-24 text-right'>Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -102,12 +102,12 @@ export function ProjectsTableSection({
           ))}
           {projects.length === 0 ? (
             <TableRow>
-              <TableCell
-                colSpan={5}
+              <FullWidthCell
+                counts={{ base: 3, md: 5 }}
                 className='text-muted-foreground py-10 text-center text-sm'
               >
                 {emptyMessage}
-              </TableCell>
+              </FullWidthCell>
             </TableRow>
           ) : null}
         </TableBody>

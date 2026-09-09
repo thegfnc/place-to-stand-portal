@@ -40,6 +40,7 @@ import {
 import { useUnsavedChangesWarning } from '@/lib/hooks/use-unsaved-changes-warning'
 import type { TaxRateRow } from '@/lib/queries/tax-rates'
 import { US_STATES } from '@/lib/settings/clients/us-states'
+import { FullWidthCell } from '@/components/table-toolbar/full-width-cell'
 
 import { saveTaxRate, toggleTaxRateActiveAction } from '../actions'
 
@@ -226,8 +227,8 @@ export function TaxRatesSection({ initialRates }: TaxRatesSectionProps) {
         <Table density='compact' layout='fixed'>
           <TableHeader>
             <TableRow className='bg-muted/40'>
-              <TableHead className='w-[24%]'>State</TableHead>
-              <TableHead className='w-[16%]'>Rate (%)</TableHead>
+              <TableHead className='w-20'>State</TableHead>
+              <TableHead className='w-24'>Rate (%)</TableHead>
               <SortableTableHead
                 field='label'
                 sort={sort}
@@ -236,28 +237,30 @@ export function TaxRatesSection({ initialRates }: TaxRatesSectionProps) {
               >
                 Label
               </SortableTableHead>
-              <TableHead className='w-[14%]'>Active</TableHead>
-              <TableHead className='w-10' />
+              <TableHead className='hidden w-16 md:table-cell'>Active</TableHead>
+              <TableHead className='w-12' />
             </TableRow>
           </TableHeader>
           <TableBody>
             {sortedRates.length === 0 ? (
               <TableRow>
-                <TableCell
-                  colSpan={5}
+                <FullWidthCell
+                  counts={{ base: 4, md: 5 }}
                   className='text-muted-foreground py-8 text-center'
                 >
                   No tax rates configured. Click &ldquo;Add Tax Rate&rdquo; to
                   get started.
-                </TableCell>
+                </FullWidthCell>
               </TableRow>
             ) : (
               sortedRates.map(rate => (
                 <TableRow key={rate.id}>
                   <TableCell className='truncate font-medium'>{rate.state}</TableCell>
-                  <TableCell>{(Number(rate.rate) * 100).toFixed(2).replace(/\.?0+$/, '')}%</TableCell>
+                  <TableCell className='truncate'>
+                    {(Number(rate.rate) * 100).toFixed(2).replace(/\.?0+$/, '')}%
+                  </TableCell>
                   <TableCell className='truncate'>{rate.label}</TableCell>
-                  <TableCell>
+                  <TableCell className='hidden md:table-cell'>
                     <Switch
                       size='sm'
                       className='data-[state=checked]:bg-emerald-600'

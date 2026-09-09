@@ -33,6 +33,7 @@ import {
 } from '@/components/table-toolbar/sortable-table-head'
 import { useUnsavedChangesWarning } from '@/lib/hooks/use-unsaved-changes-warning'
 import type { ProductCatalogItemRow } from '@/lib/queries/product-catalog'
+import { FullWidthCell } from '@/components/table-toolbar/full-width-cell'
 
 import { saveProductCatalogItem } from '../actions'
 
@@ -80,10 +81,16 @@ function ProductRow({
   return (
     <TableRow>
       <TableCell className='truncate font-medium'>{item.name}</TableCell>
-      <TableCell>${item.unit_price}</TableCell>
-      <TableCell className='truncate'>{item.unit_label}</TableCell>
-      <TableCell>{item.min_quantity ?? '\u2014'}</TableCell>
-      <TableCell>{item.creates_hour_block_default ? 'Yes' : 'No'}</TableCell>
+      <TableCell className='truncate'>${item.unit_price}</TableCell>
+      <TableCell className='hidden truncate md:table-cell'>
+        {item.unit_label}
+      </TableCell>
+      <TableCell className='hidden md:table-cell'>
+        {item.min_quantity ?? '\u2014'}
+      </TableCell>
+      <TableCell className='hidden md:table-cell'>
+        {item.creates_hour_block_default ? 'Yes' : 'No'}
+      </TableCell>
       <TableCell>
         <Switch
           size='sm'
@@ -317,24 +324,26 @@ export function ProductCatalogSection({
               >
                 Name
               </SortableTableHead>
-              <TableHead className='w-[13%]'>Unit Price</TableHead>
-              <TableHead className='w-[13%]'>Unit Label</TableHead>
-              <TableHead className='w-[11%]'>Min Qty</TableHead>
-              <TableHead className='w-[13%]'>Hour Block</TableHead>
-              <TableHead className='w-[11%]'>Active</TableHead>
-              <TableHead className='w-10' />
+              <TableHead className='w-24'>Unit Price</TableHead>
+              <TableHead className='hidden md:table-cell'>Unit Label</TableHead>
+              <TableHead className='hidden w-20 md:table-cell'>Min Qty</TableHead>
+              <TableHead className='hidden w-24 md:table-cell'>
+                Hour Block
+              </TableHead>
+              <TableHead className='w-16'>Active</TableHead>
+              <TableHead className='w-12' />
             </TableRow>
           </TableHeader>
           <TableBody>
             {sortedItems.length === 0 ? (
               <TableRow>
-                <TableCell
-                  colSpan={7}
+                <FullWidthCell
+                  counts={{ base: 4, md: 7 }}
                   className='text-muted-foreground py-8 text-center'
                 >
                   No products yet. Click &ldquo;Add Product&rdquo; to get
                   started.
-                </TableCell>
+                </FullWidthCell>
               </TableRow>
             ) : (
               sortedItems.map(item => (

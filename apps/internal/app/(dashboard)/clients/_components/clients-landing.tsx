@@ -227,7 +227,6 @@ export function ClientsLanding({
                 sort={sort}
                 defaultSort='name:asc'
                 onSortChange={next => update({ sort: next })}
-                className='w-[20%]'
               >
                 Client
               </SortableTableHead>
@@ -236,7 +235,7 @@ export function ClientsLanding({
                 sort={sort}
                 defaultSort='name:asc'
                 onSortChange={next => update({ sort: next })}
-                className='w-[9%]'
+                className='w-24'
               >
                 Billing
               </SortableTableHead>
@@ -246,7 +245,7 @@ export function ClientsLanding({
                 sort={sort}
                 defaultSort='name:asc'
                 onSortChange={next => update({ sort: next })}
-                className='w-[14%]'
+                className='hidden w-36 md:table-cell'
               >
                 Projects
               </SortableTableHead>
@@ -256,7 +255,7 @@ export function ClientsLanding({
                 sort={sort}
                 defaultSort='name:asc'
                 onSortChange={next => update({ sort: next })}
-                className='w-[8%]'
+                className='hidden w-20 xl:table-cell'
               >
                 Contacts
               </SortableTableHead>
@@ -266,7 +265,7 @@ export function ClientsLanding({
                 sort={sort}
                 defaultSort='name:asc'
                 onSortChange={next => update({ sort: next })}
-                className='w-[22%]'
+                className='hidden w-48 md:table-cell'
               >
                 Hours
               </SortableTableHead>
@@ -276,7 +275,7 @@ export function ClientsLanding({
                 defaultSort='name:asc'
                 onSortChange={next => update({ sort: next })}
                 align='center'
-                className='w-24'
+                className='hidden w-24 xl:table-cell'
               >
                 Origination
               </SortableTableHead>
@@ -286,7 +285,7 @@ export function ClientsLanding({
                 defaultSort='name:asc'
                 onSortChange={next => update({ sort: next })}
                 align='center'
-                className='w-20'
+                className='hidden w-20 xl:table-cell'
               >
                 Closer
               </SortableTableHead>
@@ -326,7 +325,7 @@ export function ClientsLanding({
                     )
                   })()}
                 </TableCell>
-                <TableCell>
+                <TableCell className='hidden md:table-cell'>
                   <ActiveProjectsCell
                     projects={client.activeProjects}
                     allProjects={client.allProjects}
@@ -335,10 +334,10 @@ export function ClientsLanding({
                     totalProjectCount={client.projectCount}
                   />
                 </TableCell>
-                <TableCell>
+                <TableCell className='hidden xl:table-cell'>
                   <LinkedContactsCell contacts={client.contacts} />
                 </TableCell>
-                <TableCell>
+                <TableCell className='hidden md:table-cell'>
                   {client.billingType === 'prepaid' ? (
                     <div className='flex items-center gap-2 text-sm'>
                       <Clock
@@ -370,7 +369,7 @@ export function ClientsLanding({
                     <span className='text-muted-foreground/40 text-sm'>—</span>
                   )}
                 </TableCell>
-                <TableCell>
+                <TableCell className='hidden xl:table-cell'>
                   <div className='flex items-center justify-center'>
                     {client.originationUserId ? (
                       <Tooltip>
@@ -410,7 +409,7 @@ export function ClientsLanding({
                     )}
                   </div>
                 </TableCell>
-                <TableCell>
+                <TableCell className='hidden xl:table-cell'>
                   <div className='flex items-center justify-center'>
                     {client.closerUserId ? (
                       <Tooltip>

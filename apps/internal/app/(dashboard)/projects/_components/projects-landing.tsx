@@ -52,6 +52,7 @@ import { useSheetParamSelection } from '@/lib/sheets/use-sheet-params'
 import { PENDING_REASON } from '@/lib/forms/form-controls'
 import type { LandingProject } from '@/lib/data/projects'
 import { cn } from '@/lib/utils'
+import { FullWidthCell } from '@/components/table-toolbar/full-width-cell'
 import {
   CLICKABLE_ROW_CLASS,
   getClickableRowProps,
@@ -440,7 +441,7 @@ export function ProjectsLanding({
             onStatusChange={handleProjectStatusChange}
           />
         </TableCell>
-        <TableCell>
+        <TableCell className='hidden md:table-cell'>
           <div className='flex items-center gap-3'>
             <Progress value={progressPercentage} className='h-2 w-24' />
             <span className='text-muted-foreground text-xs'>
@@ -448,12 +449,12 @@ export function ProjectsLanding({
             </span>
           </div>
         </TableCell>
-        <TableCell>
+        <TableCell className='hidden xl:table-cell'>
           <span className='text-muted-foreground text-sm'>
             {dateRange !== '—' ? dateRange : '—'}
           </span>
         </TableCell>
-        <TableCell className='align-middle'>
+        <TableCell className='hidden align-middle md:table-cell'>
           <ProjectOwnerCell
             projectId={project.id}
             owner={project.owner}
@@ -461,7 +462,7 @@ export function ProjectsLanding({
             onOwnerChange={handleProjectOwnerChange}
           />
         </TableCell>
-        <TableCell className='align-middle'>
+        <TableCell className='hidden align-middle xl:table-cell'>
           <div className='flex h-full flex-wrap items-center gap-1.5'>
             {externalLinks.length > 0 ? (
               externalLinks.map(link => (
@@ -520,13 +521,15 @@ export function ProjectsLanding({
     )
   }
 
+  // Project is the lone text column and takes the leftover width; the rest
+  // are content-sized (design-system.md → Table Column Widths). Dates and
+  // Links are secondary and hide below `md` — heads and cells share the class.
   const tableColumnWidths = {
-    project: 'w-[28%]',
-    status: 'w-[11%]',
-    progress: 'w-[18%]',
-    dates: 'w-[14%]',
-    owner: 'w-[7%]',
-    links: 'w-[11%]',
+    status: 'w-28',
+    progress: 'hidden w-40 md:table-cell',
+    dates: 'hidden w-48 xl:table-cell',
+    owner: 'hidden w-16 md:table-cell',
+    links: 'hidden w-28 xl:table-cell',
     actions: 'w-24',
   }
 
@@ -540,7 +543,6 @@ export function ProjectsLanding({
               sort={sort}
               defaultSort='name:asc'
               onSortChange={next => update({ sort: next })}
-              className={tableColumnWidths.project}
             >
               Project
             </SortableTableHead>
@@ -573,8 +575,8 @@ export function ProjectsLanding({
         key={`client-${client.id}`}
         className='border-t-muted hover:bg-transparent'
       >
-        <TableCell
-          colSpan={7}
+        <FullWidthCell
+          counts={{ base: 3, md: 5, xl: 7 }}
           className='bg-blue-100 py-2.5 align-middle dark:bg-blue-500/8'
         >
           <div className='flex items-center gap-4'>
@@ -623,7 +625,7 @@ export function ProjectsLanding({
               </div>
             )}
           </div>
-        </TableCell>
+        </FullWidthCell>
       </TableRow>
     )
   }
@@ -639,7 +641,6 @@ export function ProjectsLanding({
                 sort={sort}
                 defaultSort='name:asc'
                 onSortChange={next => update({ sort: next })}
-                className={tableColumnWidths.project}
               >
                 Project
               </SortableTableHead>

@@ -38,6 +38,7 @@ import {
   getClickableRowProps,
 } from '@/lib/table/clickable-row'
 import { cn } from '@/lib/utils'
+import { FullWidthCell } from '@/components/table-toolbar/full-width-cell'
 import { LeadSheet } from './lead-sheet'
 
 type LeadsArchiveSectionProps = {
@@ -305,22 +306,22 @@ export function LeadsArchiveSection({
                 sort={sortParam}
                 defaultSort='archived:desc'
                 onSortChange={next => update({ sort: next })}
-                className='w-[20%]'
               >
                 Contact
               </SortableTableHead>
-              <TableHead className='w-[16%]'>Company</TableHead>
-              <TableHead className='w-[22%]'>Email</TableHead>
-              <TableHead className='w-[16%]'>Last Status</TableHead>
+              <TableHead className='hidden md:table-cell'>Company</TableHead>
+              <TableHead className='hidden xl:table-cell'>Email</TableHead>
+              <TableHead className='w-40'>Last Status</TableHead>
               <SortableTableHead
                 field='archived'
                 sort={sortParam}
                 defaultSort='archived:desc'
                 onSortChange={next => update({ sort: next })}
+                className='hidden w-40 md:table-cell'
               >
                 Archived
               </SortableTableHead>
-              <TableHead className='w-28 text-right'>Actions</TableHead>
+              <TableHead className='w-24 text-right'>Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -344,12 +345,12 @@ export function LeadsArchiveSection({
                   <TableCell className='truncate font-medium'>
                     {lead.contactName}
                   </TableCell>
-                  <TableCell className='truncate'>
+                  <TableCell className='hidden truncate md:table-cell'>
                     {lead.companyName ?? (
                       <span className='text-muted-foreground/40'>—</span>
                     )}
                   </TableCell>
-                  <TableCell className='truncate'>
+                  <TableCell className='hidden truncate xl:table-cell'>
                     {lead.contactEmail ? (
                       <span className='text-muted-foreground text-sm'>
                         {lead.contactEmail}
@@ -363,7 +364,7 @@ export function LeadsArchiveSection({
                       {statusLabel}
                     </span>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className='hidden md:table-cell'>
                     <span className='text-muted-foreground text-sm'>
                       {formatDistanceToNow(new Date(lead.deletedAt), {
                         addSuffix: true,
@@ -401,12 +402,12 @@ export function LeadsArchiveSection({
             })}
             {visibleLeads.length === 0 ? (
               <TableRow>
-                <TableCell
-                  colSpan={6}
+                <FullWidthCell
+                  counts={{ base: 3, md: 5, xl: 6 }}
                   className='text-muted-foreground py-10 text-center text-sm'
                 >
                   No archived leads match the current filters.
-                </TableCell>
+                </FullWidthCell>
               </TableRow>
             ) : null}
           </TableBody>

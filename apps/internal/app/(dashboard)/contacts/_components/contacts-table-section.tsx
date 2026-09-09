@@ -30,6 +30,7 @@ import type { ContactsTableContact } from '@/lib/settings/contacts/use-contacts-
 import { LinkedClientsCell } from './linked-clients-cell'
 import { cn } from '@/lib/utils'
 import { ARCHIVED_ROW_CLASS } from '@/lib/table/archived-row'
+import { FullWidthCell } from '@/components/table-toolbar/full-width-cell'
 import {
   CLICKABLE_ROW_CLASS,
   getClickableRowProps,
@@ -312,12 +313,12 @@ export function ContactsTableSection({
           })}
           {contacts.length === 0 ? (
             <TableRow>
-              <TableCell
-                colSpan={5}
+              <FullWidthCell
+                counts={{ base: 3, md: 5 }}
                 className='text-muted-foreground py-10 text-center text-sm'
               >
                 {emptyMessage}
-              </TableCell>
+              </FullWidthCell>
             </TableRow>
           ) : null}
         </TableBody>

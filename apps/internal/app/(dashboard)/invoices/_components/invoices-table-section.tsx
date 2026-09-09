@@ -34,6 +34,7 @@ import { useToast } from '@/components/ui/use-toast'
 import { cn } from '@/lib/utils'
 import type { InvoiceWithClient } from '@/lib/invoices/invoice-form'
 import { ARCHIVED_ROW_CLASS } from '@/lib/table/archived-row'
+import { FullWidthCell } from '@/components/table-toolbar/full-width-cell'
 import {
   CLICKABLE_ROW_CLASS,
   getClickableRowProps,
@@ -290,23 +291,23 @@ export function InvoicesTableSection({
               sort={sort}
               defaultSort='created:desc'
               onSortChange={next => update({ sort: next })}
-              className='w-[12%]'
+              className='w-28'
             >
               Invoice #
             </SortableTableHead>
-            <TableHead className='w-[18%]'>Client</TableHead>
-            <TableHead className='w-[12%]'>Status</TableHead>
-            <TableHead className='w-[10%]'>Total</TableHead>
+            <TableHead>Client</TableHead>
+            <TableHead className='hidden w-24 md:table-cell'>Status</TableHead>
+            <TableHead className='hidden w-24 md:table-cell'>Total</TableHead>
             <SortableTableHead
               field='created'
               sort={sort}
               defaultSort='created:desc'
               onSortChange={next => update({ sort: next })}
-              className='w-[20%]'
+              className='hidden w-28 md:table-cell'
             >
               Issued
             </SortableTableHead>
-            <TableHead>Share Link</TableHead>
+            <TableHead className='hidden md:table-cell'>Share Link</TableHead>
             <TableHead className='w-28 text-right'>Actions</TableHead>
           </TableRow>
         </TableHeader>
@@ -390,16 +391,16 @@ export function InvoicesTableSection({
                     <p className='text-destructive text-xs'>Client archived</p>
                   ) : null}
                 </TableCell>
-                <TableCell>
+                <TableCell className='hidden md:table-cell'>
                   <StatusBadge status={invoice.status} />
                 </TableCell>
-                <TableCell className='text-sm'>
+                <TableCell className='hidden text-sm md:table-cell'>
                   {formatCurrency(invoice.total)}
                 </TableCell>
-                <TableCell className='text-muted-foreground text-sm'>
+                <TableCell className='text-muted-foreground hidden text-sm md:table-cell'>
                   {formatDate(invoice.issued_date)}
                 </TableCell>
-                <TableCell>
+                <TableCell className='hidden md:table-cell'>
                   <ShareLinkCell
                     invoice={invoice}
                     onSendInvoice={onSendInvoice}
@@ -469,12 +470,12 @@ export function InvoicesTableSection({
           })}
           {invoiceList.length === 0 ? (
             <TableRow>
-              <TableCell
-                colSpan={7}
+              <FullWidthCell
+                counts={{ base: 3, md: 7 }}
                 className='text-muted-foreground py-10 text-center text-sm'
               >
                 {emptyMessage}
-              </TableCell>
+              </FullWidthCell>
             </TableRow>
           ) : null}
         </TableBody>
