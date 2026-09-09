@@ -1,14 +1,16 @@
 'use client'
 
-import type { ReactNode } from 'react'
+import { useMemo, type ReactNode } from 'react'
 import { Loader2 } from 'lucide-react'
 
 import { Button } from '@pts/ui/button'
 import { ActivityFeedItem } from '@/components/activity/activity-feed-item'
+import type { ActivityLogWithActor } from '@/lib/activity/types'
 import {
   useActivityFeed,
   type UseActivityFeedOptions,
 } from '@/lib/activity/use-activity-feed'
+import { formatCalendarDate } from '@/lib/dates'
 import { cn } from '@/lib/utils'
 
 export type ActivityFeedProps = UseActivityFeedOptions & {
@@ -33,6 +35,8 @@ export function ActivityFeed({
     queryEnabled,
     requiresContext,
   } = useActivityFeed(queryOptions)
+
+  const groups = useMemo(() => groupByDay(logs), [logs])
 
   if (!queryEnabled && requiresContext) {
     return (
@@ -78,14 +82,22 @@ export function ActivityFeed({
   }
 
   return (
-    <div className={cn('space-y-4', className)}>
-      <ul className='space-y-4'>
-        {logs.map(log => (
-          <li key={log.id} className='rounded-lg border p-4'>
-            <ActivityFeedItem log={log} />
-          </li>
-        ))}
-      </ul>
+    <div className={cn('space-y-6', className)}>
+      {groups.map(group => (
+        <section key={group.key} aria-label={group.label}>
+          <h4 className='text-muted-foreground mb-3 text-[11px] font-semibold tracking-wide uppercase'>
+            {group.label}
+          </h4>
+          {/* The rail is drawn once per day group and sits behind each item's icon node. */}
+          <ol className='before:bg-border relative space-y-5 before:absolute before:top-3 before:bottom-3 before:left-[13px] before:w-px'>
+            {group.logs.map(log => (
+              <li key={log.id} className='relative'>
+                <ActivityFeedItem log={log} />
+              </li>
+            ))}
+          </ol>
+        </section>
+      ))}
       {hasNextPage ? (
         <div className='flex justify-center'>
           <Button
@@ -100,4 +112,58 @@ export function ActivityFeed({
       ) : null}
     </div>
   )
+}
+
+type DayGroup = {
+  key: string
+  label: string
+  logs: ActivityLogWithActor[]
+}
+
+const DAY_KEY_STYLE = {
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+} as const
+
+function groupByDay(logs: ActivityLogWithActor[]): DayGroup[] {
+  const now = new Date()
+  const todayKey = formatCalendarDate(now, DAY_KEY_STYLE)
+  const yesterdayKey = formatCalendarDate(
+    new Date(now.getTime() - 24 * 60 * 60 * 1000),
+    DAY_KEY_STYLE
+  )
+  const currentYear = formatCalendarDate(now, { year: 'numeric' })
+
+  const groups: DayGroup[] = []
+
+  for (const log of logs) {
+    const key = formatCalendarDate(log.created_at, DAY_KEY_STYLE) ?? 'unknown'
+    const last = groups[groups.length - 1]
+
+    if (last && last.key === key) {
+      last.logs.push(log)
+      continue
+    }
+
+    groups.push({ key, label: labelForDay(log.created_at, key), logs: [log] })
+  }
+
+  return groups
+
+  function labelForDay(value: string, key: string): string {
+    if (key === todayKey) return 'Today'
+    if (key === yesterdayKey) return 'Yesterday'
+
+    const sameYear = formatCalendarDate(value, { year: 'numeric' }) === currentYear
+
+    return (
+      formatCalendarDate(value, {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+        ...(sameYear ? {} : { year: 'numeric' }),
+      }) ?? 'Earlier'
+    )
+  }
 }

@@ -18,8 +18,6 @@ import { sortClientsByName } from '@/lib/settings/projects/project-sheet-form'
 import type { AdminUserForOwner } from '@/lib/settings/projects/project-sheet-ui-state'
 import type { ContractorUserSummary } from '@/components/settings/projects/table/types'
 import type { ProjectWithRelations } from '@/lib/types'
-import { ViewLogger } from '@/components/activity/view-logger'
-import { ActivityVerbs } from '@/lib/activity/types'
 import { updateProjectStatus } from '@/lib/settings/projects/actions/update-project-status'
 import type { ProjectStatusValue } from '@/lib/constants'
 import { ProjectsBoardEmpty } from './_components/projects-board-empty'
@@ -191,18 +189,6 @@ export function ProjectsBoard(props: ProjectsBoardComponentProps) {
           : 'flex min-h-fit flex-col gap-4 sm:gap-6'
       }
     >
-      {activeProject ? (
-        <ViewLogger
-          actorId={props.currentUserId}
-          verb={ActivityVerbs.PROJECT_VIEWED}
-          summary={`Viewed project "${activeProject.name}" (${props.initialTab} tab)`}
-          targetType='PROJECT'
-          targetId={activeProject.id}
-          targetClientId={activeProject.client_id}
-          targetProjectId={activeProject.id}
-          metadata={{ tab: props.initialTab }}
-        />
-      ) : null}
       <ProjectsBoardTabsSection
         {...viewModel.tabs}
         projectActions={projectActions}

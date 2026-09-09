@@ -4,7 +4,6 @@ import 'server-only'
 
 import {
   and,
-  asc,
   desc,
   eq,
   gte,
@@ -12,6 +11,8 @@ import {
   isNull,
   lt,
   lte,
+  notInArray,
+  or,
   type SQL,
 } from 'drizzle-orm'
 
@@ -22,11 +23,19 @@ import { assertAdmin } from '@/lib/auth/permissions'
 import type { ActivitySourceValue, UserRoleValue } from '@/lib/types'
 import type { Json } from '@/lib/types/json'
 
+import { attachActivityReferences } from './references'
 import type {
   ActivityLogWithActor,
   ActivityQueryFilters,
   ActivityQueryResult,
 } from './types'
+
+/**
+ * Page-view verbs were retired in Sep 2026 (they were ~half the table and
+ * carried no information). Rows written before that stay in the table for
+ * the record but never surface in a feed.
+ */
+const RETIRED_VERBS = ['PROJECT_VIEWED', 'CLIENT_VIEWED']
 
 const DEFAULT_PAGE_SIZE = 25
 const MAX_PAGE_SIZE = 100
@@ -115,16 +124,20 @@ export async function fetchActivityLogs(
 
   const filteredQuery = whereClause ? baseQuery.where(whereClause) : baseQuery
 
+  // `id` breaks ties so rows sharing a `created_at` (bulk inserts land in the
+  // same transaction timestamp) page deterministically instead of dropping.
   const rows = (await filteredQuery
-    .orderBy(desc(activityLogs.createdAt))
+    .orderBy(desc(activityLogs.createdAt), desc(activityLogs.id))
     .limit(limit + 1)) as ActivityLogSelection[]
 
   const hasMore = rows.length > limit
   const limitedRows = hasMore ? rows.slice(0, limit) : rows
-  const logs = limitedRows.map(mapToActivityLog)
-  const nextCursor = hasMore
-    ? limitedRows[limitedRows.length - 1]?.log.createdAt ?? null
-    : null
+  const logs = await attachActivityReferences(
+    limitedRows.map(mapToActivityLog)
+  )
+  const lastRow = limitedRows[limitedRows.length - 1]
+  const nextCursor =
+    hasMore && lastRow ? encodeCursor(lastRow.log.createdAt, lastRow.log.id) : null
 
   return {
     logs,
@@ -134,7 +147,7 @@ export async function fetchActivityLogs(
 }
 
 /**
- * Returns every log in the window with NO row scoping — admin-only, enforced
+ * Returns the NEWEST logs in the window (oldest first, for prompting) with NO row scoping — admin-only, enforced
  * structurally: the caller must pass the current user and non-admins throw
  * ForbiddenError, so a future non-admin call site fails loudly instead of
  * silently leaking. (Sole caller today: the dashboard recent-activity
@@ -163,6 +176,7 @@ export async function fetchActivityLogsSince(
 
   const whereClause = combineConditions([
     includeDeleted ? undefined : isNull(activityLogs.deletedAt),
+    notInArray(activityLogs.verb, RETIRED_VERBS),
     gte(activityLogs.createdAt, since),
     until ? lte(activityLogs.createdAt, until) : undefined,
   ])
@@ -177,11 +191,14 @@ export async function fetchActivityLogsSince(
 
   const filteredQuery = whereClause ? baseQuery.where(whereClause) : baseQuery
 
+  // Take the newest `limit` rows, then flip to chronological order. Ordering
+  // ascending with a limit returned the *oldest* rows of a busy window, so the
+  // "recent activity" briefing described the start of the week, not the end.
   const rows = (await filteredQuery
-    .orderBy(asc(activityLogs.createdAt))
+    .orderBy(desc(activityLogs.createdAt), desc(activityLogs.id))
     .limit(effectiveLimit)) as ActivityLogSelection[]
 
-  return rows.map(mapToActivityLog)
+  return rows.reverse().map(mapToActivityLog)
 }
 
 function buildFilterConditions(filters: ActivityQueryFilters) {
@@ -190,6 +207,8 @@ function buildFilterConditions(filters: ActivityQueryFilters) {
   if (!filters.includeDeleted) {
     conditions.push(isNull(activityLogs.deletedAt))
   }
+
+  conditions.push(notInArray(activityLogs.verb, RETIRED_VERBS))
 
   if (filters.targetId) {
     conditions.push(eq(activityLogs.targetId, filters.targetId))
@@ -216,10 +235,39 @@ function buildFilterConditions(filters: ActivityQueryFilters) {
   }
 
   if (filters.cursor) {
-    conditions.push(lt(activityLogs.createdAt, filters.cursor))
+    const cursor = decodeCursor(filters.cursor)
+    conditions.push(
+      cursor.id
+        ? or(
+            lt(activityLogs.createdAt, cursor.createdAt),
+            and(
+              eq(activityLogs.createdAt, cursor.createdAt),
+              lt(activityLogs.id, cursor.id)
+            )
+          )
+        : lt(activityLogs.createdAt, cursor.createdAt)
+    )
   }
 
   return combineConditions(conditions)
+}
+
+const CURSOR_SEPARATOR = "|"
+
+function encodeCursor(createdAt: string, id: string): string {
+  return `${createdAt}${CURSOR_SEPARATOR}${id}`
+}
+
+/** Accepts the legacy bare-timestamp cursor so in-flight clients keep paging. */
+function decodeCursor(value: string): { createdAt: string; id: string | null } {
+  const separatorIndex = value.lastIndexOf(CURSOR_SEPARATOR)
+  if (separatorIndex === -1) {
+    return { createdAt: value, id: null }
+  }
+  return {
+    createdAt: value.slice(0, separatorIndex),
+    id: value.slice(separatorIndex + 1) || null,
+  }
 }
 
 function combineConditions(conditions: Array<SqlExpression | undefined>) {

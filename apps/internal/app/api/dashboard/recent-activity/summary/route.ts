@@ -18,6 +18,11 @@ import { clients, leads, projects, tasks } from '@/lib/db/schema'
 const VALID_TIMEFRAMES = [1, 7, 14, 28] as const
 const ONE_HOUR_MS = 60 * 60 * 1000
 const MAX_LOG_LINES_IN_PROMPT = 200
+// Gateway model id + reasoning level for the highlight. The summary is a few
+// thousand input tokens and a short paragraph out, so a Flash-Lite tier model
+// at low thinking effort is plenty; bump here when a newer cheap model lands.
+const ACTIVITY_SUMMARY_MODEL = 'google/gemini-3.5-flash-lite'
+const ACTIVITY_SUMMARY_REASONING = 'low' as const
 const HIGHLIGHT_CHARACTER_LIMIT = 1200
 
 type ValidTimeframe = (typeof VALID_TIMEFRAMES)[number]
@@ -151,7 +156,8 @@ export async function POST(request: Request) {
     let highlight = ''
     try {
       const result = await generateText({
-        model: 'google/gemini-3-flash',
+        model: ACTIVITY_SUMMARY_MODEL,
+        reasoning: ACTIVITY_SUMMARY_REASONING,
         system: buildSystemPrompt(timeframeDays as ValidTimeframe),
         prompt: buildUserPrompt({
           timeframeDays: timeframeDays as ValidTimeframe,
@@ -279,10 +285,19 @@ async function countTasksDone(since: Date): Promise<number> {
   return result[0]?.count ?? 0
 }
 
+/**
+ * Page views were logged as activity until Sep 2026; historical rows still
+ * carry `*_VIEWED` verbs and must not count as project activity or feed the
+ * prompt.
+ */
+function isViewEvent(log: ActivityLogWithActor): boolean {
+  return log.verb.endsWith('_VIEWED') && log.target_type !== 'INVOICE'
+}
+
 function countActiveProjects(logs: ActivityLogWithActor[]): number {
   const projectIds = new Set<string>()
   for (const log of logs) {
-    if (log.target_project_id) {
+    if (log.target_project_id && !isViewEvent(log)) {
       projectIds.add(log.target_project_id)
     }
   }
@@ -349,7 +364,7 @@ function buildUserPrompt({
 
   // Group logs by actor for per-member breakdown
   const logsByActor = new Map<string, string[]>()
-  for (const log of logs.slice(0, 50)) {
+  for (const log of logs.filter(log => !isViewEvent(log)).slice(-50)) {
     const actorName = (
       log.actor?.full_name?.trim() || log.actor?.email || 'System'
     ).replace(/\s+/g, ' ')
@@ -463,7 +478,11 @@ const TARGET_LABELS: Record<string, string> = {
   HOUR_BLOCK: 'hour blocks',
   USER: 'team members',
   SETTINGS: 'settings changes',
-  GENERAL: 'general operations',
+  CONTACT: 'contact updates',
+  LEAD: 'lead activity',
+  INVOICE: 'invoicing',
+  SUBMISSION: 'website submissions',
+  MONTHLY_CLOSE: 'monthly close',
 }
 
 const DEFAULT_PROJECT_LABEL = 'General'

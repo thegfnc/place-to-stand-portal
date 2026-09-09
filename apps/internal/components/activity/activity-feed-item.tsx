@@ -1,142 +1,180 @@
-import { formatDistanceToNow } from 'date-fns'
+import { useMemo } from 'react'
+import { formatDistanceToNowStrict } from 'date-fns'
 
 import { Avatar, AvatarFallback, AvatarImage } from '@pts/ui/avatar'
 import { Badge } from '@/components/ui/badge'
-import { cn } from '@/lib/utils'
-import type { ActivityLogWithActor } from '@/lib/activity/types'
-import type { ActivitySourceValue } from '@/lib/types'
+import { ActivityChangeList } from '@/components/activity/activity-change-list'
+import { getActivityChanges, type ActivityFact } from '@/lib/activity/changes'
 import {
   getActorDisplayName,
   getActorInitials,
-  getChangedFields,
-  getDetailHighlights,
-  getFactHighlights,
-  toRecord,
-  type HighlightDetail,
-  type HighlightFact,
 } from '@/lib/activity/feed-highlights'
+import type { ActivityLogWithActor } from '@/lib/activity/types'
+import {
+  getToneClasses,
+  getVerbPresentation,
+} from '@/lib/activity/verb-presentation'
+import { formatHours } from '@/lib/activity/events/shared'
+import { formatCalendarDate } from '@/lib/dates'
+import type { ActivitySourceValue } from '@/lib/types'
+import { cn } from '@/lib/utils'
 
 export type ActivityFeedItemProps = {
   log: ActivityLogWithActor
 }
 
-const SOURCE_LABELS: Record<ActivitySourceValue, string> = {
-  ADMIN_UI: 'Admin UI',
-  CLI: 'CLI',
-  SYSTEM: 'System',
+/**
+ * Admin UI is the default source and carries no signal, so only CLI and
+ * System actions get a badge.
+ */
+const SOURCE_BADGES: Partial<Record<ActivitySourceValue, { label: string; className: string }>> = {
+  CLI: {
+    label: 'CLI',
+    className:
+      'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-950/40 dark:text-orange-300 dark:border-orange-900',
+  },
+  SYSTEM: {
+    label: 'System',
+    className:
+      'bg-slate-700 text-slate-50 border-slate-600 dark:bg-slate-950 dark:text-slate-300 dark:border-slate-800',
+  },
 }
 
-const SOURCE_BADGE_STYLES: Record<ActivitySourceValue, string> = {
-  ADMIN_UI:
-    'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800/40 dark:text-slate-300 dark:border-slate-700',
-  CLI: 'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-950/40 dark:text-orange-300 dark:border-orange-900',
-  SYSTEM:
-    'bg-slate-700 text-slate-50 border-slate-600 dark:bg-slate-950 dark:text-slate-300 dark:border-slate-800',
-}
+const TIMESTAMP_STYLE = {
+  month: 'short',
+  day: 'numeric',
+  year: 'numeric',
+  hour: 'numeric',
+  minute: '2-digit',
+} as const
+
+const MONEY = new Intl.NumberFormat('en-US', {
+  style: 'currency',
+  currency: 'USD',
+})
 
 export function ActivityFeedItem({ log }: ActivityFeedItemProps) {
   const actorName = getActorDisplayName(log)
   const actorInitials = getActorInitials(actorName)
-  const createdAtLabel = formatDistanceToNow(new Date(log.created_at), {
+  const changes = useMemo(() => getActivityChanges(log), [log])
+  const hasChanges =
+    changes.fields.length > 0 || changes.memberships.length > 0
+  const summary = hasChanges ? stripTrailingFieldList(log.summary) : log.summary
+
+  const { icon: Icon, tone } = getVerbPresentation(log.verb)
+  const sourceBadge = SOURCE_BADGES[log.source]
+  const createdAt = new Date(log.created_at)
+  const relativeLabel = formatDistanceToNowStrict(createdAt, {
     addSuffix: true,
   })
-
-  const metadata = toRecord(log.metadata)
-  const changedFields = getChangedFields(metadata)
-  const detailHighlights = getDetailHighlights(metadata)
-  const factHighlights = getFactHighlights(metadata)
+  const absoluteLabel = formatCalendarDate(log.created_at, TIMESTAMP_STYLE)
 
   return (
-    <div className='flex items-start gap-3'>
-      <Avatar className='h-9 w-9'>
-        {log.actor?.avatar_url ? (
-          <AvatarImage src={log.actor.avatar_url} alt={actorName} />
-        ) : null}
-        <AvatarFallback>{actorInitials}</AvatarFallback>
-      </Avatar>
-      <div className='flex-1 space-y-2'>
-        <header className='space-y-1'>
-          <div className='flex items-center gap-2'>
-            <div className='text-sm font-medium'>{actorName}</div>
+    <article className='flex items-start gap-3'>
+      <span
+        aria-hidden='true'
+        className={cn(
+          'ring-background relative z-10 flex h-7 w-7 shrink-0 items-center justify-center rounded-full ring-4',
+          getToneClasses(tone)
+        )}
+      >
+        <Icon className='h-3.5 w-3.5' />
+      </span>
+
+      <div className='min-w-0 flex-1 pt-0.5'>
+        <div className='flex flex-wrap items-center gap-x-2 gap-y-1 text-sm leading-snug'>
+          <span className='inline-flex items-center gap-1.5 font-medium'>
+            <Avatar className='h-5 w-5'>
+              {log.actor?.avatar_url ? (
+                <AvatarImage
+                  src={`/api/storage/user-avatar/${log.actor.id}`}
+                  alt=''
+                />
+              ) : null}
+              <AvatarFallback className='text-[9px]'>
+                {actorInitials}
+              </AvatarFallback>
+            </Avatar>
+            {actorName}
+          </span>
+          <span className='text-foreground/90 min-w-0'>{summary}</span>
+          {sourceBadge ? (
             <Badge
               variant='outline'
-              className={cn('text-xs', SOURCE_BADGE_STYLES[log.source])}
+              className={cn('h-5 px-1.5 text-[10px]', sourceBadge.className)}
             >
-              {SOURCE_LABELS[log.source]}
+              {sourceBadge.label}
             </Badge>
-          </div>
-          <div className='text-sm'>{log.summary}</div>
-          <time className='text-muted-foreground text-xs'>
-            {createdAtLabel}
+          ) : null}
+          <time
+            dateTime={log.created_at}
+            title={absoluteLabel ?? undefined}
+            className='text-muted-foreground text-xs whitespace-nowrap'
+          >
+            {relativeLabel}
           </time>
-        </header>
-        <ChangedFieldBadges fields={changedFields} />
-        <DetailHighlightList highlights={detailHighlights} />
-        <FactHighlightList highlights={factHighlights} />
-      </div>
-    </div>
-  )
-}
-
-type ChangedFieldBadgesProps = {
-  fields: string[]
-}
-
-function ChangedFieldBadges({ fields }: ChangedFieldBadgesProps) {
-  if (!fields.length) {
-    return null
-  }
-
-  return (
-    <div className='flex flex-wrap gap-1'>
-      {fields.map(field => (
-        <Badge key={field} variant='secondary' className='text-xs'>
-          {field}
-        </Badge>
-      ))}
-    </div>
-  )
-}
-
-type DetailHighlightListProps = {
-  highlights: HighlightDetail[]
-}
-
-function DetailHighlightList({ highlights }: DetailHighlightListProps) {
-  if (!highlights.length) {
-    return null
-  }
-
-  return (
-    <div className='space-y-1 text-xs'>
-      {highlights.map(detail => (
-        <div key={detail.field} className='text-muted-foreground'>
-          <span className='text-foreground font-medium'>{detail.field}:</span>{' '}
-          <span>{detail.before}</span>{' '}
-          <span className='text-foreground'>→</span> <span>{detail.after}</span>
         </div>
-      ))}
-    </div>
+
+        {hasChanges ? (
+          <ActivityChangeList
+            fields={changes.fields}
+            memberships={changes.memberships}
+            targetType={log.target_type}
+            references={log.references}
+          />
+        ) : null}
+
+        <FactChips facts={changes.facts} />
+      </div>
+    </article>
   )
 }
 
-type FactHighlightListProps = {
-  highlights: HighlightFact[]
+/**
+ * Writers append "(title, due date, and assignees)" to update summaries for
+ * the benefit of plain-text consumers. When the feed renders the change rows
+ * themselves, that suffix is pure repetition.
+ */
+function stripTrailingFieldList(summary: string): string {
+  return summary.replace(/\s\([^()]*\)\s*$/, '')
 }
 
-function FactHighlightList({ highlights }: FactHighlightListProps) {
-  if (!highlights.length) {
-    return null
-  }
+function FactChips({ facts }: { facts: ActivityFact[] }) {
+  if (!facts.length) return null
 
   return (
-    <ul className='text-muted-foreground space-y-1 text-xs'>
-      {highlights.map(fact => (
-        <li key={`${fact.label}:${fact.value}`}>
-          <span className='text-foreground font-medium'>{fact.label}:</span>{' '}
-          <span>{fact.value}</span>
+    <ul className='text-muted-foreground mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-xs'>
+      {facts.map(fact => (
+        <li key={`${fact.label}:${fact.value}`} className='inline-flex gap-1'>
+          <span>{fact.label}</span>
+          <span
+            className={cn(
+              'text-foreground',
+              fact.kind === 'mono' && 'font-mono text-[11px]'
+            )}
+          >
+            {formatFact(fact)}
+          </span>
         </li>
       ))}
     </ul>
   )
 }
+
+function formatFact(fact: ActivityFact): string {
+  switch (fact.kind) {
+    case 'money': {
+      const amount = Number(fact.value)
+      return Number.isFinite(amount) ? MONEY.format(amount) : fact.value
+    }
+    case 'hours': {
+      const hours = Number(fact.value)
+      return Number.isFinite(hours) ? `${formatHours(hours)}h` : fact.value
+    }
+    case 'date':
+      return formatCalendarDate(fact.value) ?? fact.value
+    default:
+      return fact.value
+  }
+}
+

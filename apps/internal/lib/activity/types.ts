@@ -20,6 +20,22 @@ type DbActivityLog = {
   restored_at: string | null
 }
 
+export type ActivityReferenceUser = {
+  name: string
+  avatarUrl: string | null
+}
+
+/**
+ * Display names for the raw ids stored in metadata (owners, assignees,
+ * contacts, projects). Attached per page by the activity query so the feed
+ * never has to render a UUID.
+ */
+export type ActivityReferences = {
+  users: Record<string, ActivityReferenceUser>
+  contacts: Record<string, string>
+  projects: Record<string, string>
+}
+
 export type ActivityLogWithActor = DbActivityLog & {
   actor?: {
     id: string
@@ -27,6 +43,7 @@ export type ActivityLogWithActor = DbActivityLog & {
     email: string
     avatar_url: string | null
   } | null
+  references?: ActivityReferences
 }
 
 export type ActivityTargetType =

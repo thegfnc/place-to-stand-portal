@@ -155,7 +155,6 @@ export default async function ClientDetailPage({
           createdAt: update.createdAt,
         }))}
         clientRow={mapClientDetailToRow(client)}
-        currentUserId={user.id}
         originationContact={originationContact}
         originationUser={originationUser}
         closerUser={closerUser}
