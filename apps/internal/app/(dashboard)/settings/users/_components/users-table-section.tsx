@@ -59,7 +59,7 @@ export function UsersTableSection({
             <TableHead className='w-[22%]'>Email</TableHead>
             <TableHead className='w-[8%]'>Role</TableHead>
             <TableHead className='w-[12%]'>Access</TableHead>
-            <TableHead className='w-[14%]'>Assigned</TableHead>
+            <TableHead className='w-[14%]'>Clients</TableHead>
             <SortableTableHead
               field='created'
               sort={sort}

@@ -8,7 +8,6 @@ import {
   projects,
   taskAssignees,
 } from '@/lib/db/schema'
-import type { ProjectTypeValue } from '@/lib/types'
 
 export type UserAssignedClient = {
   id: string
@@ -16,21 +15,11 @@ export type UserAssignedClient = {
   slug: string | null
 }
 
-export type UserAssignedProject = {
-  id: string
-  name: string
-  slug: string | null
-  type: ProjectTypeValue
-  /** Slug of the owning client; null for internal/personal projects. */
-  clientSlug: string | null
-}
-
 export type UserAssignmentSummary = {
   clients: number
   projects: number
   tasks: number
   clientList: UserAssignedClient[]
-  projectList: UserAssignedProject[]
 }
 
 export type UsersSettingsAssignments = Record<string, UserAssignmentSummary>
@@ -40,7 +29,6 @@ const emptySummary = (): UserAssignmentSummary => ({
   projects: 0,
   tasks: 0,
   clientList: [],
-  projectList: [],
 })
 
 /**
@@ -48,8 +36,9 @@ const emptySummary = (): UserAssignmentSummary => ({
  * confirmation copy — three grouped queries regardless of page size.
  * Clients are live `client_members` rows on live clients; projects are live
  * projects the user owns (`projects.owner_id`); tasks are live
- * `task_assignees` rows. The client/project lists back the hover cards, so
- * their counts are the list lengths.
+ * `task_assignees` rows. The client list backs the users-table hover card,
+ * so its count is the list length; projects and tasks are plain counts for
+ * the archive confirmation sentence.
  */
 export async function buildAssignmentsForUsers(
   userIds: string[]
@@ -58,7 +47,7 @@ export async function buildAssignmentsForUsers(
     return {}
   }
 
-  const [clientRows, projectRows, taskCounts] = await Promise.all([
+  const [clientRows, projectCounts, taskCounts] = await Promise.all([
     db
       .select({
         userId: clientMembers.userId,
@@ -79,18 +68,13 @@ export async function buildAssignmentsForUsers(
     db
       .select({
         userId: projects.ownerId,
-        id: projects.id,
-        name: projects.name,
-        slug: projects.slug,
-        type: projects.type,
-        clientSlug: clients.slug,
+        total: sql<number>`count(*)`,
       })
       .from(projects)
-      .leftJoin(clients, eq(projects.clientId, clients.id))
       .where(
         and(inArray(projects.ownerId, userIds), isNull(projects.deletedAt))
       )
-      .orderBy(asc(projects.name)),
+      .groupBy(projects.ownerId),
     db
       .select({
         userId: taskAssignees.userId,
@@ -120,17 +104,9 @@ export async function buildAssignmentsForUsers(
     summary.clients = summary.clientList.length
   }
 
-  for (const row of projectRows) {
+  for (const row of projectCounts) {
     if (!row.userId) continue
-    const summary = summaryFor(row.userId)
-    summary.projectList.push({
-      id: row.id,
-      name: row.name,
-      slug: row.slug,
-      type: row.type,
-      clientSlug: row.clientSlug,
-    })
-    summary.projects = summary.projectList.length
+    summaryFor(row.userId).projects = Number(row.total ?? 0)
   }
 
   for (const row of taskCounts) {
