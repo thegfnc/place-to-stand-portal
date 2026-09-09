@@ -1,4 +1,5 @@
 import { ActivityVerbs, type ActivityEvent } from '@/lib/activity/types'
+import { getTaskStatusLabel } from '@/lib/projects/task-status'
 
 import { joinWithCommas, toMetadata } from './shared'
 
@@ -53,7 +54,7 @@ export const taskStatusChangedEvent = (args: {
   toStatus: string
 }): ActivityEvent => ({
   verb: ActivityVerbs.TASK_STATUS_CHANGED,
-  summary: `Moved task "${args.title}" from ${args.fromStatus} to ${args.toStatus}`,
+  summary: `Moved task "${args.title}" from ${getTaskStatusLabel(args.fromStatus)} to ${getTaskStatusLabel(args.toStatus)}`,
   metadata: toMetadata({
     status: {
       from: args.fromStatus,

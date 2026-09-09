@@ -43,8 +43,6 @@ import type { SheetEntityKey } from '@/lib/sheets/entities'
 import { useSheetParams } from '@/lib/sheets/use-sheet-params'
 import { prefetchSheetInit } from '@/lib/sheets/wrappers/use-sheet-init'
 import { cn } from '@/lib/utils'
-import { ViewLogger } from '@/components/activity/view-logger'
-import { ActivityVerbs } from '@/lib/activity/types'
 
 import { ClientSheet } from '../../_components/clients-sheet'
 import { ClientContactsSection } from './client-contacts-section'
@@ -75,7 +73,6 @@ type ClientDetailProps = {
   contacts: ContactWithClientLink[]
   updates: ClientUpdateSummary[]
   clientRow: ClientRow
-  currentUserId: string
   originationContact: OriginationContactInfo
   originationUser: PartnerUserInfo
   closerUser: PartnerUserInfo
@@ -87,7 +84,6 @@ export function ClientDetail({
   contacts,
   updates,
   clientRow,
-  currentUserId,
   originationContact,
   originationUser,
   closerUser,
@@ -97,16 +93,6 @@ export function ClientDetail({
 
   return (
     <div className='space-y-4 pb-8'>
-      <ViewLogger
-        actorId={currentUserId}
-        verb={ActivityVerbs.CLIENT_VIEWED}
-        summary={`Viewed client "${client.name}"`}
-        targetType='CLIENT'
-        targetId={client.id}
-        targetClientId={client.id}
-        metadata={{ hasSlug: Boolean(client.slug) }}
-      />
-
       {/* Action bar */}
       <div className='flex items-center justify-end'>
         <ClientOverviewActions
