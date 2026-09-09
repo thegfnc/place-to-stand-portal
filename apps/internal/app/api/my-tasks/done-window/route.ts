@@ -5,6 +5,7 @@ import { requireUser } from '@/lib/auth/session'
 import { assertAdmin } from '@/lib/auth/permissions'
 import { listAssignedDoneSlice } from '@/lib/data/tasks'
 import { fetchProjectsWithRelationsByIds } from '@/lib/data/projects'
+import { HIDEABLE_PROJECT_TYPE_VALUES } from '@/lib/my-tasks/project-scope'
 import {
   DONE_WINDOW_WEEKS,
   MAX_DONE_WEEKS,
@@ -23,6 +24,8 @@ const payloadSchema = z.object({
   assigneeId: z.union([z.string().uuid(), z.literal('all')]).optional(),
   /** Restrict the widened window to one client's projects. */
   clientId: z.string().uuid().nullable().optional(),
+  /** Project types the board is hiding, so the wider window matches it. */
+  hiddenProjectTypes: z.array(z.enum(HIDEABLE_PROJECT_TYPE_VALUES)).optional(),
   /** Window width already on screen, in weeks. */
   fromWeeks: z.number().int().min(0).max(MAX_DONE_WEEKS),
   /** Window width being opened up to, in weeks. */
@@ -73,6 +76,7 @@ export async function POST(request: Request) {
     const slice = await listAssignedDoneSlice({
       userId: boardOwnerId,
       clientId: payload.clientId ?? null,
+      hiddenProjectTypes: payload.hiddenProjectTypes ?? [],
       since: resolveDoneWindowStart(payload.toWeeks, payload.now),
       before: resolveDoneWindowStart(payload.fromWeeks, payload.now),
     })

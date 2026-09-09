@@ -133,7 +133,7 @@ export async function createClient(
         metadata: event.metadata,
       })
 
-      return buildMutationResult({ clientId })
+      return buildMutationResult({ clientId, slug: slugCandidate })
     } catch (error) {
       if (!isUniqueViolation(error)) {
         console.error('Failed to create client', error)

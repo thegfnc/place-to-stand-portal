@@ -3,6 +3,7 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 import { Button } from '@pts/ui/button'
+import { PageSizeSelect } from '@/components/table-toolbar/page-size-select'
 
 type CursorPaginationProps = {
   mode?: 'cursor'
@@ -11,6 +12,10 @@ type CursorPaginationProps = {
   onNext: () => void
   onPrevious: () => void
   disableAll?: boolean
+  /** Rows-per-page the list was rendered with; renders the selector. */
+  pageSize?: number
+  /** Rows on the current page — lets a single short page hide the footer. */
+  itemCount?: number
 }
 
 type PagedPaginationProps = {
@@ -38,16 +43,24 @@ function CursorPagination({
   onNext,
   onPrevious,
   disableAll = false,
+  pageSize,
+  itemCount = 0,
 }: CursorPaginationProps) {
   const isPrevDisabled = disableAll || !hasPreviousPage
   const isNextDisabled = disableAll || !hasNextPage
+  const hasMorePages = hasNextPage || hasPreviousPage
+  // Same fixture rule as the paged footer: show it whenever there are rows.
+  const showPageSize = pageSize !== undefined && itemCount > 0
 
-  if (!hasNextPage && !hasPreviousPage) {
+  if (!hasMorePages && !showPageSize) {
     return null
   }
 
   return (
-    <div className='flex justify-end gap-1'>
+    <div className='flex items-center justify-between gap-4'>
+      {showPageSize ? <PageSizeSelect value={pageSize} /> : <span />}
+      {hasMorePages ? (
+        <div className='flex justify-end gap-1'>
       <Button
         type='button'
         variant='outline'
@@ -68,6 +81,8 @@ function CursorPagination({
       >
         <ChevronRight className='size-4' />
       </Button>
+        </div>
+      ) : null}
     </div>
   )
 }
@@ -137,13 +152,16 @@ function PagedPagination({
   onPageChange,
   showCount = true,
 }: PagedPaginationProps) {
-  if (totalPages <= 1) {
+  const hasMorePages = totalPages > 1
+  // The footer is a fixture of every list (rows-per-page + count); only the
+  // pager itself disappears on a single page.
+  if (totalItems === 0) {
     return null
   }
 
   const paginationItems = generatePaginationItems(currentPage, totalPages)
 
-  const controls = (
+  const controls = hasMorePages ? (
     <div className='flex items-center gap-1'>
       <Button
         type='button'
@@ -197,19 +215,20 @@ function PagedPagination({
         <ChevronRight className='size-4' />
       </Button>
     </div>
-  )
-
-  if (!showCount) {
-    return controls
-  }
+  ) : null
 
   return (
-    <div className='flex items-center justify-between'>
-      <p className='text-muted-foreground pl-2 text-xs tabular-nums'>
-        {(currentPage - 1) * pageSize + 1}–
-        {Math.min(currentPage * pageSize, totalItems)} of {totalItems}
-      </p>
-      {controls}
+    <div className='flex items-center justify-between gap-4'>
+      <PageSizeSelect value={pageSize} />
+      <div className='flex items-center gap-4'>
+        {showCount ? (
+          <p className='text-muted-foreground text-xs tabular-nums'>
+            {(currentPage - 1) * pageSize + 1}–
+            {Math.min(currentPage * pageSize, totalItems)} of {totalItems}
+          </p>
+        ) : null}
+        {controls}
+      </div>
     </div>
   )
 }

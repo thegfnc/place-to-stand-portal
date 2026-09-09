@@ -57,6 +57,7 @@ export function ContactsSheet(props: ContactsSheetProps) {
     handleRequestPromote,
     handleConfirmPromote,
     handleAddClient,
+    handleCreateClient,
     handleRemoveClient,
   } = useContactSheetState(props)
 
@@ -90,6 +91,7 @@ export function ContactsSheet(props: ContactsSheetProps) {
             isClientPickerOpen={isClientPickerOpen}
             onClientPickerOpenChange={setIsClientPickerOpen}
             onAddClient={handleAddClient}
+            onCreateClient={handleCreateClient}
             onRemoveClient={handleRemoveClient}
             promoteDisabled={promoteDisabled}
             promoteDisabledReason={promoteDisabledReason}

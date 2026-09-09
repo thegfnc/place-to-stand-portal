@@ -59,12 +59,11 @@ function PopoverContent({
   >) {
   return (
     <PopoverPrimitive.Portal>
-      <PopoverPrimitive.Positioner
+      <StickySidePositioner
         align={align}
         alignOffset={alignOffset}
         side={side}
         sideOffset={sideOffset}
-        className="pointer-events-auto isolate z-50"
       >
         <PopoverPrimitive.Popup
           data-slot="popover-content"
@@ -75,8 +74,54 @@ function PopoverContent({
           )}
           {...props}
         />
-      </PopoverPrimitive.Positioner>
+      </StickySidePositioner>
     </PopoverPrimitive.Portal>
+  )
+}
+
+type PositionerSide = NonNullable<PopoverPrimitive.Positioner.Props["side"]>
+
+/**
+ * Pins the popup to whichever side it first resolved to. floating-ui re-runs
+ * collision avoidance on every content resize, so a filterable list that had
+ * to open upward (no room below for the full list) jumps beneath the trigger
+ * the moment the results shrink enough to fit. Once the first placement is
+ * known it is locked for the rest of this open; the positioner unmounts with
+ * the portal on close, which resets the lock.
+ */
+function StickySidePositioner({
+  side,
+  children,
+  ...props
+}: PopoverPrimitive.Positioner.Props) {
+  const ref = React.useRef<HTMLDivElement>(null)
+  const [lockedSide, setLockedSide] = React.useState<PositionerSide | null>(
+    null
+  )
+
+  React.useEffect(() => {
+    if (lockedSide) return
+    // The first paint carries the preferred side; floating-ui resolves the
+    // real placement a microtask later, so read it after the next frame.
+    let frame = requestAnimationFrame(() => {
+      frame = requestAnimationFrame(() => {
+        const resolved = ref.current?.dataset.side as PositionerSide | undefined
+        if (resolved) setLockedSide(resolved)
+      })
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [lockedSide])
+
+  return (
+    <PopoverPrimitive.Positioner
+      ref={ref}
+      side={lockedSide ?? side}
+      collisionAvoidance={lockedSide ? { side: "none" } : undefined}
+      className="pointer-events-auto isolate z-50"
+      {...props}
+    >
+      {children}
+    </PopoverPrimitive.Positioner>
   )
 }
 

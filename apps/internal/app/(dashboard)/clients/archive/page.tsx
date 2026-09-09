@@ -5,6 +5,7 @@ import { crumbsForNav } from '@/lib/navigation/breadcrumbs'
 import { requireRole } from '@/lib/auth/session'
 import { listClientsForSettings } from '@/lib/queries/clients'
 import { parseClientsSearchParams } from '@/lib/settings/clients/filters'
+import { readPageSize } from '@/lib/pagination/page-size.server'
 
 import { CLIENTS_TABS } from '../_lib/tabs'
 import { ClientsAddButton } from '../_components/clients-add-button'
@@ -26,6 +27,7 @@ export default async function ClientsArchivePage({
 }: ClientsArchivePageProps) {
   const admin = await requireRole('ADMIN')
   const params = searchParams ? await searchParams : {}
+  const preferredPageSize = await readPageSize()
   const { cursor, direction, limit, billing, search, sort } =
     parseClientsSearchParams(params)
 
@@ -45,7 +47,7 @@ export default async function ClientsArchivePage({
       search,
       cursor,
       direction,
-      limit,
+      limit: limit ?? preferredPageSize,
       sort,
     })
 
@@ -72,6 +74,7 @@ export default async function ClientsArchivePage({
         <ClientsManagementTable
           clients={clientsForTable}
           pageInfo={pageInfo}
+          pageSize={limit ?? preferredPageSize}
           mode='archive'
           basePath='/clients/archive'
           deepLinkedClient={deepLink.record}

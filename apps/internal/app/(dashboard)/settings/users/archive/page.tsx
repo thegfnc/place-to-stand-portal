@@ -7,6 +7,7 @@ import { getUserById, listUsersForSettings } from '@/lib/queries/users'
 import { resolveSheetDeepLink } from '@/lib/sheets/resolve-deep-link'
 import { parseUsersSearchParams } from '@/lib/settings/users/filters'
 import type { DbUser } from '@/lib/types'
+import { readPageSize } from '@/lib/pagination/page-size.server'
 
 import { UsersAddButton } from '../_components/users-add-button'
 import { UsersFilters } from '../_components/users-filters'
@@ -26,6 +27,7 @@ export default async function UsersArchivePage({
 }: UsersArchivePageProps) {
   const currentUser = await requireRole('ADMIN')
   const params = searchParams ? await searchParams : {}
+  const preferredPageSize = await readPageSize()
   const { page, limit, role, search, sort } =
     parseUsersSearchParams(params)
 
@@ -40,7 +42,7 @@ export default async function UsersArchivePage({
   } = await listUsersForSettings(currentUser, {
     status: 'archived',
     page,
-    limit,
+    limit: limit ?? preferredPageSize,
     role,
     search,
     sort,

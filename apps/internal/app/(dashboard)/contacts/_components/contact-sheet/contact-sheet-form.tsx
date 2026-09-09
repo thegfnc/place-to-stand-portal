@@ -60,6 +60,7 @@ type ContactSheetFormProps = {
   isClientPickerOpen: boolean
   onClientPickerOpenChange: (open: boolean) => void
   onAddClient: (client: ContactClientOption) => void
+  onCreateClient: (query: string) => void
   onRemoveClient: (client: ContactClientOption) => void
   // Promote to client props
   promoteDisabled: boolean
@@ -89,6 +90,7 @@ export function ContactSheetForm({
   isClientPickerOpen,
   onClientPickerOpenChange,
   onAddClient,
+  onCreateClient,
   onRemoveClient,
   promoteDisabled,
   promoteDisabledReason,
@@ -226,6 +228,7 @@ export function ContactSheetForm({
               pendingReason={pendingReason}
               onPickerOpenChange={onClientPickerOpenChange}
               onAddClient={onAddClient}
+              onCreateClient={onCreateClient}
               onRequestRemoval={onRemoveClient}
             />
           </div>

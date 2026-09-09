@@ -1,12 +1,13 @@
 'use client'
 
+import { useState } from 'react'
 import { Building2, ChevronsUpDown, X } from 'lucide-react'
 
 import { Button } from '@pts/ui/button'
+import { CommandCreateRows } from '@/components/ui/command-create-rows'
 import { DisabledFieldTooltip } from '@/components/ui/disabled-field-tooltip'
 import {
   Command,
-  CommandEmpty,
   CommandGroup,
   CommandInput,
   CommandItem,
@@ -40,6 +41,8 @@ export type ContactClientPickerProps = {
   onPickerOpenChange: (open: boolean) => void
   onAddClient: (client: ContactClientOption) => void
   onRequestRemoval: (client: ContactClientOption) => void
+  /** Open the client create sheet, prefilled with the typed query. */
+  onCreateClient: (query: string) => void
 }
 
 export function ContactClientPicker({
@@ -53,7 +56,10 @@ export function ContactClientPicker({
   onPickerOpenChange,
   onAddClient,
   onRequestRemoval,
+  onCreateClient,
 }: ContactClientPickerProps) {
+  const [query, setQuery] = useState('')
+
   return (
     <div className='space-y-2'>
       <Popover open={isPickerOpen} onOpenChange={onPickerOpenChange} modal>
@@ -82,8 +88,11 @@ export function ContactClientPicker({
         </DisabledFieldTooltip>
         <PopoverContent className='w-[var(--radix-popover-trigger-width)] p-0' align='start'>
           <Command>
-            <CommandInput placeholder='Search clients...' />
-            <CommandEmpty>No matching clients.</CommandEmpty>
+            <CommandInput
+              placeholder='Search clients...'
+              value={query}
+              onValueChange={setQuery}
+            />
             <CommandList>
               <CommandGroup heading='Clients'>
                 {availableClients.map(client => (
@@ -104,6 +113,11 @@ export function ContactClientPicker({
                   </CommandItem>
                 ))}
               </CommandGroup>
+              <CommandCreateRows
+                query={query}
+                entityLabel='client'
+                onCreate={onCreateClient}
+              />
             </CommandList>
           </Command>
         </PopoverContent>

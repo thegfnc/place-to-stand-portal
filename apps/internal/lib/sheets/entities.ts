@@ -69,11 +69,13 @@ export const SHEET_ENTITIES: Record<SheetEntityKey, SheetEntityConfig> = {
       (pathname === '/leads/archive' && value !== NEW_SHEET_VALUE),
   },
   client: {
-    auxParams: [],
+    // `clientName=` prefills the create sheet's name (create-from-picker).
+    auxParams: ['clientName'],
     claimsPathname: exactPaths('/clients', '/clients/archive'),
   },
   contact: {
-    auxParams: [],
+    // `contactName=` prefills the create sheet's name (create-from-picker).
+    auxParams: ['contactName'],
     claimsPathname: exactPaths('/contacts', '/contacts/archive'),
   },
   invoice: {

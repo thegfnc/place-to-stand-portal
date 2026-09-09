@@ -7,7 +7,9 @@ import {
   getClientSheetContactData,
   syncClientContacts,
 } from '@/app/(dashboard)/clients/actions'
+import { subscribeSheetCreated } from '@/lib/sheets/created'
 import { useSheetLifecycle } from '@/lib/sheets/use-sheet-lifecycle'
+import { useSheetParams } from '@/lib/sheets/use-sheet-params'
 import {
   finishSettingsInteraction,
   startSettingsInteraction,
@@ -36,6 +38,8 @@ export function useClientSheetFormState({
   allContacts: allContactsProp,
   clientContacts: clientContactsProp,
   allAdminUsers: allAdminUsersProp,
+  initialName,
+  onCreated,
   isEditing,
   setFeedback,
   toast,
@@ -47,6 +51,10 @@ export function useClientSheetFormState({
   const [selectedContacts, setSelectedContacts] = useState<ClientContactOption[]>([])
   const [initialContacts, setInitialContacts] = useState<ClientContactOption[]>([])
   const [isLoadingContacts, setIsLoadingContacts] = useState(false)
+  // Contacts created from inside the picker this session — the fetched list
+  // predates them, so they're merged in to stay re-selectable after removal.
+  const [createdContacts, setCreatedContacts] = useState<ClientContactOption[]>([])
+  const { openNew } = useSheetParams()
 
   // Origination state — defaults to 'internal' for new clients; existing
   // clients with an external contact set get flipped to 'external' in the
@@ -97,7 +105,12 @@ export function useClientSheetFormState({
   })
 
   // Use provided data or fetched data
-  const allContacts = allContactsProp ?? fetchedAllContacts
+  const baseContacts = allContactsProp ?? fetchedAllContacts
+  const allContacts = useMemo(() => {
+    if (createdContacts.length === 0) return baseContacts
+    const known = new Set(baseContacts.map(c => c.id))
+    return [...baseContacts, ...createdContacts.filter(c => !known.has(c.id))]
+  }, [baseContacts, createdContacts])
   const allAdminUsers = allAdminUsersProp ?? fetchedAllAdminUsers
 
   // Compute available contacts (all contacts minus selected ones)
@@ -159,7 +172,7 @@ export function useClientSheetFormState({
 
   const resetFormState = useCallback(() => {
     const defaults = {
-      name: client?.name ?? '',
+      name: client?.name ?? initialName ?? '',
       slug: client?.slug ?? '',
       billingType: client?.billing_type ?? 'prepaid',
       billingEffective: 'next_month' as const,
@@ -178,7 +191,7 @@ export function useClientSheetFormState({
     setIsOriginationUserPickerOpen(false)
     setIsOriginationContactPickerOpen(false)
     setIsCloserPickerOpen(false)
-  }, [client, form, setFeedback])
+  }, [client, form, initialName, setFeedback])
 
   const hasUnsavedChanges =
     form.formState.isDirty || contactsDirty || originationDirty || closerDirty
@@ -196,13 +209,15 @@ export function useClientSheetFormState({
     resetKey: client?.id ?? null,
   })
 
-  const contactsAddButtonDisabled = isPending || isLoadingContacts || availableContacts.length === 0
+  // Never disabled for an empty list: the picker's create row is the escape
+  // hatch when every contact is linked (or none exist yet).
+  const contactsAddButtonDisabled = isPending || isLoadingContacts
   const contactsAddButtonDisabledReason = contactsAddButtonDisabled
     ? isPending
       ? PENDING_REASON
       : isLoadingContacts
         ? 'Loading contacts...'
-        : 'All contacts are already linked.'
+        : null
     : null
 
   const originationPickerDisabled = isPending || isLoadingContacts
@@ -353,6 +368,33 @@ export function useClientSheetFormState({
   const handleRemoveContact = useCallback((contact: ClientContactOption) => {
     setSelectedContacts(prev => prev.filter(c => c.id !== contact.id))
   }, [])
+
+  // Create-from-picker: stack the contact create sheet on top of this one
+  // (`?client=…&contact=new`); the wrapper announces the saved record below.
+  const handleCreateContact = useCallback(
+    (query: string) => {
+      setIsContactPickerOpen(false)
+      openNew('contact', query ? { contactName: query } : undefined)
+    },
+    [openNew]
+  )
+
+  useEffect(() => {
+    if (!open) return
+    return subscribeSheetCreated('contact', record => {
+      const option: ClientContactOption = {
+        id: record.id,
+        name: record.name,
+        email: record.email,
+        phone: record.phone,
+        hasPortalAccess: false,
+      }
+      setCreatedContacts(prev =>
+        prev.some(c => c.id === option.id) ? prev : [...prev, option]
+      )
+      handleAddContact(option)
+    })
+  }, [open, handleAddContact])
 
   // Origination handlers
   const handleOriginationModeChange = useCallback(
@@ -541,6 +583,14 @@ export function useClientSheetFormState({
             targetId: payload.id ?? result.clientId ?? null,
           })
 
+          if (!isEditing && result.clientId && onCreated) {
+            onCreated({
+              id: result.clientId,
+              name: payload.name,
+              slug: result.slug ?? payload.slug ?? '',
+            })
+          }
+
           toast({
             title: isEditing ? 'Client updated' : 'Client created',
             description: isEditing
@@ -580,6 +630,7 @@ export function useClientSheetFormState({
       form,
       isEditing,
       onComplete,
+      onCreated,
       onOpenChange,
       originationMode,
       selectedCloser,
@@ -611,6 +662,7 @@ export function useClientSheetFormState({
     handleContactPickerOpenChange,
     handleAddContact,
     handleRemoveContact,
+    handleCreateContact,
     // Origination
     originationMode,
     selectedOriginationUser,

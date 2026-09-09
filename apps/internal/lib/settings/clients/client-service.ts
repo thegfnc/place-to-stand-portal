@@ -146,6 +146,7 @@ export type DestroyClientInput = z.infer<typeof destroyClientSchema>
 export type ClientActionResult = {
   error?: string
   clientId?: string // Returned on successful create
+  slug?: string // Returned on successful create (create-from-picker needs it)
 }
 
 export type ClientSlugOptions = {

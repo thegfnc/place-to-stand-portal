@@ -21,6 +21,8 @@ import { ClientSheet } from './clients-sheet'
 type ClientsManagementTableProps = {
   clients: ClientsTableClient[]
   pageInfo: PageInfo
+  /** Rows-per-page the list was served with (drives the footer selector). */
+  pageSize: number
   mode: 'active' | 'archive'
   /** Route the sort/filter params live on (PRD 004 §03). */
   basePath: string
@@ -41,6 +43,7 @@ const EMPTY_MESSAGES = {
 export function ClientsManagementTable({
   clients,
   pageInfo,
+  pageSize,
   mode,
   basePath,
   deepLinkedClient = null,
@@ -170,6 +173,8 @@ export function ClientsManagementTable({
         onNext={() => handlePaginate('forward')}
         onPrevious={() => handlePaginate('backward')}
         disableAll={isPending}
+        pageSize={pageSize}
+        itemCount={clients.length}
       />
       <ClientSheet
         open={sheetOpen}

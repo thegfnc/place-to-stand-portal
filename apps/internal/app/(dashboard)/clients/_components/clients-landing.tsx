@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useMemo } from 'react'
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { Archive, Building2, CheckCircle2, Clock, Pencil } from 'lucide-react'
 
 import { Avatar, AvatarFallback, AvatarImage } from '@pts/ui/avatar'
@@ -20,6 +20,7 @@ import {
   TableRow,
 } from '@pts/ui/table'
 import { SortableTableHead } from '@/components/table-toolbar/sortable-table-head'
+import { PaginationControls } from '@/components/ui/pagination-controls'
 import { useListParams } from '@/hooks/use-list-params'
 import type { ClientWithMetrics } from '@/lib/data/clients'
 import { getBillingTypeOption } from '@/lib/settings/clients/billing-types'
@@ -37,6 +38,7 @@ import {
 
 import { ActiveProjectsCell } from './active-projects-cell'
 import { ClientSheet } from './clients-sheet'
+import { LinkedContactsCell } from './linked-contacts-cell'
 
 type ClientsLandingProps = {
   clients: ClientWithMetrics[]
@@ -47,6 +49,11 @@ type ClientsLandingProps = {
   deepLinkedClient?: ClientRow | null
   /** True when `?client=` points at a client that no longer exists. */
   clientNotFound?: boolean
+  currentPage: number
+  totalPages: number
+  pageSize: number
+  /** Filtered total across every page (the footer's `of N`). */
+  totalCount: number
 }
 
 const HOURS_FORMATTER = new Intl.NumberFormat('en-US', {
@@ -97,12 +104,29 @@ export function ClientsLanding({
   clients,
   deepLinkedClient = null,
   clientNotFound = false,
+  currentPage,
+  totalPages,
+  pageSize,
+  totalCount,
 }: ClientsLandingProps) {
   const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
   const { update, getParam } = useListParams({
     basePath: '/clients',
-    resetKeys: ['cursor', 'dir'],
+    resetKeys: ['cursor', 'dir', 'page'],
   })
+
+  const handlePageChange = (page: number) => {
+    const params = new URLSearchParams(searchParams.toString())
+    if (page <= 1) {
+      params.delete('page')
+    } else {
+      params.set('page', String(page))
+    }
+    const query = params.toString()
+    router.push(query ? `${pathname}?${query}` : pathname, { scroll: false })
+  }
   const rawSort = getParam('sort')
   const sort =
     rawSort && isClientLandingSortValue(rawSort) ? rawSort : undefined
@@ -203,7 +227,7 @@ export function ClientsLanding({
                 sort={sort}
                 defaultSort='name:asc'
                 onSortChange={next => update({ sort: next })}
-                className='w-[24%]'
+                className='w-[20%]'
               >
                 Client
               </SortableTableHead>
@@ -212,7 +236,7 @@ export function ClientsLanding({
                 sort={sort}
                 defaultSort='name:asc'
                 onSortChange={next => update({ sort: next })}
-                className='w-[10%]'
+                className='w-[9%]'
               >
                 Billing
               </SortableTableHead>
@@ -222,9 +246,19 @@ export function ClientsLanding({
                 sort={sort}
                 defaultSort='name:asc'
                 onSortChange={next => update({ sort: next })}
-                className='w-[15%]'
+                className='w-[14%]'
               >
                 Projects
+              </SortableTableHead>
+              {/* Ordered by linked contact count — the number the cell shows. */}
+              <SortableTableHead
+                field='contacts'
+                sort={sort}
+                defaultSort='name:asc'
+                onSortChange={next => update({ sort: next })}
+                className='w-[8%]'
+              >
+                Contacts
               </SortableTableHead>
               {/* Ordered by hours remaining; net_30 rows have none and sort last. */}
               <SortableTableHead
@@ -232,7 +266,7 @@ export function ClientsLanding({
                 sort={sort}
                 defaultSort='name:asc'
                 onSortChange={next => update({ sort: next })}
-                className='w-[24%]'
+                className='w-[22%]'
               >
                 Hours
               </SortableTableHead>
@@ -300,6 +334,9 @@ export function ClientsLanding({
                     clientId={client.id}
                     totalProjectCount={client.projectCount}
                   />
+                </TableCell>
+                <TableCell>
+                  <LinkedContactsCell contacts={client.contacts} />
                 </TableCell>
                 <TableCell>
                   {client.billingType === 'prepaid' ? (
@@ -435,6 +472,14 @@ export function ClientsLanding({
           </TableBody>
         </Table>
       </div>
+      <PaginationControls
+        mode='paged'
+        currentPage={currentPage}
+        totalPages={totalPages}
+        totalItems={totalCount}
+        pageSize={pageSize}
+        onPageChange={handlePageChange}
+      />
     </>
   )
 }

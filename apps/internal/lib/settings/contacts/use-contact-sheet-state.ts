@@ -24,6 +24,11 @@ import {
 import type { ContactsTableContact } from '@/lib/settings/contacts/use-contacts-table-state'
 import type { ContactClientOption } from '@/app/(dashboard)/contacts/_components/contact-sheet/contact-client-picker'
 import { PENDING_REASON } from '@/lib/forms/form-controls'
+import { subscribeSheetCreated } from '@/lib/sheets/created'
+import { useSheetParams } from '@/lib/sheets/use-sheet-params'
+
+/** The record handed to `onCreated` (and to a host picker underneath). */
+export type CreatedContact = ContactSheetInput
 
 const contactFormSchema = z.object({
   email: z.string().email({ message: 'Valid email is required' }),
@@ -45,8 +50,10 @@ export type UseContactSheetStateOptions = {
   open: boolean
   onOpenChange: (open: boolean) => void
   onComplete: () => void
-  /** Called with the new contact ID when a contact is created (not on edit) */
-  onCreated?: (contactId: string) => void
+  /** Fires once with the new contact after a successful create (not on edit). */
+  onCreated?: (contact: CreatedContact) => void
+  /** Name prefill for the create sheet (create-from-picker). */
+  initialName?: string
   contact?: ContactsTableContact | ContactSheetInput | null
   /** All available clients for the client picker (fetched when not provided) */
   allClients?: ContactClientOption[]
@@ -65,6 +72,7 @@ export function useContactSheetState({
   onOpenChange,
   onComplete,
   onCreated,
+  initialName,
   contact,
   allClients: allClientsProp,
 }: UseContactSheetStateOptions) {
@@ -85,12 +93,21 @@ export function useContactSheetState({
     []
   )
   const [isLoadingClients, setIsLoadingClients] = useState(false)
+  // Clients created from inside the picker this session — the fetched list
+  // predates them, so they're merged in to stay re-selectable after removal.
+  const [createdClients, setCreatedClients] = useState<ContactClientOption[]>([])
+  const { openNew } = useSheetParams()
 
   const { toast } = useToast()
   const isEditing = Boolean(contact?.id)
 
   // Use provided allClients or fetched ones
-  const allClients = allClientsProp ?? fetchedAllClients
+  const baseClients = allClientsProp ?? fetchedAllClients
+  const allClients = useMemo(() => {
+    if (createdClients.length === 0) return baseClients
+    const known = new Set(baseClients.map(c => c.id))
+    return [...baseClients, ...createdClients.filter(c => !known.has(c.id))]
+  }, [baseClients, createdClients])
 
   const form = useForm<ContactFormData>({
     resolver: zodResolver(contactFormSchema),
@@ -117,7 +134,7 @@ export function useContactSheetState({
     setFeedback(null)
     form.reset({
       email: contact?.email ?? '',
-      name: contact?.name ?? '',
+      name: contact?.name ?? initialName ?? '',
       phone: contact?.phone ?? '',
     })
 
@@ -168,7 +185,7 @@ export function useContactSheetState({
     }
 
     prevContactIdRef.current = contactId
-  }, [open, contact, form, allClientsProp, isEditing])
+  }, [open, contact, form, allClientsProp, isEditing, initialName])
 
   // Check if client links have changed
   const clientsHaveChanged = useMemo(() => {
@@ -277,7 +294,12 @@ export function useContactSheetState({
 
         // Call onCreated with the new contact ID if this was a create operation
         if (!isEditing && result.id && onCreated) {
-          onCreated(result.id)
+          onCreated({
+            id: result.id,
+            email: data.email,
+            name: data.name,
+            phone: data.phone || null,
+          })
         }
 
         onComplete()
@@ -392,19 +414,38 @@ export function useContactSheetState({
     setIsClientPickerOpen(false)
   }, [])
 
+  // Create-from-picker: stack the client create sheet on top of this one
+  // (`?contact=…&client=new`); the wrapper announces the saved record below.
+  const handleCreateClient = useCallback(
+    (query: string) => {
+      setIsClientPickerOpen(false)
+      openNew('client', query ? { clientName: query } : undefined)
+    },
+    [openNew]
+  )
+
+  useEffect(() => {
+    if (!open) return
+    return subscribeSheetCreated('client', record => {
+      setCreatedClients(prev =>
+        prev.some(c => c.id === record.id) ? prev : [...prev, record]
+      )
+      handleAddClient(record)
+    })
+  }, [open, handleAddClient])
+
   const handleRemoveClient = useCallback((client: ContactClientOption) => {
     setSelectedClients(prev => prev.filter(c => c.id !== client.id))
   }, [])
 
-  const addClientButtonDisabled =
-    isPending || isLoadingClients || availableClients.length === 0
+  // Never disabled for an empty list: the picker's create row is the escape
+  // hatch when every client is linked (or none exist yet).
+  const addClientButtonDisabled = isPending || isLoadingClients
   const addClientButtonDisabledReason = isPending
     ? PENDING_REASON
     : isLoadingClients
       ? 'Loading clients...'
-      : availableClients.length === 0
-        ? 'All clients are already linked.'
-        : null
+      : null
 
   return {
     form,
@@ -440,6 +481,7 @@ export function useContactSheetState({
     handleRequestPromote,
     handleConfirmPromote,
     handleAddClient,
+    handleCreateClient,
     handleRemoveClient,
   }
 }

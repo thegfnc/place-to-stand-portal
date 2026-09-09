@@ -11,6 +11,7 @@ import {
   isNull,
   lt,
   ne,
+  notInArray,
   or,
   sql,
 } from 'drizzle-orm'
@@ -78,6 +79,24 @@ function assigneeJoinCondition(userId: string | null) {
   )
 }
 
+/**
+ * Project scope shared by every My Tasks query: an optional single client,
+ * and project types the board is hiding. A client selection already implies
+ * CLIENT-type projects, so the type exclusion only bites in the all-clients
+ * view — but it's applied unconditionally so the two never disagree.
+ */
+function projectScopeConditions(
+  clientId: string | null,
+  hiddenProjectTypes: readonly ProjectTypeValue[]
+) {
+  return [
+    ...(clientId ? [eq(projectsTable.clientId, clientId)] : []),
+    ...(hiddenProjectTypes.length > 0
+      ? [notInArray(projectsTable.type, [...hiddenProjectTypes])]
+      : []),
+  ]
+}
+
 function assignedTaskConditions(userId: string | null) {
   return [
     // A person-scoped board keeps assigned-only semantics; the everyone
@@ -105,6 +124,8 @@ type FetchAssignedTasksSummaryOptions = {
   userId: string | null
   /** Restrict to one client's projects (null/undefined = every client). */
   clientId?: string | null
+  /** Project types to withhold (e.g. PERSONAL, INTERNAL); empty = show all. */
+  hiddenProjectTypes?: readonly ProjectTypeValue[]
   limit?: number | null
   includeCompletedStatuses?: boolean
   /**
@@ -118,6 +139,7 @@ type FetchAssignedTasksSummaryOptions = {
 async function loadAssignedTaskSummaries({
   userId,
   clientId = null,
+  hiddenProjectTypes = [],
   limit = DEFAULT_LIMIT,
   includeCompletedStatuses = true,
   doneSince = null,
@@ -129,11 +151,10 @@ async function loadAssignedTaskSummaries({
         ? null
         : DEFAULT_LIMIT
 
-  const baseConditions = assignedTaskConditions(userId)
-
-  if (clientId) {
-    baseConditions.push(eq(projectsTable.clientId, clientId))
-  }
+  const baseConditions = [
+    ...assignedTaskConditions(userId),
+    ...projectScopeConditions(clientId, hiddenProjectTypes),
+  ]
 
   if (!includeCompletedStatuses) {
     baseConditions.push(ne(tasksTable.status, 'DONE'))
@@ -227,7 +248,12 @@ async function loadAssignedTaskSummaries({
   }
 
   const olderDoneCount = doneSince
-    ? await countAssignedDoneBefore(userId, doneSince, clientId)
+    ? await countAssignedDoneBefore(
+        userId,
+        doneSince,
+        clientId,
+        hiddenProjectTypes
+      )
     : 0
 
   // In the all-assignees view a task with two assignees joins to two rows;
@@ -282,7 +308,8 @@ async function loadAssignedTaskSummaries({
 async function countAssignedDoneBefore(
   userId: string | null,
   before: string,
-  clientId: string | null = null
+  clientId: string | null = null,
+  hiddenProjectTypes: readonly ProjectTypeValue[] = []
 ): Promise<number> {
   const [result] = await db
     // Distinct: the all-assignees view joins one row per assignee.
@@ -293,7 +320,7 @@ async function countAssignedDoneBefore(
     .where(
       and(
         ...assignedTaskConditions(userId),
-        ...(clientId ? [eq(projectsTable.clientId, clientId)] : []),
+        ...projectScopeConditions(clientId, hiddenProjectTypes),
         eq(tasksTable.status, 'DONE'),
         isNotNull(tasksTable.completedAt),
         lt(tasksTable.completedAt, before)
@@ -320,11 +347,13 @@ export type AssignedDoneSliceResult = {
 export async function listAssignedDoneSlice({
   userId,
   clientId = null,
+  hiddenProjectTypes = [],
   since,
   before,
 }: {
   userId: string | null
   clientId?: string | null
+  hiddenProjectTypes?: readonly ProjectTypeValue[]
   since: string
   before: string
 }): Promise<AssignedDoneSliceResult> {
@@ -366,7 +395,7 @@ export async function listAssignedDoneSlice({
     .where(
       and(
         ...assignedTaskConditions(userId),
-        ...(clientId ? [eq(projectsTable.clientId, clientId)] : []),
+        ...projectScopeConditions(clientId, hiddenProjectTypes),
         eq(tasksTable.status, 'DONE'),
         isNotNull(tasksTable.completedAt),
         gte(tasksTable.completedAt, since),
@@ -411,7 +440,12 @@ export async function listAssignedDoneSlice({
 
   return {
     items,
-    olderDoneCount: await countAssignedDoneBefore(userId, since, clientId),
+    olderDoneCount: await countAssignedDoneBefore(
+      userId,
+      since,
+      clientId,
+      hiddenProjectTypes
+    ),
   }
 }
 

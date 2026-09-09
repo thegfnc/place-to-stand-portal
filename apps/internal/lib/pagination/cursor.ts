@@ -1,5 +1,7 @@
 import { Buffer } from 'node:buffer'
 
+import { DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE } from './page-size'
+
 export type CursorDirection = 'forward' | 'backward'
 
 export type CursorPayload = Record<string, unknown>
@@ -9,8 +11,8 @@ export type PaginationOptions = {
   maxLimit?: number
 }
 
-const DEFAULT_LIMIT = 20
-const MAX_LIMIT = 100
+const DEFAULT_LIMIT = DEFAULT_PAGE_SIZE
+const MAX_LIMIT = MAX_PAGE_SIZE
 
 export type PageInfo = {
   hasPreviousPage: boolean

@@ -5,5 +5,6 @@ export * from "./settings/members"
 export * from "./settings/users"
 export * from "./slug"
 export * from "./metrics"
+export * from "./contact-summaries"
 export * from "./settings/types"
 

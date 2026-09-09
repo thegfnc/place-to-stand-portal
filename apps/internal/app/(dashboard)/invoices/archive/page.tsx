@@ -7,6 +7,7 @@ import { getInvoiceById, listInvoices } from '@/lib/queries/invoices'
 import { parseInvoicesSearchParams } from '@/lib/invoices/filters'
 import { invoiceHref } from '@/lib/sheets/hrefs'
 import { resolveSheetDeepLink } from '@/lib/sheets/resolve-deep-link'
+import { readPageSize } from '@/lib/pagination/page-size.server'
 
 import { InvoicesAddButton } from '../_components/invoices-add-button'
 import { InvoicesFilters } from '../_components/invoices-filters'
@@ -17,7 +18,6 @@ export const metadata: Metadata = {
   title: 'Invoices Archive',
 }
 
-const PAGE_SIZE = 20
 
 type InvoicesArchivePageProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>
@@ -28,10 +28,11 @@ export default async function InvoicesArchivePage({
 }: InvoicesArchivePageProps) {
   const currentUser = await requireRole('ADMIN')
   const params = searchParams ? await searchParams : {}
+  const pageSize = await readPageSize()
 
   const { page: currentPage, status, search, sort } =
     parseInvoicesSearchParams(params)
-  const offset = (currentPage - 1) * PAGE_SIZE
+  const offset = (currentPage - 1) * pageSize
 
   const {
     items,
@@ -43,13 +44,13 @@ export default async function InvoicesArchivePage({
   } = await listInvoices(currentUser, {
     status: 'archived',
     offset,
-    limit: PAGE_SIZE,
+    limit: pageSize,
     invoiceStatus: status,
     search,
     sort,
   })
 
-  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE))
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize))
 
   // Restored invoices leave this tab, so a shared archive link cross-redirects
   // to the active tab instead of dead-ending.
@@ -89,7 +90,7 @@ export default async function InvoicesArchivePage({
           totalCount={totalCount}
           currentPage={currentPage}
           totalPages={totalPages}
-          pageSize={PAGE_SIZE}
+          pageSize={pageSize}
           mode='archive'
           basePath='/invoices/archive'
           deepLinkedInvoice={deepLinkedInvoice}

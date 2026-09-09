@@ -88,6 +88,7 @@ export const useClientSheetState = ({
     isLoadingContacts: formState.isLoadingContacts,
     handleContactPickerOpenChange: formState.handleContactPickerOpenChange,
     handleAddContact: formState.handleAddContact,
+    handleCreateContact: formState.handleCreateContact,
     handleRemoveContact: formState.handleRemoveContact,
     // Origination
     originationMode: formState.originationMode,

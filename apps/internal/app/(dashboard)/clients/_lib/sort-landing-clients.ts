@@ -26,6 +26,8 @@ function sortKeyFor(
       return getBillingTypeLabel(client.billingType)
     case 'projects':
       return client.activeProjects.length
+    case 'contacts':
+      return client.contacts.length
     case 'hours':
       // Only prepaid clients carry an hours balance; net_30 rows render `—`
       // and sort as empty rather than as a misleading 0.

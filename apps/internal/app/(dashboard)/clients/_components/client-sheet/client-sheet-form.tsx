@@ -83,6 +83,7 @@ type ClientSheetFormProps = {
   isContactPickerOpen: boolean
   onContactPickerOpenChange: (open: boolean) => void
   onAddContact: (contact: ClientContactOption) => void
+  onCreateContact: (query: string) => void
   onRemoveContact: (contact: ClientContactOption) => void
   // Origination
   originationMode: OriginationMode
@@ -135,6 +136,7 @@ export function ClientSheetForm({
   isContactPickerOpen,
   onContactPickerOpenChange,
   onAddContact,
+  onCreateContact,
   onRemoveContact,
   originationMode,
   selectedOriginationUser,
@@ -498,6 +500,7 @@ export function ClientSheetForm({
               pendingReason={pendingReason}
               onPickerOpenChange={onContactPickerOpenChange}
               onAddContact={onAddContact}
+              onCreateContact={onCreateContact}
               onRequestRemoval={onRemoveContact}
             />
           </div>

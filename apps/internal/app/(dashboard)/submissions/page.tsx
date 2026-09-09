@@ -9,6 +9,7 @@ import {
 } from '@/lib/form-submissions/constants'
 import { parseSubmissionsSort } from '@/lib/form-submissions/filters'
 import { crumbsForNav } from '@/lib/navigation/breadcrumbs'
+import { readPageSize } from '@/lib/pagination/page-size.server'
 
 import { SubmissionsFilters } from './_components/submissions-filters'
 import { SubmissionsTable } from './_components/submissions-table'
@@ -19,7 +20,6 @@ export const metadata: Metadata = {
   title: 'Submissions',
 }
 
-const PAGE_SIZE = 25
 
 type SubmissionsPageProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>
@@ -36,6 +36,7 @@ export default async function SubmissionsPage({
 }: SubmissionsPageProps) {
   const currentUser = await requireRole('ADMIN')
   const params = searchParams ? await searchParams : {}
+  const pageSize = await readPageSize()
 
   const currentPage = Math.max(
     1,
@@ -64,7 +65,7 @@ export default async function SubmissionsPage({
   const { items, totalCount, unfilteredTotalCount, totalPages } =
     await fetchFormSubmissions(currentUser, {
       page: currentPage,
-      pageSize: PAGE_SIZE,
+      pageSize: pageSize,
       kind,
       status,
       unacknowledgedOnly,
@@ -100,7 +101,7 @@ export default async function SubmissionsPage({
           totalCount={totalCount}
           currentPage={currentPage}
           totalPages={totalPages}
-          pageSize={PAGE_SIZE}
+          pageSize={pageSize}
           mode='active'
           basePath='/submissions'
           deepLinkedSubmission={deepLink.submission}

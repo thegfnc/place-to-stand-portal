@@ -10,6 +10,7 @@ import {
   TableHeader,
   TableRow,
 } from '@pts/ui/table'
+import type { UsersSettingsAssignments } from '@/lib/queries/users/assignments'
 import { isUserSortValue } from '@/lib/settings/users/filters'
 import type { UserRowState } from '@/lib/settings/users/state/use-users-table-state'
 
@@ -17,6 +18,8 @@ import { UsersTableRow } from '../components/table/users-table-row'
 
 type UsersTableSectionProps = {
   rows: UserRowState[]
+  /** Per-user client/project/task assignments, keyed by user id. */
+  assignments: UsersSettingsAssignments
   mode: 'active' | 'archive'
   emptyMessage: string
   selfDeleteReason: string
@@ -26,6 +29,7 @@ type UsersTableSectionProps = {
 
 export function UsersTableSection({
   rows,
+  assignments,
   mode,
   emptyMessage,
   selfDeleteReason,
@@ -48,18 +52,20 @@ export function UsersTableSection({
               sort={sort}
               defaultSort='name:asc'
               onSortChange={next => update({ sort: next })}
-              className='w-[22%]'
+              className='w-[20%]'
             >
               Name
             </SortableTableHead>
-            <TableHead className='w-[26%]'>Email</TableHead>
-            <TableHead className='w-[10%]'>Role</TableHead>
-            <TableHead className='w-[14%]'>Access</TableHead>
+            <TableHead className='w-[22%]'>Email</TableHead>
+            <TableHead className='w-[8%]'>Role</TableHead>
+            <TableHead className='w-[12%]'>Access</TableHead>
+            <TableHead className='w-[14%]'>Clients</TableHead>
             <SortableTableHead
               field='created'
               sort={sort}
               defaultSort='name:asc'
               onSortChange={next => update({ sort: next })}
+              className='w-28'
             >
               Joined
             </SortableTableHead>
@@ -71,6 +77,7 @@ export function UsersTableSection({
             <UsersTableRow
               key={row.user.id}
               row={row}
+              assignment={assignments[row.user.id]}
               mode={mode}
               selfDeleteReason={selfDeleteReason}
             />
@@ -78,7 +85,7 @@ export function UsersTableSection({
           {rows.length === 0 ? (
             <TableRow>
               <TableCell
-                colSpan={6}
+                colSpan={7}
                 className='text-muted-foreground py-10 text-center text-sm'
               >
                 {emptyMessage}

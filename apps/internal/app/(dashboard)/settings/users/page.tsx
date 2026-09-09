@@ -7,6 +7,7 @@ import { getUserById, listUsersForSettings } from '@/lib/queries/users'
 import { resolveSheetDeepLink } from '@/lib/sheets/resolve-deep-link'
 import { parseUsersSearchParams } from '@/lib/settings/users/filters'
 import type { DbUser } from '@/lib/types'
+import { readPageSize } from '@/lib/pagination/page-size.server'
 
 import { UsersAddButton } from './_components/users-add-button'
 import { UsersFilters } from './_components/users-filters'
@@ -45,6 +46,7 @@ export default async function UsersPage({
 }: UsersPageProps) {
   const currentUser = await requireRole('ADMIN')
   const params = searchParams ? await searchParams : {}
+  const preferredPageSize = await readPageSize()
   const { page, limit, role, access, search, sort } =
     parseUsersSearchParams(params)
 
@@ -59,7 +61,7 @@ export default async function UsersPage({
   } = await listUsersForSettings(currentUser, {
     status: 'active',
     page,
-    limit,
+    limit: limit ?? preferredPageSize,
     role,
     access,
     search,

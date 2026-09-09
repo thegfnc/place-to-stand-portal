@@ -7,6 +7,7 @@ import { assertAdmin, ensureProjectAccess } from '@/lib/auth/permissions'
 import { db } from '@/lib/db'
 import { clients, projects, users } from '@/lib/db/schema'
 import { NotFoundError } from '@/lib/errors/http'
+import { PAGE_SIZE_LIMITS } from '@/lib/pagination/page-size'
 import {
   clampLimit,
   createSearchPattern,
@@ -94,7 +95,7 @@ export async function listProjectsForSettings(
   assertAdmin(user)
 
   const direction = resolveDirection(input.direction)
-  const limit = clampLimit(input.limit, { defaultLimit: 20, maxLimit: 100 })
+  const limit = clampLimit(input.limit, PAGE_SIZE_LIMITS)
   const normalizedStatus = input.status === 'archived' ? 'archived' : 'active'
   const searchQuery = input.search?.trim() ?? ''
 

@@ -118,7 +118,7 @@ export function ContactsTableSection({
               defaultSort='name:asc'
               onSortChange={next => update({ sort: next })}
             >
-              Linked Clients
+              Clients
             </SortableTableHead>
             <TableHead className='w-32 text-right'>Actions</TableHead>
           </TableRow>

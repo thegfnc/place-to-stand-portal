@@ -11,6 +11,7 @@ export type ClientMutationResult = ClientActionResult & {
 
 type MutationResultInput = ClientActionResult & {
   clientId?: string
+  slug?: string
 }
 
 export function buildMutationResult(
