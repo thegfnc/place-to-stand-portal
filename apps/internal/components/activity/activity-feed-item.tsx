@@ -4,7 +4,7 @@ import { formatDistanceToNowStrict } from 'date-fns'
 import { Avatar, AvatarFallback, AvatarImage } from '@pts/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { ActivityChangeList } from '@/components/activity/activity-change-list'
-import { getActivityChanges, type ActivityFact } from '@/lib/activity/changes'
+import { getActivityChanges } from '@/lib/activity/changes'
 import {
   getActorDisplayName,
   getActorInitials,
@@ -14,7 +14,6 @@ import {
   getToneClasses,
   getVerbPresentation,
 } from '@/lib/activity/verb-presentation'
-import { formatHours } from '@/lib/activity/events/shared'
 import { formatCalendarDate } from '@/lib/dates'
 import type { ActivitySourceValue } from '@/lib/types'
 import { cn } from '@/lib/utils'
@@ -48,11 +47,6 @@ const TIMESTAMP_STYLE = {
   minute: '2-digit',
 } as const
 
-const MONEY = new Intl.NumberFormat('en-US', {
-  style: 'currency',
-  currency: 'USD',
-})
-
 export function ActivityFeedItem({ log }: ActivityFeedItemProps) {
   const actorName = getActorDisplayName(log)
   const actorInitials = getActorInitials(actorName)
@@ -81,8 +75,9 @@ export function ActivityFeedItem({ log }: ActivityFeedItemProps) {
         <Icon className='h-3.5 w-3.5' />
       </span>
 
-      <div className='min-w-0 flex-1 pt-0.5'>
-        <div className='flex flex-wrap items-center gap-x-2 gap-y-1 text-sm leading-snug'>
+      <div className='min-w-0 flex-1'>
+        {/* 28px tall to match the rail icon, so the actor line centres on it. */}
+        <div className='flex min-h-7 flex-wrap items-center gap-x-2 gap-y-1 text-sm leading-5'>
           <span className='inline-flex items-center gap-1.5 font-medium'>
             <Avatar className='h-5 w-5'>
               {log.actor?.avatar_url ? (
@@ -115,16 +110,15 @@ export function ActivityFeedItem({ log }: ActivityFeedItemProps) {
           </time>
         </div>
 
-        {hasChanges ? (
+        {hasChanges || changes.facts.length ? (
           <ActivityChangeList
             fields={changes.fields}
             memberships={changes.memberships}
+            facts={changes.facts}
             targetType={log.target_type}
             references={log.references}
           />
         ) : null}
-
-        <FactChips facts={changes.facts} />
       </div>
     </article>
   )
@@ -137,44 +131,5 @@ export function ActivityFeedItem({ log }: ActivityFeedItemProps) {
  */
 function stripTrailingFieldList(summary: string): string {
   return summary.replace(/\s\([^()]*\)\s*$/, '')
-}
-
-function FactChips({ facts }: { facts: ActivityFact[] }) {
-  if (!facts.length) return null
-
-  return (
-    <ul className='text-muted-foreground mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-xs'>
-      {facts.map(fact => (
-        <li key={`${fact.label}:${fact.value}`} className='inline-flex gap-1'>
-          <span>{fact.label}</span>
-          <span
-            className={cn(
-              'text-foreground',
-              fact.kind === 'mono' && 'font-mono text-[11px]'
-            )}
-          >
-            {formatFact(fact)}
-          </span>
-        </li>
-      ))}
-    </ul>
-  )
-}
-
-function formatFact(fact: ActivityFact): string {
-  switch (fact.kind) {
-    case 'money': {
-      const amount = Number(fact.value)
-      return Number.isFinite(amount) ? MONEY.format(amount) : fact.value
-    }
-    case 'hours': {
-      const hours = Number(fact.value)
-      return Number.isFinite(hours) ? `${formatHours(hours)}h` : fact.value
-    }
-    case 'date':
-      return formatCalendarDate(fact.value) ?? fact.value
-    default:
-      return fact.value
-  }
 }
 

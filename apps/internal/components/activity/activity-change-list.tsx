@@ -4,9 +4,11 @@ import { Badge } from '@/components/ui/badge'
 import { ActivityRichTextDiff } from '@/components/activity/activity-rich-text-diff'
 import {
   humanizeEnum,
+  type ActivityFact,
   type FieldChange,
   type MembershipChange,
 } from '@/lib/activity/changes'
+import { formatFact } from '@/lib/activity/format-fact'
 import { formatHours } from '@/lib/activity/events/shared'
 import type { ActivityReferences } from '@/lib/activity/types'
 import { formatCalendarDate } from '@/lib/dates'
@@ -16,6 +18,7 @@ import { cn } from '@/lib/utils'
 type ActivityChangeListProps = {
   fields: FieldChange[]
   memberships: MembershipChange[]
+  facts?: ActivityFact[]
   targetType: string
   references?: ActivityReferences
 }
@@ -35,13 +38,17 @@ const LONG_FORM_KINDS = new Set(['richText', 'longText'])
 export function ActivityChangeList({
   fields,
   memberships,
+  facts = [],
   targetType,
   references,
 }: ActivityChangeListProps) {
-  if (!fields.length && !memberships.length) return null
+  if (!fields.length && !memberships.length && !facts.length) return null
 
+  // Indented to the actor name's text edge (20px avatar + 6px gap) so the
+  // block reads as belonging to the line above it. Every row is a 20px line
+  // box so labels, values, badges and the diff toggle share one baseline.
   return (
-    <dl className='mt-2 grid grid-cols-[max-content_minmax(0,1fr)] gap-x-3 gap-y-1.5 text-xs'>
+    <dl className='mt-1.5 grid grid-cols-[max-content_minmax(0,1fr)] gap-x-3 gap-y-1 pl-[26px] text-xs leading-5'>
       {fields.map(field => (
         <FieldRow
           key={field.key}
@@ -50,10 +57,23 @@ export function ActivityChangeList({
           references={references}
         />
       ))}
+      {facts.map(fact => (
+        <div key={`fact:${fact.label}:${fact.value}`} className='contents'>
+          <dt className='text-muted-foreground'>{fact.label}</dt>
+          <dd
+            className={cn(
+              'text-foreground min-w-0 font-medium',
+              fact.kind === 'mono' && 'font-mono text-[11px]'
+            )}
+          >
+            {formatFact(fact)}
+          </dd>
+        </div>
+      ))}
       {memberships.map(membership => (
         <div key={membership.key} className='contents'>
-          <dt className='text-muted-foreground pt-0.5'>{membership.label}</dt>
-          <dd className='min-w-0'>
+          <dt className='text-muted-foreground'>{membership.label}</dt>
+          <dd className='flex min-w-0 items-center'>
             <MembershipChips
               added={membership.added}
               removed={membership.removed}
@@ -79,7 +99,7 @@ function FieldRow({
   if (LONG_FORM_KINDS.has(field.kind)) {
     return (
       <div className='contents'>
-        <dt className='text-muted-foreground pt-0.5'>{field.label}</dt>
+        <dt className='text-muted-foreground self-start'>{field.label}</dt>
         <dd className='min-w-0'>
           <ActivityRichTextDiff
             before={typeof field.before === 'string' ? field.before : null}
@@ -93,7 +113,7 @@ function FieldRow({
 
   return (
     <div className='contents'>
-      <dt className='text-muted-foreground pt-0.5'>{field.label}</dt>
+      <dt className='text-muted-foreground'>{field.label}</dt>
       <dd className='flex min-w-0 flex-wrap items-center gap-1.5'>
         <ValueChip
           value={field.before}
