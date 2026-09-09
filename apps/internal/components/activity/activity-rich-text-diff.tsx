@@ -70,7 +70,7 @@ export function ActivityRichTextDiff({
         type='button'
         onClick={() => setOpen(current => !current)}
         aria-expanded={open}
-        className='text-foreground hover:text-primary inline-flex items-center gap-1 font-medium'
+        className='text-foreground hover:text-primary inline-flex h-5 items-center gap-1 leading-5 font-medium'
       >
         <ChevronDown
           className={cn(
@@ -101,7 +101,16 @@ export function ActivityRichTextDiff({
         <span className='sr-only'>{open ? 'Hide' : 'Show'} change</span>
       </button>
 
-      {open ? (
+      {/* Grid-row transition animates height without measuring; content stays
+          mounted so the panel slides rather than pops. */}
+      <div
+        className={cn(
+          'grid transition-[grid-template-rows,opacity] duration-200 ease-out',
+          open ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
+        )}
+        aria-hidden={!open}
+      >
+        <div className='min-h-0 overflow-hidden'>
         <div className='bg-muted/30 mt-1.5 max-h-72 overflow-y-auto rounded-md border p-2.5 text-[12px] leading-relaxed whitespace-pre-wrap'>
           {model.mode === 'added' ? (
             <p className='rounded-sm bg-emerald-500/10 px-1 text-emerald-900 dark:text-emerald-100'>
@@ -119,7 +128,8 @@ export function ActivityRichTextDiff({
             <SideBySide before={model.beforeText} after={model.afterText} />
           )}
         </div>
-      ) : null}
+        </div>
+      </div>
     </div>
   )
 }

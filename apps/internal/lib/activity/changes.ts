@@ -277,7 +277,12 @@ function collectFacts(
     push('Count', metadata.count)
   }
   push('Total hours', metadata.totalHours, 'hours')
-  push('Stale after', typeof metadata.staleAfterHours === 'number' ? `h` : null)
+  push(
+    'Stale after',
+    typeof metadata.staleAfterHours === 'number'
+      ? `${metadata.staleAfterHours}h`
+      : null
+  )
   push('Form', metadata.formType)
   push('Recipients', metadata.recipientCount)
   push('Subject', metadata.subject)
