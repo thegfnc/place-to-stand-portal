@@ -44,6 +44,7 @@ export type MemberRow = {
     createdAt: string
     updatedAt: string
     deletedAt: string | null
+    disabledAt: string | null
   } | null
 }
 
@@ -96,6 +97,7 @@ export async function loadMemberRows(clientIds: string[]): Promise<MemberRow[]> 
         createdAt: usersTable.createdAt,
         updatedAt: usersTable.updatedAt,
         deletedAt: usersTable.deletedAt,
+        disabledAt: usersTable.disabledAt,
       },
     })
     .from(clientMembersTable)
@@ -139,6 +141,7 @@ export function mapMemberRows(rows: MemberRow[]): MemberWithUser[] {
           created_at: row.user.createdAt,
           updated_at: row.user.updatedAt,
           deleted_at: row.user.deletedAt,
+          disabled_at: row.user.disabledAt,
         }
       : null,
   }))

@@ -14,6 +14,7 @@ import {
 } from '@/lib/posthog/settings'
 
 import { PENDING_REASON } from '../client-sheet-constants'
+import { isSelectableUser } from '@/lib/users/selectable'
 import {
   clientSheetFormSchema,
   type ClientSheetFormValues,
@@ -118,9 +119,13 @@ export function useClientSheetFormState({
     return false
   }, [initialContacts, selectedContacts])
 
-  // Origination user picker: any admin user except the one already selected
+  // Origination user picker: any selectable admin except the one already
+  // selected. Disabled admins stay in `allAdminUsers` so an existing
+  // origination/closer still resolves for display, but are never offered.
   const availableOriginationUsers = useMemo<PartnerUserOption[]>(() => {
-    return allAdminUsers.filter(u => u.id !== selectedOriginationUser?.id)
+    return allAdminUsers.filter(
+      u => isSelectableUser(u) && u.id !== selectedOriginationUser?.id
+    )
   }, [allAdminUsers, selectedOriginationUser])
 
   // Origination contact picker: any contact except the one already selected
@@ -132,9 +137,11 @@ export function useClientSheetFormState({
     [allContacts, selectedOriginationContact]
   )
 
-  // Closer picker: any admin user except the one already selected
+  // Closer picker: any selectable admin except the one already selected
   const availableClosers = useMemo<PartnerUserOption[]>(() => {
-    return allAdminUsers.filter(u => u.id !== selectedCloser?.id)
+    return allAdminUsers.filter(
+      u => isSelectableUser(u) && u.id !== selectedCloser?.id
+    )
   }, [allAdminUsers, selectedCloser])
 
   // Origination dirty: either side differs from initial

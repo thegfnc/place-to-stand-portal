@@ -32,6 +32,8 @@ export type PartnerUserOption = {
   id: string
   fullName: string | null
   email: string
+  /** Set when the admin can no longer sign in; resolvable for display, never offered. */
+  disabledAt?: string | null
 }
 
 export type OriginationMode = 'internal' | 'external'

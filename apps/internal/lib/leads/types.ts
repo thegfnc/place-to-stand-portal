@@ -58,6 +58,8 @@ export type LeadAssigneeOption = {
   name: string
   email: string | null
   avatarUrl: string | null
+  /** Set when the admin can no longer sign in; shown only on leads they already hold. */
+  disabledAt: string | null
 }
 
 /**

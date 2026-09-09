@@ -13,6 +13,7 @@ import type {
 } from '@/lib/types'
 import type { BoardColumnId } from '@/lib/projects/board/board-constants'
 import { buildProjectSelectionOptions } from '@/lib/projects/project-selection-utils'
+import { isSelectableUser } from '@/lib/users/selectable'
 
 import {
   MANAGE_PERMISSION_REASON,
@@ -99,9 +100,11 @@ export const buildAssigneeItems = ({
       return
     }
 
+    // Disabled admins stay in the lookup so a task they already hold still
+    // shows their name (via the fallback below), but they are not offered.
     adminLookup.set(admin.id, admin)
 
-    if (seen.has(admin.id)) {
+    if (seen.has(admin.id) || !isSelectableUser(admin)) {
       return
     }
 
@@ -123,7 +126,7 @@ export const buildAssigneeItems = ({
     }
 
     const user = member.user
-    if (!user || user.deleted_at || user.role !== 'ADMIN') {
+    if (!user || !isSelectableUser(user) || user.role !== 'ADMIN') {
       return
     }
 

@@ -179,6 +179,7 @@ const resolveProjectInit: SheetInitResolver<'project'> = async (user, id) => {
     full_name: admin.full_name,
     email: admin.email,
     avatar_url: admin.avatar_url,
+    disabled_at: admin.disabled_at ?? null,
   }))
 
   if (id === NEW_SHEET_VALUE) {

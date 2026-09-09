@@ -50,6 +50,7 @@ export default async function ProjectsArchivePage({
     full_name: admin.full_name,
     email: admin.email,
     avatar_url: admin.avatar_url,
+    disabled_at: admin.disabled_at ?? null,
   }))
 
   const clientRows: ClientRow[] = archiveResult.clients.map(client => ({
