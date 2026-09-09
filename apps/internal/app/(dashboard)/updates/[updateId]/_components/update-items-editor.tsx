@@ -14,6 +14,7 @@ import {
 
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
+import { formatCalendarDate } from '@/lib/dates'
 import type { ComposerTaskOption } from '@/lib/updates/composer-data'
 import type { ClientUpdateItem } from '@/lib/updates/types'
 
@@ -23,6 +24,8 @@ type UpdateItemsEditorProps = {
   taskOptions: ComposerTaskOption[]
   /** Latest comment per task id — a reminder while writing, never sent. */
   hints: Record<string, string>
+  /** Start of the reporting window, YYYY-MM-DD, for the empty state. */
+  periodStart: string | null
   disabled?: boolean
 }
 
@@ -38,6 +41,7 @@ export function UpdateItemsEditor({
   onChange,
   taskOptions,
   hints,
+  periodStart,
   disabled,
 }: UpdateItemsEditorProps) {
   const [pickingFor, setPickingFor] = useState<string | null>(null)
@@ -68,6 +72,17 @@ export function UpdateItemsEditor({
 
   return (
     <div className='space-y-4'>
+      {items.length === 0 ? (
+        <div className='text-muted-foreground rounded-md border border-dashed px-4 py-6 text-center text-sm'>
+          <p className='text-foreground font-medium'>No items yet</p>
+          <p className='mt-1'>
+            {periodStart
+              ? `Nothing was completed, worked on, or blocked for this client since ${formatCalendarDate(periodStart)}.`
+              : 'Nothing was completed, worked on, or blocked for this client in this window.'}{' '}
+            Add an item below to get started.
+          </p>
+        </div>
+      ) : null}
       {items.map((item, index) => {
         const task = item.taskId ? taskById.get(item.taskId) : undefined
         const hint = item.taskId ? hints[item.taskId] : undefined

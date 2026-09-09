@@ -18,6 +18,9 @@ type UpdateToolbarProps = {
   canSend: boolean
   /** Same content rules as send, minus recipients. */
   canTest: boolean
+  /** Why send is disabled, shown as a tooltip; null when it is enabled. */
+  sendBlocker: string | null
+  testBlocker: string | null
   onTogglePreview: () => void
   onSave: () => void
   onSendTest: () => void
@@ -34,6 +37,8 @@ export function UpdateToolbar({
   isTesting,
   canSend,
   canTest,
+  sendBlocker,
+  testBlocker,
   onTogglePreview,
   onSave,
   onSendTest,
@@ -59,39 +64,69 @@ export function UpdateToolbar({
             )}
             {previewing ? 'Edit' : 'Preview'}
           </Button>
-          <Button
-            size='sm'
-            variant='outline'
-            onClick={onSave}
-            disabled={busy || !hasChanges}
+          <Hint text={hasChanges ? null : 'No unsaved changes.'}>
+            <Button
+              size='sm'
+              variant='outline'
+              onClick={onSave}
+              disabled={busy || !hasChanges}
+            >
+              {isSaving ? (
+                <Loader2 className='h-3.5 w-3.5 animate-spin' />
+              ) : null}
+              Save draft
+            </Button>
+          </Hint>
+          <Hint
+            text={
+              testBlocker ??
+              'Email this draft to yourself, as the client would see it.'
+            }
           >
-            {isSaving ? <Loader2 className='h-3.5 w-3.5 animate-spin' /> : null}
-            Save draft
-          </Button>
-          <Button
-            size='sm'
-            variant='outline'
-            onClick={onSendTest}
-            disabled={!canTest}
-            title='Email this draft to yourself, as the client would see it'
-          >
-            {isTesting ? (
-              <Loader2 className='h-3.5 w-3.5 animate-spin' />
-            ) : (
-              <FlaskConical className='h-3.5 w-3.5' />
-            )}
-            Send test
-          </Button>
-          <Button size='sm' onClick={onSend} disabled={!canSend}>
-            {isSending ? (
-              <Loader2 className='h-3.5 w-3.5 animate-spin' />
-            ) : (
-              <Send className='h-3.5 w-3.5' />
-            )}
-            Send
-          </Button>
+            <Button
+              size='sm'
+              variant='outline'
+              onClick={onSendTest}
+              disabled={!canTest}
+            >
+              {isTesting ? (
+                <Loader2 className='h-3.5 w-3.5 animate-spin' />
+              ) : (
+                <FlaskConical className='h-3.5 w-3.5' />
+              )}
+              Send test
+            </Button>
+          </Hint>
+          <Hint text={sendBlocker}>
+            <Button size='sm' onClick={onSend} disabled={!canSend}>
+              {isSending ? (
+                <Loader2 className='h-3.5 w-3.5 animate-spin' />
+              ) : (
+                <Send className='h-3.5 w-3.5' />
+              )}
+              Send
+            </Button>
+          </Hint>
         </div>
       ) : null}
     </div>
+  )
+}
+
+/**
+ * Disabled buttons swallow pointer events, so the tooltip lives on a wrapper
+ * that still receives them.
+ */
+function Hint({
+  text,
+  children,
+}: {
+  text: string | null
+  children: React.ReactNode
+}) {
+  return (
+    <span title={text ?? undefined} className='inline-flex'>
+      {children}
+    </span>
   )
 }

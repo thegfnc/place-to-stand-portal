@@ -19,6 +19,7 @@ import {
   sendClientUpdateTestAction,
 } from '../actions'
 import { EmailCardFooter, EmailCardHeader } from './email-card-chrome'
+import { sendReadiness } from './readiness'
 import { UpdateAside } from './update-aside'
 import { UpdateItemsEditor } from './update-items-editor'
 import type { RecipientContact } from './update-recipients'
@@ -77,12 +78,12 @@ export function UpdateComposer({
     JSON.stringify(items) !== JSON.stringify(update.items) ||
     to.join(',') !== update.recipients.to.join(',') ||
     cc.join(',') !== update.recipients.cc.join(',')
-  const contentReady =
-    subject.trim().length > 0 &&
-    items.length > 0 &&
-    items.every(item => item.label.trim().length > 0)
-  const canTest = !busy && contentReady
-  const canSend = canTest && to.length > 0
+  const { testBlocker, sendBlocker, canTest, canSend } = sendReadiness({
+    subject,
+    items,
+    to,
+    busy,
+  })
 
   const draftPayload = () => ({
     id: update.id,
@@ -190,6 +191,8 @@ export function UpdateComposer({
           isTesting={isTesting}
           canSend={canSend}
           canTest={canTest}
+          sendBlocker={sendBlocker}
+          testBlocker={testBlocker}
           onTogglePreview={() => setPreviewing(value => !value)}
           onSave={handleSave}
           onSendTest={() => setTestConfirmOpen(true)}
@@ -232,6 +235,7 @@ export function UpdateComposer({
                 onChange={setItems}
                 taskOptions={taskOptions}
                 hints={hints}
+                periodStart={update.periodStart}
                 disabled={busy}
               />
               {hours ? (
