@@ -11,15 +11,18 @@ type LinkedClientsCellProps = {
 
 export function LinkedClientsCell({ clients }: LinkedClientsCellProps) {
   return (
-    <LinkedRecordsHoverCell
-      count={clients.length}
-      icon={Building2}
-      contentClassName='w-56'
-      items={clients.map(client => ({
-        id: client.id,
-        label: client.name,
-        href: `/clients/${client.slug}`,
-      }))}
-    />
+    <span className='flex items-center gap-2 text-sm' title='Clients'>
+      <Building2 className='text-muted-foreground h-4 w-4 shrink-0' />
+      <LinkedRecordsHoverCell
+        count={clients.length}
+        icon={Building2}
+        contentClassName='w-56'
+        items={clients.map(client => ({
+          id: client.id,
+          label: client.name,
+          href: `/clients/${client.slug}`,
+        }))}
+      />
+    </span>
   )
 }
