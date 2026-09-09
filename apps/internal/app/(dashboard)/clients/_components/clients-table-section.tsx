@@ -90,13 +90,13 @@ export function ClientsTableSection({
             >
               Name
             </SortableTableHead>
-            <TableHead className='hidden w-28 md:table-cell'>
+            <TableHead className='hidden w-[max(7rem,9%)] md:table-cell'>
               Billing type
             </TableHead>
-            <TableHead className='hidden w-32 md:table-cell'>
+            <TableHead className='hidden w-[max(8rem,11%)] md:table-cell'>
               Active projects
             </TableHead>
-            <TableHead className='w-24'>Status</TableHead>
+            <TableHead className='w-[max(6rem,8%)]'>Status</TableHead>
             <TableHead className='w-32 text-right'>Actions</TableHead>
           </TableRow>
         </TableHeader>

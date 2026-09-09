@@ -324,13 +324,13 @@ export function ProductCatalogSection({
               >
                 Name
               </SortableTableHead>
-              <TableHead className='w-24'>Unit Price</TableHead>
+              <TableHead className='w-[max(6rem,8%)]'>Unit Price</TableHead>
               <TableHead className='hidden md:table-cell'>Unit Label</TableHead>
-              <TableHead className='hidden w-20 md:table-cell'>Min Qty</TableHead>
-              <TableHead className='hidden w-24 md:table-cell'>
+              <TableHead className='hidden w-[max(5rem,7%)] md:table-cell'>Min Qty</TableHead>
+              <TableHead className='hidden w-[max(6rem,8%)] md:table-cell'>
                 Hour Block
               </TableHead>
-              <TableHead className='w-16'>Active</TableHead>
+              <TableHead className='w-[max(4rem,5%)]'>Active</TableHead>
               <TableHead className='w-12' />
             </TableRow>
           </TableHeader>

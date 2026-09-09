@@ -56,15 +56,15 @@ export function UsersTableSection({
               Name
             </SortableTableHead>
             <TableHead className='hidden md:table-cell'>Email</TableHead>
-            <TableHead className='hidden w-20 md:table-cell'>Role</TableHead>
-            <TableHead className='w-28'>Access</TableHead>
-            <TableHead className='hidden w-16 md:table-cell'>Clients</TableHead>
+            <TableHead className='hidden w-[max(5rem,7%)] md:table-cell'>Role</TableHead>
+            <TableHead className='w-[max(7rem,9%)]'>Access</TableHead>
+            <TableHead className='hidden w-[max(4rem,5%)] md:table-cell'>Clients</TableHead>
             <SortableTableHead
               field='created'
               sort={sort}
               defaultSort='name:asc'
               onSortChange={next => update({ sort: next })}
-              className='hidden w-28 md:table-cell'
+              className='hidden w-[max(7rem,9%)] md:table-cell'
             >
               Joined
             </SortableTableHead>

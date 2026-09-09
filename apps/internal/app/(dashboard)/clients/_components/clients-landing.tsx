@@ -235,7 +235,7 @@ export function ClientsLanding({
                 sort={sort}
                 defaultSort='name:asc'
                 onSortChange={next => update({ sort: next })}
-                className='w-24'
+                className='w-[max(6rem,8%)]'
               >
                 Billing
               </SortableTableHead>
@@ -245,7 +245,7 @@ export function ClientsLanding({
                 sort={sort}
                 defaultSort='name:asc'
                 onSortChange={next => update({ sort: next })}
-                className='hidden w-36 md:table-cell'
+                className='hidden w-[max(9rem,12%)] md:table-cell'
               >
                 Projects
               </SortableTableHead>
@@ -255,7 +255,7 @@ export function ClientsLanding({
                 sort={sort}
                 defaultSort='name:asc'
                 onSortChange={next => update({ sort: next })}
-                className='hidden w-20 xl:table-cell'
+                className='hidden w-[max(5rem,7%)] xl:table-cell'
               >
                 Contacts
               </SortableTableHead>
@@ -265,7 +265,7 @@ export function ClientsLanding({
                 sort={sort}
                 defaultSort='name:asc'
                 onSortChange={next => update({ sort: next })}
-                className='hidden w-48 md:table-cell'
+                className='hidden w-[max(12rem,16%)] md:table-cell'
               >
                 Hours
               </SortableTableHead>
@@ -275,7 +275,7 @@ export function ClientsLanding({
                 defaultSort='name:asc'
                 onSortChange={next => update({ sort: next })}
                 align='center'
-                className='hidden w-24 xl:table-cell'
+                className='hidden w-[max(6rem,8%)] xl:table-cell'
               >
                 Origination
               </SortableTableHead>
@@ -285,7 +285,7 @@ export function ClientsLanding({
                 defaultSort='name:asc'
                 onSortChange={next => update({ sort: next })}
                 align='center'
-                className='hidden w-20 xl:table-cell'
+                className='hidden w-[max(5rem,7%)] xl:table-cell'
               >
                 Closer
               </SortableTableHead>

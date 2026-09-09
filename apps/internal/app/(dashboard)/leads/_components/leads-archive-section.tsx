@@ -311,13 +311,13 @@ export function LeadsArchiveSection({
               </SortableTableHead>
               <TableHead className='hidden md:table-cell'>Company</TableHead>
               <TableHead className='hidden xl:table-cell'>Email</TableHead>
-              <TableHead className='w-40'>Last Status</TableHead>
+              <TableHead className='w-[max(10rem,13%)]'>Last Status</TableHead>
               <SortableTableHead
                 field='archived'
                 sort={sortParam}
                 defaultSort='archived:desc'
                 onSortChange={next => update({ sort: next })}
-                className='hidden w-40 md:table-cell'
+                className='hidden w-[max(10rem,13%)] md:table-cell'
               >
                 Archived
               </SortableTableHead>

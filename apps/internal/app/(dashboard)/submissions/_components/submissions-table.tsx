@@ -333,18 +333,18 @@ export function SubmissionsTable({
                 sort={sort}
                 defaultSort='received:desc'
                 onSortChange={next => updateListParams({ sort: next })}
-                className='hidden w-40 xl:table-cell'
+                className='hidden w-[max(10rem,13%)] xl:table-cell'
               >
                 Received
               </SortableTableHead>
-              <TableHead className='hidden w-20 md:table-cell'>Form</TableHead>
+              <TableHead className='hidden w-[max(5rem,7%)] md:table-cell'>Form</TableHead>
               <TableHead>Contact</TableHead>
               <TableHead className='hidden md:table-cell'>Company</TableHead>
-              <TableHead className='w-24'>Status</TableHead>
-              <TableHead className='hidden w-32 xl:table-cell'>Progress</TableHead>
+              <TableHead className='w-[max(6rem,8%)]'>Status</TableHead>
+              <TableHead className='hidden w-[max(8rem,11%)] xl:table-cell'>Progress</TableHead>
               <TableHead className='hidden xl:table-cell'>Phase</TableHead>
               {mode === 'archive' ? (
-                <TableHead className='hidden w-40 xl:table-cell'>
+                <TableHead className='hidden w-[max(10rem,13%)] xl:table-cell'>
                   Archived
                 </TableHead>
               ) : null}

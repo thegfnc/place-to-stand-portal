@@ -70,13 +70,13 @@ export function ProjectsTableSection({
               Name
             </SortableTableHead>
             <TableHead className='hidden md:table-cell'>Owner</TableHead>
-            <TableHead className='w-28'>Status</TableHead>
+            <TableHead className='w-[max(7rem,9%)]'>Status</TableHead>
             <SortableTableHead
               field='created'
               sort={sort}
               defaultSort='name:asc'
               onSortChange={next => update({ sort: next })}
-              className='hidden w-52 md:table-cell'
+              className='hidden w-[max(13rem,17%)] md:table-cell'
             >
               Timeline
             </SortableTableHead>

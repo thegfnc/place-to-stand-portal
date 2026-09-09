@@ -525,11 +525,11 @@ export function ProjectsLanding({
   // are content-sized (design-system.md → Table Column Widths). Dates and
   // Links are secondary and hide below `md` — heads and cells share the class.
   const tableColumnWidths = {
-    status: 'w-28',
-    progress: 'hidden w-40 md:table-cell',
-    dates: 'hidden w-48 xl:table-cell',
-    owner: 'hidden w-16 md:table-cell',
-    links: 'hidden w-28 xl:table-cell',
+    status: 'w-[max(7rem,9%)]',
+    progress: 'hidden w-[max(10rem,13%)] md:table-cell',
+    dates: 'hidden w-[max(12rem,16%)] xl:table-cell',
+    owner: 'hidden w-[max(4rem,5%)] md:table-cell',
+    links: 'hidden w-[max(7rem,9%)] xl:table-cell',
     actions: 'w-24',
   }
 

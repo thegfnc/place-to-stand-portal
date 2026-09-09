@@ -79,16 +79,16 @@ export function HourBlocksTableSection({
         <TableHeader>
           <TableRow className='bg-muted/40'>
             <TableHead>Client</TableHead>
-            <TableHead className='hidden w-28 md:table-cell'>
+            <TableHead className='hidden w-[max(7rem,9%)] md:table-cell'>
               Invoice #
             </TableHead>
-            <TableHead className='w-32'>Hours purchased</TableHead>
+            <TableHead className='w-[max(8rem,11%)]'>Hours purchased</TableHead>
             <SortableTableHead
               field='created'
               sort={sort}
               defaultSort='created:desc'
               onSortChange={next => update({ sort: next })}
-              className='hidden w-28 md:table-cell'
+              className='hidden w-[max(7rem,9%)] md:table-cell'
             >
               Created on
             </SortableTableHead>

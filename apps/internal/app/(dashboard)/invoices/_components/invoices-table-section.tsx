@@ -291,19 +291,19 @@ export function InvoicesTableSection({
               sort={sort}
               defaultSort='created:desc'
               onSortChange={next => update({ sort: next })}
-              className='w-28'
+              className='w-[max(7rem,9%)]'
             >
               Invoice #
             </SortableTableHead>
             <TableHead>Client</TableHead>
-            <TableHead className='hidden w-24 md:table-cell'>Status</TableHead>
-            <TableHead className='hidden w-24 md:table-cell'>Total</TableHead>
+            <TableHead className='hidden w-[max(6rem,8%)] md:table-cell'>Status</TableHead>
+            <TableHead className='hidden w-[max(6rem,8%)] md:table-cell'>Total</TableHead>
             <SortableTableHead
               field='created'
               sort={sort}
               defaultSort='created:desc'
               onSortChange={next => update({ sort: next })}
-              className='hidden w-28 md:table-cell'
+              className='hidden w-[max(7rem,9%)] md:table-cell'
             >
               Issued
             </SortableTableHead>
