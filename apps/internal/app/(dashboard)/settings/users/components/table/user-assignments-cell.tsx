@@ -3,16 +3,14 @@
 import type { ReactNode } from 'react'
 import { Building2, FolderKanban, type LucideIcon } from 'lucide-react'
 
-import {
-  LinkedRecordsHoverCell,
-  useCoordinatedHoverCards,
-} from '@/components/ui/linked-records-hover-cell'
+import { LinkedRecordsHoverCell } from '@/components/ui/linked-records-hover-cell'
 import { BOARD_VIEW_SEGMENTS } from '@/lib/projects/board/board-constants'
 import { PROJECT_SPECIAL_SEGMENTS } from '@/lib/projects/board/board-utils'
 import type {
   UserAssignedProject,
   UserAssignmentSummary,
 } from '@/lib/queries/users/assignments'
+import type { UserRoleValue } from '@/lib/types'
 
 const EMPTY_SUMMARY: UserAssignmentSummary = {
   clients: 0,
@@ -59,20 +57,25 @@ function AssignmentPair({
 
 type UserAssignmentsCellProps = {
   assignment: UserAssignmentSummary | undefined
+  role: UserRoleValue
 }
 
 /**
- * Icon + count for clients and projects, each opening a hover list
- * (coordinated so sliding between them never shows both). The task count in
- * the summary is deliberately not shown here — it only feeds the archive
- * confirmation sentence.
+ * One count per role: portal (CLIENT) users belong to clients through
+ * `client_members`, admins own projects through `projects.owner_id`, and
+ * neither relation applies to the other role, so the cell shows only the
+ * one that can be non-zero. It opens a hover list of the linked records.
+ * The task count in the summary is deliberately not shown — it only feeds
+ * the archive confirmation sentence.
  */
-export function UserAssignmentsCell({ assignment }: UserAssignmentsCellProps) {
+export function UserAssignmentsCell({
+  assignment,
+  role,
+}: UserAssignmentsCellProps) {
   const summary = assignment ?? EMPTY_SUMMARY
-  const bind = useCoordinatedHoverCards<'clients' | 'projects'>()
 
-  return (
-    <div className='flex items-center gap-3 text-sm'>
+  if (role === 'CLIENT') {
+    return (
       <AssignmentPair icon={Building2} title='Clients'>
         <LinkedRecordsHoverCell
           count={summary.clients}
@@ -84,23 +87,24 @@ export function UserAssignmentsCell({ assignment }: UserAssignmentsCellProps) {
             label: client.name,
             href: `/clients/${client.slug ?? client.id}`,
           }))}
-          {...bind('clients')}
         />
       </AssignmentPair>
-      <AssignmentPair icon={FolderKanban} title='Projects'>
-        <LinkedRecordsHoverCell
-          count={summary.projects}
-          icon={FolderKanban}
-          ariaLabel={`${summary.projects} ${summary.projects === 1 ? 'project' : 'projects'}`}
-          triggerClassName='text-muted-foreground'
-          items={summary.projectList.map(project => ({
-            id: project.id,
-            label: project.name,
-            href: projectTasksHref(project),
-          }))}
-          {...bind('projects')}
-        />
-      </AssignmentPair>
-    </div>
+    )
+  }
+
+  return (
+    <AssignmentPair icon={FolderKanban} title='Projects'>
+      <LinkedRecordsHoverCell
+        count={summary.projects}
+        icon={FolderKanban}
+        ariaLabel={`${summary.projects} ${summary.projects === 1 ? 'project' : 'projects'}`}
+        triggerClassName='text-muted-foreground'
+        items={summary.projectList.map(project => ({
+          id: project.id,
+          label: project.name,
+          href: projectTasksHref(project),
+        }))}
+      />
+    </AssignmentPair>
   )
 }

@@ -5,10 +5,14 @@ import { Archive, RefreshCw, Trash2 } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@pts/ui/avatar'
 import { TableCell, TableRow } from '@pts/ui/table'
 import { Button } from '@pts/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { DisabledFieldTooltip } from '@/components/ui/disabled-field-tooltip'
 import { Switch } from '@pts/ui/switch'
 import type { UserAssignmentSummary } from '@/lib/queries/users/assignments'
-import { USER_ROLE_LABELS } from '@/lib/settings/users/filters'
+import {
+  USER_ROLE_BADGE_CLASSES,
+  USER_ROLE_LABELS,
+} from '@/lib/settings/users/filters'
 
 import type { UserRowState } from '@/lib/settings/users/state/use-users-table-state'
 import { cn } from '@/lib/utils'
@@ -72,7 +76,14 @@ export function UsersTableRow({
       <TableCell className='text-muted-foreground truncate text-sm'>
         {user.email}
       </TableCell>
-      <TableCell className='text-sm'>{USER_ROLE_LABELS[user.role]}</TableCell>
+      <TableCell>
+        <Badge
+          variant='outline'
+          className={cn('text-xs', USER_ROLE_BADGE_CLASSES[user.role])}
+        >
+          {USER_ROLE_LABELS[user.role]}
+        </Badge>
+      </TableCell>
       <TableCell>
         {mode === 'active' ? (
           <DisabledFieldTooltip
@@ -101,7 +112,7 @@ export function UsersTableRow({
         )}
       </TableCell>
       <TableCell>
-        <UserAssignmentsCell assignment={assignment} />
+        <UserAssignmentsCell assignment={assignment} role={user.role} />
       </TableCell>
       <TableCell className='text-muted-foreground text-sm'>
         {formatCalendarDate(user.created_at)}

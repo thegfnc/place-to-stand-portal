@@ -9,6 +9,14 @@ export const USER_ROLE_LABELS: Record<UserRoleValue, string> = {
   CLIENT: 'Client',
 }
 
+/** Badge tones for the role column, same palette recipe as billing types. */
+export const USER_ROLE_BADGE_CLASSES: Record<UserRoleValue, string> = {
+  ADMIN:
+    'border-transparent bg-violet-100 text-violet-800 dark:bg-violet-500/10 dark:text-violet-300',
+  CLIENT:
+    'border-transparent bg-sky-100 text-sky-800 dark:bg-sky-500/10 dark:text-sky-300',
+}
+
 export function isUserRole(
   value: string | undefined
 ): value is UserRoleValue {
