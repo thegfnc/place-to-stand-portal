@@ -4,10 +4,6 @@ import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 import { Button } from '@pts/ui/button'
 import { PageSizeSelect } from '@/components/table-toolbar/page-size-select'
-import { PAGE_SIZE_OPTIONS } from '@/lib/pagination/page-size'
-
-/** Below this many rows a rows-per-page control has nothing to offer. */
-const MIN_ROWS_FOR_PAGE_SIZE = PAGE_SIZE_OPTIONS[0]
 
 type CursorPaginationProps = {
   mode?: 'cursor'
@@ -53,9 +49,8 @@ function CursorPagination({
   const isPrevDisabled = disableAll || !hasPreviousPage
   const isNextDisabled = disableAll || !hasNextPage
   const hasMorePages = hasNextPage || hasPreviousPage
-  const showPageSize =
-    pageSize !== undefined &&
-    (hasMorePages || itemCount > MIN_ROWS_FOR_PAGE_SIZE)
+  // Same fixture rule as the paged footer: show it whenever there are rows.
+  const showPageSize = pageSize !== undefined && itemCount > 0
 
   if (!hasMorePages && !showPageSize) {
     return null
@@ -158,9 +153,9 @@ function PagedPagination({
   showCount = true,
 }: PagedPaginationProps) {
   const hasMorePages = totalPages > 1
-  // One short page has nothing to paginate or resize; one long page still
-  // wants the selector (30 rows at 50/page should be able to drop to 25).
-  if (!hasMorePages && totalItems <= MIN_ROWS_FOR_PAGE_SIZE) {
+  // The footer is a fixture of every list (rows-per-page + count); only the
+  // pager itself disappears on a single page.
+  if (totalItems === 0) {
     return null
   }
 
@@ -222,25 +217,18 @@ function PagedPagination({
     </div>
   ) : null
 
-  if (!showCount) {
-    return (
-      <div className='flex items-center justify-between gap-4'>
-        <PageSizeSelect value={pageSize} />
-        {controls}
-      </div>
-    )
-  }
-
   return (
     <div className='flex items-center justify-between gap-4'>
-      <div className='flex items-center gap-3'>
-        <PageSizeSelect value={pageSize} />
-        <p className='text-muted-foreground text-xs tabular-nums'>
-          {(currentPage - 1) * pageSize + 1}–
-          {Math.min(currentPage * pageSize, totalItems)} of {totalItems}
-        </p>
+      <PageSizeSelect value={pageSize} />
+      <div className='flex items-center gap-4'>
+        {showCount ? (
+          <p className='text-muted-foreground text-xs tabular-nums'>
+            {(currentPage - 1) * pageSize + 1}–
+            {Math.min(currentPage * pageSize, totalItems)} of {totalItems}
+          </p>
+        ) : null}
+        {controls}
       </div>
-      {controls}
     </div>
   )
 }

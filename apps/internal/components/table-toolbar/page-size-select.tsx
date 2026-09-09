@@ -70,6 +70,7 @@ export function PageSizeSelect({ value, className }: PageSizeSelectProps) {
         className
       )}
     >
+      <span className='whitespace-nowrap'>Rows per page</span>
       <Select value={String(value)} onValueChange={handleChange}>
         <SelectTrigger
           aria-label='Rows per page'
@@ -85,7 +86,6 @@ export function PageSizeSelect({ value, className }: PageSizeSelectProps) {
           ))}
         </SelectContent>
       </Select>
-      <span className='whitespace-nowrap'>per page</span>
     </label>
   )
 }

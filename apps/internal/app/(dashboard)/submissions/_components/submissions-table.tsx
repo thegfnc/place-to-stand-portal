@@ -545,18 +545,16 @@ export function SubmissionsTable({
         </Table>
       </div>
 
-      {totalPages > 1 && (
-        <PaginationControls
-          mode='paged'
-          currentPage={currentPage}
-          totalPages={totalPages}
-          totalItems={totalCount}
-          pageSize={pageSize}
-          onPageChange={page =>
-            updateParams({ page: page === 1 ? undefined : String(page) })
-          }
-        />
-      )}
+      <PaginationControls
+        mode='paged'
+        currentPage={currentPage}
+        totalPages={totalPages}
+        totalItems={totalCount}
+        pageSize={pageSize}
+        onPageChange={page =>
+          updateParams({ page: page === 1 ? undefined : String(page) })
+        }
+      />
 
       <SubmissionArchiveDialog
         open={archiveTarget !== null}
