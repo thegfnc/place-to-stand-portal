@@ -3,10 +3,13 @@
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 
+import { leadUpdateDeletedEvent } from '@/lib/activity/events'
+import { logActivity } from '@/lib/activity/logger'
 import { assertAdmin } from '@/lib/auth/permissions'
 import { requireUser } from '@/lib/auth/session'
 import { db } from '@/lib/db'
 import { leadUpdates } from '@/lib/db/schema'
+import { LEAD_UPDATE_LABELS } from '@/lib/leads/updates'
 import { getLeadUpdateForLead } from '@/lib/queries/lead-updates'
 
 import type { LeadActionResult } from '../types'
@@ -57,6 +60,20 @@ export async function deleteLeadUpdate(
       .update(leadUpdates)
       .set({ deletedAt: new Date().toISOString() })
       .where(eq(leadUpdates.id, id))
+
+    await logActivity({
+      actorId: user.id,
+      actorRole: user.role,
+      targetType: 'LEAD',
+      targetId: leadId,
+      ...leadUpdateDeletedEvent({
+        contactName: lead.contactName,
+        updateId: id,
+        type: existing.type,
+        typeLabel: LEAD_UPDATE_LABELS[existing.type],
+        occurredAt: existing.occurredAt,
+      }),
+    })
 
     revalidateLeadsPath()
 

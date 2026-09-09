@@ -6,12 +6,15 @@ export const userCreatedEvent = (args: {
   fullName: string
   role: string
   email?: string
+  /** Clients a portal user was granted access to on creation. */
+  clientIds?: string[]
 }): ActivityEvent => ({
   verb: ActivityVerbs.USER_CREATED,
   summary: `Invited ${args.fullName} (${args.role})`,
   metadata: toMetadata({
     role: args.role,
     email: args.email,
+    clientIds: args.clientIds,
   }),
 })
 
@@ -68,5 +71,21 @@ export const userDeletedEvent = (args: {
   metadata: toMetadata({
     email: args.email,
     role: args.role,
+  }),
+})
+
+export const userPasswordChangedEvent = (args: {
+  fullName: string
+  /** Where the change came from: the profile sheet or the reset flow. */
+  context: 'profile' | 'reset'
+}): ActivityEvent => ({
+  verb: ActivityVerbs.USER_PASSWORD_CHANGED,
+  summary:
+    args.context === 'reset'
+      ? `${args.fullName} completed a password reset`
+      : `${args.fullName} changed their password`,
+  metadata: toMetadata({
+    changedFields: ['password'],
+    context: args.context,
   }),
 })

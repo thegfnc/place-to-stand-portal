@@ -42,6 +42,24 @@ export const monthlyCloseClosedEvent = (args: {
   }),
 })
 
+export const monthlyCloseReclosedEvent = (args: {
+  year: number
+  month: number
+  combinedBillingTotal: number
+  combinedPayoutTotal: number
+  previousSnapshotId?: string | null
+}): ActivityEvent => ({
+  verb: ActivityVerbs.MONTHLY_CLOSE_RECLOSED,
+  summary: `Re-closed ${periodLabel(args.year, args.month)} (billing ${currency.format(args.combinedBillingTotal)} / payouts ${currency.format(args.combinedPayoutTotal)})`,
+  metadata: toMetadata({
+    year: args.year,
+    month: args.month,
+    combinedBillingTotal: args.combinedBillingTotal,
+    combinedPayoutTotal: args.combinedPayoutTotal,
+    previousSnapshotId: args.previousSnapshotId ?? null,
+  }),
+})
+
 export const monthlyCloseReopenedEvent = (args: {
   year: number
   month: number

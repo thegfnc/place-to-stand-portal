@@ -1,6 +1,7 @@
 import { and, eq, inArray, isNull } from 'drizzle-orm'
 
 import { logActivity } from '@/lib/activity/logger'
+import type { AppUser } from '@/lib/auth/session'
 import { db } from '@/lib/db'
 import { projectIntegrationLinks } from '@/lib/db/schema'
 import {
@@ -8,6 +9,9 @@ import {
   type ExternalProjectOption,
   type ProjectIntegrationLink,
 } from '@/lib/types/integrations'
+
+/** The signed-in user performing the link/unlink; the role is never assumed. */
+export type IntegrationLinkActor = Pick<AppUser, 'id' | 'role'>
 
 export async function getProjectIntegrationLinks(
   projectId: string
@@ -78,7 +82,7 @@ export async function getIntegrationLinkById(
 export async function linkExternalProject(
   projectId: string,
   option: ExternalProjectOption,
-  userId: string
+  actor: IntegrationLinkActor
 ): Promise<ProjectIntegrationLink> {
   const now = new Date().toISOString()
   const details = {
@@ -110,7 +114,7 @@ export async function linkExternalProject(
   if (existing) {
     const [restored] = await db
       .update(projectIntegrationLinks)
-      .set({ ...details, linkedBy: userId, updatedAt: now, deletedAt: null })
+      .set({ ...details, linkedBy: actor.id, updatedAt: now, deletedAt: null })
       .where(eq(projectIntegrationLinks.id, existing.id))
       .returning()
     link = restored
@@ -122,14 +126,15 @@ export async function linkExternalProject(
         provider: option.provider,
         externalId: option.externalId,
         ...details,
-        linkedBy: userId,
+        linkedBy: actor.id,
       })
       .returning()
     link = inserted
   }
 
   await logActivity({
-    actorId: userId,
+    actorId: actor.id,
+    actorRole: actor.role,
     verb: 'INTEGRATION_PROJECT_LINKED',
     summary: `Linked ${INTEGRATION_PROVIDERS[option.provider].label} project ${option.externalName}`,
     targetType: 'PROJECT',
@@ -148,7 +153,7 @@ export async function linkExternalProject(
 
 export async function unlinkExternalProject(
   link: ProjectIntegrationLink,
-  userId: string
+  actor: IntegrationLinkActor
 ): Promise<void> {
   const now = new Date().toISOString()
 
@@ -158,7 +163,8 @@ export async function unlinkExternalProject(
     .where(eq(projectIntegrationLinks.id, link.id))
 
   await logActivity({
-    actorId: userId,
+    actorId: actor.id,
+    actorRole: actor.role,
     verb: 'INTEGRATION_PROJECT_UNLINKED',
     summary: `Unlinked ${INTEGRATION_PROVIDERS[link.provider].label} project ${link.externalName}`,
     targetType: 'PROJECT',

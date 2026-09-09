@@ -151,6 +151,7 @@ export async function updateTaskForActor(
       actorId: actor.id,
       actorRole: actor.role,
       attachmentsInput: attachments,
+      activity: { taskTitle: title, projectId, clientId: targetClientId, source },
     })
   } catch (assigneeError) {
     console.error('Failed to sync task assignees', assigneeError)

@@ -7,6 +7,7 @@ import { oauthConnections } from '@/lib/db/schema'
 import { decryptToken } from '@/lib/oauth/encryption'
 import { revokeToken } from '@/lib/oauth/google'
 import { logActivity } from '@/lib/activity/logger'
+import { oauthDisconnectedEvent } from '@/lib/activity/events'
 
 export async function POST(request: Request) {
   const user = await requireUser()
@@ -64,15 +65,19 @@ export async function POST(request: Request) {
     })
     .where(eq(oauthConnections.id, connection.id))
 
-  // Log activity
+  const event = oauthDisconnectedEvent({
+    provider: 'GOOGLE',
+    accountLabel: connection.providerEmail,
+  })
+
   await logActivity({
     actorId: user.id,
     actorRole: user.role,
-    verb: 'OAUTH_DISCONNECTED',
-    summary: `Disconnected Google account (${connection.providerEmail})`,
+    verb: event.verb,
+    summary: event.summary,
     targetType: 'SETTINGS',
     targetId: user.id,
-    metadata: { provider: 'GOOGLE', email: connection.providerEmail },
+    metadata: event.metadata,
   })
 
   return NextResponse.json({ success: true })

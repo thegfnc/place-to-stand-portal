@@ -8,7 +8,6 @@ import {
   eq,
   gte,
   inArray,
-  isNull,
   lt,
   lte,
   notInArray,
@@ -58,9 +57,6 @@ type ActivityLogSelection = {
     contextRoute: string | null
     metadata: Json
     createdAt: string
-    updatedAt: string
-    deletedAt: string | null
-    restoredAt: string | null
   }
   actor: {
     id: string | null
@@ -84,9 +80,6 @@ const activityLogSelection = {
   contextRoute: activityLogs.contextRoute,
   metadata: activityLogs.metadata,
   createdAt: activityLogs.createdAt,
-  updatedAt: activityLogs.updatedAt,
-  deletedAt: activityLogs.deletedAt,
-  restoredAt: activityLogs.restoredAt,
 } as const
 
 const actorSelection = {
@@ -159,12 +152,10 @@ export async function fetchActivityLogsSince(
     since,
     until,
     limit,
-    includeDeleted,
   }: {
     since: string
     until?: string
     limit?: number
-    includeDeleted?: boolean
   }
 ): Promise<ActivityLogWithActor[]> {
   assertAdmin(user)
@@ -175,7 +166,6 @@ export async function fetchActivityLogsSince(
   )
 
   const whereClause = combineConditions([
-    includeDeleted ? undefined : isNull(activityLogs.deletedAt),
     notInArray(activityLogs.verb, RETIRED_VERBS),
     gte(activityLogs.createdAt, since),
     until ? lte(activityLogs.createdAt, until) : undefined,
@@ -203,10 +193,6 @@ export async function fetchActivityLogsSince(
 
 function buildFilterConditions(filters: ActivityQueryFilters) {
   const conditions: Array<SqlExpression | undefined> = []
-
-  if (!filters.includeDeleted) {
-    conditions.push(isNull(activityLogs.deletedAt))
-  }
 
   conditions.push(notInArray(activityLogs.verb, RETIRED_VERBS))
 
@@ -304,9 +290,6 @@ function mapToActivityLog(row: ActivityLogSelection): ActivityLogWithActor {
     context_route: log.contextRoute,
     metadata,
     created_at: log.createdAt,
-    updated_at: log.updatedAt,
-    deleted_at: log.deletedAt,
-    restored_at: log.restoredAt,
     actor:
       actor && actor.id
         ? {

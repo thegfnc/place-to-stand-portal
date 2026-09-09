@@ -26,8 +26,6 @@ export function useTaskComments(
     currentUserId,
     currentUserName,
     canComment,
-    taskTitle,
-    clientId,
   } = options
 
   const router = useRouter()
@@ -80,11 +78,8 @@ export function useTaskComments(
 
   const createComment = useCreateTaskCommentMutation({
     taskId,
-    projectId,
-    clientId: clientId ?? null,
     currentUserId,
     currentUserName,
-    taskTitle,
     queryKey: commentsQueryKey,
     queryClient,
     router,
@@ -101,10 +96,7 @@ export function useTaskComments(
 
   const updateComment = useUpdateTaskCommentMutation({
     taskId,
-    projectId,
-    clientId: clientId ?? null,
     currentUserId,
-    taskTitle,
     queryKey: commentsQueryKey,
     queryClient,
     router,
@@ -117,10 +109,7 @@ export function useTaskComments(
 
   const deleteComment = useDeleteTaskCommentMutation({
     taskId,
-    projectId,
-    clientId: clientId ?? null,
     currentUserId,
-    taskTitle,
     queryKey: commentsQueryKey,
     queryClient,
     router,

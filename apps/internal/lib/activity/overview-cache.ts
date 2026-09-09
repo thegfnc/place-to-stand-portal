@@ -6,12 +6,13 @@ import { and, eq } from 'drizzle-orm'
 
 import { db } from '@/lib/db'
 import { activityOverviewCache } from '@/lib/db/schema'
+import type { Json } from '@/lib/types/json'
 
 export type ActivityOverviewCacheRow = {
   id: string
   user_id: string
   timeframe_days: number
-  summary: string
+  summary: Json
   cached_at: string
   expires_at: string
   created_at: string
@@ -22,7 +23,7 @@ type CacheSelection = {
   id: string
   userId: string
   timeframeDays: number
-  summary: string
+  summary: Json
   cachedAt: string
   expiresAt: string
   createdAt: string
@@ -79,7 +80,7 @@ export async function upsertActivityOverviewCache({
 }: {
   userId: string
   timeframeDays: number
-  summary: string
+  summary: Json
   cachedAt: string
   expiresAt: string
 }): Promise<void> {

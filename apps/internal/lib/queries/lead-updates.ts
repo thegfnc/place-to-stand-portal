@@ -7,6 +7,7 @@ import type { AppUser } from '@/lib/auth/session'
 import { db } from '@/lib/db'
 import { leadUpdates, users } from '@/lib/db/schema'
 import type { LeadUpdateRecord } from '@/lib/leads/types'
+import type { LeadUpdateTypeValue } from '@/lib/leads/updates'
 
 /**
  * Timeline rows for one lead, newest first, with author identity joined.
@@ -55,9 +56,19 @@ export async function listLeadUpdates(
 export async function getLeadUpdateForLead(
   updateId: string,
   leadId: string
-): Promise<{ id: string } | null> {
+): Promise<{
+  id: string
+  type: LeadUpdateTypeValue
+  body: string
+  occurredAt: string
+} | null> {
   const [row] = await db
-    .select({ id: leadUpdates.id })
+    .select({
+      id: leadUpdates.id,
+      type: leadUpdates.type,
+      body: leadUpdates.body,
+      occurredAt: leadUpdates.occurredAt,
+    })
     .from(leadUpdates)
     .where(
       and(

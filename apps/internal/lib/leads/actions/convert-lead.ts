@@ -4,7 +4,7 @@ import { and, eq, isNull } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 
 import { logActivity } from '@/lib/activity/logger'
-import { leadConvertedEvent } from '@/lib/activity/events'
+import { contactCreatedEvent, leadConvertedEvent } from '@/lib/activity/events'
 import { requireRole } from '@/lib/auth/session'
 import { db } from '@/lib/db'
 import { clients, contacts, contactClients, leads } from '@/lib/db/schema'
@@ -139,6 +139,18 @@ export async function convertLeadToClient(
           throw new Error('Contact insert returned no rows')
         }
         contactId = newContact.id
+
+        await logActivity({
+          actorId: user.id,
+          actorRole: user.role,
+          targetType: 'CONTACT',
+          targetId: contactId,
+          targetClientId: finalClientId,
+          ...contactCreatedEvent({
+            email: contactEmail,
+            name: lead.contactName,
+          }),
+        })
       }
 
       // Link contact to client (ignore if already linked)
@@ -219,6 +231,7 @@ export async function convertLeadToClient(
     summary: event.summary,
     targetType: 'LEAD',
     targetId: leadId,
+    targetClientId: finalClientId,
     metadata: event.metadata,
   })
 

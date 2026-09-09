@@ -1,12 +1,8 @@
 import { z } from 'zod'
 
-import { taskCommentCreatedEvent } from '@/lib/activity/events'
-import { logActivity } from '@/lib/activity/logger'
 import { toRichTextHtml } from '@/lib/cli/description'
 import { jsonOk, readJsonBody, withCliAuth } from '@/lib/cli/handler'
-import { loadTaskForEdit } from '@/lib/cli/queries/tasks'
 import { serializeComment } from '@/lib/cli/serializers/comment'
-import { resolveProjectIdentifier } from '@/lib/data/projects'
 import {
   createTaskComment,
   listTaskComments,
@@ -47,36 +43,13 @@ export const POST = withCliAuth<Params>(async ({ user, request, params }) => {
   // plain text needs the same conversion to survive with its structure.
   const body = toRichTextHtml(payload.body)
 
-  const { task } = await loadTaskForEdit(user, params.taskId)
-  const { commentId } = await createTaskComment(user, {
-    taskId: params.taskId,
-    body,
-  })
-
-  // The browser logs this from the client after the POST returns
-  // (lib/projects/task-sheet/use-task-comments/mutations.ts), so the API route
-  // itself never has. A CLI has no such client, and a comment that leaves no
-  // audit trail is worse than a duplicated log line — record it here.
-  try {
-    const project = await resolveProjectIdentifier(user, task.projectId)
-    const event = taskCommentCreatedEvent({ taskTitle: task.title })
-
-    await logActivity({
-      actorId: user.id,
-      actorRole: user.role,
-      source: 'CLI',
-      verb: event.verb,
-      summary: event.summary,
-      targetType: 'COMMENT',
-      targetId: commentId,
-      targetProjectId: task.projectId,
-      targetClientId: project.clientId ?? null,
-      metadata: { taskId: params.taskId, commentId, bodyLength: body.length },
-    })
-  } catch (error) {
-    // The comment exists; a missing activity row must not fail the request.
-    console.error('Failed to log CLI comment activity', error)
-  }
+  // `createTaskComment` writes the activity row itself; only the source
+  // distinguishes a CLI comment from a browser one.
+  const { commentId } = await createTaskComment(
+    user,
+    { taskId: params.taskId, body },
+    { source: 'CLI' }
+  )
 
   const page = await listTaskComments(user, params.taskId, { limit: 1 })
   const created = page.items.find(item => item.id === commentId)

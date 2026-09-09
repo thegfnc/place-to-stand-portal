@@ -3,6 +3,8 @@
 import { z } from "zod";
 
 import { requireUser } from "@/lib/auth/session";
+import { logActivity } from "@/lib/activity/logger";
+import { userPasswordChangedEvent } from "@/lib/activity/events";
 import { sendPasswordChangedEmail } from "@/lib/email/auth-emails";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -27,7 +29,7 @@ export type CompletePasswordResetResult = {
 export async function completePasswordReset(
   input: CompletePasswordResetInput
 ): Promise<CompletePasswordResetResult> {
-  await requireUser();
+  const user = await requireUser();
   const parsed = schema.safeParse(input);
 
   if (!parsed.success) {
@@ -65,6 +67,21 @@ export async function completePasswordReset(
     console.error("Failed to update password", authError);
     return { error: authError.message };
   }
+
+  const event = userPasswordChangedEvent({
+    fullName: user.full_name ?? user.email,
+    context: "reset",
+  });
+
+  await logActivity({
+    actorId: user.id,
+    actorRole: user.role,
+    verb: event.verb,
+    summary: event.summary,
+    targetType: "USER",
+    targetId: user.id,
+    metadata: event.metadata,
+  });
 
   // The password has already changed by this point, so a mail failure must not
   // read as a failed reset — it is logged and swallowed rather than returned.

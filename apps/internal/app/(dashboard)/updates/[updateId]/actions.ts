@@ -9,9 +9,9 @@ import { fetchClientById } from '@/lib/data/clients'
 import { HttpError } from '@/lib/errors/http'
 import { clientDetailHref, updateComposerHref } from '@/lib/sheets/hrefs'
 import {
+  saveUpdateDraft,
   sendClientUpdate,
   sendClientUpdateTest,
-  updateClientUpdateDraft,
 } from '@/lib/updates'
 
 const emailSchema = z
@@ -69,7 +69,7 @@ export async function saveClientUpdateDraft(
   const { id, ...draft } = parsed.data
 
   try {
-    const updated = await updateClientUpdateDraft(id, draft)
+    const updated = await saveUpdateDraft(user, id, draft)
     await revalidateUpdate(user, id, updated.clientId)
     return { success: true }
   } catch (error) {

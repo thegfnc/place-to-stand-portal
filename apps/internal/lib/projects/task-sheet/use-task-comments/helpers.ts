@@ -1,8 +1,6 @@
 import { sanitizeEditorHtml } from '@/components/ui/rich-text-editor/utils'
 import { normalizeRichTextContent } from '@/lib/projects/task-sheet/task-sheet-utils'
 
-import type { CommentActivityMetadata } from './types'
-import type { Json } from '@/lib/types/json'
 
 export const TASK_COMMENTS_QUERY_KEY = 'task-comments'
 
@@ -16,7 +14,3 @@ export const prepareCommentBody = (content: string): string | null => {
 
   return sanitized
 }
-
-export const serializeCommentMetadata = (
-  metadata: CommentActivityMetadata
-): Json => JSON.parse(JSON.stringify(metadata)) as Json

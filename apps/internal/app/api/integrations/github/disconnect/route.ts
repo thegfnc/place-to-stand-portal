@@ -7,6 +7,7 @@ import { oauthConnections } from '@/lib/db/schema'
 import { decryptToken } from '@/lib/oauth/encryption'
 import { revokeToken } from '@/lib/oauth/github'
 import { logActivity } from '@/lib/activity/logger'
+import { oauthDisconnectedEvent } from '@/lib/activity/events'
 
 export async function POST(request: Request) {
   const user = await requireUser()
@@ -66,15 +67,19 @@ export async function POST(request: Request) {
     })
     .where(eq(oauthConnections.id, connection.id))
 
-  // Log activity
+  const event = oauthDisconnectedEvent({
+    provider: 'GITHUB',
+    accountLabel: login ?? connection.displayName,
+  })
+
   await logActivity({
     actorId: user.id,
     actorRole: user.role,
-    verb: 'OAUTH_DISCONNECTED',
-    summary: `Disconnected GitHub account${login ? ` (@${login})` : ''}`,
+    verb: event.verb,
+    summary: event.summary,
     targetType: 'SETTINGS',
     targetId: user.id,
-    metadata: { provider: 'GITHUB', login },
+    metadata: event.metadata,
   })
 
   return NextResponse.json({ success: true })

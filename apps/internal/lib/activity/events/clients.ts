@@ -12,8 +12,10 @@ export const clientCreatedEvent = (args: {
     client: {
       name: args.name,
     },
+    // Same delta shape as CLIENT_UPDATED so the feed renders the member list.
     members: {
-      after: args.memberIds,
+      added: args.memberIds,
+      removed: [],
     },
   }),
 })

@@ -53,6 +53,17 @@ export async function listTaxRates(): Promise<TaxRateRow[]> {
   return rows.map(mapTaxRateRow)
 }
 
+export async function getTaxRateById(id: string): Promise<TaxRateRow | null> {
+  const rows = await db
+    .select(taxRateSelection)
+    .from(taxRates)
+    .where(eq(taxRates.id, id))
+    .limit(1)
+
+  const row = rows[0]
+  return row ? mapTaxRateRow(row) : null
+}
+
 export async function createTaxRate(input: TaxRateInput): Promise<TaxRateRow> {
   const rows = await db
     .insert(taxRates)

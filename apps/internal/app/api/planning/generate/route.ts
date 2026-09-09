@@ -4,6 +4,8 @@ import type { AnthropicLanguageModelOptions } from '@ai-sdk/anthropic'
 import { after } from 'next/server'
 import { z } from 'zod'
 
+import { planRevisionCreatedEvent } from '@/lib/activity/events'
+import { logActivity } from '@/lib/activity/logger'
 import { getCurrentUser } from '@/lib/auth/session'
 import { getRepoLinkById } from '@/lib/data/github-repos'
 import { getRepoTree, resolveRepoLinkAuth } from '@/lib/github/client'
@@ -17,6 +19,7 @@ import {
   updateThreadPartialContent,
   finishThreadGeneration,
   failThreadGeneration,
+  getPlanningContextForThread,
 } from '@/lib/queries/planning'
 import {
   PLANNING_MODEL_TIERS,
@@ -202,6 +205,27 @@ export async function POST(request: Request) {
 
         // Update thread version
         await updateThreadVersion(threadId, nextVersion)
+
+        // One event per finished generation — the partial-content autosaves
+        // above are not revisions.
+        const context = await getPlanningContextForThread(threadId)
+        const event = planRevisionCreatedEvent({
+          taskTitle: context?.taskTitle ?? taskTitle,
+          threadId,
+          version: nextVersion,
+          model: modelTier,
+        })
+        await logActivity({
+          actorId: user.id,
+          actorRole: user.role,
+          verb: event.verb,
+          summary: event.summary,
+          targetType: 'PLAN',
+          targetId: context?.sessionId ?? null,
+          targetProjectId: context?.projectId ?? null,
+          targetClientId: context?.clientId ?? null,
+          metadata: event.metadata,
+        })
       }
 
       // onError may have already marked the thread as errored — don't clobber that.

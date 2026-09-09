@@ -3,6 +3,8 @@
 import { and, eq, isNull } from 'drizzle-orm'
 import { z } from 'zod'
 
+import { leadStatusChangedEvent } from '@/lib/activity/events'
+import { logActivity } from '@/lib/activity/logger'
 import { requireUser } from '@/lib/auth/session'
 import { assertAdmin } from '@/lib/auth/permissions'
 import { db } from '@/lib/db'
@@ -49,7 +51,7 @@ export async function moveLead(input: MoveLeadInput): Promise<LeadActionResult> 
   try {
     // Fetch current status before update
     const currentRows = await db
-      .select({ status: leads.status })
+      .select({ status: leads.status, contactName: leads.contactName })
       .from(leads)
       .where(and(eq(leads.id, parsed.data.leadId), isNull(leads.deletedAt)))
       .limit(1)
@@ -111,6 +113,18 @@ export async function moveLead(input: MoveLeadInput): Promise<LeadActionResult> 
         toStatus: parsed.data.targetStatus,
         changedAt: now,
         changedBy: user.id,
+      })
+
+      await logActivity({
+        actorId: user.id,
+        actorRole: user.role,
+        targetType: 'LEAD',
+        targetId: parsed.data.leadId,
+        ...leadStatusChangedEvent({
+          name: current.contactName,
+          fromStatus: current.status,
+          toStatus: parsed.data.targetStatus,
+        }),
       })
     }
   } catch (error) {

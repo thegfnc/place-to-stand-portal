@@ -2,15 +2,23 @@ import 'server-only'
 
 import { eq, inArray } from 'drizzle-orm'
 
+import {
+  timeLogCreatedEvent,
+  timeLogDeletedEvent,
+  timeLogUpdatedEvent,
+} from '@/lib/activity/events'
+import { logActivity } from '@/lib/activity/logger'
 import type { AppUser } from '@/lib/auth/session'
 import { ensureProjectAccess } from '@/lib/auth/permissions'
 import { HttpError, NotFoundError } from '@/lib/errors/http'
 import { db } from '@/lib/db'
 import {
+  projects,
   tasks,
   timeLogTasks,
   timeLogs,
 } from '@/lib/db/schema'
+import type { ActivitySourceValue } from '@/lib/types'
 
 type TransactionClient = Parameters<Parameters<typeof db.transaction>[0]>[0]
 
@@ -59,6 +67,54 @@ async function assertLinkedTasksEligible(
   }
 }
 
+/**
+ * Time-log mutations are the single write path for the browser routes (and
+ * any future CLI route), so the activity row is written here rather than by
+ * each caller. Only the source is caller-specific.
+ */
+export type TimeLogMutationOptions = {
+  source?: ActivitySourceValue
+}
+
+type TimeLogProjectContext = {
+  name: string | null
+  clientId: string | null
+}
+
+async function getTimeLogProjectContext(
+  projectId: string
+): Promise<TimeLogProjectContext> {
+  const rows = await db
+    .select({ name: projects.name, clientId: projects.clientId })
+    .from(projects)
+    .where(eq(projects.id, projectId))
+    .limit(1)
+
+  return {
+    name: rows[0]?.name ?? null,
+    clientId: rows[0]?.clientId ?? null,
+  }
+}
+
+async function getLinkedTaskIds(timeLogId: string): Promise<string[]> {
+  const rows = await db
+    .select({ taskId: timeLogTasks.taskId })
+    .from(timeLogTasks)
+    .where(eq(timeLogTasks.timeLogId, timeLogId))
+
+  return rows.map(row => row.taskId).sort()
+}
+
+const sameIdSet = (left: string[], right: string[]): boolean => {
+  if (left.length !== right.length) {
+    return false
+  }
+
+  const sortedRight = [...right].sort()
+
+  return [...left].sort().every((id, index) => id === sortedRight[index])
+}
+
 export type CreateTimeLogInput = {
   projectId: string
   userId: string
@@ -81,6 +137,7 @@ export type UpdateTimeLogInput = {
 export async function createTimeLog(
   user: AppUser,
   input: CreateTimeLogInput,
+  options: TimeLogMutationOptions = {},
 ): Promise<string> {
   const { projectId, userId, hours, loggedOn, note, taskIds } = input
 
@@ -89,7 +146,7 @@ export async function createTimeLog(
   const hoursValue = hours.toString()
   const noteValue = note && note.trim().length ? note.trim() : null
 
-  return db.transaction(async tx => {
+  const timeLogId = await db.transaction(async tx => {
     await assertLinkedTasksEligible(tx, projectId, taskIds)
 
     const [inserted] = await tx
@@ -117,18 +174,46 @@ export async function createTimeLog(
 
     return inserted.id
   })
+
+  const project = await getTimeLogProjectContext(projectId)
+  const event = timeLogCreatedEvent({
+    hours,
+    projectName: project.name,
+    loggedOn,
+    linkedTaskCount: taskIds.length,
+    taskIds,
+    notePresent: noteValue !== null,
+    userId,
+  })
+
+  await logActivity({
+    actorId: user.id,
+    actorRole: user.role,
+    source: options.source,
+    verb: event.verb,
+    summary: event.summary,
+    targetType: 'TIME_LOG',
+    targetId: timeLogId,
+    targetProjectId: projectId,
+    targetClientId: project.clientId,
+    metadata: event.metadata,
+  })
+
+  return timeLogId
 }
 
 export async function softDeleteTimeLog(
   user: AppUser,
   projectId: string,
   timeLogId: string,
+  options: TimeLogMutationOptions = {},
 ): Promise<{ loggedOn: string }> {
   const rows = await db
     .select({
       id: timeLogs.id,
       projectId: timeLogs.projectId,
       userId: timeLogs.userId,
+      hours: timeLogs.hours,
       loggedOn: timeLogs.loggedOn,
       deletedAt: timeLogs.deletedAt,
     })
@@ -160,12 +245,34 @@ export async function softDeleteTimeLog(
     .set({ deletedAt: nowIso, updatedAt: nowIso })
     .where(eq(timeLogs.id, timeLogId))
 
+  const hours = Number(timeLog.hours)
+  const project = await getTimeLogProjectContext(projectId)
+  const event = timeLogDeletedEvent({
+    hours,
+    loggedOn: timeLog.loggedOn,
+    projectName: project.name,
+  })
+
+  await logActivity({
+    actorId: user.id,
+    actorRole: user.role,
+    source: options.source,
+    verb: event.verb,
+    summary: event.summary,
+    targetType: 'TIME_LOG',
+    targetId: timeLogId,
+    targetProjectId: projectId,
+    targetClientId: project.clientId,
+    metadata: event.metadata,
+  })
+
   return { loggedOn: timeLog.loggedOn }
 }
 
 export async function updateTimeLog(
   user: AppUser,
   input: UpdateTimeLogInput,
+  options: TimeLogMutationOptions = {},
 ): Promise<{ previousLoggedOn: string }> {
   const { projectId, timeLogId, userId, hours, loggedOn, note, taskIds } = input
 
@@ -174,7 +281,9 @@ export async function updateTimeLog(
       id: timeLogs.id,
       projectId: timeLogs.projectId,
       userId: timeLogs.userId,
+      hours: timeLogs.hours,
       loggedOn: timeLogs.loggedOn,
+      note: timeLogs.note,
       deletedAt: timeLogs.deletedAt,
     })
     .from(timeLogs)
@@ -202,6 +311,9 @@ export async function updateTimeLog(
   const hoursValue = hours.toString()
   const noteValue = note && note.trim().length ? note.trim() : null
 
+  const previousTaskIds = await getLinkedTaskIds(timeLogId)
+  const nextTaskIds = [...new Set(taskIds)].sort()
+
   await db.transaction(async tx => {
     await assertLinkedTasksEligible(tx, projectId, taskIds)
 
@@ -228,8 +340,107 @@ export async function updateTimeLog(
     }
   })
 
+  await logTimeLogUpdate({
+    user,
+    source: options.source,
+    projectId,
+    timeLogId,
+    before: {
+      userId: existing.userId,
+      hours: Number(existing.hours),
+      loggedOn: existing.loggedOn,
+      note: existing.note ?? null,
+      taskIds: previousTaskIds,
+    },
+    after: {
+      userId: targetUserId,
+      hours,
+      loggedOn,
+      note: noteValue,
+      taskIds: nextTaskIds,
+    },
+  })
+
   // F6: the caller needs the pre-mutation date — a move OUT of a closed month
   // is undetectable once loggedOn is overwritten.
   return { previousLoggedOn: existing.loggedOn }
+}
+
+type TimeLogSnapshot = {
+  userId: string
+  hours: number
+  loggedOn: string
+  note: string | null
+  taskIds: string[]
+}
+
+/** Diffs the two snapshots and writes TIME_LOG_UPDATED; a no-op save is silent. */
+async function logTimeLogUpdate(args: {
+  user: AppUser
+  source?: ActivitySourceValue
+  projectId: string
+  timeLogId: string
+  before: TimeLogSnapshot
+  after: TimeLogSnapshot
+}): Promise<void> {
+  const { before, after } = args
+  const changedFields: string[] = []
+  const previousDetails: Record<string, unknown> = {}
+  const nextDetails: Record<string, unknown> = {}
+
+  if (before.userId !== after.userId) {
+    changedFields.push('user')
+    previousDetails.userId = before.userId
+    nextDetails.userId = after.userId
+  }
+
+  if (before.hours !== after.hours) {
+    changedFields.push('hours')
+    previousDetails.hours = before.hours
+    nextDetails.hours = after.hours
+  }
+
+  if (before.loggedOn !== after.loggedOn) {
+    changedFields.push('date')
+    previousDetails.loggedOn = before.loggedOn
+    nextDetails.loggedOn = after.loggedOn
+  }
+
+  if (before.note !== after.note) {
+    changedFields.push('note')
+    previousDetails.note = before.note
+    nextDetails.note = after.note
+  }
+
+  if (!sameIdSet(before.taskIds, after.taskIds)) {
+    changedFields.push('linked tasks')
+    previousDetails.taskIds = before.taskIds
+    nextDetails.taskIds = after.taskIds
+  }
+
+  if (!changedFields.length) {
+    return
+  }
+
+  const project = await getTimeLogProjectContext(args.projectId)
+  const event = timeLogUpdatedEvent({
+    hours: after.hours,
+    projectName: project.name,
+    changedFields,
+    details: { before: previousDetails, after: nextDetails },
+  })
+
+  await logActivity({
+    actorId: args.user.id,
+    actorRole: args.user.role,
+    source: args.source,
+    verb: event.verb,
+    summary: event.summary,
+    targetType: 'TIME_LOG',
+    targetId: args.timeLogId,
+    targetProjectId: args.projectId,
+    targetClientId: project.clientId,
+    metadata: event.metadata,
+  })
 }
 

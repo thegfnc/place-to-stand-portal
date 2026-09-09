@@ -19,7 +19,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Link does not belong to this project' }, { status: 403 })
     }
 
-    await unlinkRepo(linkId, user.id)
+    await unlinkRepo(linkId, user)
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Error unlinking repo:', error)

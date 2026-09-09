@@ -17,6 +17,29 @@ export const hourBlockCreatedEvent = (args: {
   }),
 })
 
+/**
+ * One event per paid invoice (not per line item): the Stripe webhook may
+ * create several blocks at once, and a replay must not re-log blocks the
+ * idempotent insert skipped, so callers pass only the rows actually inserted.
+ */
+export const hourBlocksCreatedFromInvoiceEvent = (args: {
+  count: number
+  totalHours: number
+  invoiceNumber?: string | null
+  hourBlockIds: string[]
+}): ActivityEvent => ({
+  verb: ActivityVerbs.HOUR_BLOCK_CREATED,
+  summary: `Created ${args.count} hour block${args.count === 1 ? '' : 's'} (${formatHours(args.totalHours)}h)${
+    args.invoiceNumber ? ` from invoice ${args.invoiceNumber}` : ' from a paid invoice'
+  }`,
+  metadata: toMetadata({
+    count: args.count,
+    totalHours: args.totalHours,
+    invoiceNumber: args.invoiceNumber ?? null,
+    hourBlockIds: args.hourBlockIds,
+  }),
+})
+
 export const hourBlockUpdatedEvent = (args: {
   clientName?: string | null
   changedFields: string[]

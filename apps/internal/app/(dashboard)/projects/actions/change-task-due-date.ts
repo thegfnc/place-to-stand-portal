@@ -88,10 +88,8 @@ export async function changeTaskDueDate(input: {
     title: task.title ?? 'Task',
     changedFields: ['due date'],
     details: {
-      dueOn: {
-        from: previousDueOn,
-        to: nextDueOn,
-      },
+      before: { dueOn: previousDueOn },
+      after: { dueOn: nextDueOn },
     },
   })
 

@@ -136,12 +136,10 @@ export async function POST(request: Request) {
         highlight: buildNoActivityHighlight(timeframeDays as ValidTimeframe),
       }
 
-      const summary = JSON.stringify(response)
-
       await upsertActivityOverviewCache({
         userId: user.id,
         timeframeDays,
-        summary,
+        summary: response as unknown as Json,
         cachedAt: nowIso,
         expiresAt: expiresAtIso,
       })
@@ -187,7 +185,7 @@ export async function POST(request: Request) {
       await upsertActivityOverviewCache({
         userId: user.id,
         timeframeDays,
-        summary: JSON.stringify(response),
+        summary: response as unknown as Json,
         cachedAt: new Date().toISOString(),
         expiresAt: expiresAtIso,
       })
@@ -231,19 +229,26 @@ function buildCacheHeaders({
   }
 }
 
-function parseCachedResponse(summary: string): ActivityOverviewResponse {
+function safeParse(value: string): unknown {
   try {
-    const parsed = JSON.parse(summary) as unknown
-    if (
-      parsed &&
-      typeof parsed === 'object' &&
-      'metrics' in parsed &&
-      'highlight' in parsed
-    ) {
-      return parsed as ActivityOverviewResponse
-    }
+    return JSON.parse(value)
   } catch {
-    // Fall through to default
+    return null
+  }
+}
+
+function parseCachedResponse(summary: Json): ActivityOverviewResponse {
+  // Rows written before the column became jsonb hold a JSON string; newer
+  // rows hold the object directly.
+  const parsed: unknown =
+    typeof summary === 'string' ? safeParse(summary) : summary
+  if (
+    parsed &&
+    typeof parsed === 'object' &&
+    'metrics' in parsed &&
+    'highlight' in parsed
+  ) {
+    return parsed as ActivityOverviewResponse
   }
   return {
     metrics: { tasksDone: 0, newLeads: 0, activeProjects: 0, blockedTasks: 0 },
@@ -483,6 +488,8 @@ const TARGET_LABELS: Record<string, string> = {
   INVOICE: 'invoicing',
   SUBMISSION: 'website submissions',
   MONTHLY_CLOSE: 'monthly close',
+  CLIENT_UPDATE: 'client updates sent',
+  PLAN: 'planning',
 }
 
 const DEFAULT_PROJECT_LABEL = 'General'

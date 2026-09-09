@@ -3,6 +3,8 @@
 import { and, eq, isNull } from 'drizzle-orm'
 import { z } from 'zod'
 
+import { leadArchivedEvent } from '@/lib/activity/events'
+import { logActivity } from '@/lib/activity/logger'
 import { requireUser } from '@/lib/auth/session'
 import { assertAdmin } from '@/lib/auth/permissions'
 import { db } from '@/lib/db'
@@ -39,11 +41,21 @@ export async function archiveLead(
         deletedAt: new Date().toISOString(),
       })
       .where(and(eq(leads.id, parsed.data.leadId), isNull(leads.deletedAt)))
-      .returning({ id: leads.id })
+      .returning({ id: leads.id, contactName: leads.contactName })
 
-    if (!result.length) {
+    const archived = result[0]
+
+    if (!archived) {
       return { success: false, error: 'Lead not found.' }
     }
+
+    await logActivity({
+      actorId: user.id,
+      actorRole: user.role,
+      targetType: 'LEAD',
+      targetId: archived.id,
+      ...leadArchivedEvent({ name: archived.contactName }),
+    })
   } catch (error) {
     console.error('Failed to archive lead', error)
     return {

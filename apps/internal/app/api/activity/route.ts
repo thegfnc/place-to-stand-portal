@@ -2,26 +2,13 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
 import { fetchActivityLogs } from '@/lib/activity/queries'
-import type { ActivityTargetType } from '@/lib/activity/types'
+import {
+  ACTIVITY_TARGET_TYPES,
+  type ActivityTargetType,
+} from '@/lib/activity/types'
 import { getCurrentUser } from '@/lib/auth/session'
 
-const VALID_TARGET_TYPES: ActivityTargetType[] = [
-  'TASK',
-  'PROJECT',
-  'CLIENT',
-  'CONTACT',
-  'LEAD',
-  'SUBMISSION',
-  'PROPOSAL',
-  'COMMENT',
-  'TIME_LOG',
-  'HOUR_BLOCK',
-  'INVOICE',
-  'MONTHLY_CLOSE',
-  'USER',
-  'SETTINGS',
-  'GENERAL',
-]
+const VALID_TARGET_TYPES: readonly ActivityTargetType[] = ACTIVITY_TARGET_TYPES
 
 const isActivityTargetType = (
   value: string | null

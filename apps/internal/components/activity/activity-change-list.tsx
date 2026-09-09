@@ -57,7 +57,8 @@ export function ActivityChangeList({
             <MembershipChips
               added={membership.added}
               removed={membership.removed}
-              references={references}
+              references={membership.kind === 'user' ? references : undefined}
+              resolveNames={membership.kind === 'user'}
             />
           </dd>
         </div>
@@ -251,12 +252,15 @@ function MembershipChips({
   added,
   removed,
   references,
+  resolveNames,
 }: {
   added: string[]
   removed: string[]
   references?: ActivityReferences
+  resolveNames: boolean
 }) {
-  const nameFor = (id: string) => references?.users[id]?.name ?? 'Unknown user'
+  const nameFor = (id: string) =>
+    resolveNames ? (references?.users[id]?.name ?? 'Unknown user') : id
 
   return (
     <span className='inline-flex flex-wrap items-center gap-1'>

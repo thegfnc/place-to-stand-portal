@@ -9,7 +9,7 @@ import {
   invoiceLineItems,
   invoices,
 } from '@/lib/db/schema'
-import { hourBlockCreatedEvent } from '@/lib/activity/events'
+import { hourBlocksCreatedFromInvoiceEvent } from '@/lib/activity/events'
 import { logActivity } from '@/lib/activity/logger'
 import { resolveHourBlockBillingMonth } from '@/lib/queries/clients/billing-terms'
 
@@ -78,11 +78,15 @@ export async function createHourBlocksFromInvoice(
   // can reach this path (PRD 002 D13).
   const billingMonth = await resolveHourBlockBillingMonth(invoice.clientId)
 
+  const inserted: Array<{ id: string; hoursPurchased: number }> = []
+
   for (const item of qualifying) {
     const hoursPurchased = Number(item.quantity).toFixed(2)
 
-    // INSERT with ON CONFLICT DO NOTHING for idempotency
-    await db
+    // INSERT with ON CONFLICT DO NOTHING for idempotency. `.returning()` is
+    // empty when the conflict fired, so a webhook replay creates (and logs)
+    // nothing.
+    const rows = await db
       .insert(hourBlocks)
       .values({
         clientId: invoice.clientId,
@@ -96,22 +100,32 @@ export async function createHourBlocksFromInvoice(
         target: hourBlocks.invoiceLineItemId,
         where: sql`deleted_at IS NULL AND invoice_line_item_id IS NOT NULL`,
       })
+      .returning({ id: hourBlocks.id })
 
-    // Log activity (fire-and-forget)
-    const event = hourBlockCreatedEvent({
-      clientName: invoice.clientName,
-      hoursPurchased: Number(hoursPurchased),
-      invoiceNumber: invoice.invoiceNumber,
-    })
-
-    logActivity({
-      actorId: null,
-      source: 'SYSTEM',
-      verb: event.verb,
-      summary: event.summary,
-      targetType: 'HOUR_BLOCK',
-      targetClientId: invoice.clientId,
-      metadata: event.metadata,
-    }).catch(console.error)
+    for (const row of rows) {
+      inserted.push({ id: row.id, hoursPurchased: Number(hoursPurchased) })
+    }
   }
+
+  if (!inserted.length) {
+    return
+  }
+
+  const event = hourBlocksCreatedFromInvoiceEvent({
+    count: inserted.length,
+    totalHours: inserted.reduce((sum, row) => sum + row.hoursPurchased, 0),
+    invoiceNumber: invoice.invoiceNumber,
+    hourBlockIds: inserted.map(row => row.id),
+  })
+
+  await logActivity({
+    actorId: null,
+    source: 'SYSTEM',
+    verb: event.verb,
+    summary: event.summary,
+    targetType: 'HOUR_BLOCK',
+    targetId: inserted[0]?.id ?? null,
+    targetClientId: invoice.clientId,
+    metadata: event.metadata,
+  })
 }

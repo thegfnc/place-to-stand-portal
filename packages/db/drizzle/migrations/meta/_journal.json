@@ -533,6 +533,13 @@
       "when": 1788883755816,
       "tag": "0075_client_updates",
       "breakpoints": true
+    },
+    {
+      "idx": 76,
+      "version": "7",
+      "when": 1788979825747,
+      "tag": "0076_activity_logs_append_only",
+      "breakpoints": true
     }
   ]
 }

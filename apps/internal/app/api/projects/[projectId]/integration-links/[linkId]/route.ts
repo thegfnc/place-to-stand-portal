@@ -27,6 +27,6 @@ export async function DELETE(
     )
   }
 
-  await unlinkExternalProject(link, user.id)
+  await unlinkExternalProject(link, user)
   return NextResponse.json({ ok: true, success: true })
 }

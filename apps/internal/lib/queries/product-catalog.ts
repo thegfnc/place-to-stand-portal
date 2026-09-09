@@ -104,6 +104,25 @@ export async function listAllProductCatalogItems(): Promise<
 // ---------------------------------------------------------------------------
 // Get single product catalog item by ID
 // ---------------------------------------------------------------------------
+
+export async function getProductCatalogItemById(
+  id: string
+): Promise<ProductCatalogItemRow | null> {
+  const rows = await db
+    .select(productCatalogSelection)
+    .from(productCatalogItems)
+    .where(
+      and(
+        eq(productCatalogItems.id, id),
+        isNull(productCatalogItems.deletedAt)
+      )
+    )
+    .limit(1)
+
+  const row = rows[0]
+  return row ? mapRow(row) : null
+}
+
 // ---------------------------------------------------------------------------
 // Create product catalog item
 // ---------------------------------------------------------------------------

@@ -40,6 +40,7 @@ export type FieldChange = {
 export type MembershipChange = {
   key: string
   label: string
+  kind: 'user' | 'text'
   added: string[]
   removed: string[]
 }
@@ -90,12 +91,38 @@ const FIELD_SPECS: Record<string, FieldSpec> = {
   hoursPurchased: { label: 'Hours purchased', kind: 'hours' },
   taxRate: { label: 'Tax rate', kind: 'text' },
   disabled: { label: 'Access', kind: 'access' },
+  contactName: { label: 'Contact name', kind: 'text' },
+  contactEmail: { label: 'Contact email', kind: 'text' },
+  contactPhone: { label: 'Contact phone', kind: 'text' },
+  companyName: { label: 'Company', kind: 'text' },
+  companyWebsite: { label: 'Website', kind: 'text' },
+  sourceType: { label: 'Source', kind: 'enum' },
+  sourceDetail: { label: 'Source detail', kind: 'text' },
+  assigneeId: { label: 'Assignee', kind: 'user' },
+  occurredAt: { label: 'Occurred at', kind: 'date' },
+  body: { label: 'Body', kind: 'richText' },
+  company: { label: 'Company', kind: 'text' },
+  source: { label: 'Source', kind: 'enum' },
+  estimatedValue: { label: 'Estimated value', kind: 'money' },
+  loggedOn: { label: 'Logged on', kind: 'date' },
+  hours: { label: 'Hours', kind: 'hours' },
+  note: { label: 'Note', kind: 'longText' },
+  subject: { label: 'Subject', kind: 'text' },
+  unitPrice: { label: 'Unit price', kind: 'money' },
+  rate: { label: 'Rate', kind: 'number' },
+  active: { label: 'Active', kind: 'boolean' },
+  workerStatus: { label: 'Worker status', kind: 'enum' },
+  avatarChanged: { label: 'Avatar', kind: 'boolean' },
 }
 
-const MEMBERSHIP_SPECS: Record<string, string> = {
-  assignees: 'Assignees',
-  contractors: 'Contractors',
-  members: 'Members',
+/** Membership keys: `user` lists hold user ids the feed resolves, `text` lists are shown verbatim. */
+const MEMBERSHIP_SPECS: Record<string, { label: string; kind: 'user' | 'text' }> = {
+  assignees: { label: 'Assignees', kind: 'user' },
+  contractors: { label: 'Contractors', kind: 'user' },
+  members: { label: 'Members', kind: 'user' },
+  attachments: { label: 'Attachments', kind: 'text' },
+  recipients: { label: 'Recipients', kind: 'text' },
+  taskIds: { label: 'Linked tasks', kind: 'text' },
 }
 
 export function getActivityChanges(log: ActivityLogWithActor): ActivityChanges {
@@ -181,7 +208,7 @@ function collectMembershipChanges(
 ): MembershipChange[] {
   const changes: MembershipChange[] = []
 
-  for (const [key, label] of Object.entries(MEMBERSHIP_SPECS)) {
+  for (const [key, spec] of Object.entries(MEMBERSHIP_SPECS)) {
     const record = toRecord(metadata[key])
     if (!record) continue
 
@@ -189,7 +216,7 @@ function collectMembershipChanges(
     const removed = toStringArray(record.removed)
 
     if (added.length || removed.length) {
-      changes.push({ key, label, added, removed })
+      changes.push({ key, label: spec.label, kind: spec.kind, added, removed })
     }
   }
 
@@ -245,6 +272,15 @@ function collectFacts(
   }
   push('Model', metadata.model)
   push('Plan', metadata.planId, 'mono')
+
+  if (typeof metadata.count === 'number' && metadata.count > 1) {
+    push('Count', metadata.count)
+  }
+  push('Total hours', metadata.totalHours, 'hours')
+  push('Stale after', typeof metadata.staleAfterHours === 'number' ? `h` : null)
+  push('Form', metadata.formType)
+  push('Recipients', metadata.recipientCount)
+  push('Subject', metadata.subject)
 
   const attachmentsRemoved = metadata.attachmentsRemoved
   if (Array.isArray(attachmentsRemoved) && attachmentsRemoved.length > 0) {

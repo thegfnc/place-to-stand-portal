@@ -85,7 +85,7 @@ export async function POST(request: Request, { params }: RouteContext) {
       )
     }
 
-    const link = await linkExternalProject(projectId, option, user.id)
+    const link = await linkExternalProject(projectId, option, user)
     return NextResponse.json({ ok: true, data: link })
   } catch (error) {
     return integrationErrorResponse(error)

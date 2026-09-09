@@ -47,6 +47,7 @@ async function performUnsendInvoice(
       id: invoices.id,
       status: invoices.status,
       invoiceNumber: invoices.invoiceNumber,
+      clientId: invoices.clientId,
     })
     .from(invoices)
     .where(eq(invoices.id, invoiceId))
@@ -81,6 +82,7 @@ async function performUnsendInvoice(
       summary: `Reverted invoice ${existing.invoiceNumber ?? invoiceId} to draft`,
       targetType: 'INVOICE',
       targetId: invoiceId,
+      targetClientId: existing.clientId,
       metadata: { invoiceNumber: existing.invoiceNumber },
     })
 

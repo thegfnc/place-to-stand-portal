@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { logActivity } from '@/lib/activity/logger'
 import {
   monthlyCloseClosedEvent,
+  monthlyCloseReclosedEvent,
   monthlyCloseReopenedEvent,
 } from '@/lib/activity/events'
 import { assertAdmin } from '@/lib/auth/permissions'
@@ -395,11 +396,12 @@ export async function recloseMonth(
   }
 
   if (snapshotId) {
-    const event = monthlyCloseClosedEvent({
+    const event = monthlyCloseReclosedEvent({
       year,
       month,
       combinedBillingTotal: report.combinedBillingTotal,
       combinedPayoutTotal: report.combinedPayoutTotal,
+      previousSnapshotId: existing.id,
     })
     await logActivity({
       actorId: user.id,

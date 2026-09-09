@@ -3,6 +3,8 @@
 import { and, eq, isNotNull } from 'drizzle-orm'
 import { z } from 'zod'
 
+import { leadRestoredEvent } from '@/lib/activity/events'
+import { logActivity } from '@/lib/activity/logger'
 import { requireUser } from '@/lib/auth/session'
 import { assertAdmin } from '@/lib/auth/permissions'
 import { db } from '@/lib/db'
@@ -39,11 +41,21 @@ export async function restoreLead(
         deletedAt: null,
       })
       .where(and(eq(leads.id, parsed.data.leadId), isNotNull(leads.deletedAt)))
-      .returning({ id: leads.id })
+      .returning({ id: leads.id, contactName: leads.contactName })
 
-    if (!result.length) {
+    const restored = result[0]
+
+    if (!restored) {
       return { success: false, error: 'Lead not found in archive.' }
     }
+
+    await logActivity({
+      actorId: user.id,
+      actorRole: user.role,
+      targetType: 'LEAD',
+      targetId: restored.id,
+      ...leadRestoredEvent({ name: restored.contactName }),
+    })
   } catch (error) {
     console.error('Failed to restore lead', error)
     return {

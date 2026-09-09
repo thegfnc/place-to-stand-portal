@@ -121,3 +121,34 @@ Three diff shapes coexisted and only one rendered:
    ```
 
    Non-urgent: the rows are already hidden from every feed and the summary prompt.
+
+## Implementation status (follow-up PR, 2026-09-09)
+
+Every finding and recommendation above was actioned in the follow-up PR:
+
+| Item | Status |
+|---|---|
+| G1–G3 lead stage / create / update / archive / restore / delete | Logged (`LEAD_STATUS_CHANGED`, `LEAD_CREATED`, `LEAD_UPDATED` with diff, `LEAD_ARCHIVED`, `LEAD_RESTORED`, `LEAD_DELETED`) |
+| G4–G6 comments and time logs | Logging moved into the shared query helpers so browser, CLI and any future caller share one path; no-op comment edits skip; `TIME_LOG_UPDATED` / `TIME_LOG_DELETED` added. Browser log endpoint and `lib/activity/client.ts` deleted. |
+| G7 attachments | `TASK_ATTACHMENT_ADDED` / `_REMOVED` from `syncAttachments` |
+| G8 client update emails | `CLIENT_UPDATE_DRAFTED` / `_EDITED` / `_SENT` in the shared lib; CLI route passes `source: 'CLI'` |
+| G9 client notes from detail page | `CLIENT_UPDATED` with before/after |
+| G10 contact ↔ client links | `CONTACT_CLIENT_LINKED` / `_UNLINKED` |
+| G11 planning | `PLANNING_SESSION_CREATED`, `PLAN_REVISION_CREATED` (on completed generation only) |
+| G12 worker status sync | `TASK_WORKER_STATUS_CHANGED` on transitions only, `source: 'SYSTEM'` |
+| G13–G27 (P1) | Lead-update edit/delete, contact created in conversion, portal user create/restore, self-service profile and password changes, product catalog and tax rates, submission intake, leads intake, cron abandon sweep, sales-project creation: all logged. My-tasks reorder intentionally stays silent (pure ordering). |
+| N2 status verb | Sheet saves that only change status now emit `TASK_STATUS_CHANGED` |
+| N3 hour-block fan-out | One row per invoice, gated on rows actually inserted |
+| N5 re-close | `MONTHLY_CLOSE_RECLOSED` |
+| N6 OAuth writers | Single builder pair, consistent source, no re-log on re-auth |
+| N7 invoice badges | One badge per change, notes with before/after |
+| A1 browser log endpoint | Deleted |
+| A3 fire-and-forget | Stripe and hour-block logs awaited |
+| A4 missing `targetClientId` | Fixed on `INVOICE_UNSENT`, `LEAD_CONVERTED`, `CONTACT_INVITED_TO_PORTAL` |
+| A5 hardcoded role | Read from the acting user |
+| Shape convergence | All writers use `details.{before,after}`; the renderer keeps parsers for the two legacy shapes on historical rows |
+| Dead verbs / target types | Pruned from `ActivityVerbs`; `PROPOSAL` and `GENERAL` removed |
+| Schema | `updated_at` / `deleted_at` / `restored_at` dropped, two unused indexes dropped, `(target_type, created_at desc)` added, cache `summary` is jsonb (migration `0076`) |
+| Retention | Weekly cron `/api/cron/prune-activity-logs`, `ACTIVITY_LOG_RETENTION_DAYS` (default 730) |
+| Historical view rows | Deleted in migration `0076` |
+| A2 default `ADMIN_UI` source | Kept as the default for user actions; every webhook, cron, and intake writer now passes `source: 'SYSTEM'` explicitly, and the CLI routes pass `'CLI'`. |

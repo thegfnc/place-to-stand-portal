@@ -2,6 +2,7 @@ import { and, eq, isNull } from 'drizzle-orm'
 
 import { logActivity } from '@/lib/activity/logger'
 import { contactInvitedToPortalEvent } from '@/lib/activity/events/contacts'
+import { userCreatedEvent } from '@/lib/activity/events/users'
 import { assertAdmin } from '@/lib/auth/permissions'
 import { db } from '@/lib/db'
 import { clientMembers, contactClients, contacts } from '@/lib/db/schema'
@@ -106,10 +107,35 @@ export async function promoteContactToUserMutation(
       })
   }
 
-  // 5. Log activity event
+  // 5. Log activity events. A contact can be linked to several clients; the
+  // rows are scoped to the first one and carry the full list in metadata.
+  const clientIds = linkedClients.map(lc => lc.clientId)
+  const primaryClientId = clientIds[0] ?? null
+
+  if (portalResult.created) {
+    const userEvent = userCreatedEvent({
+      fullName: contact.name || contact.email,
+      role: 'CLIENT',
+      email: contact.email,
+      clientIds,
+    })
+
+    await logActivity({
+      actorId: user.id,
+      actorRole: user.role,
+      verb: userEvent.verb,
+      summary: userEvent.summary,
+      targetType: 'USER',
+      targetId: userId,
+      targetClientId: primaryClientId,
+      metadata: userEvent.metadata,
+    })
+  }
+
   const contactEvent = contactInvitedToPortalEvent({
     email: contact.email,
     name: contact.name,
+    clientIds,
   })
 
   await logActivity({
@@ -119,6 +145,7 @@ export async function promoteContactToUserMutation(
     summary: contactEvent.summary,
     targetType: 'CONTACT',
     targetId: contact.id,
+    targetClientId: primaryClientId,
     metadata: contactEvent.metadata,
   })
 

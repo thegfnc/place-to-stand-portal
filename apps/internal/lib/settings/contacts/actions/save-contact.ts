@@ -79,9 +79,25 @@ export async function saveContactMutation(
         }
 
         const changedFields: string[] = []
-        if (existingContact.email !== email) changedFields.push('email')
-        if (existingContact.name !== name) changedFields.push('name')
-        if (existingContact.phone !== phone) changedFields.push('phone')
+        const before: Record<string, unknown> = {}
+        const after: Record<string, unknown> = {}
+        const nextPhone = phone ?? null
+
+        if (existingContact.email !== email) {
+          changedFields.push('email')
+          before.email = existingContact.email
+          after.email = email
+        }
+        if (existingContact.name !== name) {
+          changedFields.push('name')
+          before.name = existingContact.name
+          after.name = name
+        }
+        if (existingContact.phone !== nextPhone) {
+          changedFields.push('phone')
+          before.phone = existingContact.phone
+          after.phone = nextPhone
+        }
 
         try {
           await db
@@ -106,6 +122,7 @@ export async function saveContactMutation(
             email,
             name,
             changedFields,
+            details: { before, after },
           })
 
           await logActivity({

@@ -2,6 +2,8 @@ import 'server-only'
 
 import { and, eq, isNull, isNotNull } from 'drizzle-orm'
 
+import { projectCreatedEvent } from '@/lib/activity/events'
+import { logActivity } from '@/lib/activity/logger'
 import { db } from '@/lib/db'
 import { projects } from '@/lib/db/schema'
 
@@ -64,6 +66,16 @@ export async function getOrCreateSalesProject(userId: string): Promise<string> {
     .returning({ id: projects.id })
 
   if (newProject) {
+    // Only the call that actually won the insert logs — a conflict returns no
+    // row and falls through to the re-select below.
+    await logActivity({
+      actorId: userId,
+      targetType: 'PROJECT',
+      targetId: newProject.id,
+      targetProjectId: newProject.id,
+      ...projectCreatedEvent({ name: SALES_PROJECT_NAME, status: 'ACTIVE' }),
+    })
+
     return newProject.id
   }
 

@@ -49,9 +49,3 @@ export type UseTaskCommentsState = {
     loadMore: () => void
   }
 }
-
-export type CommentActivityMetadata = {
-  taskId: string
-  commentId: string
-  bodyLength?: number
-}

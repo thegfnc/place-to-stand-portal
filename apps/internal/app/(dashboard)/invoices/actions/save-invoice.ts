@@ -285,34 +285,48 @@ async function performSaveInvoice(
 
     if ((existing.notes ?? null) !== (notes ?? null)) {
       changedFields.push('notes')
+      previousDetails.notes = existing.notes ?? null
+      nextDetails.notes = notes ?? null
     }
 
-    if (existing.taxRate !== taxRate.toString()) {
+    const taxRateChanged = existing.taxRate !== taxRate.toString()
+    const lineItemsChanged = existing.subtotal !== subtotal.toFixed(2)
+    const totalChanged = existing.total !== total.toFixed(2)
+
+    if (taxRateChanged) {
       changedFields.push('tax rate')
       previousDetails.taxRate = existing.taxRate
       nextDetails.taxRate = taxRate.toString()
     }
 
-    if (existing.subtotal !== subtotal.toFixed(2)) {
+    if (lineItemsChanged) {
       changedFields.push('line items')
       previousDetails.subtotal = existing.subtotal
       nextDetails.subtotal = subtotal.toFixed(2)
     }
 
-    if (existing.total !== total.toFixed(2)) {
-      changedFields.push('total')
+    // The total is a consequence of the line items or the tax rate, so it
+    // only earns its own badge when neither of those explains the movement.
+    if (totalChanged) {
       previousDetails.total = existing.total
       nextDetails.total = total.toFixed(2)
+
+      if (!taxRateChanged && !lineItemsChanged) {
+        changedFields.push('total')
+      }
     }
 
     if (changedFields.length > 0) {
+      const hasDetails =
+        Object.keys(previousDetails).length > 0 ||
+        Object.keys(nextDetails).length > 0
+
       const event = invoiceUpdatedEvent({
         invoiceNumber: existing.invoiceNumber,
         changedFields,
-        details: {
-          before: previousDetails,
-          after: nextDetails,
-        },
+        details: hasDetails
+          ? { before: previousDetails, after: nextDetails }
+          : undefined,
       })
 
       await logActivity({
