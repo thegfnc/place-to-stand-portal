@@ -82,17 +82,22 @@ export async function listUsersForSettings(
       ? isNull(users.deletedAt)
       : sql`${users.deletedAt} IS NOT NULL`
 
-  const baseConditions: SQL[] = [statusCondition]
-
-  // Role/access/search filters live in baseConditions so totalCount follows.
-  if (input.role) {
-    baseConditions.push(eq(users.role, input.role))
-  }
+  // Tab + access define the list's scope — the `M` in `Showing N of M`.
+  // Access defaults to enabled upstream, so the plain count already
+  // excludes departed staff; `all` widens the scope explicitly.
+  const scopeConditions: SQL[] = [statusCondition]
   if (input.access === 'enabled') {
-    baseConditions.push(isNull(users.disabledAt))
+    scopeConditions.push(isNull(users.disabledAt))
   }
   if (input.access === 'disabled') {
-    baseConditions.push(isNotNull(users.disabledAt))
+    scopeConditions.push(isNotNull(users.disabledAt))
+  }
+
+  const baseConditions: SQL[] = [...scopeConditions]
+
+  // Role/search filters live in baseConditions so totalCount follows.
+  if (input.role) {
+    baseConditions.push(eq(users.role, input.role))
   }
   const searchQuery = input.search?.trim() ?? ''
   if (searchQuery) {
@@ -114,7 +119,7 @@ export async function listUsersForSettings(
     db
       .select({ count: sql<number>`count(*)` })
       .from(users)
-      .where(statusCondition),
+      .where(and(...scopeConditions)),
   ])
 
   const totalCount = Number(totalResult[0]?.count ?? 0)

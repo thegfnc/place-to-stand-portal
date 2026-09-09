@@ -43,6 +43,7 @@ export const useUsersTableState = ({
     sheet,
     deleteDialog: mutationState.deleteDialog,
     destroyDialog: mutationState.destroyDialog,
+    disableDialog: mutationState.disableDialog,
     onOpenCreate: openCreate,
     selfDeleteReason: mutationState.selfDeleteReason,
     isPending: mutationState.isPending,

@@ -8,10 +8,17 @@ import {
   startSettingsInteraction,
 } from '@/lib/posthog/settings'
 
-import type { UserRow } from '../types'
+import { buildDisableDialogDescription } from '../constants'
+import type { DeleteDialogState, UserRow } from '../types'
 
 type UseSetUserDisabledActionReturn = {
+  /**
+   * Enabling applies immediately; disabling opens `disableDialog` first,
+   * because the list defaults to the Enabled filter and the row vanishes
+   * on success — a stray click on the switch must not be a surprise.
+   */
   setDisabled: (user: UserRow, disabled: boolean) => void
+  disableDialog: DeleteDialogState
   pendingDisableId: string | null
   isPending: boolean
 }
@@ -20,9 +27,17 @@ export function useSetUserDisabledAction(): UseSetUserDisabledActionReturn {
   const router = useRouter()
   const { toast } = useToast()
   const [pendingDisableId, setPendingDisableId] = useState<string | null>(null)
+  const [disableTarget, setDisableTarget] = useState<UserRow | null>(null)
+  // Retains the last target so the dialog copy stays stable while the close
+  // animation plays after disableTarget is cleared (same as the archive dialog).
+  const [lastDisableTarget, setLastDisableTarget] = useState<UserRow | null>(null)
   const [isPending, startTransition] = useTransition()
 
-  const handleSetDisabled = useCallback(
+  if (disableTarget && lastDisableTarget !== disableTarget) {
+    setLastDisableTarget(disableTarget)
+  }
+
+  const runSetDisabled = useCallback(
     (user: UserRow, disabled: boolean) => {
       setPendingDisableId(user.id)
       startTransition(async () => {
@@ -93,8 +108,54 @@ export function useSetUserDisabledAction(): UseSetUserDisabledActionReturn {
     [router, startTransition, toast],
   )
 
+  const handleSetDisabled = useCallback(
+    (user: UserRow, disabled: boolean) => {
+      if (isPending) {
+        return
+      }
+      if (!disabled) {
+        runSetDisabled(user, false)
+        return
+      }
+      setDisableTarget(user)
+    },
+    [isPending, runSetDisabled],
+  )
+
+  const handleCancelDisable = useCallback(() => {
+    if (isPending) {
+      return
+    }
+    setDisableTarget(null)
+    setLastDisableTarget(null)
+  }, [isPending])
+
+  const handleConfirmDisable = useCallback(() => {
+    if (isPending) {
+      return
+    }
+    const target = disableTarget ?? lastDisableTarget
+    if (!target) {
+      return
+    }
+    setDisableTarget(null)
+    setLastDisableTarget(null)
+    runSetDisabled(target, true)
+  }, [disableTarget, isPending, lastDisableTarget, runSetDisabled])
+
+  const disableDialog: DeleteDialogState = {
+    open: Boolean(disableTarget),
+    description: buildDisableDialogDescription(
+      disableTarget ?? lastDisableTarget,
+    ),
+    confirmDisabled: isPending,
+    onCancel: handleCancelDisable,
+    onConfirm: handleConfirmDisable,
+  }
+
   return {
     setDisabled: handleSetDisabled,
+    disableDialog,
     pendingDisableId,
     isPending,
   }
