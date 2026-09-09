@@ -35,6 +35,15 @@ import {
   getClickableRowProps,
 } from '@/lib/table/clickable-row'
 
+/**
+ * The one row action that creates something (a portal user) gets a pale
+ * green tint so it scans apart from the neutral preview button and the
+ * destructive archive button beside it — a warm tint read as another
+ * destructive action.
+ */
+const PROMOTE_BUTTON_CLASS =
+  'border-emerald-500/40 bg-emerald-500/10 text-emerald-700 hover:border-emerald-500/60 hover:bg-emerald-500/20 hover:text-emerald-800 dark:text-emerald-300 dark:hover:text-emerald-200'
+
 export type ContactsTableSectionProps = {
   contacts: ContactsTableContact[]
   mode: 'active' | 'archive'
@@ -219,7 +228,9 @@ export function ContactsTableSection({
                           size='icon-sm'
                           onClick={() => onRequestPromote(contact)}
                           title='Create portal account'
+                          aria-label='Create portal account'
                           disabled={promoteDisabled}
+                          className={PROMOTE_BUTTON_CLASS}
                         >
                           <UserPlus className='h-4 w-4' />
                         </Button>
