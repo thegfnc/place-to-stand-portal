@@ -1,7 +1,17 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { generateText } from 'ai'
-import { and, count, eq, gte, inArray, isNull } from 'drizzle-orm'
+import {
+  and,
+  countDistinct,
+  count,
+  eq,
+  gte,
+  inArray,
+  isNotNull,
+  isNull,
+  notLike,
+} from 'drizzle-orm'
 
 import type { ActivityLogWithActor } from '@/lib/activity/types'
 import type { Json } from '@/lib/types/json'
@@ -13,11 +23,16 @@ import {
 import { getCurrentUser } from '@/lib/auth/session'
 import { assertAdmin } from '@/lib/auth/permissions'
 import { db } from '@/lib/db'
-import { clients, leads, projects, tasks } from '@/lib/db/schema'
+import {
+  activityLogs,
+  clients,
+  leads,
+  projects,
+  tasks,
+} from '@/lib/db/schema'
 
 const VALID_TIMEFRAMES = [1, 7, 14, 28] as const
 const ONE_HOUR_MS = 60 * 60 * 1000
-const MAX_LOG_LINES_IN_PROMPT = 200
 // Gateway model id + reasoning level for the highlight. The summary is a few
 // thousand input tokens and a short paragraph out, so a Flash-tier model at
 // low thinking effort is plenty; bump here when a newer cheap model lands.
@@ -25,9 +40,33 @@ const MAX_LOG_LINES_IN_PROMPT = 200
 // widget footer can show which model is in use.
 const ACTIVITY_SUMMARY_MODEL = 'zai/glm-5.3-flash'
 const ACTIVITY_SUMMARY_REASONING = 'low' as const
-const HIGHLIGHT_CHARACTER_LIMIT = 1200
+// Safety cap only. The prompt sets the real length target per timeframe;
+// this just stops a runaway response from bloating the cache row.
+const HIGHLIGHT_CHARACTER_LIMIT = 4000
+// Compact metadata appended to each prompt line, so one noisy event can't
+// crowd out the rest.
+const METADATA_CHARACTER_LIMIT = 240
 
 type ValidTimeframe = (typeof VALID_TIMEFRAMES)[number]
+
+// Newest rows fetched per timeframe. Every non-view row reaches the model,
+// so these bound prompt size: ~40 tokens per compact line puts 28d at
+// roughly 30k input tokens, well inside the model's context.
+const TIMEFRAME_LOG_LIMITS: Record<ValidTimeframe, number> = {
+  1: 100,
+  7: 300,
+  14: 500,
+  28: 800,
+}
+
+// Bullets per team member the prompt asks for, so longer windows get a
+// fuller recap instead of the same three lines.
+const TIMEFRAME_BULLET_RANGE: Record<ValidTimeframe, string> = {
+  1: '1-3',
+  7: '2-4',
+  14: '3-5',
+  28: '3-6',
+}
 
 type CacheStatus = 'hit' | 'miss'
 
@@ -122,13 +161,13 @@ export async function POST(request: Request) {
     const since = new Date(now.getTime() - timeframeDays * 24 * 60 * 60 * 1000)
     const logs = await fetchActivityLogsSince(user, {
       since: since.toISOString(),
-      limit: MAX_LOG_LINES_IN_PROMPT,
+      limit: TIMEFRAME_LOG_LIMITS[timeframeDays as ValidTimeframe],
     })
 
     const expiresAtIso = new Date(now.getTime() + ONE_HOUR_MS).toISOString()
 
     const [metrics, context] = await Promise.all([
-      computeMetrics(logs, since),
+      computeMetrics(since),
       buildActivityContext(logs),
     ])
 
@@ -259,17 +298,14 @@ function parseCachedResponse(summary: Json): ActivityOverviewResponse {
   }
 }
 
-async function computeMetrics(
-  logs: ActivityLogWithActor[],
-  since: Date
-): Promise<ActivityMetrics> {
-  const activeProjects = countActiveProjects(logs)
-
-  const [tasksDone, newLeads, blockedTasks] = await Promise.all([
-    countTasksDone(since),
-    countNewLeads(since),
-    countBlockedTasks(),
-  ])
+async function computeMetrics(since: Date): Promise<ActivityMetrics> {
+  const [tasksDone, newLeads, activeProjects, blockedTasks] =
+    await Promise.all([
+      countTasksDone(since),
+      countNewLeads(since),
+      countActiveProjects(since),
+      countBlockedTasks(),
+    ])
 
   return {
     tasksDone,
@@ -302,14 +338,23 @@ function isViewEvent(log: ActivityLogWithActor): boolean {
   return log.verb.endsWith('_VIEWED') && log.target_type !== 'INVOICE'
 }
 
-function countActiveProjects(logs: ActivityLogWithActor[]): number {
-  const projectIds = new Set<string>()
-  for (const log of logs) {
-    if (log.target_project_id && !isViewEvent(log)) {
-      projectIds.add(log.target_project_id)
-    }
-  }
-  return projectIds.size
+/**
+ * Counted in the database rather than from the fetched sample so a busy
+ * window that exceeds the fetch limit still reports every touched project.
+ */
+async function countActiveProjects(since: Date): Promise<number> {
+  const result = await db
+    .select({ count: countDistinct(activityLogs.targetProjectId) })
+    .from(activityLogs)
+    .where(
+      and(
+        isNotNull(activityLogs.targetProjectId),
+        gte(activityLogs.createdAt, since.toISOString()),
+        notLike(activityLogs.verb, '%\\_VIEWED')
+      )
+    )
+
+  return result[0]?.count ?? 0
 }
 
 async function countNewLeads(since: Date): Promise<number> {
@@ -338,7 +383,7 @@ function buildSystemPrompt(timeframe: ValidTimeframe): string {
     'Format rules:',
     '- The entire output is bold headings with bullet points under them. Nothing else.',
     '- Use **Name** as a bold heading for each team member who had activity.',
-    '- Under each name, use 1-3 bullet points (using -) summarizing their key contributions.',
+    `- Under each name, use ${TIMEFRAME_BULLET_RANGE[timeframe]} bullet points (using -) summarizing their key contributions. Cover the whole window, not just the most recent days.`,
     '- Each bullet should be a concise, specific sentence mentioning project names or clients when available.',
     '- Focus on what matters: progress made, deals or leads, blockers, or notable momentum.',
     '- Write conversationally and casually.',
@@ -375,9 +420,10 @@ function buildUserPrompt({
 }): string {
   const timeframeLabel = timeframeDaysLabel(timeframeDays)
 
-  // Group logs by actor for per-member breakdown
+  // Group logs by actor for per-member breakdown. Every non-view row the
+  // query returned goes in; the per-timeframe fetch limit bounds the size.
   const logsByActor = new Map<string, string[]>()
-  for (const log of logs.filter(log => !isViewEvent(log)).slice(-50)) {
+  for (const log of logs.filter(log => !isViewEvent(log))) {
     const actorName = (
       log.actor?.full_name?.trim() || log.actor?.email || 'System'
     ).replace(/\s+/g, ' ')
@@ -399,7 +445,9 @@ function buildUserPrompt({
     `- Active projects: ${metrics.activeProjects}`,
     `- Blocked tasks: ${metrics.blockedTasks}`,
     '',
-    'Recent activity grouped by team member:',
+    'Activity grouped by team member, oldest first. Each line is:',
+    '[timestamp] verb · target · "summary" (project / client) {metadata}',
+    '',
     groupedSection,
     '',
     'Write a summary broken down by team member using **Name** headings and bullet points. Keep it concise and actionable. Every line must be either a bold heading or a bullet — no paragraphs.',
@@ -518,34 +566,45 @@ function formatActivityLog(
     timeZoneName: 'short',
   }).format(timestamp)
 
-  const actorName = (
-    log.actor?.full_name?.trim() ||
-    log.actor?.email ||
-    'System'
-  ).replace(/\s+/g, ' ')
-
   const targetLabel =
     TARGET_LABELS[log.target_type] || log.target_type || 'activity'
-  const summary = log.summary.trim()
+  const summary = log.summary.trim().replace(/\s+/g, ' ')
   const verb = log.verb.replaceAll('_', ' ').toLowerCase()
-  const record: Record<string, unknown> = {
-    timestamp: formattedTimestamp,
-    actor: actorName,
-    project,
-    client,
-    projectId: log.target_project_id,
-    clientId: log.target_client_id,
-    targetType: log.target_type,
-    targetLabel,
-    verb,
-    summary,
+
+  const parts = [
+    `[${formattedTimestamp}]`,
+    `${verb} · ${targetLabel} · "${summary}"`,
+    `(${project} / ${client})`,
+  ]
+
+  const metadata = compactMetadata(log.metadata)
+  if (metadata) {
+    parts.push(metadata)
   }
 
-  if (log.metadata && typeof log.metadata === 'object') {
-    record.metadata = log.metadata
+  return parts.join(' ')
+}
+
+/**
+ * Metadata often carries the useful specifics (hours logged, old/new status,
+ * amounts), but it can also be a large nested blob. Serialize it compactly
+ * and cap the length so one event cannot dominate the prompt.
+ */
+function compactMetadata(metadata: Json | null | undefined): string | null {
+  if (!metadata || typeof metadata !== 'object') {
+    return null
   }
 
-  return JSON.stringify(record)
+  const serialized = JSON.stringify(metadata)
+  if (serialized === '{}' || serialized === '[]') {
+    return null
+  }
+
+  if (serialized.length <= METADATA_CHARACTER_LIMIT) {
+    return serialized
+  }
+
+  return serialized.slice(0, METADATA_CHARACTER_LIMIT - 1) + '…'
 }
 
 /**
