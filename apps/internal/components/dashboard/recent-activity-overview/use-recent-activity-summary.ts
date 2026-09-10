@@ -32,6 +32,7 @@ type CacheMeta = {
   cacheStatus: "hit" | "miss" | null
   cachedAt?: string | null
   expiresAt?: string | null
+  model?: string | null
 } | null
 
 type InteractionTrigger = "initial" | "refresh" | "timeframe"
@@ -41,6 +42,8 @@ type UseRecentActivitySummaryReturn = {
   selectedTimeframe: TimeframeValue
   statusLabel: string
   metaLabel: string | null
+  /** Gateway model id that generated the highlight, e.g. "zai/glm-5.3-flash". */
+  modelLabel: string | null
   isBusy: boolean
   refresh: () => void
   changeTimeframe: (value: TimeframeValue) => void
@@ -171,6 +174,7 @@ export function useRecentActivitySummary(
           cacheStatus: responseCacheStatus,
           cachedAt: response.headers.get("x-activity-overview-cached-at"),
           expiresAt: response.headers.get("x-activity-overview-expires-at"),
+          model: response.headers.get("x-activity-overview-model"),
         })
 
         const data = (await response.json()) as {
@@ -270,6 +274,9 @@ export function useRecentActivitySummary(
     return `${freshness} · updated ${formatter.format(cachedDate)}`
   }, [cacheMeta, state.status])
 
+  const modelLabel =
+    state.status === "success" && cacheMeta?.model ? cacheMeta.model : null
+
   const isBusy = state.status === "loading"
 
   return {
@@ -277,6 +284,7 @@ export function useRecentActivitySummary(
     selectedTimeframe,
     statusLabel,
     metaLabel,
+    modelLabel,
     isBusy,
     refresh,
     changeTimeframe,

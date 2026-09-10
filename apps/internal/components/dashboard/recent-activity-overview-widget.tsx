@@ -26,6 +26,7 @@ export function RecentActivityOverviewWidget({
     selectedTimeframe,
     statusLabel,
     metaLabel,
+    modelLabel,
     isBusy,
     refresh,
     changeTimeframe,
@@ -66,7 +67,7 @@ export function RecentActivityOverviewWidget({
           <div className='flex-1 overflow-y-auto px-4 py-3'>
             <SummaryContent state={state} />
           </div>
-          <footer className='text-muted-foreground border-t px-4 py-2 text-xs'>
+          <footer className='text-muted-foreground flex flex-wrap items-center justify-between gap-2 border-t px-4 py-2 text-xs'>
             <div className='flex flex-wrap items-center gap-2'>
               <Badge
                 variant='outline'
@@ -76,6 +77,14 @@ export function RecentActivityOverviewWidget({
               </Badge>
               {metaLabel ? <span>{metaLabel}</span> : null}
             </div>
+            {modelLabel ? (
+              <span
+                className='ml-auto font-mono text-[10px]'
+                title='AI model used for the summary'
+              >
+                {modelLabel}
+              </span>
+            ) : null}
           </footer>
         </div>
       </Tabs>

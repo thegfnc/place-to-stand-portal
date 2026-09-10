@@ -19,9 +19,11 @@ const VALID_TIMEFRAMES = [1, 7, 14, 28] as const
 const ONE_HOUR_MS = 60 * 60 * 1000
 const MAX_LOG_LINES_IN_PROMPT = 200
 // Gateway model id + reasoning level for the highlight. The summary is a few
-// thousand input tokens and a short paragraph out, so a Flash-Lite tier model
-// at low thinking effort is plenty; bump here when a newer cheap model lands.
-const ACTIVITY_SUMMARY_MODEL = 'google/gemini-3.5-flash-lite'
+// thousand input tokens and a short paragraph out, so a Flash-tier model at
+// low thinking effort is plenty; bump here when a newer cheap model lands.
+// The id is echoed in the `x-activity-overview-model` response header so the
+// widget footer can show which model is in use.
+const ACTIVITY_SUMMARY_MODEL = 'zai/glm-5.3-flash'
 const ACTIVITY_SUMMARY_REASONING = 'low' as const
 const HIGHLIGHT_CHARACTER_LIMIT = 1200
 
@@ -226,6 +228,7 @@ function buildCacheHeaders({
     'x-activity-overview-cache': status,
     'x-activity-overview-cached-at': cachedAt,
     'x-activity-overview-expires-at': expiresAt,
+    'x-activity-overview-model': ACTIVITY_SUMMARY_MODEL,
   }
 }
 
