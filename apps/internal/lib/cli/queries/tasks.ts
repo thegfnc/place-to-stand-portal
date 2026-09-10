@@ -5,7 +5,8 @@ import { and, desc, eq, exists, inArray, isNull, sql } from 'drizzle-orm'
 import { assertAdmin } from '@/lib/auth/permissions'
 import type { AppUser } from '@/lib/auth/session'
 import { db } from '@/lib/db'
-import { taskAssignees, tasks } from '@/lib/db/schema'
+import { clients, projects, taskAssignees, tasks } from '@/lib/db/schema'
+import { PROJECT_SPECIAL_SEGMENTS } from '@/lib/projects/board/board-utils'
 import { getTaskById } from '@/lib/queries/tasks/basic'
 import { taskFields, type SelectTask } from '@/lib/queries/tasks/common'
 
@@ -53,6 +54,59 @@ export async function fetchAssigneeIdsByTask(
   }
 
   return grouped
+}
+
+/** The slugs a task's board URL is built from. */
+export type BoardLocation = {
+  clientSegment: string
+  projectSlug: string
+}
+
+/**
+ * Where each project's board lives, as projectId -> location, or null when the
+ * board itself can't link the project (no project slug, or a client project
+ * whose client has no slug). Batched like `fetchAssigneeIdsByTask`: a list of
+ * tasks costs one extra query however many projects it spans.
+ */
+export async function fetchBoardLocationsByProject(
+  projectIds: string[]
+): Promise<Map<string, BoardLocation | null>> {
+  const located = new Map<string, BoardLocation | null>()
+  const uniqueIds = [...new Set(projectIds)]
+
+  if (!uniqueIds.length) {
+    return located
+  }
+
+  const rows = await db
+    .select({
+      id: projects.id,
+      slug: projects.slug,
+      type: projects.type,
+      clientSlug: clients.slug,
+    })
+    .from(projects)
+    .leftJoin(clients, eq(clients.id, projects.clientId))
+    .where(inArray(projects.id, uniqueIds))
+
+  for (const row of rows) {
+    // Mirrors `getProjectClientSegment`, which wants a hydrated project.
+    const clientSegment =
+      row.type === 'INTERNAL'
+        ? PROJECT_SPECIAL_SEGMENTS.INTERNAL
+        : row.type === 'PERSONAL'
+          ? PROJECT_SPECIAL_SEGMENTS.PERSONAL
+          : row.clientSlug
+
+    located.set(
+      row.id,
+      row.slug && clientSegment
+        ? { clientSegment, projectSlug: row.slug }
+        : null
+    )
+  }
+
+  return located
 }
 
 /**

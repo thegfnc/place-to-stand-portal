@@ -111,6 +111,10 @@ is scaffolded with one empty item per task that moved since the last sent update
 ]
 ```
 
+`tasks show`, `tasks create` and `tasks edit` print the task's portal URL on stderr (`View: …`),
+built from the `path` field in the response the same way `updates draft` does — so the link you
+hand someone is the one the board actually uses, not a guess.
+
 `tasks edit` is a genuine partial update: fields you omit keep their current values, and
 `--clear-description` / `--clear-due` are how you blank one. This matters because the
 underlying save is a full replace.
