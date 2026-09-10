@@ -39,6 +39,7 @@ const RETIRED_VERBS = ['PROJECT_VIEWED', 'CLIENT_VIEWED']
 const DEFAULT_PAGE_SIZE = 25
 const MAX_PAGE_SIZE = 100
 const DEFAULT_RECENT_ACTIVITY_LIMIT = 200
+const MAX_RECENT_ACTIVITY_LIMIT = 1000
 
 type SqlExpression = SQL<unknown>
 
@@ -162,7 +163,7 @@ export async function fetchActivityLogsSince(
 
   const effectiveLimit = Math.min(
     Math.max(limit ?? DEFAULT_RECENT_ACTIVITY_LIMIT, 1),
-    DEFAULT_RECENT_ACTIVITY_LIMIT
+    MAX_RECENT_ACTIVITY_LIMIT
   )
 
   const whereClause = combineConditions([
