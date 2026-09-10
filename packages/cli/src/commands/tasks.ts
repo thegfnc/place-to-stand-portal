@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+
 import type { Command } from 'commander'
 
 import { apiGet, apiPatch, apiPost } from '../client.js'
@@ -84,11 +86,18 @@ export function registerTaskCommands(program: Command): void {
 
   tasks
     .command('comment <taskId>')
-    .description('Add a comment to a task')
-    .requiredOption('--body <text>', 'Comment body')
+    .description(
+      'Add a comment to a task. The body is minimal markdown: paragraphs on blank lines, - bullets, 1. numbered lists, **bold**, *italic*, `code`, [text](https://…) links.'
+    )
+    .requiredOption('--body <text>', 'Comment body; "-" reads stdin')
     .action(async (taskId: string, options: { body: string }) => {
+      // Multi-paragraph comments are awkward to pass as one shell argument, so
+      // `-` reads the body from stdin (a heredoc, usually), like `updates
+      // draft --items -`.
+      const body = options.body === '-' ? readFileSync(0, 'utf8') : options.body
+
       const { data } = await apiPost(`api/cli/v1/tasks/${taskId}/comments`, {
-        body: options.body,
+        body,
       })
 
       emit(data)
