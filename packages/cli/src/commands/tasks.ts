@@ -32,6 +32,15 @@ type EditOptions = {
   clearDue?: boolean
 }
 
+/**
+ * Multi-paragraph text is awkward to pass as one shell argument, so every
+ * free-text flag (`--body`, `--description`) accepts `-` to read stdin — a
+ * heredoc, usually — like `updates draft --items -`.
+ */
+function textOrStdin(value: string | undefined): string | undefined {
+  return value === '-' ? readFileSync(0, 'utf8') : value
+}
+
 export function registerTaskCommands(program: Command): void {
   const tasks = program.command('tasks').description('Read and write tasks')
 
@@ -67,7 +76,7 @@ export function registerTaskCommands(program: Command): void {
     .description('Create a task')
     .requiredOption('--title <title>', 'Task title')
     .requiredOption('--project <ref>', 'Project UUID or slug')
-    .option('--description <text>', 'Task description')
+    .option('--description <text>', 'Task description; "-" reads stdin')
     .option('--status <status>', 'Defaults to ON_DECK')
     .option('--due <date>', 'Due date as YYYY-MM-DD')
     .option('--assignee <user...>', 'Assign by email or user id')
@@ -75,7 +84,7 @@ export function registerTaskCommands(program: Command): void {
       const { data, warning } = await apiPost('api/cli/v1/tasks', {
         title: options.title,
         project: options.project,
-        description: options.description,
+        description: textOrStdin(options.description),
         status: options.status,
         dueOn: options.due,
         assigneeIds: options.assignee,
@@ -91,10 +100,7 @@ export function registerTaskCommands(program: Command): void {
     )
     .requiredOption('--body <text>', 'Comment body; "-" reads stdin')
     .action(async (taskId: string, options: { body: string }) => {
-      // Multi-paragraph comments are awkward to pass as one shell argument, so
-      // `-` reads the body from stdin (a heredoc, usually), like `updates
-      // draft --items -`.
-      const body = options.body === '-' ? readFileSync(0, 'utf8') : options.body
+      const body = textOrStdin(options.body)
 
       const { data } = await apiPost(`api/cli/v1/tasks/${taskId}/comments`, {
         body,
@@ -120,7 +126,7 @@ export function registerTaskCommands(program: Command): void {
     .description('Update a task; omitted fields keep their current values')
     .option('--title <title>')
     .option('--project <ref>', 'Move the task to another project')
-    .option('--description <text>')
+    .option('--description <text>', 'Task description; "-" reads stdin')
     .option('--status <status>')
     .option('--due <date>', 'Due date as YYYY-MM-DD')
     .option('--assignee <user...>', 'Replace assignees, by email or user id')
@@ -140,7 +146,7 @@ export function registerTaskCommands(program: Command): void {
       if (options.clearDescription) {
         payload.description = null
       } else if (options.description !== undefined) {
-        payload.description = options.description
+        payload.description = textOrStdin(options.description)
       }
 
       if (options.clearDue) {

@@ -92,8 +92,8 @@ quietly unassign everyone.
 `tasks comment` and the `--description` flags take plain text or minimal markdown — paragraphs
 on blank lines, `- ` bullets, `1. ` numbered lists, `**bold**`, `*italic*`, `` `code` ``, and
 `[text](https://…)` links — and store the HTML the portal's editor would have produced. Raw HTML
-tags in the text are escaped, not rendered. `--body -` reads the comment from stdin, so a
-multi-paragraph comment can come from a heredoc instead of one long shell argument.
+tags in the text are escaped, not rendered. Both `--body -` and `--description -` read from
+stdin, so multi-paragraph text can come from a heredoc instead of one long shell argument.
 
 `updates draft` creates a client status email as a draft in the portal and prints the URL where
 you review recipients, edit, and send it from your own Gmail. The CLI never sends. Pass `--items`
