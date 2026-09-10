@@ -108,7 +108,7 @@ export function ClientCloserPicker({
               >
                 <span className='flex items-center gap-2'>
                   <Handshake className='h-4 w-4' />
-                  Select closer
+                  No closer — share stays in house
                 </span>
                 <ChevronsUpDown className='h-4 w-4 opacity-50' />
               </Button>
@@ -151,8 +151,8 @@ export function ClientCloserPicker({
         </PopoverContent>
       </Popover>
       <p className='text-muted-foreground text-xs'>
-        The PTS partner who finalized the deal. Drives the 20% closer
-        commission.
+        Optional. With no closer, the 20% closer share is not paid out and
+        the Monthly Close reports it under House (estimated).
       </p>
     </div>
   )

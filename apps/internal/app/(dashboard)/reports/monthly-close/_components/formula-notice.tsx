@@ -49,7 +49,7 @@ function RateBreakdown({ rates }: { rates: PartnerRateSchedule }) {
         </span>
       </div>
       <div className='flex items-center justify-between gap-4 text-sm'>
-        <span className='text-foreground/70'>House</span>
+        <span className='text-foreground/70'>House (est.)</span>
         <span className='font-medium tabular-nums'>
           ${rates.housePerHour}/hr ({pct(rates.housePerHour, rates.billablePerHour)})
         </span>

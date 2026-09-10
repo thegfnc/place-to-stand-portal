@@ -15,6 +15,9 @@ export const clientSheetFormSchema = z.object({
   // Month boundary the report basis switches at when billingType changes on
   // an existing client (the saved type applies to the UI/invoices at once).
   billingEffective: z.enum(['current_month', 'next_month']),
+  // Month boundary the Monthly Close switches closer/origination at when
+  // either changes on an existing client (the cache columns flip at once).
+  commissionEffective: z.enum(['current_month', 'next_month']),
   state: z.string().max(2).optional(),
   website: z
     .string()

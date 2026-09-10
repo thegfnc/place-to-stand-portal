@@ -28,6 +28,12 @@ export const clientSchema = z
     billingEffective: z
       .enum(['current_month', 'next_month'])
       .default('next_month'),
+    // Month boundary the Monthly Close switches closer/origination at when
+    // either changes on an existing client. Ignored on create and when the
+    // assignment is unchanged.
+    commissionEffective: z
+      .enum(['current_month', 'next_month'])
+      .default('next_month'),
     state: z
       .string()
       .max(2)
@@ -78,10 +84,8 @@ export const clientSchema = z
       path: ['originationUserId'],
     }
   )
-  .refine(data => data.closerUserId !== null, {
-    message: 'Closer is required. Pick an internal PTS partner.',
-    path: ['closerUserId'],
-  })
+  // Closer is deliberately optional (PRD 007): with no closer the 20% share
+  // is not paid out and the Monthly Close reports it under House (estimated).
 
 /**
  * Verifies that any user IDs referenced by origination / closer fields

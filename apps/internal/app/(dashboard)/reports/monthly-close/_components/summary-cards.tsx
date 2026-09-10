@@ -234,9 +234,11 @@ export function TotalPayoutsCard({
       icon: UserCheck,
     })
   }
+  // House is an estimate (the firm's nominal share plus any unassigned closer
+  // share), never a payout — label it so nobody cuts a check for it.
   children.push({
-    label: 'House',
-    sublabel: formatPercent(rates.housePerHour, rates.billablePerHour),
+    label: 'House (est.)',
+    sublabel: `${formatPercent(rates.housePerHour, rates.billablePerHour)} · estimated`,
     value: houseTotal,
     icon: Building,
   })
@@ -246,7 +248,7 @@ export function TotalPayoutsCard({
       label='Billing Distribution'
       icon={Wallet}
       total={total}
-      caption='How billing is distributed — Payroll + Origination + Closer + House.'
+      caption='How billing is distributed — Payroll + Origination + Closer + House (est.).'
       accent='violet'
       action={action}
       stretch

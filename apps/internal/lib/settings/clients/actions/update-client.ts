@@ -14,6 +14,10 @@ import {
   upsertBillingTerm,
 } from '@/lib/queries/clients/billing-terms'
 import {
+  commissionAssignmentsEqual,
+  upsertCommissionTerm,
+} from '@/lib/queries/clients/commission-terms'
+import {
   assertClientPartnerUserRoles,
   clientSlugExists,
   syncClientMembers,
@@ -33,6 +37,8 @@ type UpdateClientPayload = {
   billingType: ClientBillingTypeValue
   /** Month boundary the report basis switches at when billingType changes. */
   billingEffective: 'current_month' | 'next_month'
+  /** Month boundary the Monthly Close switches closer/origination at. */
+  commissionEffective: 'current_month' | 'next_month'
   state: string | null
   website: string | null
   originationContactId: string | null
@@ -49,7 +55,7 @@ class ClosedMonthError extends Error {
       { month: 'long', year: 'numeric', timeZone: 'UTC' }
     )
     super(
-      `That month's books are closed. Reopen ${label} before changing its billing basis.`
+      `That month's books are closed. Reopen ${label} before changing its billing or commission basis.`
     )
     this.name = 'ClosedMonthError'
   }
@@ -78,6 +84,7 @@ export async function updateClient(
     providedSlug,
     billingType,
     billingEffective,
+    commissionEffective,
     state,
     website,
     originationContactId,
@@ -166,6 +173,20 @@ export async function updateClient(
       : nextMonthStartUtc()
     : null
 
+  // Closer + origination are one logical "commission split" (PRD 007): any
+  // change to either writes one effective-dated term so closed months keep
+  // resolving to the assignment they were paid under.
+  const nextAssignment = { closerUserId, originationUserId, originationContactId }
+  const commissionChanged = !commissionAssignmentsEqual(
+    existingClient,
+    nextAssignment
+  )
+  const commissionEffectiveFrom = commissionChanged
+    ? commissionEffective === 'current_month'
+      ? currentMonthStartUtc()
+      : nextMonthStartUtc()
+    : null
+
   try {
     await db.transaction(async tx => {
       if (billingTypeChanged && billingEffectiveFrom) {
@@ -183,8 +204,22 @@ export async function updateClient(
         })
       }
 
-      // The billingType write below is the current-value cache flip; the
-      // terms row's effective_from controls only report-basis resolution.
+      if (commissionChanged && commissionEffectiveFrom) {
+        if (await isMonthClosed(commissionEffectiveFrom)) {
+          throw new ClosedMonthError(commissionEffectiveFrom)
+        }
+
+        await upsertCommissionTerm(tx, {
+          clientId: id,
+          effectiveFrom: commissionEffectiveFrom,
+          ...nextAssignment,
+          createdBy: user.id,
+        })
+      }
+
+      // The billingType / closer / origination writes below are the
+      // current-value cache flip (what the client list, detail page and sheet
+      // show); the terms rows' effective_from controls report resolution.
       await tx
         .update(clients)
         .set({
@@ -228,6 +263,7 @@ export async function updateClient(
       slugToUpdate,
       billingType,
       billingEffectiveFrom,
+      commissionEffectiveFrom,
       originationContactId,
       originationUserId,
       closerUserId,
@@ -251,6 +287,7 @@ type RecordUpdateActivityArgs = {
     slugToUpdate: string | null
     billingType: ClientBillingTypeValue
     billingEffectiveFrom: string | null
+    commissionEffectiveFrom: string | null
     originationContactId: string | null
     originationUserId: string | null
     closerUserId: string | null
@@ -365,6 +402,7 @@ function calculateDiff({
     previousDetails.originationContactId = previousOriginationContactId
     nextDetails.originationUserId = nextOriginationUserId
     nextDetails.originationContactId = nextOriginationContactId
+    nextDetails.commissionEffectiveFrom = updatedValues.commissionEffectiveFrom
   }
 
   const previousCloserUserId = existingClient.closerUserId ?? null
@@ -374,6 +412,8 @@ function calculateDiff({
     changedFields.push('closer')
     previousDetails.closerUserId = previousCloserUserId
     nextDetails.closerUserId = nextCloserUserId
+    // Month boundary the Monthly Close switches at (the cache flips at save).
+    nextDetails.commissionEffectiveFrom = updatedValues.commissionEffectiveFrom
   }
 
   const addedMembers = diff(nextMemberIds, existingMemberIds)

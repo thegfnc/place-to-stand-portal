@@ -12,6 +12,11 @@ import {
   users,
 } from '@/lib/db/schema'
 import { billingTypeAsOfSql } from '@/lib/queries/clients/billing-terms'
+import {
+  closerUserIdAsOfSql,
+  originationContactIdAsOfSql,
+  originationUserIdAsOfSql,
+} from '@/lib/queries/clients/commission-terms'
 import type { MonthCursor } from '@/lib/data/reports/types'
 
 /**
@@ -20,6 +25,11 @@ import type { MonthCursor } from '@/lib/data/reports/types'
  * client's billing type never rewrites already-rendered historical months.
  * NULL resolution (no term at or before the period) fails both comparisons
  * and excludes the client from that month.
+ *
+ * Closer and origination resolve the same way from `client_commission_terms`
+ * (PRD 007): the commission joins below match on the as-of assignment, never
+ * on the live `clients.*` cache columns, so reassigning a closer today leaves
+ * every closed month exactly as it was paid.
  */
 function isPrepaidAsOf(periodStart: string) {
   return sql`${billingTypeAsOfSql(periodStart)} = 'prepaid'`
@@ -198,7 +208,7 @@ export async function fetchOriginationCommissions(
         })
         .from(hourBlocks)
         .innerJoin(clients, eq(hourBlocks.clientId, clients.id))
-        .innerJoin(users, eq(clients.originationUserId, users.id))
+        .innerJoin(users, eq(originationUserIdAsOfSql(startDate), users.id))
         .where(
           and(
             isPrepaidAsOf(startDate),
@@ -231,7 +241,7 @@ export async function fetchOriginationCommissions(
         })
         .from(hourBlocks)
         .innerJoin(clients, eq(hourBlocks.clientId, clients.id))
-        .innerJoin(contacts, eq(clients.originationContactId, contacts.id))
+        .innerJoin(contacts, eq(originationContactIdAsOfSql(startDate), contacts.id))
         .where(
           and(
             isPrepaidAsOf(startDate),
@@ -265,7 +275,7 @@ export async function fetchOriginationCommissions(
         .from(timeLogs)
         .innerJoin(projects, eq(timeLogs.projectId, projects.id))
         .innerJoin(clients, eq(projects.clientId, clients.id))
-        .innerJoin(users, eq(clients.originationUserId, users.id))
+        .innerJoin(users, eq(originationUserIdAsOfSql(startDate), users.id))
         .where(
           and(
             isNet30AsOf(startDate),
@@ -301,7 +311,7 @@ export async function fetchOriginationCommissions(
         .from(timeLogs)
         .innerJoin(projects, eq(timeLogs.projectId, projects.id))
         .innerJoin(clients, eq(projects.clientId, clients.id))
-        .innerJoin(contacts, eq(clients.originationContactId, contacts.id))
+        .innerJoin(contacts, eq(originationContactIdAsOfSql(startDate), contacts.id))
         .where(
           and(
             isNet30AsOf(startDate),
@@ -393,7 +403,9 @@ export async function fetchOriginationCommissions(
  *   Prepaid → hour_blocks.hours_purchased
  *   Net_30  → time_logs.hours on net_30 client projects
  *
- * Closer is always an internal admin user (no contact branch).
+ * Closer is always an internal admin user (no contact branch). Clients whose
+ * as-of term has no closer are simply absent here; the data layer reports
+ * their closer share under House (estimated).
  */
 export async function fetchCloserCommissions(
   startDate: string,
@@ -416,7 +428,7 @@ export async function fetchCloserCommissions(
       })
       .from(hourBlocks)
       .innerJoin(clients, eq(hourBlocks.clientId, clients.id))
-      .innerJoin(closerUsers, eq(clients.closerUserId, closerUsers.id))
+      .innerJoin(closerUsers, eq(closerUserIdAsOfSql(startDate), closerUsers.id))
       .where(
         and(
           isPrepaidAsOf(startDate),
@@ -452,7 +464,7 @@ export async function fetchCloserCommissions(
       .from(timeLogs)
       .innerJoin(projects, eq(timeLogs.projectId, projects.id))
       .innerJoin(clients, eq(projects.clientId, clients.id))
-      .innerJoin(closerUsers, eq(clients.closerUserId, closerUsers.id))
+      .innerJoin(closerUsers, eq(closerUserIdAsOfSql(startDate), closerUsers.id))
       .where(
         and(
           isNet30AsOf(startDate),

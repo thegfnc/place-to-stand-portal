@@ -540,6 +540,13 @@
       "when": 1788979825747,
       "tag": "0076_activity_logs_append_only",
       "breakpoints": true
+    },
+    {
+      "idx": 77,
+      "version": "7",
+      "when": 1789047574988,
+      "tag": "0077_client_commission_terms",
+      "breakpoints": true
     }
   ]
 }

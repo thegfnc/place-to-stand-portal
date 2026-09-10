@@ -99,6 +99,7 @@ export function useClientSheetFormState({
       slug: client?.slug ?? '',
       billingType: client?.billing_type ?? 'prepaid',
       billingEffective: 'next_month',
+      commissionEffective: 'next_month',
       state: client?.state ?? '',
       website: client?.website ?? '',
       notes: client?.notes ?? '',
@@ -177,12 +178,17 @@ export function useClientSheetFormState({
     return currentCloserId !== initialCloserUserId
   }, [selectedCloser, initialCloserUserId])
 
+  // Closer + origination are one effective-dated commission term (PRD 007);
+  // the form reveals the boundary select when either side changed.
+  const commissionDirty = originationDirty || closerDirty
+
   const resetFormState = useCallback(() => {
     const defaults = {
       name: client?.name ?? initialName ?? '',
       slug: client?.slug ?? '',
       billingType: client?.billing_type ?? 'prepaid',
       billingEffective: 'next_month' as const,
+      commissionEffective: 'next_month' as const,
       state: client?.state ?? '',
       website: client?.website ?? '',
       notes: client?.notes ?? '',
@@ -495,22 +501,20 @@ export function useClientSheetFormState({
       }
 
       // Origination is required — exactly one of user OR contact must be set.
+      // Closer is optional (PRD 007): with none, the closer share stays in
+      // house (estimated) on the Monthly Close.
       const hasOriginationUser =
         originationMode === 'internal' && selectedOriginationUser !== null
       const hasOriginationContact =
         originationMode === 'external' && selectedOriginationContact !== null
       const originationMissing = !hasOriginationUser && !hasOriginationContact
-      const closerMissing = !selectedCloser
 
-      if (originationMissing || closerMissing) {
+      if (originationMissing) {
         setOriginationError(
-          originationMissing
-            ? originationMode === 'internal'
-              ? 'Pick an internal partner.'
-              : 'Pick an external referrer.'
-            : null
+          originationMode === 'internal'
+            ? 'Pick an internal partner.'
+            : 'Pick an external referrer.'
         )
-        setCloserError(closerMissing ? 'Pick a closer.' : null)
         return
       }
 
@@ -530,6 +534,7 @@ export function useClientSheetFormState({
             : null,
           billingType: values.billingType,
           billingEffective: values.billingEffective,
+          commissionEffective: values.commissionEffective,
           state: values.state?.trim() ? values.state.trim() : null,
           website: values.website?.trim() ? values.website.trim() : null,
           originationContactId:
@@ -614,6 +619,7 @@ export function useClientSheetFormState({
             slug: payload.slug ?? '',
             billingType: payload.billingType,
             billingEffective: 'next_month',
+            commissionEffective: 'next_month',
             state: payload.state ?? '',
             website: payload.website ?? '',
             notes: payload.notes ?? '',
@@ -694,6 +700,7 @@ export function useClientSheetFormState({
     closerPickerDisabled,
     closerPickerDisabledReason,
     closerError,
+    commissionDirty,
     handleCloserPickerOpenChange,
     handleSelectCloser,
     handleClearCloser,

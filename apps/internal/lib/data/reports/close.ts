@@ -146,11 +146,22 @@ const snapshotReportSchema = z.object({
     totalAmount: z.number(),
     hourlyRate: z.number(),
   }),
-  house: z.object({
-    billableHours: z.number(),
-    ratePerHour: z.number(),
-    totalAmount: z.number(),
-  }),
+  house: z
+    .object({
+      billableHours: z.number(),
+      ratePerHour: z.number(),
+      totalAmount: z.number(),
+      // PRD 007 fields. Snapshots frozen before them carry none; every such
+      // month had a closer on every billed client, so the split is exact.
+      nominalAmount: z.number().optional(),
+      unassignedCloserHours: z.number().default(0),
+      unassignedCloserAmount: z.number().default(0),
+    })
+    .transform(house => ({
+      ...house,
+      nominalAmount:
+        house.nominalAmount ?? house.totalAmount - house.unassignedCloserAmount,
+    })),
   workBillableHours: z.number(),
   workBillableTotal: z.number(),
   combinedBillingTotal: z.number(),

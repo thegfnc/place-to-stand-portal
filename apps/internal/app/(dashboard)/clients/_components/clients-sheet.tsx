@@ -71,6 +71,7 @@ export function ClientSheet(props: ClientSheetProps) {
     closerPickerDisabled,
     closerPickerDisabledReason,
     closerError,
+    commissionDirty,
     handleCloserPickerOpenChange,
     handleSelectCloser,
     handleClearCloser,
@@ -131,6 +132,7 @@ export function ClientSheet(props: ClientSheetProps) {
             closerPickerDisabled={closerPickerDisabled}
             closerPickerDisabledReason={closerPickerDisabledReason}
             closerError={closerError}
+            commissionDirty={commissionDirty}
             onCloserPickerOpenChange={handleCloserPickerOpenChange}
             onSelectCloser={handleSelectCloser}
             onClearCloser={handleClearCloser}
