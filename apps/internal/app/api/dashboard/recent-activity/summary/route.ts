@@ -336,13 +336,15 @@ function buildSystemPrompt(timeframe: ValidTimeframe): string {
     `Based on the last ${timeframe} day${timeframe === 1 ? '' : 's'} of activity, write a summary broken down by team member.`,
     '',
     'Format rules:',
+    '- The entire output is bold headings with bullet points under them. Nothing else.',
     '- Use **Name** as a bold heading for each team member who had activity.',
     '- Under each name, use 1-3 bullet points (using -) summarizing their key contributions.',
     '- Each bullet should be a concise, specific sentence mentioning project names or clients when available.',
     '- Focus on what matters: progress made, deals or leads, blockers, or notable momentum.',
     '- Write conversationally and casually.',
     '- If a team member only had minor activity (e.g., a single comment), you can combine them into an "Others" section.',
-    '- No H1/H2 headers (#), no code blocks — just bold names and bullets.',
+    '- Any closing section (e.g. **Heads up** or **Good news**) follows the same shape: a bold heading on its own line, then bullets. Never write a paragraph or a bold label followed by prose on the same line.',
+    '- No H1/H2 headers (#), no code blocks, no free-standing sentences — just bold headings and bullets.',
     '',
     'Example:',
     '**Jason**',
@@ -352,6 +354,9 @@ function buildSystemPrompt(timeframe: ValidTimeframe): string {
     '**Sarah**',
     '- Closed 2 new leads from the website — worth following up on.',
     '- Flagged a blocker on the API integration waiting on client feedback.',
+    '',
+    '**Heads up**',
+    '- 2 tasks are blocked on client feedback — nudge Acme this week so the launch date holds.',
   ].join('\n')
 }
 
@@ -397,7 +402,7 @@ function buildUserPrompt({
     'Recent activity grouped by team member:',
     groupedSection,
     '',
-    'Write a summary broken down by team member using **Name** headings and bullet points. Keep it concise and actionable.',
+    'Write a summary broken down by team member using **Name** headings and bullet points. Keep it concise and actionable. Every line must be either a bold heading or a bullet — no paragraphs.',
   ].join('\n')
 }
 
