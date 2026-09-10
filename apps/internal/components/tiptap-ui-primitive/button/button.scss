@@ -316,3 +316,22 @@
     }
   }
 }
+
+.tiptap-shortcut-key {
+  display: inline-block;
+  vertical-align: baseline;
+  text-align: center;
+  font-family:
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    "Helvetica Neue",
+    Arial,
+    "Noto Sans",
+    sans-serif;
+  text-transform: capitalize;
+  opacity: 0.6;
+}
