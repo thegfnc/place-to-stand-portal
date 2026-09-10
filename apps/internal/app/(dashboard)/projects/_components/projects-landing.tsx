@@ -477,7 +477,7 @@ export function ProjectsLanding({
                       {link.icon}
                     </a>
                   </TooltipTrigger>
-                  <TooltipContent sideOffset={8}>{link.label}</TooltipContent>
+                  <TooltipContent>{link.label}</TooltipContent>
                 </Tooltip>
               ))
             ) : (

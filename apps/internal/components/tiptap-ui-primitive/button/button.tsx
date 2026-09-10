@@ -2,12 +2,10 @@
 
 import { forwardRef, Fragment, useMemo } from "react"
 
-// --- Tiptap UI Primitive ---
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/tiptap-ui-primitive/tooltip"
+// --- Shared UI ---
+// Toolbar tooltips use the portal-wide tooltip so their offset, arrow and
+// colours match every other tooltip instead of a separate floating-ui copy.
+import { Tooltip, TooltipContent, TooltipTrigger } from "@pts/ui/tooltip"
 
 // --- Lib ---
 import { cn, parseShortcutKeys } from "@/lib/tiptap-utils"
@@ -30,11 +28,11 @@ export const ShortcutDisplay: React.FC<{ shortcuts: string[] }> = ({
   if (shortcuts.length === 0) return null
 
   return (
-    <div>
+    <div className="text-center">
       {shortcuts.map((key, index) => (
         <Fragment key={index}>
-          {index > 0 && <kbd>+</kbd>}
-          <kbd>{key}</kbd>
+          {index > 0 && <kbd className="tiptap-shortcut-key">+</kbd>}
+          <kbd className="tiptap-shortcut-key">{key}</kbd>
         </Fragment>
       ))}
     </div>
@@ -73,16 +71,18 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     }
 
     return (
-      <Tooltip delay={200}>
-        <TooltipTrigger
-          className={cn("tiptap-button", className)}
-          ref={ref}
-          aria-label={ariaLabel}
-          {...props}
-        >
-          {children}
+      <Tooltip delayDuration={200}>
+        <TooltipTrigger asChild>
+          <button
+            className={cn("tiptap-button", className)}
+            ref={ref}
+            aria-label={ariaLabel}
+            {...props}
+          >
+            {children}
+          </button>
         </TooltipTrigger>
-        <TooltipContent>
+        <TooltipContent className="text-center font-medium">
           {tooltip}
           <ShortcutDisplay shortcuts={shortcuts} />
         </TooltipContent>

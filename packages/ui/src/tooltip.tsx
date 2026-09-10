@@ -6,6 +6,13 @@ import type { ReactElement, ReactNode } from "react";
 
 import { cn } from "./cn";
 
+// The arrow is an ARROW_SIZE square rotated 45° and centred on the popup edge,
+// so its tip protrudes ARROW_SIZE / √2 past the popup. Offsetting the popup by
+// exactly that keeps every tooltip's arrow tip touching its anchor without
+// overlapping it. Keep the `size-*`/`-bottom-*` arrow classes in sync.
+const ARROW_SIZE = 8;
+const ARROW_TIP_OFFSET = Math.ceil(ARROW_SIZE / Math.SQRT2);
+
 function TooltipProvider({
   delayDuration = 0,
   ...props
@@ -56,7 +63,7 @@ function TooltipTrigger({
 function TooltipContent({
   className,
   side,
-  sideOffset = 0,
+  sideOffset = ARROW_TIP_OFFSET,
   align,
   alignOffset,
   children,
