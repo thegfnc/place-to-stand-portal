@@ -15,7 +15,11 @@ export function escapeHtml(value: string): string {
     .replace(/"/g, '&quot;')
 }
 
-function inline(text: string): string {
+/**
+ * Inline markdown only, whitespace left as-is. For callers that assemble a
+ * line from fragments (e.g. around code spans) and need spaces preserved.
+ */
+export function inlineMarkdown(text: string): string {
   let out = escapeHtml(text)
   // Links first so their text can carry emphasis without re-parsing the href.
   out = out.replace(
@@ -37,13 +41,13 @@ export function renderMarkdown(source: string): string {
     .filter(Boolean)
 
   return paragraphs
-    .map(block => `<p>${inline(block).replace(/\n/g, '<br>')}</p>`)
+    .map(block => `<p>${inlineMarkdown(block).replace(/\n/g, '<br>')}</p>`)
     .join('')
 }
 
 /** Inline-only rendering for text that lives inside another element. */
 export function renderInlineMarkdown(source: string): string {
-  return inline(source.replace(/\s+/g, ' ').trim())
+  return inlineMarkdown(source.replace(/\s+/g, ' ').trim())
 }
 
 /** Plain-text counterpart for the email's text part. */

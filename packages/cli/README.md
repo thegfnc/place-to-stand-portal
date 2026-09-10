@@ -72,7 +72,7 @@ pts tasks show <taskId>
 pts tasks create --title <t> --project <slug|uuid> [--description] [--status] [--due] [--assignee …]
 pts tasks edit <taskId> [--title] [--project] [--description] [--status] [--due] [--assignee …]
                         [--clear-description] [--clear-due]
-pts tasks comment <taskId> --body <text>
+pts tasks comment <taskId> --body <text|->
 pts tasks comments <taskId> [--limit n]
 
 pts updates draft --client <slug|uuid> [--items <file|->] [--subject] [--intro] [--closing] [--since]
@@ -88,6 +88,12 @@ pts schema tables | pts schema describe <table>
 Projects take a UUID or a slug — slugs are globally unique. Assignees take a UUID or an email
 address; an unmatched reference is an error rather than a silent no-op, so a typo can't
 quietly unassign everyone.
+
+`tasks comment` and the `--description` flags take plain text or minimal markdown — paragraphs
+on blank lines, `- ` bullets, `1. ` numbered lists, `**bold**`, `*italic*`, `` `code` ``, and
+`[text](https://…)` links — and store the HTML the portal's editor would have produced. Raw HTML
+tags in the text are escaped, not rendered. `--body -` reads the comment from stdin, so a
+multi-paragraph comment can come from a heredoc instead of one long shell argument.
 
 `updates draft` creates a client status email as a draft in the portal and prints the URL where
 you review recipients, edit, and send it from your own Gmail. The CLI never sends. Pass `--items`
