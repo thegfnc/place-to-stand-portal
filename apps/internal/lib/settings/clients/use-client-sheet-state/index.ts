@@ -116,6 +116,7 @@ export const useClientSheetState = ({
     closerPickerDisabled: formState.closerPickerDisabled,
     closerPickerDisabledReason: formState.closerPickerDisabledReason,
     closerError: formState.closerError,
+    commissionDirty: formState.commissionDirty,
     handleCloserPickerOpenChange: formState.handleCloserPickerOpenChange,
     handleSelectCloser: formState.handleSelectCloser,
     handleClearCloser: formState.handleClearCloser,

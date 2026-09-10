@@ -31,6 +31,9 @@ import type {
   PrepaidBillingRow,
 } from './types'
 
+/** Hours are NUMERIC(8,2) — settle float noise before comparing/subtracting. */
+const round2 = (value: number): number => Math.round(value * 100) / 100
+
 function toFiniteNumber(value: string | number | null | undefined): number {
   const n = Number(value ?? 0)
   return Number.isFinite(n) ? n : 0
@@ -445,13 +448,26 @@ export const fetchMonthlyCloseReport = cache(
       prepaidBilling.totalAmount + net30Billing.totalAmount
     // House is a rate × billing-hours calculation. Billing hours = prepaid
     // hours purchased + net_30 hours logged (same population as
-    // origination/closer).
+    // origination/closer). Billing on a client whose as-of commission term
+    // has no closer keeps its closer share in house (PRD 007) — nobody is
+    // paid it, so it is reported here rather than vanishing from the split.
+    // House is an ESTIMATE either way: it is the firm's nominal share, not a
+    // cash residual.
     const billingHours =
       prepaidBilling.totalHours + net30Billing.totalHours
+    const nominalHouseAmount = billingHours * rates.housePerHour
+    const unassignedCloserHours = Math.max(
+      0,
+      round2(billingHours - closer.totalHours)
+    )
+    const unassignedCloserAmount = unassignedCloserHours * rates.closerPerHour
     const house: HouseData = {
       billableHours: billingHours,
       ratePerHour: rates.housePerHour,
-      totalAmount: billingHours * rates.housePerHour,
+      nominalAmount: nominalHouseAmount,
+      unassignedCloserHours,
+      unassignedCloserAmount,
+      totalAmount: nominalHouseAmount + unassignedCloserAmount,
     }
 
     const combinedPayoutTotal =

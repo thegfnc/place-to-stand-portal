@@ -103,6 +103,8 @@ export type BaseFormState = {
   closerPickerDisabled: boolean
   closerPickerDisabledReason: string | null
   closerError: string | null
+  /** True when closer or origination differs from the saved assignment. */
+  commissionDirty: boolean
   handleCloserPickerOpenChange: (open: boolean) => void
   handleSelectCloser: (user: PartnerUserOption) => void
   handleClearCloser: () => void
@@ -193,6 +195,8 @@ export type UseClientSheetStateReturn = {
   closerPickerDisabled: boolean
   closerPickerDisabledReason: string | null
   closerError: string | null
+  /** True when closer or origination differs from the saved assignment. */
+  commissionDirty: boolean
   handleCloserPickerOpenChange: (open: boolean) => void
   handleSelectCloser: (user: PartnerUserOption) => void
   handleClearCloser: () => void

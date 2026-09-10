@@ -168,14 +168,21 @@ export default async function MonthlyClosePage({
                   </button>
                 }
                 title='Payout Breakdown'
-                description='Payroll, origination, closer, and house breakdown this month.'
+                description='Payroll, origination, closer, and house (estimated) breakdown this month.'
               >
                 <PayrollSection data={report.payroll} />
                 <OriginationSection data={report.origination} />
-                {hasCloser ? <CloserSection data={report.closer} /> : null}
+                {hasCloser ? (
+                  <CloserSection
+                    data={report.closer}
+                    unassignedHours={report.house.unassignedCloserHours}
+                    unassignedAmount={report.house.unassignedCloserAmount}
+                  />
+                ) : null}
                 <HouseSection
                   data={report.house}
                   nominalPercent={`${Math.round((report.rates.housePerHour / report.rates.billablePerHour) * 100)}%`}
+                  closerPerHour={report.rates.closerPerHour}
                   prepaidHours={report.prepaidBilling.totalHours}
                   net30Hours={report.net30Billing.totalHours}
                 />

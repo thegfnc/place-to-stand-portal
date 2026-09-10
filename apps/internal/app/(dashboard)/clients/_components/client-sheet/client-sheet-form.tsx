@@ -109,6 +109,8 @@ type ClientSheetFormProps = {
   closerPickerDisabled: boolean
   closerPickerDisabledReason: string | null
   closerError: string | null
+  /** Closer or origination differs from the saved assignment — reveals the boundary select. */
+  commissionDirty: boolean
   onCloserPickerOpenChange: (open: boolean) => void
   onSelectCloser: (user: PartnerUserOption) => void
   onClearCloser: () => void
@@ -160,6 +162,7 @@ export function ClientSheetForm({
   closerPickerDisabled,
   closerPickerDisabledReason,
   closerError,
+  commissionDirty,
   onCloserPickerOpenChange,
   onSelectCloser,
   onClearCloser,
@@ -488,6 +491,47 @@ export function ClientSheetForm({
               <p className='text-destructive text-xs'>{closerError}</p>
             ) : null}
           </div>
+          {isEditing && commissionDirty ? (
+            <FormField
+              control={form.control}
+              name='commissionEffective'
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>New closer / origination starts</FormLabel>
+                  <Select
+                    value={field.value}
+                    onValueChange={field.onChange}
+                    disabled={isPending}
+                  >
+                    <FormControl>
+                      <DisabledFieldTooltip
+                        disabled={isPending}
+                        reason={isPending ? pendingReason : null}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                      </DisabledFieldTooltip>
+                    </FormControl>
+                    <SelectContent align='start'>
+                      <SelectItem value='next_month'>
+                        Next month ({formatMonthStart(1)})
+                      </SelectItem>
+                      <SelectItem value='current_month'>
+                        This month ({formatMonthStart(0)})
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormDescription>
+                    {field.value === 'current_month'
+                      ? "This month's close will pay commissions under the new assignment."
+                      : 'Earlier months keep paying the previous closer and originator; the Monthly Close switches at the boundary.'}
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          ) : null}
           <div className='space-y-2'>
             <FormLabel>Contacts</FormLabel>
             <ClientContactPicker

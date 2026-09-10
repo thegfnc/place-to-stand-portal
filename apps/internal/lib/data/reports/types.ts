@@ -143,18 +143,28 @@ export type PartnerPayoutData = {
   totalAmount: number
 }
 
-// House — the firm's share of billing. Rate-based, computed directly as:
-//   billingHours × rates.housePerHour
-// where `billingHours = prepaidBilling.totalHours + net30Billing.totalHours`.
-// This is the same population as origination/closer, so the firm always
-// gets its nominal percentage of every billed hour (40% pre-cutover, 25%
-// post-cutover), regardless of client assignment gaps.
+// House — the firm's share of billing. ESTIMATED, not a payout:
+//   nominalAmount        = billingHours × rates.housePerHour
+//   unassignedCloserAmount = hours on clients whose as-of commission term has
+//                            no closer × rates.closerPerHour (PRD 007 — the
+//                            closer share is not paid out, it stays in house)
+//   totalAmount          = nominalAmount + unassignedCloserAmount
+// `billingHours = prepaidBilling.totalHours + net30Billing.totalHours`, the
+// same population as origination/closer. Payroll is on a work basis, so the
+// four buckets do not reconcile to Billing In in a single month; house is
+// the firm's nominal share, not cash left over.
 export type HouseData = {
   /** Total billing hours in the period (prepaid purchased + net_30 logged). */
   billableHours: number
   /** Nominal house rate for this period (e.g. $50/hr or $80/hr). */
   ratePerHour: number
-  /** billingHours × ratePerHour — the firm's share of billing this month. */
+  /** billingHours × ratePerHour — the firm's nominal share of billing. */
+  nominalAmount: number
+  /** Billing hours whose as-of commission term has no closer. */
+  unassignedCloserHours: number
+  /** unassignedCloserHours × rates.closerPerHour — kept in house, not paid. */
+  unassignedCloserAmount: number
+  /** nominalAmount + unassignedCloserAmount. Estimated. */
   totalAmount: number
 }
 

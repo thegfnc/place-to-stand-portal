@@ -5,6 +5,7 @@ import { db } from '@/lib/db'
 import { clients } from '@/lib/db/schema'
 import type { ClientBillingTypeValue } from '@/lib/types'
 import { insertInitialBillingTerm } from '@/lib/queries/clients/billing-terms'
+import { insertInitialCommissionTerm } from '@/lib/queries/clients/commission-terms'
 import {
   assertClientPartnerUserRoles,
   generateUniqueClientSlug,
@@ -68,8 +69,8 @@ export async function createClient(
 
   while (attempt < INSERT_RETRY_LIMIT) {
     try {
-      // Client + initial billing term are atomic: a client without a terms
-      // row is invisible to every monthly close. A slug unique-violation
+      // Client + initial billing + commission terms are atomic: a client
+      // without a terms row is invisible to every monthly close. A slug unique-violation
       // aborts the transaction and the loop retries with a fresh slug.
       const clientId = await db.transaction(async tx => {
         const inserted = await tx
@@ -97,6 +98,16 @@ export async function createClient(
         await insertInitialBillingTerm(tx, {
           clientId: insertedId,
           billingType,
+          createdBy: user.id,
+        })
+
+        // Same atomicity for the commission split (PRD 007): the client's
+        // first month must resolve its closer/origination.
+        await insertInitialCommissionTerm(tx, {
+          clientId: insertedId,
+          closerUserId,
+          originationUserId,
+          originationContactId,
           createdBy: user.id,
         })
 

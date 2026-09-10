@@ -880,6 +880,75 @@ export const clientBillingTerms = pgTable(
   ]
 )
 
+export const clientCommissionTerms = pgTable(
+  'client_commission_terms',
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    clientId: uuid('client_id').notNull(),
+    /** First day of the month this commission split takes effect (month-start CHECK). */
+    effectiveFrom: date('effective_from').notNull(),
+    /**
+     * Closer (20%). NULL means no closer for the period — the closer share
+     * is not paid out and is reported under House (estimated).
+     */
+    closerUserId: uuid('closer_user_id'),
+    /** Origination (10%): at most ONE of user / contact per the mutex CHECK. */
+    originationUserId: uuid('origination_user_id'),
+    originationContactId: uuid('origination_contact_id'),
+    createdBy: uuid('created_by'),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+    deletedAt: timestamp('deleted_at', { withTimezone: true, mode: 'string' }),
+  },
+  table => [
+    // One active term per client per boundary; re-editing a boundary upserts.
+    uniqueIndex('uq_client_commission_terms_client_effective')
+      .on(table.clientId, table.effectiveFrom)
+      .where(sql`(deleted_at IS NULL)`),
+    // Resolution path: latest effective_from <= period start for a client.
+    index('idx_client_commission_terms_resolution')
+      .using('btree', table.clientId.asc(), table.effectiveFrom.desc())
+      .where(sql`(deleted_at IS NULL)`),
+    foreignKey({
+      columns: [table.clientId],
+      foreignColumns: [clients.id],
+      name: 'client_commission_terms_client_id_fkey',
+    }).onDelete('restrict'),
+    foreignKey({
+      columns: [table.closerUserId],
+      foreignColumns: [users.id],
+      name: 'client_commission_terms_closer_user_id_fkey',
+    }).onDelete('restrict'),
+    foreignKey({
+      columns: [table.originationUserId],
+      foreignColumns: [users.id],
+      name: 'client_commission_terms_origination_user_id_fkey',
+    }).onDelete('restrict'),
+    foreignKey({
+      columns: [table.originationContactId],
+      foreignColumns: [contacts.id],
+      name: 'client_commission_terms_origination_contact_id_fkey',
+    }).onDelete('restrict'),
+    foreignKey({
+      columns: [table.createdBy],
+      foreignColumns: [users.id],
+      name: 'client_commission_terms_created_by_fkey',
+    }).onDelete('set null'),
+    check(
+      'chk_client_commission_terms_month_start',
+      sql`effective_from = date_trunc('month', effective_from)::date`
+    ),
+    check(
+      'chk_client_commission_terms_origination_mutex',
+      sql`NOT (origination_user_id IS NOT NULL AND origination_contact_id IS NOT NULL)`
+    ),
+  ]
+)
+
 export const timeLogs = pgTable(
   'time_logs',
   {

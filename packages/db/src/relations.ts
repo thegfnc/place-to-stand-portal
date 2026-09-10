@@ -3,6 +3,7 @@ import {
   users,
   clients,
   clientBillingTerms,
+  clientCommissionTerms,
   monthlyCloseSnapshots,
   tasks,
   githubAppInstallations,
@@ -61,6 +62,7 @@ export const clientsRelations = relations(clients, ({ one, many }) => ({
   }),
   hourBlocks: many(hourBlocks),
   billingTerms: many(clientBillingTerms),
+  commissionTerms: many(clientCommissionTerms),
   clientMembers: many(clientMembers),
   projects: many(projects),
   contactClients: many(contactClients),
@@ -261,6 +263,32 @@ export const clientBillingTermsRelations = relations(
     }),
     createdByUser: one(users, {
       fields: [clientBillingTerms.createdBy],
+      references: [users.id],
+    }),
+  })
+)
+
+export const clientCommissionTermsRelations = relations(
+  clientCommissionTerms,
+  ({ one }) => ({
+    client: one(clients, {
+      fields: [clientCommissionTerms.clientId],
+      references: [clients.id],
+    }),
+    closerUser: one(users, {
+      fields: [clientCommissionTerms.closerUserId],
+      references: [users.id],
+    }),
+    originationUser: one(users, {
+      fields: [clientCommissionTerms.originationUserId],
+      references: [users.id],
+    }),
+    originationContact: one(contacts, {
+      fields: [clientCommissionTerms.originationContactId],
+      references: [contacts.id],
+    }),
+    createdByUser: one(users, {
+      fields: [clientCommissionTerms.createdBy],
       references: [users.id],
     }),
   })
