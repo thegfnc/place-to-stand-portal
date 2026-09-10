@@ -2,9 +2,13 @@
  * Canonical sheet deep-link builders. Everything that *generates* a link to
  * an entity sheet (tables, dashboards, cross-module anchors) goes through
  * these so shared URLs always point at the entity's canonical host page.
- * Board task links are built by `buildBoardPath` (lib/projects/board) since
- * they need client/project slugs; everything else lives here.
+ * Inside the board, task links go through `buildBoardPath`
+ * (lib/projects/board), which resolves client/project slugs and carries the
+ * current query along; `boardTaskHref` below is the primitive it lands on,
+ * for callers that already hold the slugs.
  */
+
+import { BOARD_VIEW_SEGMENTS } from '@/lib/projects/board/board-constants'
 
 import { NEW_SHEET_VALUE } from './entities'
 
@@ -22,6 +26,18 @@ export const clientDetailHref = (client: { slug: string | null; id: string }) =>
 
 /** The client-update composer — a full page, not a sheet. */
 export const updateComposerHref = (id: string) => `/updates/${id}`
+
+/**
+ * A task sheet on its project board. `clientSegment` is the client slug, or
+ * `internal` / `personal` for those project types — see
+ * `getProjectClientSegment` in lib/projects/board.
+ */
+export const boardTaskHref = (
+  clientSegment: string,
+  projectSlug: string,
+  taskId: string
+) =>
+  `/projects/${clientSegment}/${projectSlug}/${BOARD_VIEW_SEGMENTS.board}?task=${taskId}`
 
 export const leadHref = (
   id: string,

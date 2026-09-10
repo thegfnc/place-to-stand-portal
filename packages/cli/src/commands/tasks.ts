@@ -3,7 +3,14 @@ import { readFileSync } from 'node:fs'
 import type { Command } from 'commander'
 
 import { apiGet, apiPatch, apiPost } from '../client.js'
-import { emit } from '../output.js'
+import { resolveApiContext } from '../context.js'
+import { emit, emitMessage } from '../output.js'
+
+type Task = {
+  id: string
+  /** Absent from servers that predate it, so the URL line is best-effort. */
+  path?: string | null
+}
 
 type ListOptions = {
   project?: string
@@ -41,6 +48,19 @@ function textOrStdin(value: string | undefined): string | undefined {
   return value === '-' ? readFileSync(0, 'utf8') : value
 }
 
+/**
+ * The portal URL goes to stderr, as `updates draft` does, so
+ * `pts tasks create | jq` still sees clean JSON on stdout.
+ */
+async function emitTaskUrl(task: Task): Promise<void> {
+  if (!task.path) {
+    return
+  }
+
+  const apiUrl = await resolveApiContext()
+  emitMessage(`View: ${apiUrl}${task.path}`)
+}
+
 export function registerTaskCommands(program: Command): void {
   const tasks = program.command('tasks').description('Read and write tasks')
 
@@ -66,9 +86,10 @@ export function registerTaskCommands(program: Command): void {
     .command('show <taskId>')
     .description('Show one task')
     .action(async (taskId: string) => {
-      const { data } = await apiGet(`api/cli/v1/tasks/${taskId}`)
+      const { data } = await apiGet<Task>(`api/cli/v1/tasks/${taskId}`)
 
       emit(data)
+      await emitTaskUrl(data)
     })
 
   tasks
@@ -81,7 +102,7 @@ export function registerTaskCommands(program: Command): void {
     .option('--due <date>', 'Due date as YYYY-MM-DD')
     .option('--assignee <user...>', 'Assign by email or user id')
     .action(async (options: CreateOptions) => {
-      const { data, warning } = await apiPost('api/cli/v1/tasks', {
+      const { data, warning } = await apiPost<Task>('api/cli/v1/tasks', {
         title: options.title,
         project: options.project,
         description: textOrStdin(options.description),
@@ -91,6 +112,7 @@ export function registerTaskCommands(program: Command): void {
       })
 
       emit(data, warning)
+      await emitTaskUrl(data)
     })
 
   tasks
@@ -159,11 +181,12 @@ export function registerTaskCommands(program: Command): void {
         throw new Error('Provide at least one field to update.')
       }
 
-      const { data, warning } = await apiPatch(
+      const { data, warning } = await apiPatch<Task>(
         `api/cli/v1/tasks/${taskId}`,
         payload
       )
 
       emit(data, warning)
+      await emitTaskUrl(data)
     })
 }

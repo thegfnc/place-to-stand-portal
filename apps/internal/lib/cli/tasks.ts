@@ -7,7 +7,7 @@ import { BadRequestError, NotFoundError } from '@/lib/errors/http'
 import type { SaveTaskResult } from '@/lib/tasks/types'
 
 import { jsonOk } from './handler'
-import { loadTaskForEdit } from './queries/tasks'
+import { fetchBoardLocationsByProject, loadTaskForEdit } from './queries/tasks'
 import { serializeTask, type CliTask } from './serializers/task'
 
 /**
@@ -24,13 +24,19 @@ export async function resolveProjectId(
   return project.resolvedId
 }
 
-async function loadSerializedTask(
+/** One task as the CLI sees it, board URL included. */
+export async function loadSerializedTask(
   user: AppUser,
   taskId: string
 ): Promise<CliTask> {
   const { task, assigneeIds } = await loadTaskForEdit(user, taskId)
+  const locations = await fetchBoardLocationsByProject([task.projectId])
 
-  return serializeTask(task, assigneeIds)
+  return serializeTask(
+    task,
+    assigneeIds,
+    locations.get(task.projectId) ?? null
+  )
 }
 
 /**

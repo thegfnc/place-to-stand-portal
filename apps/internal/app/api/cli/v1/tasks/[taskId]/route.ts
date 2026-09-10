@@ -2,18 +2,19 @@ import { toRichTextHtml } from '@/lib/cli/description'
 import { readJsonBody, withCliAuth } from '@/lib/cli/handler'
 import { loadTaskForEdit } from '@/lib/cli/queries/tasks'
 import { cliUpdateTaskSchema } from '@/lib/cli/schemas/tasks'
-import { serializeTask } from '@/lib/cli/serializers/task'
 import { resolveUserIds } from '@/lib/cli/queries/users'
-import { resolveProjectId, respondToTaskWrite } from '@/lib/cli/tasks'
+import {
+  loadSerializedTask,
+  resolveProjectId,
+  respondToTaskWrite,
+} from '@/lib/cli/tasks'
 import { saveTaskForActor } from '@/lib/tasks/save-task-core'
 
 type Params = { taskId: string }
 
-export const GET = withCliAuth<Params>(async ({ user, params }) => {
-  const { task, assigneeIds } = await loadTaskForEdit(user, params.taskId)
-
-  return serializeTask(task, assigneeIds)
-})
+export const GET = withCliAuth<Params>(async ({ user, params }) =>
+  loadSerializedTask(user, params.taskId)
+)
 
 /**
  * Partial update. The underlying save is a full replace, so anything the caller

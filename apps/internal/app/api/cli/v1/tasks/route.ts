@@ -2,6 +2,7 @@ import { toRichTextHtml } from '@/lib/cli/description'
 import { readJsonBody, withCliAuth } from '@/lib/cli/handler'
 import {
   fetchAssigneeIdsByTask,
+  fetchBoardLocationsByProject,
   listTasksForCli,
 } from '@/lib/cli/queries/tasks'
 import {
@@ -29,9 +30,18 @@ export const GET = withCliAuth(async ({ user, request }) => {
     limit: query.limit,
   })
 
-  const assignees = await fetchAssigneeIdsByTask(rows.map(row => row.id))
+  const [assignees, locations] = await Promise.all([
+    fetchAssigneeIdsByTask(rows.map(row => row.id)),
+    fetchBoardLocationsByProject(rows.map(row => row.projectId)),
+  ])
 
-  return rows.map(row => serializeTask(row, assignees.get(row.id) ?? []))
+  return rows.map(row =>
+    serializeTask(
+      row,
+      assignees.get(row.id) ?? [],
+      locations.get(row.projectId) ?? null
+    )
+  )
 })
 
 export const POST = withCliAuth(async ({ user, request }) => {
