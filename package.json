@@ -14,7 +14,7 @@
     "cli:link": "npm run build -w @pts/cli && cd packages/cli && npm link"
   },
   "devDependencies": {
-    "turbo": "^2.10.5",
+    "turbo": "^2.10.12",
     "typescript": "^6.0.3"
   }
 }
