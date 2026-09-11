@@ -28,16 +28,19 @@ export const clientDetailHref = (client: { slug: string | null; id: string }) =>
 export const updateComposerHref = (id: string) => `/updates/${id}`
 
 /**
- * A task sheet on its project board. `clientSegment` is the client slug, or
+ * A project's task board. `clientSegment` is the client slug, or
  * `internal` / `personal` for those project types — see
  * `getProjectClientSegment` in lib/projects/board.
  */
+export const projectBoardHref = (clientSegment: string, projectSlug: string) =>
+  `/projects/${clientSegment}/${projectSlug}/${BOARD_VIEW_SEGMENTS.board}`
+
+/** A task sheet on its project board; segments as for `projectBoardHref`. */
 export const boardTaskHref = (
   clientSegment: string,
   projectSlug: string,
   taskId: string
-) =>
-  `/projects/${clientSegment}/${projectSlug}/${BOARD_VIEW_SEGMENTS.board}?task=${taskId}`
+) => `${projectBoardHref(clientSegment, projectSlug)}?task=${taskId}`
 
 export const leadHref = (
   id: string,

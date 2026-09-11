@@ -46,6 +46,21 @@ export type LeadRecord = {
   convertedToClientId: string | null
 }
 
+/**
+ * What a converted lead became, for the lead sheet's sidebar. See
+ * `fetchLeadConversionSummary` for how the contact and projects are resolved.
+ */
+export type LeadConversionSummary = {
+  client: { id: string; name: string; slug: string | null; archived: boolean }
+  contact: { id: string; name: string; email: string } | null
+  projects: Array<{
+    id: string
+    name: string
+    slug: string | null
+    status: string
+  }>
+}
+
 export type LeadBoardColumnData = {
   id: LeadStatusValue
   label: string

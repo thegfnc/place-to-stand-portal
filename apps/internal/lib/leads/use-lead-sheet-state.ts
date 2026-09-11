@@ -50,7 +50,6 @@ export function useLeadSheetState({
   )
 
   const canConvert = lead?.status === 'CLOSED_WON' && !lead?.convertedToClientId
-  const isConverted = Boolean(lead?.convertedToClientId)
 
   const defaultValues = useMemo<LeadFormValues>(
     () => ({
@@ -239,7 +238,6 @@ export function useLeadSheetState({
     setConvertDialogOpen,
     setActionParam,
     canConvert,
-    isConverted,
     selectedSourceType,
     submitDisabled,
     submitDisabledReason,
