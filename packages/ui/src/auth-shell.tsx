@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 
-import { BRAND, BrandLockup } from './brand'
+import { BRAND, BRAND_DOT_GRID, BrandLockup } from './brand'
 import { cn } from './cn'
 
 /**
@@ -15,13 +15,6 @@ import { cn } from './cn'
  * Only auth screens use this. Everything behind the login keeps its own
  * header and theme.
  */
-
-/** 24px dot grid, phased to match the marketing site's body background. */
-const DOT_GRID: React.CSSProperties = {
-  backgroundImage: `radial-gradient(circle, ${BRAND.gridDot} 1px, transparent 1px)`,
-  backgroundSize: '24px 24px',
-  backgroundPosition: '50% 12px',
-}
 
 type Props = {
   /** Mono micro-label under the wordmark, e.g. "Internal Portal". */
@@ -47,7 +40,7 @@ export function AuthShell({
   return (
     <div
       className="flex min-h-screen flex-col items-center justify-center px-6 py-12"
-      style={{ backgroundColor: BRAND.bg, ...DOT_GRID }}
+      style={{ backgroundColor: BRAND.bg, ...BRAND_DOT_GRID }}
     >
       <div className={cn('w-full space-y-8', wide ? 'max-w-md' : 'max-w-sm')}>
         <BrandLockup label={label} />

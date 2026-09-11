@@ -18,6 +18,7 @@ export function passwordResetEmail({
 }: PasswordResetEmailArgs): RenderedEmail {
   return renderEmail('Reset your Place To Stand password', {
     preheader: `Choose a new password for ${destination}.`,
+    label: 'Password reset',
     heading: 'Reset your password',
     paragraphs: [
       `Someone asked to reset the password for your account on ${destination}. If that was you, use the button below to choose a new one.`,

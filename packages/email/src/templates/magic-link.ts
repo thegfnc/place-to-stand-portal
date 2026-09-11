@@ -18,6 +18,7 @@ export function magicLinkEmail({
 }: MagicLinkEmailArgs): RenderedEmail {
   return renderEmail('Your Place To Stand sign-in link', {
     preheader: `Sign in to ${destination} — no password needed.`,
+    label: 'Sign-in link',
     heading: 'Sign in to Place To Stand',
     paragraphs: [
       `Here's the sign-in link you asked for. It takes you straight into ${destination} — no password needed.`,

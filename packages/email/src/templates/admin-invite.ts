@@ -28,6 +28,7 @@ export function adminInviteEmail({
 
   return renderEmail("You're invited to the Place To Stand portal", {
     preheader: 'Your sign-in details for the Place To Stand admin portal.',
+    label: 'Admin portal',
     heading: "You've been given access",
     paragraphs: [
       `${greeting} been given access to the Place To Stand admin portal. Sign in with the details below.`,

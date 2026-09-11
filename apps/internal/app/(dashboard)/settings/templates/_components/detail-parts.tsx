@@ -192,11 +192,10 @@ export function DetailFooter({
   )
 }
 
-/** Light "paper" surface the rendered document sits on, in either theme. */
+/**
+ * Light surface the rendered document sits on, in either theme. Unpadded and
+ * in the email backdrop colour, so an HTML preview fills it edge to edge.
+ */
 export function PaperPane({ children }: { children: React.ReactNode }) {
-  return (
-    <div className='flex justify-center bg-slate-50 p-8 dark:bg-slate-50'>
-      {children}
-    </div>
-  )
+  return <div className='flex justify-center bg-[#f4f4f2]'>{children}</div>
 }

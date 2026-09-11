@@ -31,6 +31,7 @@ export async function buildUpdateEmailContent(
 
   return {
     subject: update.subject,
+    clientName: client.name,
     greetingName: greetingNameFromContacts(contacts),
     intro: update.intro,
     items: update.items,

@@ -1,9 +1,13 @@
 /**
  * The body of an update — greeting, intro, numbered items with a bold run-in,
- * the hours line, closing — composed from the same rules for the email's HTML
- * part, its text part, and the composer's preview. The single portal button
- * is added outside the body by the shell. Pure: no server imports, so the
- * client-side preview can use it.
+ * the hours balance, closing — composed from the same rules for the email's
+ * HTML part, its text part, and the composer's preview. The single portal
+ * button is added outside the body by the shell. Pure: no server imports, so
+ * the client-side preview can use it.
+ *
+ * The HTML carries structure only: items and the hours balance are marked with
+ * `update-*` classes, which the email renderer inlines as mail-safe styles and
+ * the preview styles in the app's theme. No colour lives here.
  */
 
 import { escapeHtml, markdownToText, renderMarkdown } from './markdown'
@@ -36,9 +40,22 @@ function hoursLineText(remaining: number): string {
   return `You have ${formatHours(remaining)} remaining.`
 }
 
-/** The number is the thing the client scans for, so it is bold in HTML. */
-function hoursLineHtml(remaining: number): string {
-  return `You have <strong>${escapeHtml(formatHours(remaining))}</strong> remaining.`
+/** Tables rather than divs for anything laid out side by side: mail clients drop flexbox. */
+function itemHtml(item: ClientUpdateItem, index: number): string {
+  const runIn = `<strong>${escapeHtml(runInLabel(item.label))}</strong>`
+  const rendered = renderMarkdown(item.body)
+  // Run the label into the first paragraph, as a person writing this would.
+  const content = rendered
+    ? rendered.replace(/^<p>/, `<p>${runIn} `)
+    : `<p>${runIn}</p>`
+  const number = String(index + 1).padStart(2, '0')
+
+  return `<table role="presentation" class="update-item" cellpadding="0" cellspacing="0"><tr><td class="update-item-index">${number}</td><td class="update-item-body">${content}</td></tr></table>`
+}
+
+/** The balance is the thing the client scans for, so it gets its own row. */
+function hoursHtml(remaining: number): string {
+  return `<table role="presentation" class="update-hours" cellpadding="0" cellspacing="0"><tr><td class="update-hours-label">Prepaid hours remaining</td><td class="update-hours-value">${escapeHtml(formatHours(remaining))}</td></tr></table>`
 }
 
 export function composeBodyHtml(body: UpdateBody): string {
@@ -47,17 +64,14 @@ export function composeBodyHtml(body: UpdateBody): string {
   html.push(`<p>Hi ${escapeHtml(body.greetingName ?? 'there')},</p>`)
   if (body.intro.trim()) html.push(renderMarkdown(body.intro))
 
-  body.items.forEach((item, index) => {
-    const runIn = `<strong>${index + 1}. ${escapeHtml(runInLabel(item.label))}</strong>`
-    const rendered = renderMarkdown(item.body)
-    // Run the label into the first paragraph, as a person writing this would.
+  if (body.items.length > 0) {
     html.push(
-      rendered ? rendered.replace(/^<p>/, `<p>${runIn} `) : `<p>${runIn}</p>`
+      `<div class="update-items">${body.items.map(itemHtml).join('')}</div>`
     )
-  })
+  }
 
   if (body.hoursRemaining !== null) {
-    html.push(`<p>${hoursLineHtml(body.hoursRemaining)}</p>`)
+    html.push(hoursHtml(body.hoursRemaining))
   }
 
   if (body.closing.trim()) html.push(renderMarkdown(body.closing))

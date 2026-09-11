@@ -137,10 +137,10 @@ export function EmailsBrowser({ entries }: { entries: EmailTemplateEntry[] }) {
               title={`${selected.name} — ${variant.label} HTML preview`}
               sandbox=''
               srcDoc={variant.sample.html}
-              className='h-[640px] w-full max-w-[600px] bg-transparent'
+              className='h-[640px] w-full bg-transparent'
             />
           ) : (
-            <pre className='w-full max-w-[520px] rounded-[10px] border border-slate-200 bg-white px-8 py-7 font-mono text-xs leading-relaxed whitespace-pre-wrap text-slate-900'>
+            <pre className='m-8 w-full max-w-[520px] border border-slate-200 bg-white px-8 py-7 font-mono text-xs leading-relaxed whitespace-pre-wrap text-slate-900'>
               {variant.sample.text}
             </pre>
           )}
