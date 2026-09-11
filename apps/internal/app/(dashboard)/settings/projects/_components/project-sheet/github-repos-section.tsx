@@ -273,7 +273,10 @@ export function GitHubReposSection({
       <div className='space-y-1'>
         <h3 className='text-sm font-medium'>GitHub Repositories</h3>
         <div className='rounded-lg border border-dashed p-4 text-center'>
-          <SimpleIcon icon={siGithub} className='h-5 w-5' />
+          <SimpleIcon
+            icon={siGithub}
+            className='text-muted-foreground mx-auto h-5 w-5'
+          />
           <p className='text-muted-foreground mt-2 text-sm'>
             Connect your GitHub account in Settings to link repositories.
           </p>

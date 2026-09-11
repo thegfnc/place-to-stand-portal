@@ -1,10 +1,11 @@
 'use client'
 
 import { useState } from 'react'
-import { ChevronsUpDown, UserCheck, Users, X } from 'lucide-react'
+import { Plus, UserCheck, X } from 'lucide-react'
 
 import { Button } from '@pts/ui/button'
 import { CommandCreateRows } from '@/components/ui/command-create-rows'
+import { SheetEmptyState } from '@/components/sheets/sheet-empty-state'
 import { DisabledFieldTooltip } from '@/components/ui/disabled-field-tooltip'
 import {
   Command,
@@ -13,11 +14,7 @@ import {
   CommandItem,
   CommandList,
 } from '@/components/ui/command'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@pts/ui/popover'
+import { Popover, PopoverContent, PopoverTrigger } from '@pts/ui/popover'
 
 type ClientContactOption = {
   id: string
@@ -27,179 +24,172 @@ type ClientContactOption = {
   hasPortalAccess: boolean
 }
 
-const assignedContainerClass =
-  'bg-muted/40 flex items-center justify-between rounded-md border px-3 py-2'
+function PortalAccessMark() {
+  return (
+    <span title='Has portal access'>
+      <UserCheck className='h-3 w-3 text-emerald-500' />
+    </span>
+  )
+}
 
-const iconButtonClass = 'text-muted-foreground hover:text-destructive'
-
-export type ClientContactPickerProps = {
-  selectedContacts: ClientContactOption[]
+export type ClientContactLinkButtonProps = {
   availableContacts: ClientContactOption[]
-  addButtonDisabled: boolean
-  addButtonDisabledReason: string | null
+  disabled: boolean
+  disabledReason: string | null
   isPickerOpen: boolean
   isPending: boolean
-  pendingReason: string
   onPickerOpenChange: (open: boolean) => void
   onAddContact: (contact: ClientContactOption) => void
-  onRequestRemoval: (contact: ClientContactOption) => void
   /** Open the contact create sheet, prefilled with the typed query. */
   onCreateContact: (query: string) => void
 }
 
-export function ClientContactPicker({
-  selectedContacts,
+/** The "Link contact" popover trigger — sits on the Contacts section title row. */
+export function ClientContactLinkButton({
   availableContacts,
-  addButtonDisabled,
-  addButtonDisabledReason,
+  disabled,
+  disabledReason,
   isPickerOpen,
   isPending,
-  pendingReason,
   onPickerOpenChange,
   onAddContact,
-  onRequestRemoval,
   onCreateContact,
-}: ClientContactPickerProps) {
+}: ClientContactLinkButtonProps) {
   const [query, setQuery] = useState('')
 
   return (
-    <div className='space-y-2'>
-      <Popover open={isPickerOpen} onOpenChange={onPickerOpenChange} modal>
-        <DisabledFieldTooltip
-          disabled={addButtonDisabled}
-          reason={addButtonDisabledReason}
-        >
-          <div className='w-full'>
-            <PopoverTrigger asChild>
-              <Button
-                type='button'
-                variant='outline'
-                className='w-full justify-between'
-                disabled={addButtonDisabled}
-              >
-                <span className='flex items-center gap-2'>
-                  <Users className='h-4 w-4' />
-                  {availableContacts.length > 0
-                    ? 'Link contact'
-                    : 'All contacts linked'}
-                </span>
-                <ChevronsUpDown className='h-4 w-4 opacity-50' />
-              </Button>
-            </PopoverTrigger>
-          </div>
-        </DisabledFieldTooltip>
-        <PopoverContent className='w-[var(--radix-popover-trigger-width)] p-0' align='start'>
-          <Command>
-            <CommandInput
-              placeholder='Search contacts...'
-              value={query}
-              onValueChange={setQuery}
-            />
-            <CommandList>
-              <CommandGroup heading='Contacts'>
-                {availableContacts.map(contact => (
-                  <CommandItem
-                    key={contact.id}
-                    value={`${contact.name ?? ''} ${contact.email}`}
-                    onSelect={() => {
-                      if (isPending) {
-                        return
-                      }
-                      onAddContact(contact)
-                    }}
-                  >
-                    <div className='flex flex-col'>
-                      {contact.name ? (
-                        <>
-                          <span className='flex items-center gap-1.5 font-medium'>
-                            {contact.name}
-                            {contact.hasPortalAccess && (
-                              <span title='Has portal access'><UserCheck className='h-3 w-3 text-emerald-500' /></span>
-                            )}
-                          </span>
-                          <span className='text-muted-foreground text-xs'>
-                            {contact.email}
-                          </span>
-                        </>
-                      ) : (
-                        <span className='flex items-center gap-1.5 font-medium'>
-                          {contact.email}
-                          {contact.hasPortalAccess && (
-                            <span title='Has portal access'><UserCheck className='h-3 w-3 text-emerald-500' /></span>
-                          )}
-                        </span>
-                      )}
-                    </div>
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-              <CommandCreateRows
-                query={query}
-                entityLabel='contact'
-                onCreate={onCreateContact}
-              />
-            </CommandList>
-          </Command>
-        </PopoverContent>
-      </Popover>
-      <p className='text-muted-foreground text-xs'>
-        Link contacts to this client for easy access.
-      </p>
-      <div className='space-y-2'>
-        {selectedContacts.length === 0 ? (
-          <p className='text-muted-foreground text-sm'>
-            No contacts linked yet.
-          </p>
-        ) : (
-          selectedContacts.map(contact => (
-            <div key={contact.id} className={assignedContainerClass}>
-              <div className='flex flex-col text-sm leading-tight'>
-                {contact.name ? (
-                  <>
-                    <span className='flex items-center gap-1.5 font-medium'>
-                      {contact.name}
-                      {contact.hasPortalAccess && (
-                        <span title='Has portal access'><UserCheck className='h-3 w-3 text-emerald-500' /></span>
-                      )}
-                    </span>
-                    <span className='text-muted-foreground text-xs'>
-                      {contact.email}
-                    </span>
-                  </>
-                ) : (
-                  <span className='flex items-center gap-1.5 font-medium'>
-                    {contact.email}
-                    {contact.hasPortalAccess && (
-                      <span title='Has portal access'><UserCheck className='h-3 w-3 text-emerald-500' /></span>
-                    )}
-                  </span>
-                )}
-                {contact.phone ? (
-                  <span className='text-muted-foreground text-xs'>
-                    {contact.phone}
-                  </span>
-                ) : null}
-              </div>
-              <DisabledFieldTooltip
-                disabled={isPending}
-                reason={isPending ? pendingReason : null}
-              >
-                <Button
-                  type='button'
-                  variant='ghost'
-                  size='icon'
-                  className={iconButtonClass}
-                  onClick={() => onRequestRemoval(contact)}
-                  disabled={isPending}
-                  aria-label={`Unlink ${contact.name ?? contact.email}`}
+    <Popover open={isPickerOpen} onOpenChange={onPickerOpenChange} modal>
+      <DisabledFieldTooltip
+        disabled={disabled}
+        reason={disabledReason}
+        className='w-auto'
+      >
+        <PopoverTrigger asChild>
+          <Button type='button' variant='outline' size='xs' disabled={disabled}>
+            <Plus />
+            Link contact
+          </Button>
+        </PopoverTrigger>
+      </DisabledFieldTooltip>
+      <PopoverContent className='w-72 p-0' align='end'>
+        <Command>
+          <CommandInput
+            placeholder='Search contacts...'
+            value={query}
+            onValueChange={setQuery}
+          />
+          <CommandList>
+            <CommandGroup heading='Contacts'>
+              {availableContacts.map(contact => (
+                <CommandItem
+                  key={contact.id}
+                  value={`${contact.name ?? ''} ${contact.email}`}
+                  onSelect={() => {
+                    if (isPending) {
+                      return
+                    }
+                    onAddContact(contact)
+                  }}
                 >
-                  <X className='h-4 w-4' />
-                </Button>
-              </DisabledFieldTooltip>
-            </div>
-          ))
-        )}
-      </div>
+                  <div className='flex flex-col'>
+                    <span className='flex items-center gap-1.5 font-medium'>
+                      {contact.name ?? contact.email}
+                      {contact.hasPortalAccess ? <PortalAccessMark /> : null}
+                    </span>
+                    {contact.name ? (
+                      <span className='text-muted-foreground text-xs'>
+                        {contact.email}
+                      </span>
+                    ) : null}
+                  </div>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+            <CommandCreateRows
+              query={query}
+              entityLabel='contact'
+              onCreate={onCreateContact}
+            />
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  )
+}
+
+export type ClientContactListProps = {
+  selectedContacts: ClientContactOption[]
+  isPending: boolean
+  pendingReason: string
+  onRequestRemoval: (contact: ClientContactOption) => void
+  /** Empty state: opens the same picker as the header's "Link contact". */
+  onRequestLink: () => void
+  linkDisabled: boolean
+  linkDisabledReason: string | null
+}
+
+/** The linked contacts, one row each, with the unlink control on the right. */
+export function ClientContactList({
+  selectedContacts,
+  isPending,
+  pendingReason,
+  onRequestRemoval,
+  onRequestLink,
+  linkDisabled,
+  linkDisabledReason,
+}: ClientContactListProps) {
+  if (selectedContacts.length === 0) {
+    return (
+      <DisabledFieldTooltip disabled={linkDisabled} reason={linkDisabledReason}>
+        <SheetEmptyState
+          message='No contacts linked yet.'
+          label='Link contact'
+          onClick={onRequestLink}
+          disabled={linkDisabled}
+        />
+      </DisabledFieldTooltip>
+    )
+  }
+
+  return (
+    <div className='flex flex-col gap-2'>
+      {selectedContacts.map(contact => (
+        <div
+          key={contact.id}
+          className='bg-muted/40 flex items-center justify-between gap-3 rounded-md border py-1.5 pr-1.5 pl-3'
+        >
+          <div className='flex min-w-0 flex-col text-sm leading-tight'>
+            <span className='flex items-center gap-1.5 font-medium'>
+              {contact.name ?? contact.email}
+              {contact.hasPortalAccess ? <PortalAccessMark /> : null}
+            </span>
+            {contact.name || contact.phone ? (
+              <span className='text-muted-foreground truncate text-xs'>
+                {[contact.name ? contact.email : null, contact.phone]
+                  .filter(Boolean)
+                  .join(' · ')}
+              </span>
+            ) : null}
+          </div>
+          <DisabledFieldTooltip
+            disabled={isPending}
+            reason={isPending ? pendingReason : null}
+            className='w-auto'
+          >
+            <Button
+              type='button'
+              variant='ghost'
+              size='icon'
+              className='text-muted-foreground hover:text-destructive h-8 w-8 shrink-0'
+              onClick={() => onRequestRemoval(contact)}
+              disabled={isPending}
+              aria-label={`Unlink ${contact.name ?? contact.email}`}
+            >
+              <X className='h-4 w-4' />
+            </Button>
+          </DisabledFieldTooltip>
+        </div>
+      ))}
     </div>
   )
 }

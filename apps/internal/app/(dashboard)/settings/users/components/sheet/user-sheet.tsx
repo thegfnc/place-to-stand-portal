@@ -88,7 +88,7 @@ export function UserSheet(props: UserSheetProps) {
               <form
                 id={USER_FORM_ID}
                 onSubmit={form.handleSubmit(handleFormSubmit)}
-                className='flex flex-col gap-5 px-6 pt-6 pb-8'
+                className='flex flex-col gap-6 px-6 pt-6 pb-8'
               >
                 <UserSheetFormFields
                   form={form}

@@ -19,6 +19,7 @@ import { Separator } from '@pts/ui/separator'
 import { Sheet, SheetContent } from '@/components/ui/sheet'
 import { SheetFooterBar } from '@/components/sheets/sheet-form-footer'
 import { SheetFormHeader } from '@/components/sheets/sheet-form-header'
+import { SheetSection } from '@/components/sheets/sheet-section'
 import { useToast } from '@/components/ui/use-toast'
 import { cn } from '@/lib/utils'
 import {
@@ -46,31 +47,34 @@ type SubmissionDetailSheetProps = {
   onRowRemoved?: () => void
 }
 
-function Section({
-  title,
-  children,
-}: {
-  title: string
-  children: React.ReactNode
-}) {
+type KvProps = {
+  label: string
+  value: React.ReactNode
+  /** Span both columns — for long unbroken values (user agent, keys). */
+  wide?: boolean
+}
+
+/** One label-over-value cell of a two-column definition grid. */
+function Kv({ label, value, wide = false }: KvProps) {
   return (
-    <section className='space-y-3'>
-      <h3 className='text-sm font-semibold tracking-tight'>{title}</h3>
-      {children}
-    </section>
+    <div className={cn('flex min-w-0 flex-col gap-1', wide && 'sm:col-span-2')}>
+      <dt className='text-muted-foreground text-xs'>{label}</dt>
+      {/* min-w-0 + break-words let long unbroken tokens (GCLIDs, URLs)
+          wrap instead of forcing horizontal overflow. */}
+      <dd className='min-w-0 text-sm break-words'>{value ?? '—'}</dd>
+    </div>
   )
 }
 
-function Field({ label, value }: { label: string; value: React.ReactNode }) {
-  return (
-    <div className='grid grid-cols-[9rem_1fr] gap-2 text-sm'>
-      <dt className='text-muted-foreground'>{label}</dt>
-      {/* min-w-0 lets the 1fr track shrink below its content's min-content
-          width so long unbroken tokens (GCLIDs, URLs) wrap instead of
-          forcing horizontal overflow. */}
-      <dd className='min-w-0 break-words'>{value ?? '—'}</dd>
-    </div>
-  )
+const KV_GRID = 'grid gap-x-4 gap-y-3 sm:grid-cols-2'
+
+/** "42s" under a minute, "3m 12s" above it. */
+function formatDuration(ms: number): string {
+  const total = Math.round(ms / 1000)
+  if (total < 60) {
+    return `${total}s`
+  }
+  return `${Math.floor(total / 60)}m ${total % 60}s`
 }
 
 /** Renders `—` for null/empty so empty fields read consistently. */
@@ -295,8 +299,8 @@ export function SubmissionDetailSheet({
         />
 
         <div className='flex-1 overflow-y-auto'>
-          <div className='space-y-6 px-4 pt-6 pb-8'>
-            <Section title='Status'>
+          <div className='flex flex-col gap-6 px-6 pt-6 pb-8'>
+            <div className='flex flex-wrap items-center justify-between gap-x-3 gap-y-2'>
               <div className='flex flex-wrap items-center gap-2'>
                 <Badge
                   variant='outline'
@@ -310,47 +314,37 @@ export function SubmissionDetailSheet({
                   <Badge variant='secondary'>Unacknowledged</Badge>
                 ) : null}
               </div>
-              <dl className='space-y-2'>
-                <Field
-                  label='Started'
-                  value={format(
+              <p className='text-muted-foreground text-xs'>
+                {[
+                  `Started ${format(
                     new Date(displaySubmission.startedAt),
                     "d MMM yyyy 'at' HH:mm"
-                  )}
-                />
-                <Field
-                  label='Time on page'
-                  value={
-                    displaySubmission.durationMs !== null
-                      ? `${Math.round(displaySubmission.durationMs / 1000)}s`
-                      : '—'
-                  }
-                />
-                {mode === 'active' && warrantsAttention && acknowledged ? (
-                  <Field
-                    label='Acknowledged'
-                    value={
-                      override
-                        ? 'Just now'
-                        : acknowledgedAt
-                          ? formatDistanceToNow(new Date(acknowledgedAt), {
-                              addSuffix: true,
-                            })
-                          : 'Yes'
-                    }
-                  />
-                ) : null}
-              </dl>
-            </Section>
+                  )}`,
+                  displaySubmission.durationMs !== null
+                    ? `${formatDuration(displaySubmission.durationMs)} on page`
+                    : null,
+                  mode === 'active' && warrantsAttention && acknowledged
+                    ? `Acknowledged ${
+                        override
+                          ? 'just now'
+                          : acknowledgedAt
+                            ? formatDistanceToNow(new Date(acknowledgedAt), {
+                                addSuffix: true,
+                              })
+                            : ''
+                      }`.trim()
+                    : null,
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}
+              </p>
+            </div>
 
             <Separator />
-            <Section title='Contact'>
-              <dl className='space-y-2'>
-                <Field
-                  label='Name'
-                  value={value(displaySubmission.contactName)}
-                />
-                <Field
+            <SheetSection title='Contact'>
+              <dl className={KV_GRID}>
+                <Kv label='Name' value={value(displaySubmission.contactName)} />
+                <Kv
                   label='Email'
                   value={
                     displaySubmission.contactEmail ? (
@@ -367,48 +361,61 @@ export function SubmissionDetailSheet({
                     )
                   }
                 />
-                <Field
+                <Kv
                   label='Company'
                   value={value(displaySubmission.contactCompany)}
                 />
-                <Field
+                <Kv
                   label='Website'
                   value={value(displaySubmission.contactWebsite)}
                 />
                 {!isAudit && (
-                  <Field
+                  <Kv
                     label='Subject'
                     value={value(displaySubmission.subject)}
                   />
                 )}
-                <Field
+                <Kv
                   label='Marketing consent'
                   value={value(displaySubmission.marketingConsent)}
                 />
+                <Kv
+                  label='Source'
+                  value={value(displaySubmission.sourceDetail)}
+                />
               </dl>
               {displaySubmission.message && (
-                <p className='bg-muted/50 rounded-md p-3 text-sm whitespace-pre-wrap'>
-                  {displaySubmission.message}
-                </p>
+                <div className='flex flex-col gap-1'>
+                  <span className='text-muted-foreground text-xs'>Message</span>
+                  <p className='bg-muted/50 rounded-md p-3 text-sm whitespace-pre-wrap'>
+                    {displaySubmission.message}
+                  </p>
+                </div>
               )}
-            </Section>
+            </SheetSection>
 
             {isAudit && (
               <>
                 <Separator />
-                <Section
-                  title={`Answers (${displaySubmission.answeredCount ?? 0} of ${displaySubmission.questionsTotal ?? 0})`}
+                <SheetSection
+                  title='Answers'
+                  action={
+                    <span className='text-muted-foreground text-xs'>
+                      {displaySubmission.answeredCount ?? 0} of{' '}
+                      {displaySubmission.questionsTotal ?? 0} answered
+                    </span>
+                  }
                 >
                   {displaySubmission.responses.length === 0 ? (
                     <p className='text-muted-foreground text-sm'>
                       No answers recorded.
                     </p>
                   ) : (
-                    <ol className='space-y-3'>
+                    <ol className='flex flex-col gap-3'>
                       {displaySubmission.responses.map((response, index) => (
                         <li
                           key={`${response.questionId}-${index}`}
-                          className='space-y-1'
+                          className='flex flex-col gap-1'
                         >
                           <p className='text-muted-foreground text-xs'>
                             {response.sectionId}
@@ -421,27 +428,27 @@ export function SubmissionDetailSheet({
                       ))}
                     </ol>
                   )}
-                </Section>
+                </SheetSection>
               </>
             )}
 
             {displaySubmission.result && (
               <>
                 <Separator />
-                <Section title='Result'>
-                  <dl className='space-y-2'>
-                    <Field
+                <SheetSection title='Result'>
+                  <dl className={KV_GRID}>
+                    <Kv
                       label='Phase'
                       value={value(displaySubmission.result.phaseName)}
                     />
-                    <Field
+                    <Kv
                       label='Generated by'
                       value={value(displaySubmission.result.generatedBy)}
                     />
                   </dl>
                   <p className='text-sm'>{displaySubmission.result.summary}</p>
                   {displaySubmission.result.recommendations.length > 0 && (
-                    <ul className='space-y-3'>
+                    <ul className='flex flex-col gap-2'>
                       {displaySubmission.result.recommendations.map(rec => (
                         <li
                           key={rec.serviceId}
@@ -466,64 +473,54 @@ export function SubmissionDetailSheet({
                       ))}
                     </ul>
                   )}
-                </Section>
+                </SheetSection>
               </>
             )}
 
             {hasAttribution && (
               <>
                 <Separator />
-                <Section title='Attribution'>
-                  <dl className='space-y-2'>
-                    <Field
+                <SheetSection title='Attribution'>
+                  <dl className={KV_GRID}>
+                    <Kv
                       label='Source'
                       value={value(displaySubmission.utmSource)}
                     />
-                    <Field
+                    <Kv
                       label='Medium'
                       value={value(displaySubmission.utmMedium)}
                     />
-                    <Field
+                    <Kv
                       label='Campaign'
                       value={value(displaySubmission.utmCampaign)}
                     />
-                    <Field
-                      label='Term'
-                      value={value(displaySubmission.utmTerm)}
-                    />
-                    <Field
+                    <Kv label='Term' value={value(displaySubmission.utmTerm)} />
+                    <Kv
                       label='Content'
                       value={value(displaySubmission.utmContent)}
                     />
-                    <Field
-                      label='GCLID'
-                      value={value(displaySubmission.gclid)}
-                    />
-                    <Field
+                    <Kv label='GCLID' value={value(displaySubmission.gclid)} />
+                    <Kv
                       label='Referrer'
                       value={value(displaySubmission.referrer)}
                     />
-                    <Field
+                    <Kv
                       label='Landing path'
                       value={value(displaySubmission.landingPath)}
                     />
                   </dl>
-                </Section>
+                </SheetSection>
               </>
             )}
 
             <Separator />
-            <Section title='Session'>
-              <dl className='space-y-2'>
-                <Field
-                  label='Source'
-                  value={value(displaySubmission.sourceDetail)}
-                />
-                <Field
+            <SheetSection title='Session'>
+              <dl className={KV_GRID}>
+                <Kv
                   label='Viewport'
                   value={value(displaySubmission.viewport)}
                 />
-                <Field
+                <Kv
                   label='Screen width'
                   value={
                     displaySubmission.screenWidth
@@ -531,25 +528,27 @@ export function SubmissionDetailSheet({
                       : '—'
                   }
                 />
-                <Field
+                <Kv
                   label='Timezone'
                   value={value(displaySubmission.timezone)}
                 />
-                <Field
+                <Kv
                   label='Language'
                   value={value(displaySubmission.language)}
                 />
-                <Field
+                <Kv
                   label='User agent'
                   value={value(displaySubmission.userAgent)}
+                  wide
                 />
-                <Field
+                <Kv
                   label='Session key'
                   value={
                     <code className='text-xs'>
                       {displaySubmission.sessionKey}
                     </code>
                   }
+                  wide
                 />
               </dl>
               {displaySubmission.posthogReplayUrl && (
@@ -557,13 +556,13 @@ export function SubmissionDetailSheet({
                   href={displaySubmission.posthogReplayUrl}
                   target='_blank'
                   rel='noopener noreferrer'
-                  className='text-primary inline-flex items-center gap-1 text-sm hover:underline'
+                  className='text-primary inline-flex w-fit items-center gap-1 text-sm hover:underline'
                 >
                   Watch session replay
                   <ExternalLink className='size-3' />
                 </a>
               )}
-            </Section>
+            </SheetSection>
           </div>
         </div>
 

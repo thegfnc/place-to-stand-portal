@@ -237,7 +237,7 @@ export function AvatarUploadField({
             </DisabledFieldTooltip>
           )}
         </div>
-        <p className="text-xs text-muted-foreground">Square images up to 2MB. PNG, JPEG, WEBP, or GIF are supported.</p>
+        <p className="text-xs text-muted-foreground">Square image up to 2MB. PNG, JPEG, WEBP, or GIF.</p>
       </div>
       <input
         ref={fileInputRef}

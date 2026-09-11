@@ -89,8 +89,13 @@ function FormItem({ className, ...props }: React.ComponentProps<'div'>) {
 
 function FormLabel({
   className,
+  optional = false,
+  children,
   ...props
-}: React.ComponentProps<'label'>) {
+}: React.ComponentProps<'label'> & {
+  /** Appends a muted "(optional)" marker after the label text. */
+  optional?: boolean
+}) {
   const { error, formItemId } = useFormField()
 
   return (
@@ -100,8 +105,16 @@ function FormLabel({
       className={cn('data-[error=true]:text-destructive', className)}
       htmlFor={formItemId}
       {...props}
-    />
+    >
+      {children}
+      {optional ? <OptionalMarker /> : null}
+    </Label>
   )
+}
+
+/** The muted "(optional)" suffix appended by `FormLabel optional`. */
+function OptionalMarker() {
+  return <span className='text-muted-foreground font-normal'>(optional)</span>
 }
 
 function FormControl({ ...props }: React.ComponentProps<typeof SlotPrimitive>) {

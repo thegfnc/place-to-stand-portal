@@ -1,6 +1,6 @@
 import { cn } from '@/lib/utils'
 
-export type TaskSheetEmptyStateProps = {
+export type SheetEmptyStateProps = {
   message: string
   /** Makes the whole box a button — omit for a static placeholder. */
   onClick?: () => void
@@ -13,17 +13,17 @@ const BASE_CLASSES =
   'text-muted-foreground w-full rounded-lg border border-dashed px-4 py-6 text-center text-sm'
 
 /**
- * Shared "nothing here yet" placeholder for the task sheet's sections
- * (comments, time logs), so each section's empty state reads the same.
- * Pass `onClick` to make it a call to action, matching the attachments
- * dropzone's clickable-dashed-box behaviour.
+ * Shared "nothing here yet" placeholder for a sheet section (comments, time
+ * logs, linked contacts or clients), so every section's empty state reads
+ * the same. Pass `onClick` to make it a call to action, matching the task
+ * attachments dropzone's clickable-dashed-box behaviour.
  */
-export function TaskSheetEmptyState({
+export function SheetEmptyState({
   message,
   onClick,
   disabled = false,
   label,
-}: TaskSheetEmptyStateProps) {
+}: SheetEmptyStateProps) {
   if (!onClick) {
     return <div className={BASE_CLASSES}>{message}</div>
   }

@@ -3,6 +3,7 @@ import type React from 'react'
 import type { UseFormReturn } from 'react-hook-form'
 
 import { AvatarUploadField } from '@/components/forms/avatar-upload-field'
+import { SheetSection } from '@/components/sheets/sheet-section'
 import { DisabledFieldTooltip } from '@/components/ui/disabled-field-tooltip'
 import {
   FormControl,
@@ -20,7 +21,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@pts/ui/select'
+import { Separator } from '@pts/ui/separator'
 import { Switch } from '@pts/ui/switch'
+
+import { cn } from '@/lib/utils'
 
 import { USER_ROLES } from '@/lib/settings/users/user-validation'
 import type { UserFormValues } from './form-schema'
@@ -74,6 +78,8 @@ export function UserSheetFormFields({
     }
   }, [isSheetOpen])
 
+  const fieldDisabledReason = isPending ? pendingReason : null
+
   return (
     <>
       <FormField
@@ -81,7 +87,6 @@ export function UserSheetFormFields({
         name='avatarPath'
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Avatar</FormLabel>
             <FormControl>
               <AvatarUploadField
                 key={avatarFieldKey}
@@ -102,177 +107,192 @@ export function UserSheetFormFields({
                 existingUserId={targetUserId}
               />
             </FormControl>
-            <FormDescription>
-              This image appears anywhere their initials would otherwise
-              display.
-            </FormDescription>
             <FormMessage />
           </FormItem>
         )}
       />
-      <FormField
-        control={form.control}
-        name='fullName'
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Full name</FormLabel>
-            <FormControl>
-              <DisabledFieldTooltip
-                disabled={isPending}
-                reason={isPending ? pendingReason : null}
-              >
-                <Input
-                  {...field}
-                  ref={(node) => {
-                    firstFieldRef.current = node
-                    if (typeof field.ref === 'function') {
-                      field.ref(node)
-                    } else if (field.ref) {
-                      ;(field.ref as React.MutableRefObject<HTMLInputElement | null>).current =
-                        node
-                    }
-                  }}
-                  placeholder='Ada Lovelace'
-                  disabled={isPending}
-                  aria-required
-                  aria-invalid={Boolean(form.formState.errors.fullName)}
-                />
-              </DisabledFieldTooltip>
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-      <FormField
-        control={form.control}
-        name='email'
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Email</FormLabel>
-            <FormControl>
-              <DisabledFieldTooltip
-                disabled={emailDisabled}
-                reason={emailDisabledReason}
-              >
-                <Input
-                  {...field}
-                  value={field.value ?? ''}
-                  type='email'
-                  placeholder='ada@example.com'
-                  disabled={emailDisabled}
-                  aria-required
-                  aria-invalid={Boolean(form.formState.errors.email)}
-                />
-              </DisabledFieldTooltip>
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-      <FormField
-        control={form.control}
-        name='role'
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Role</FormLabel>
-            <FormControl>
-              <DisabledFieldTooltip
-                disabled={roleDisabled}
-                reason={roleDisabledReason}
-              >
-                <Select
-                  onValueChange={field.onChange}
-                  value={field.value}
-                  disabled={roleDisabled}
-                >
-                  <SelectTrigger aria-required>
-                    <SelectValue placeholder='Select a role' />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {USER_ROLES.map(role => (
-                      <SelectItem key={role} value={role}>
-                        {role.charAt(0) + role.slice(1).toLowerCase()}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </DisabledFieldTooltip>
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-      {isEditing ? (
-        <FormField
-          control={form.control}
-          name='accessEnabled'
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel htmlFor='user-sheet-access-toggle'>Access</FormLabel>
-              <FormControl>
-                <DisabledFieldTooltip
-                  disabled={accessToggleDisabled}
-                  reason={accessToggleDisabledReason}
-                  className='w-auto'
-                >
-                  <div className='flex items-center gap-2'>
-                    <Switch
-                      id='user-sheet-access-toggle'
-                      checked={field.value ?? true}
-                      onCheckedChange={field.onChange}
-                      disabled={accessToggleDisabled}
-                      className='data-[state=checked]:bg-emerald-500 dark:data-[state=checked]:bg-emerald-500'
-                      aria-label={
-                        (field.value ?? true)
-                          ? `Disable sign-in for ${avatarDisplayName ?? 'this user'}`
-                          : `Enable sign-in for ${avatarDisplayName ?? 'this user'}`
-                      }
-                    />
-                    <span className='text-muted-foreground text-xs'>
-                      {(field.value ?? true) ? 'Enabled' : 'Disabled'}
-                    </span>
-                  </div>
-                </DisabledFieldTooltip>
-              </FormControl>
-              <FormDescription>
-                Controls whether they can sign in. Applies when you save.
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-      ) : null}
-      {isEditing ? (
-        <FormField
-          control={form.control}
-          name='password'
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Temporary password</FormLabel>
-              <FormDescription>
-                Provide a password to force a reset on next login (8+
-                characters).
-              </FormDescription>
-              <FormControl>
-                <DisabledFieldTooltip
-                  disabled={isPending}
-                  reason={isPending ? pendingReason : null}
-                >
-                  <Input
-                    {...field}
-                    type='password'
-                    value={field.value ?? ''}
-                    placeholder='••••••••'
+
+      <Separator />
+
+      <SheetSection title='Profile'>
+        <div className='grid items-start gap-4 sm:grid-cols-2'>
+          <FormField
+            control={form.control}
+            name='fullName'
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Full name</FormLabel>
+                <FormControl>
+                  <DisabledFieldTooltip
                     disabled={isPending}
-                    aria-invalid={Boolean(form.formState.errors.password)}
-                  />
-                </DisabledFieldTooltip>
-              </FormControl>
-              <FormMessage />
-            </FormItem>
+                    reason={fieldDisabledReason}
+                  >
+                    <Input
+                      {...field}
+                      data-autofocus
+                      ref={node => {
+                        firstFieldRef.current = node
+                        if (typeof field.ref === 'function') {
+                          field.ref(node)
+                        } else if (field.ref) {
+                          ;(
+                            field.ref as React.MutableRefObject<HTMLInputElement | null>
+                          ).current = node
+                        }
+                      }}
+                      placeholder='Ada Lovelace'
+                      disabled={isPending}
+                      aria-required
+                      aria-invalid={Boolean(form.formState.errors.fullName)}
+                    />
+                  </DisabledFieldTooltip>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name='email'
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Email</FormLabel>
+                <FormControl>
+                  <DisabledFieldTooltip
+                    disabled={emailDisabled}
+                    reason={emailDisabledReason}
+                  >
+                    <Input
+                      {...field}
+                      value={field.value ?? ''}
+                      type='email'
+                      placeholder='ada@example.com'
+                      disabled={emailDisabled}
+                      aria-required
+                      aria-invalid={Boolean(form.formState.errors.email)}
+                    />
+                  </DisabledFieldTooltip>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+      </SheetSection>
+
+      <Separator />
+
+      <SheetSection title='Sign-in'>
+        <div
+          className={cn(
+            'grid items-start gap-4',
+            isEditing && 'sm:grid-cols-2'
           )}
-        />
-      ) : null}
+        >
+          <FormField
+            control={form.control}
+            name='role'
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Role</FormLabel>
+                <FormControl>
+                  <DisabledFieldTooltip
+                    disabled={roleDisabled}
+                    reason={roleDisabledReason}
+                  >
+                    <Select
+                      onValueChange={field.onChange}
+                      value={field.value}
+                      disabled={roleDisabled}
+                    >
+                      <SelectTrigger aria-required>
+                        <SelectValue placeholder='Select a role' />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {USER_ROLES.map(role => (
+                          <SelectItem key={role} value={role}>
+                            {role.charAt(0) + role.slice(1).toLowerCase()}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </DisabledFieldTooltip>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          {isEditing ? (
+            <FormField
+              control={form.control}
+              name='accessEnabled'
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel htmlFor='user-sheet-access-toggle'>
+                    Access
+                  </FormLabel>
+                  <FormControl>
+                    <DisabledFieldTooltip
+                      disabled={accessToggleDisabled}
+                      reason={accessToggleDisabledReason}
+                      className='w-auto'
+                    >
+                      <div className='flex h-9 items-center gap-2'>
+                        <Switch
+                          id='user-sheet-access-toggle'
+                          checked={field.value ?? true}
+                          onCheckedChange={field.onChange}
+                          disabled={accessToggleDisabled}
+                          className='data-[state=checked]:bg-emerald-500 dark:data-[state=checked]:bg-emerald-500'
+                          aria-label={
+                            (field.value ?? true)
+                              ? `Disable sign-in for ${avatarDisplayName ?? 'this user'}`
+                              : `Enable sign-in for ${avatarDisplayName ?? 'this user'}`
+                          }
+                        />
+                        <span className='text-sm'>
+                          {(field.value ?? true) ? 'Enabled' : 'Disabled'}
+                        </span>
+                      </div>
+                    </DisabledFieldTooltip>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          ) : null}
+        </div>
+        {isEditing ? (
+          <FormField
+            control={form.control}
+            name='password'
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Temporary password</FormLabel>
+                <FormControl>
+                  <DisabledFieldTooltip
+                    disabled={isPending}
+                    reason={fieldDisabledReason}
+                  >
+                    <Input
+                      {...field}
+                      type='password'
+                      value={field.value ?? ''}
+                      placeholder='••••••••'
+                      disabled={isPending}
+                      aria-invalid={Boolean(form.formState.errors.password)}
+                    />
+                  </DisabledFieldTooltip>
+                </FormControl>
+                <FormDescription>
+                  Setting one forces a reset on next sign-in. 8+ characters.
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        ) : null}
+      </SheetSection>
     </>
   )
 }

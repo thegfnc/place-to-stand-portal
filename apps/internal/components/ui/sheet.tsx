@@ -97,7 +97,7 @@ const SheetOverlay = ({
     <SheetPrimitive.Backdrop
       data-slot='sheet-overlay'
       className={cn(
-        'pointer-events-auto data-open:animate-in data-closed:animate-out data-closed:fill-mode-forwards data-closed:fade-out-0 data-open:fade-in-0 fixed inset-0 z-50 bg-black/50',
+        'data-open:animate-in data-closed:animate-out data-closed:fill-mode-forwards data-closed:fade-out-0 data-open:fade-in-0 pointer-events-auto fixed inset-0 z-50 bg-black/50',
         className
       )}
       {...props}
@@ -148,6 +148,31 @@ const SheetContent = React.forwardRef<
     ref
   ) => {
     const isHorizontal = side === 'left' || side === 'right'
+    const popupRef = React.useRef<HTMLDivElement | null>(null)
+    const setPopupRef = React.useCallback(
+      (node: HTMLDivElement | null) => {
+        popupRef.current = node
+        if (typeof ref === 'function') {
+          ref(node)
+        } else if (ref) {
+          ref.current = node
+        }
+      },
+      [ref]
+    )
+    // Land focus on the sheet's `data-autofocus` field when it has one, else
+    // on the popup itself — never on its first tabbable (the header's close
+    // button), which stays one Tab away.
+    const focusPopup = React.useCallback(() => {
+      const popup = popupRef.current
+      if (!popup) {
+        return null
+      }
+      return (
+        popup.querySelector<HTMLElement>('[data-autofocus]:not([disabled])') ??
+        popup
+      )
+    }, [])
 
     return (
       <SheetPortal>
@@ -159,12 +184,13 @@ const SheetContent = React.forwardRef<
           />
         )}
         <SheetPrimitive.Popup
-          ref={ref}
+          ref={setPopupRef}
+          initialFocus={focusPopup}
           data-slot='sheet-content'
           className={cn(
             // Open and close both 300ms: the open used to run at 500ms, which
             // read as slower than the close it was paired with.
-            'pointer-events-auto bg-background data-open:animate-in data-closed:animate-out data-closed:fill-mode-forwards fixed z-50 flex flex-col gap-4 shadow-lg transition ease-in-out data-closed:duration-300 data-open:duration-300',
+            'bg-background data-open:animate-in data-closed:animate-out data-closed:fill-mode-forwards pointer-events-auto fixed z-50 flex flex-col gap-4 shadow-lg transition ease-in-out data-closed:duration-300 data-open:duration-300',
             skipMountAnimation && 'data-open:animate-none',
             side === 'right' &&
               'data-closed:slide-out-to-right data-open:slide-in-from-right inset-y-0 right-0 h-full w-3/4 border-l',
@@ -197,7 +223,7 @@ const SheetHeader = ({ className, ...props }: React.ComponentProps<'div'>) => {
   return (
     <div
       data-slot='sheet-header'
-      className={cn('flex flex-col gap-0.5 p-4 bg-muted/50', className)}
+      className={cn('bg-muted/50 flex flex-col gap-0.5 p-4', className)}
       {...props}
     />
   )
