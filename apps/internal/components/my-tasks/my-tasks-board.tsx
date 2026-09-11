@@ -26,7 +26,6 @@ import type { TaskContextDetails } from '@/app/(dashboard)/projects/task-card'
 
 type TaskCardOptions = {
   context?: TaskContextDetails
-  hideAssignees?: boolean
 }
 
 type TaskLookupEntry = {

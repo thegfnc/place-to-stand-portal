@@ -314,9 +314,8 @@ export function MyTasksPage({
   const getTaskCardOptions = useCallback(
     (task: TaskWithRelations) => ({
       context: taskContexts.get(task.id),
-      hideAssignees: selectedAssigneeId === user.id,
     }),
-    [taskContexts, selectedAssigneeId, user.id]
+    [taskContexts]
   )
 
 

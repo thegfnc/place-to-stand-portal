@@ -16,7 +16,6 @@ type TaskDragOverlayProps = {
   ) =>
     | {
         context?: TaskContextDetails
-        hideAssignees?: boolean
       }
     | undefined
 }
@@ -40,7 +39,6 @@ export function TaskDragOverlay({
             task={draggingTask}
             assignees={assignees}
             context={options.context}
-            hideAssignees={options.hideAssignees}
           />
         )
       ) : null}
