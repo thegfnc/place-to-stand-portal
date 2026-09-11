@@ -9,7 +9,6 @@ import { SheetFormFooter } from '@/components/sheets/sheet-form-footer'
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -239,55 +238,37 @@ export function ProjectSheetForm(props: ProjectSheetFormProps) {
           onSubmit={handleSave}
           className='flex flex-col gap-5 px-6 pt-6 pb-8'
         >
-          <FormField
-            control={form.control}
-            name='name'
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Name</FormLabel>
-                <FormControl>
-                  <DisabledFieldTooltip
-                    disabled={fieldState.name.disabled}
-                    reason={fieldState.name.reason}
-                  >
-                    <Input
-                      {...field}
-                      ref={node => {
-                        firstFieldRef.current = node
-                        if (typeof field.ref === 'function') {
-                          field.ref(node)
-                        } else if (field.ref) {
-                          ;(
-                            field.ref as React.MutableRefObject<HTMLInputElement | null>
-                          ).current = node
-                        }
-                      }}
-                      placeholder='Website redesign'
-                      disabled={fieldState.name.disabled}
-                    />
-                  </DisabledFieldTooltip>
-                </FormControl>
-                <FormMessage />
-              </FormItem>
+          <div
+            className={cn(
+              'grid items-start gap-4',
+              isEditing && 'sm:grid-cols-2'
             )}
-          />
-          {isEditing ? (
+          >
             <FormField
               control={form.control}
-              name='slug'
+              name='name'
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Slug</FormLabel>
+                  <FormLabel>Name</FormLabel>
                   <FormControl>
                     <DisabledFieldTooltip
-                      disabled={fieldState.slug.disabled}
-                      reason={fieldState.slug.reason}
+                      disabled={fieldState.name.disabled}
+                      reason={fieldState.name.reason}
                     >
                       <Input
                         {...field}
-                        value={field.value ?? ''}
-                        placeholder='website-redesign'
-                        disabled={fieldState.slug.disabled}
+                        ref={node => {
+                          firstFieldRef.current = node
+                          if (typeof field.ref === 'function') {
+                            field.ref(node)
+                          } else if (field.ref) {
+                            ;(
+                              field.ref as React.MutableRefObject<HTMLInputElement | null>
+                            ).current = node
+                          }
+                        }}
+                        placeholder='Website redesign'
+                        disabled={fieldState.name.disabled}
                       />
                     </DisabledFieldTooltip>
                   </FormControl>
@@ -295,50 +276,65 @@ export function ProjectSheetForm(props: ProjectSheetFormProps) {
                 </FormItem>
               )}
             />
-          ) : null}
+            {isEditing ? (
+              <FormField
+                control={form.control}
+                name='slug'
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Slug</FormLabel>
+                    <FormControl>
+                      <DisabledFieldTooltip
+                        disabled={fieldState.slug.disabled}
+                        reason={fieldState.slug.reason}
+                      >
+                        <Input
+                          {...field}
+                          value={field.value ?? ''}
+                          placeholder='website-redesign'
+                          disabled={fieldState.slug.disabled}
+                        />
+                      </DisabledFieldTooltip>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            ) : null}
+          </div>
           <div className='grid items-start gap-4 sm:grid-cols-2'>
             <FormField
               control={form.control}
               name='projectType'
-              render={({ field }) => {
-                const selectedType =
-                  PROJECT_TYPE_OPTIONS.find(
-                    option => option.value === field.value
-                  ) ?? PROJECT_TYPE_OPTIONS[0]
-
-                return (
-                  <FormItem>
-                    <FormLabel>Project type</FormLabel>
-                    <Select
-                      value={field.value ?? 'CLIENT'}
-                      onValueChange={field.onChange}
-                      disabled={fieldState.type.disabled}
-                    >
-                      <FormControl>
-                        <DisabledFieldTooltip
-                          disabled={fieldState.type.disabled}
-                          reason={fieldState.type.reason}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder='Select type' />
-                          </SelectTrigger>
-                        </DisabledFieldTooltip>
-                      </FormControl>
-                      <SelectContent align='start'>
-                        {PROJECT_TYPE_OPTIONS.map(option => (
-                          <SelectItem key={option.value} value={option.value}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormDescription>
-                      {selectedType?.description}
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )
-              }}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Project type</FormLabel>
+                  <Select
+                    value={field.value ?? 'CLIENT'}
+                    onValueChange={field.onChange}
+                    disabled={fieldState.type.disabled}
+                  >
+                    <FormControl>
+                      <DisabledFieldTooltip
+                        disabled={fieldState.type.disabled}
+                        reason={fieldState.type.reason}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder='Select type' />
+                        </SelectTrigger>
+                      </DisabledFieldTooltip>
+                    </FormControl>
+                    <SelectContent align='start'>
+                      {PROJECT_TYPE_OPTIONS.map(option => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
             <FormField
               control={form.control}
@@ -368,87 +364,6 @@ export function ProjectSheetForm(props: ProjectSheetFormProps) {
               )}
             />
           </div>
-          <FormField
-            control={form.control}
-            name='status'
-            render={({ field }) => {
-              const selectedLabel = field.value
-                ? getProjectStatusLabel(field.value)
-                : null
-              const selectedToken = field.value
-                ? getProjectStatusToken(field.value)
-                : null
-
-              return (
-                <FormItem>
-                  <FormLabel>Status</FormLabel>
-                  <Select
-                    value={field.value ?? ''}
-                    onValueChange={field.onChange}
-                    disabled={fieldState.status.disabled}
-                  >
-                    <FormControl>
-                      <DisabledFieldTooltip
-                        disabled={fieldState.status.disabled}
-                        reason={fieldState.status.reason}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder='Select status'>
-                            {selectedLabel && selectedToken ? (
-                              <Badge className={cn('text-xs', selectedToken)}>
-                                {selectedLabel}
-                              </Badge>
-                            ) : null}
-                          </SelectValue>
-                        </SelectTrigger>
-                      </DisabledFieldTooltip>
-                    </FormControl>
-                    <SelectContent align='start'>
-                      {PROJECT_STATUS_OPTIONS.map(status => {
-                        const statusToken = getProjectStatusToken(status.value)
-                        return (
-                          <SelectItem key={status.value} value={status.value}>
-                            <Badge className={cn('text-xs', statusToken)}>
-                              {status.label}
-                            </Badge>
-                          </SelectItem>
-                        )
-                      })}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )
-            }}
-          />
-          <FormField
-            control={form.control}
-            name='ownerId'
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Project Owner</FormLabel>
-                <FormControl>
-                  <DisabledFieldTooltip
-                    disabled={fieldState.owner.disabled}
-                    reason={fieldState.owner.reason}
-                  >
-                    <SearchableCombobox
-                      name={field.name}
-                      value={field.value ?? ''}
-                      onChange={field.onChange}
-                      onBlur={field.onBlur}
-                      items={ownerOptions}
-                      searchPlaceholder='Search team members...'
-                      emptyMessage='No team members found.'
-                      disabled={fieldState.owner.disabled}
-                    />
-                  </DisabledFieldTooltip>
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
           <div className='grid gap-4 sm:grid-cols-2'>
             <FormField
               control={form.control}
@@ -489,6 +404,91 @@ export function ProjectSheetForm(props: ProjectSheetFormProps) {
                         value={field.value ?? ''}
                         type='date'
                         disabled={fieldState.date.disabled}
+                      />
+                    </DisabledFieldTooltip>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+
+          <div className='grid items-start gap-4 sm:grid-cols-2'>
+            <FormField
+              control={form.control}
+              name='status'
+              render={({ field }) => {
+                const selectedLabel = field.value
+                  ? getProjectStatusLabel(field.value)
+                  : null
+                const selectedToken = field.value
+                  ? getProjectStatusToken(field.value)
+                  : null
+
+                return (
+                  <FormItem>
+                    <FormLabel>Status</FormLabel>
+                    <Select
+                      value={field.value ?? ''}
+                      onValueChange={field.onChange}
+                      disabled={fieldState.status.disabled}
+                    >
+                      <FormControl>
+                        <DisabledFieldTooltip
+                          disabled={fieldState.status.disabled}
+                          reason={fieldState.status.reason}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder='Select status'>
+                              {selectedLabel && selectedToken ? (
+                                <Badge className={cn('text-xs', selectedToken)}>
+                                  {selectedLabel}
+                                </Badge>
+                              ) : null}
+                            </SelectValue>
+                          </SelectTrigger>
+                        </DisabledFieldTooltip>
+                      </FormControl>
+                      <SelectContent align='start'>
+                        {PROJECT_STATUS_OPTIONS.map(status => {
+                          const statusToken = getProjectStatusToken(
+                            status.value
+                          )
+                          return (
+                            <SelectItem key={status.value} value={status.value}>
+                              <Badge className={cn('text-xs', statusToken)}>
+                                {status.label}
+                              </Badge>
+                            </SelectItem>
+                          )
+                        })}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )
+              }}
+            />
+            <FormField
+              control={form.control}
+              name='ownerId'
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Project Owner</FormLabel>
+                  <FormControl>
+                    <DisabledFieldTooltip
+                      disabled={fieldState.owner.disabled}
+                      reason={fieldState.owner.reason}
+                    >
+                      <SearchableCombobox
+                        name={field.name}
+                        value={field.value ?? ''}
+                        onChange={field.onChange}
+                        onBlur={field.onBlur}
+                        items={ownerOptions}
+                        searchPlaceholder='Search team members...'
+                        emptyMessage='No team members found.'
+                        disabled={fieldState.owner.disabled}
                       />
                     </DisabledFieldTooltip>
                   </FormControl>
