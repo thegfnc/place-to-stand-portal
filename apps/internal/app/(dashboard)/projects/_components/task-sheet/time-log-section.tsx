@@ -10,7 +10,7 @@ import { Skeleton } from '@pts/ui/skeleton'
 import { getInitials } from '@/lib/users/initials'
 import type { TimeLogEntry } from '@/lib/projects/time-log/types'
 
-import { TaskSheetEmptyState } from './task-sheet-empty-state'
+import { SheetEmptyState } from '@/components/sheets/sheet-empty-state'
 import { useTaskTimeLogs } from './use-task-time-logs'
 
 type TimeLogSectionProps = {
@@ -78,7 +78,7 @@ export function TimeLogSection({
           Time logs could not be loaded.
         </p>
       ) : entries.length === 0 ? (
-        <TaskSheetEmptyState
+        <SheetEmptyState
           message='No time logged yet.'
           label='Log time'
           onClick={onLogTime}

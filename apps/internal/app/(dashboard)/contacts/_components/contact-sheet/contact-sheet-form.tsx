@@ -2,13 +2,14 @@
 
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import type React from 'react'
-import { Check, UserPlus } from 'lucide-react'
+import { Check, User2, UserPlus } from 'lucide-react'
 import type { UseFormReturn } from 'react-hook-form'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@pts/ui/button'
 import { DisabledFieldTooltip } from '@/components/ui/disabled-field-tooltip'
 import { SheetFormFooter } from '@/components/sheets/sheet-form-footer'
+import { SheetSection } from '@/components/sheets/sheet-section'
 import {
   Form,
   FormControl,
@@ -19,11 +20,13 @@ import {
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { PhoneInput } from '@/components/ui/phone-input'
+import { Separator } from '@pts/ui/separator'
 
 import { useSheetFormControls } from '@/lib/hooks/use-sheet-form-controls'
 
 import {
-  ContactClientPicker,
+  ContactClientLinkButton,
+  ContactClientList,
   type ContactClientOption,
 } from './contact-client-picker'
 
@@ -130,137 +133,172 @@ export function ContactSheetForm({
     }
   }, [isSheetOpen])
 
+  const fieldDisabledReason = isPending ? pendingReason : null
+
   return (
     <Form {...form}>
       <div className='flex-1 overflow-y-auto'>
         <form
           id={CONTACT_FORM_ID}
           onSubmit={form.handleSubmit(onSubmit)}
-          className='flex flex-col gap-5 px-6 pt-6 pb-8'
+          className='flex flex-col gap-6 px-6 pt-6 pb-8'
         >
-          <FormField
-            control={form.control}
-            name='name'
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Full Name</FormLabel>
-                <FormControl>
-                  <DisabledFieldTooltip
-                    disabled={isPending}
-                    reason={isPending ? pendingReason : null}
-                  >
-                    <Input
-                      {...field}
-                      ref={node => {
-                        firstFieldRef.current = node
-                        if (typeof field.ref === 'function') {
-                          field.ref(node)
-                        } else if (field.ref) {
-                          ;(
-                            field.ref as React.MutableRefObject<HTMLInputElement | null>
-                          ).current = node
-                        }
-                      }}
-                      value={field.value ?? ''}
-                      placeholder='John Doe'
+          <SheetSection title='Details'>
+            <FormField
+              control={form.control}
+              name='name'
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Full name</FormLabel>
+                  <FormControl>
+                    <DisabledFieldTooltip
                       disabled={isPending}
-                    />
-                  </DisabledFieldTooltip>
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name='email'
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Email</FormLabel>
-                <FormControl>
-                  <DisabledFieldTooltip
-                    disabled={isPending}
-                    reason={isPending ? pendingReason : null}
-                  >
-                    <Input
-                      {...field}
-                      type='email'
-                      placeholder='contact@example.com'
-                      disabled={isPending}
-                    />
-                  </DisabledFieldTooltip>
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name='phone'
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Phone (optional)</FormLabel>
-                <FormControl>
-                  <DisabledFieldTooltip
-                    disabled={isPending}
-                    reason={isPending ? pendingReason : null}
-                  >
-                    <PhoneInput
-                      value={field.value ?? ''}
-                      onChange={field.onChange}
-                      disabled={isPending}
-                    />
-                  </DisabledFieldTooltip>
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <div className='space-y-2'>
-            <FormLabel>Clients</FormLabel>
-            <ContactClientPicker
+                      reason={fieldDisabledReason}
+                    >
+                      <Input
+                        {...field}
+                        data-autofocus
+                        ref={node => {
+                          firstFieldRef.current = node
+                          if (typeof field.ref === 'function') {
+                            field.ref(node)
+                          } else if (field.ref) {
+                            ;(
+                              field.ref as React.MutableRefObject<HTMLInputElement | null>
+                            ).current = node
+                          }
+                        }}
+                        value={field.value ?? ''}
+                        placeholder='John Doe'
+                        disabled={isPending}
+                      />
+                    </DisabledFieldTooltip>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <div className='grid items-start gap-4 sm:grid-cols-2'>
+              <FormField
+                control={form.control}
+                name='email'
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
+                      <DisabledFieldTooltip
+                        disabled={isPending}
+                        reason={fieldDisabledReason}
+                      >
+                        <Input
+                          {...field}
+                          type='email'
+                          placeholder='contact@example.com'
+                          disabled={isPending}
+                        />
+                      </DisabledFieldTooltip>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name='phone'
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel optional>Phone</FormLabel>
+                    <FormControl>
+                      <DisabledFieldTooltip
+                        disabled={isPending}
+                        reason={fieldDisabledReason}
+                      >
+                        <PhoneInput
+                          value={field.value ?? ''}
+                          onChange={field.onChange}
+                          disabled={isPending}
+                        />
+                      </DisabledFieldTooltip>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+          </SheetSection>
+
+          <Separator />
+
+          <SheetSection
+            title='Clients'
+            action={
+              <ContactClientLinkButton
+                availableClients={availableClients}
+                disabled={addClientButtonDisabled}
+                disabledReason={addClientButtonDisabledReason}
+                isPickerOpen={isClientPickerOpen}
+                isPending={isPending}
+                onPickerOpenChange={onClientPickerOpenChange}
+                onAddClient={onAddClient}
+                onCreateClient={onCreateClient}
+              />
+            }
+          >
+            <ContactClientList
               selectedClients={selectedClients}
-              availableClients={availableClients}
-              addButtonDisabled={addClientButtonDisabled}
-              addButtonDisabledReason={addClientButtonDisabledReason}
-              isPickerOpen={isClientPickerOpen}
               isPending={isPending}
               pendingReason={pendingReason}
-              onPickerOpenChange={onClientPickerOpenChange}
-              onAddClient={onAddClient}
-              onCreateClient={onCreateClient}
               onRequestRemoval={onRemoveClient}
+              onRequestLink={() => onClientPickerOpenChange(true)}
+              linkDisabled={addClientButtonDisabled}
+              linkDisabledReason={addClientButtonDisabledReason}
             />
-          </div>
+          </SheetSection>
+
           {isEditing ? (
-            <div className='space-y-2'>
-              <FormLabel>Portal Access</FormLabel>
-              {hasPortalAccess ? (
-                <Badge variant='secondary' className='gap-1.5'>
-                  <Check className='h-3 w-3' />
-                  Portal access
-                </Badge>
-              ) : (
-                <div>
-                  <DisabledFieldTooltip
-                    disabled={promoteDisabled}
-                    reason={promoteDisabledReason}
-                  >
-                    <Button
-                      type='button'
-                      variant='outline'
-                      size='sm'
+            <>
+              <Separator />
+              <SheetSection title='Portal access'>
+                <div className='flex items-center gap-3 rounded-md border p-3'>
+                  <User2 className='text-muted-foreground h-4 w-4 shrink-0' />
+                  <div className='flex min-w-0 flex-1 flex-col gap-0.5 text-sm leading-tight'>
+                    <span className='font-medium'>
+                      {hasPortalAccess
+                        ? 'Portal account active'
+                        : 'No portal account'}
+                    </span>
+                    <span className='text-muted-foreground text-xs'>
+                      {hasPortalAccess
+                        ? 'They can sign in to every client linked above.'
+                        : 'They’ll get access to every client linked above.'}
+                    </span>
+                  </div>
+                  {hasPortalAccess ? (
+                    <Badge variant='secondary' className='gap-1.5'>
+                      <Check className='h-3 w-3' />
+                      Portal access
+                    </Badge>
+                  ) : (
+                    <DisabledFieldTooltip
                       disabled={promoteDisabled}
-                      onClick={onRequestPromote}
-                      className='gap-1.5'
+                      reason={promoteDisabledReason}
+                      className='w-auto'
                     >
-                      <UserPlus className='h-3.5 w-3.5' />
-                      Create Portal Account
-                    </Button>
-                  </DisabledFieldTooltip>
+                      <Button
+                        type='button'
+                        variant='outline'
+                        size='sm'
+                        disabled={promoteDisabled}
+                        onClick={onRequestPromote}
+                      >
+                        <UserPlus />
+                        Create account
+                      </Button>
+                    </DisabledFieldTooltip>
+                  )}
                 </div>
-              )}
-            </div>
+              </SheetSection>
+            </>
           ) : null}
           {feedback ? <p className={FEEDBACK_CLASSES}>{feedback}</p> : null}
         </form>

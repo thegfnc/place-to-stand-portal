@@ -6,6 +6,7 @@ import { useWatch, type UseFormReturn } from 'react-hook-form'
 
 import { Badge } from '@/components/ui/badge'
 import { SheetFormFooter } from '@/components/sheets/sheet-form-footer'
+import { SheetSection } from '@/components/sheets/sheet-section'
 import { DisabledFieldTooltip } from '@/components/ui/disabled-field-tooltip'
 import {
   Form,
@@ -24,6 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@pts/ui/select'
+import { Separator } from '@pts/ui/separator'
 
 import { useSheetFormControls } from '@/lib/hooks/use-sheet-form-controls'
 import type {
@@ -38,26 +40,22 @@ import { US_STATES } from '@/lib/settings/clients/us-states'
 import { cn } from '@/lib/utils'
 import type { ClientSheetFormValues } from '@/lib/settings/clients/client-sheet-schema'
 
-import { ClientContactPicker } from './client-contact-picker'
+import {
+  ClientContactLinkButton,
+  ClientContactList,
+} from './client-contact-picker'
 import { ClientCloserPicker } from './client-closer-picker'
-import { ClientOriginationPicker } from './client-origination-picker'
+import { ClientEffectiveCallout } from './client-effective-callout'
+import {
+  ClientOriginationModeToggle,
+  ClientOriginationPicker,
+} from './client-origination-picker'
 import { getSubmitLabel } from '@/lib/forms/form-controls'
 
 const FEEDBACK_CLASSES =
   'border-destructive/40 bg-destructive/10 text-destructive rounded-md border px-3 py-2 text-sm'
 
 const CLIENT_FORM_ID = 'client-form'
-
-/** "Sep 1, 2026"-style label for the first of the month `offset` months out. */
-function formatMonthStart(offset: number): string {
-  const now = new Date()
-  const target = new Date(now.getFullYear(), now.getMonth() + offset, 1)
-  return target.toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  })
-}
 
 type ClientSheetFormProps = {
   form: UseFormReturn<ClientSheetFormValues>
@@ -209,62 +207,42 @@ export function ClientSheetForm({
     }
   }, [isSheetOpen])
 
+  const fieldDisabledReason = isPending ? pendingReason : null
+
   return (
     <Form {...form}>
       <div className='flex-1 overflow-y-auto'>
         <form
           id={CLIENT_FORM_ID}
           onSubmit={form.handleSubmit(onSubmit)}
-          className='flex flex-col gap-5 px-6 pt-6 pb-8'
+          className='flex flex-col gap-6 px-6 pt-6 pb-8'
         >
-          <FormField
-            control={form.control}
-            name='name'
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Name</FormLabel>
-                <FormControl>
-                  <DisabledFieldTooltip
-                    disabled={isPending}
-                    reason={isPending ? pendingReason : null}
-                  >
-                    <Input
-                      {...field}
-                      ref={node => {
-                        firstFieldRef.current = node
-                        if (typeof field.ref === 'function') {
-                          field.ref(node)
-                        } else if (field.ref) {
-                          ;(
-                            field.ref as React.MutableRefObject<HTMLInputElement | null>
-                          ).current = node
-                        }
-                      }}
-                      placeholder='Acme Corp'
-                      disabled={isPending}
-                    />
-                  </DisabledFieldTooltip>
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          {isEditing ? (
+          <SheetSection title='Details'>
             <FormField
               control={form.control}
-              name='slug'
+              name='name'
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Slug</FormLabel>
+                  <FormLabel>Name</FormLabel>
                   <FormControl>
                     <DisabledFieldTooltip
                       disabled={isPending}
-                      reason={isPending ? pendingReason : null}
+                      reason={fieldDisabledReason}
                     >
                       <Input
                         {...field}
-                        value={field.value ?? ''}
-                        placeholder='acme'
+                        data-autofocus
+                        ref={node => {
+                          firstFieldRef.current = node
+                          if (typeof field.ref === 'function') {
+                            field.ref(node)
+                          } else if (field.ref) {
+                            ;(
+                              field.ref as React.MutableRefObject<HTMLInputElement | null>
+                            ).current = node
+                          }
+                        }}
+                        placeholder='Acme Corp'
                         disabled={isPending}
                       />
                     </DisabledFieldTooltip>
@@ -273,281 +251,296 @@ export function ClientSheetForm({
                 </FormItem>
               )}
             />
-          ) : null}
-          <FormField
-            control={form.control}
-            name='billingType'
-            render={({ field }) => {
-              const selectedBillingType =
-                CLIENT_BILLING_TYPE_SELECT_OPTIONS.find(
-                  option => option.value === field.value
-                ) ?? CLIENT_BILLING_TYPE_SELECT_OPTIONS[0]
+            <div
+              className={cn(
+                'grid items-start gap-4',
+                isEditing && 'sm:grid-cols-2'
+              )}
+            >
+              {isEditing ? (
+                <FormField
+                  control={form.control}
+                  name='slug'
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Slug</FormLabel>
+                      <FormControl>
+                        <DisabledFieldTooltip
+                          disabled={isPending}
+                          reason={fieldDisabledReason}
+                        >
+                          <Input
+                            {...field}
+                            value={field.value ?? ''}
+                            placeholder='acme'
+                            disabled={isPending}
+                          />
+                        </DisabledFieldTooltip>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              ) : null}
+              <FormField
+                control={form.control}
+                name='website'
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel optional>Website</FormLabel>
+                    <FormControl>
+                      <DisabledFieldTooltip
+                        disabled={isPending}
+                        reason={fieldDisabledReason}
+                      >
+                        <Input
+                          {...field}
+                          value={field.value ?? ''}
+                          placeholder='https://example.com'
+                          disabled={isPending}
+                        />
+                      </DisabledFieldTooltip>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+          </SheetSection>
 
-              return (
-                <FormItem>
-                  <FormLabel>Billing Type</FormLabel>
-                  <Select
-                    value={field.value ?? selectedBillingType.value}
-                    onValueChange={field.onChange}
-                    disabled={isPending}
-                  >
-                    <FormControl>
-                      <DisabledFieldTooltip
+          <Separator />
+
+          <SheetSection title='Billing'>
+            <div className='grid items-start gap-4 sm:grid-cols-2'>
+              <FormField
+                control={form.control}
+                name='billingType'
+                render={({ field }) => {
+                  const selectedBillingType =
+                    CLIENT_BILLING_TYPE_SELECT_OPTIONS.find(
+                      option => option.value === field.value
+                    ) ?? CLIENT_BILLING_TYPE_SELECT_OPTIONS[0]
+
+                  return (
+                    <FormItem>
+                      <FormLabel>Billing type</FormLabel>
+                      <Select
+                        value={field.value ?? selectedBillingType.value}
+                        onValueChange={field.onChange}
                         disabled={isPending}
-                        reason={isPending ? pendingReason : null}
                       >
-                        <SelectTrigger>
-                          <SelectValue placeholder='Select billing type'>
-                            <Badge
-                              variant='outline'
-                              className={cn(
-                                'text-xs',
-                                selectedBillingType.badgeClassName
-                              )}
-                            >
-                              {selectedBillingType.label}
-                            </Badge>
-                          </SelectValue>
-                        </SelectTrigger>
-                      </DisabledFieldTooltip>
-                    </FormControl>
-                    <SelectContent align='start'>
-                      {CLIENT_BILLING_TYPE_SELECT_OPTIONS.map(option => (
-                        <SelectItem key={option.value} value={option.value}>
-                          <Badge
-                            variant='outline'
-                            className={cn('text-xs', option.badgeClassName)}
+                        <FormControl>
+                          <DisabledFieldTooltip
+                            disabled={isPending}
+                            reason={fieldDisabledReason}
                           >
-                            {option.label}
-                          </Badge>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {selectedBillingType.description ? (
-                    <FormDescription>
-                      {selectedBillingType.description}
-                    </FormDescription>
-                  ) : null}
-                  <FormMessage />
-                </FormItem>
-              )
-            }}
-          />
-          {isEditing &&
-          initialBillingType !== null &&
-          watchedBillingType !== initialBillingType ? (
-            <FormField
-              control={form.control}
-              name='billingEffective'
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>New billing starts</FormLabel>
-                  <Select
-                    value={field.value}
-                    onValueChange={field.onChange}
-                    disabled={isPending}
-                  >
-                    <FormControl>
-                      <DisabledFieldTooltip
-                        disabled={isPending}
-                        reason={isPending ? pendingReason : null}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                      </DisabledFieldTooltip>
-                    </FormControl>
-                    <SelectContent align='start'>
-                      <SelectItem value='next_month'>
-                        Next month ({formatMonthStart(1)})
-                      </SelectItem>
-                      <SelectItem value='current_month'>
-                        This month ({formatMonthStart(0)})
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormDescription>
-                    {field.value === 'current_month'
-                      ? "This month's close will re-derive under the new billing type."
-                      : 'The new type applies to invoices right away; the Monthly Close switches this client at the boundary.'}
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          ) : null}
-          <FormField
-            control={form.control}
-            name='state'
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>State (optional)</FormLabel>
-                <Select
-                  value={field.value ?? ''}
-                  onValueChange={value => {
-                    field.onChange(value === '' ? '' : value)
-                  }}
-                  disabled={isPending}
-                >
-                  <FormControl>
-                    <DisabledFieldTooltip
-                      disabled={isPending}
-                      reason={isPending ? pendingReason : null}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder='Select state (optional)' />
-                      </SelectTrigger>
-                    </DisabledFieldTooltip>
-                  </FormControl>
-                  <SelectContent align='start'>
-                    {US_STATES.map(state => (
-                      <SelectItem key={state.value} value={state.value}>
-                        {state.label} ({state.value})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormDescription>
-                  Used to calculate tax rate on invoices.
-                </FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name='website'
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Website (optional)</FormLabel>
-                <FormControl>
-                  <DisabledFieldTooltip
-                    disabled={isPending}
-                    reason={isPending ? pendingReason : null}
-                  >
-                    <Input
-                      {...field}
+                            <SelectTrigger>
+                              <SelectValue placeholder='Select billing type'>
+                                <Badge
+                                  variant='outline'
+                                  className={cn(
+                                    'text-xs',
+                                    selectedBillingType.badgeClassName
+                                  )}
+                                >
+                                  {selectedBillingType.label}
+                                </Badge>
+                              </SelectValue>
+                            </SelectTrigger>
+                          </DisabledFieldTooltip>
+                        </FormControl>
+                        <SelectContent>
+                          {CLIENT_BILLING_TYPE_SELECT_OPTIONS.map(option => (
+                            <SelectItem key={option.value} value={option.value}>
+                              <Badge
+                                variant='outline'
+                                className={cn('text-xs', option.badgeClassName)}
+                              >
+                                {option.label}
+                              </Badge>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {selectedBillingType.description ? (
+                        <FormDescription>
+                          {selectedBillingType.description}
+                        </FormDescription>
+                      ) : null}
+                      <FormMessage />
+                    </FormItem>
+                  )
+                }}
+              />
+              <FormField
+                control={form.control}
+                name='state'
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel optional>State</FormLabel>
+                    <Select
                       value={field.value ?? ''}
-                      placeholder='https://example.com'
+                      onValueChange={value => {
+                        field.onChange(value === '' ? '' : value)
+                      }}
                       disabled={isPending}
-                    />
-                  </DisabledFieldTooltip>
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <div className='grid gap-2'>
-            <FormLabel
-              data-error={Boolean(originationError)}
-              className='data-[error=true]:text-destructive'
-            >
-              Origination
-            </FormLabel>
-            <ClientOriginationPicker
-              mode={originationMode}
-              selectedUser={selectedOriginationUser}
-              selectedContact={selectedOriginationContact}
-              availableUsers={availableOriginationUsers}
-              availableContacts={availableOriginationContacts}
-              disabled={originationPickerDisabled}
-              disabledReason={originationPickerDisabledReason}
-              isUserPickerOpen={isOriginationUserPickerOpen}
-              isContactPickerOpen={isOriginationContactPickerOpen}
-              isPending={isPending}
-              pendingReason={pendingReason}
-              onModeChange={onOriginationModeChange}
-              onUserPickerOpenChange={onOriginationUserPickerOpenChange}
-              onContactPickerOpenChange={onOriginationContactPickerOpenChange}
-              onSelectUser={onSelectOriginationUser}
-              onSelectContact={onSelectOriginationContact}
-              onClear={onClearOrigination}
-            />
-            {originationError ? (
-              <p className='text-destructive text-xs'>{originationError}</p>
+                    >
+                      <FormControl>
+                        <DisabledFieldTooltip
+                          disabled={isPending}
+                          reason={fieldDisabledReason}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder='Select state' />
+                          </SelectTrigger>
+                        </DisabledFieldTooltip>
+                      </FormControl>
+                      <SelectContent>
+                        {US_STATES.map(state => (
+                          <SelectItem key={state.value} value={state.value}>
+                            {state.label} ({state.value})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormDescription>
+                      Sets the tax rate on invoices.
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+            {isEditing &&
+            initialBillingType !== null &&
+            watchedBillingType !== initialBillingType ? (
+              <ClientEffectiveCallout
+                form={form}
+                name='billingEffective'
+                title='New billing type starts'
+                notes={{
+                  current_month:
+                    "This month's close re-derives under the new billing type.",
+                  next_month:
+                    'Invoices use the new type right away; the Monthly Close switches this client at the boundary.',
+                }}
+                isPending={isPending}
+                pendingReason={pendingReason}
+              />
             ) : null}
-          </div>
-          <div className='grid gap-2'>
-            <FormLabel
-              data-error={Boolean(closerError)}
-              className='data-[error=true]:text-destructive'
-            >
-              Closer
-            </FormLabel>
-            <ClientCloserPicker
-              selectedCloser={selectedCloser}
-              availableClosers={availableClosers}
-              disabled={closerPickerDisabled}
-              disabledReason={closerPickerDisabledReason}
-              isPickerOpen={isCloserPickerOpen}
-              isPending={isPending}
-              pendingReason={pendingReason}
-              onPickerOpenChange={onCloserPickerOpenChange}
-              onSelect={onSelectCloser}
-              onClear={onClearCloser}
-            />
-            {closerError ? (
-              <p className='text-destructive text-xs'>{closerError}</p>
+          </SheetSection>
+
+          <Separator />
+
+          <SheetSection
+            title='Commission'
+            description='Origination pays 10% and closer pays 20% of this client’s revenue.'
+          >
+            <div className='grid gap-2'>
+              <div className='flex items-center justify-between gap-2'>
+                <FormLabel
+                  data-error={Boolean(originationError)}
+                  className='data-[error=true]:text-destructive'
+                >
+                  Origination
+                </FormLabel>
+                <ClientOriginationModeToggle
+                  mode={originationMode}
+                  disabled={originationPickerDisabled || isPending}
+                  onModeChange={onOriginationModeChange}
+                />
+              </div>
+              <ClientOriginationPicker
+                mode={originationMode}
+                selectedUser={selectedOriginationUser}
+                selectedContact={selectedOriginationContact}
+                availableUsers={availableOriginationUsers}
+                availableContacts={availableOriginationContacts}
+                disabled={originationPickerDisabled}
+                disabledReason={originationPickerDisabledReason}
+                isUserPickerOpen={isOriginationUserPickerOpen}
+                isContactPickerOpen={isOriginationContactPickerOpen}
+                isPending={isPending}
+                pendingReason={pendingReason}
+                onUserPickerOpenChange={onOriginationUserPickerOpenChange}
+                onContactPickerOpenChange={onOriginationContactPickerOpenChange}
+                onSelectUser={onSelectOriginationUser}
+                onSelectContact={onSelectOriginationContact}
+                onClear={onClearOrigination}
+              />
+              {originationError ? (
+                <p className='text-destructive text-xs'>{originationError}</p>
+              ) : null}
+            </div>
+            <div className='grid gap-2'>
+              <FormLabel
+                optional
+                data-error={Boolean(closerError)}
+                className='data-[error=true]:text-destructive'
+              >
+                Closer
+              </FormLabel>
+              <ClientCloserPicker
+                selectedCloser={selectedCloser}
+                availableClosers={availableClosers}
+                disabled={closerPickerDisabled}
+                disabledReason={closerPickerDisabledReason}
+                isPickerOpen={isCloserPickerOpen}
+                isPending={isPending}
+                pendingReason={pendingReason}
+                onPickerOpenChange={onCloserPickerOpenChange}
+                onSelect={onSelectCloser}
+                onClear={onClearCloser}
+              />
+              {closerError ? (
+                <p className='text-destructive text-xs'>{closerError}</p>
+              ) : null}
+            </div>
+            {isEditing && commissionDirty ? (
+              <ClientEffectiveCallout
+                form={form}
+                name='commissionEffective'
+                title='New assignment starts'
+                notes={{
+                  current_month:
+                    "This month's close pays commissions under the new assignment.",
+                  next_month:
+                    'Earlier months keep paying the previous closer and originator.',
+                }}
+                isPending={isPending}
+                pendingReason={pendingReason}
+              />
             ) : null}
-          </div>
-          {isEditing && commissionDirty ? (
-            <FormField
-              control={form.control}
-              name='commissionEffective'
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>New closer / origination starts</FormLabel>
-                  <Select
-                    value={field.value}
-                    onValueChange={field.onChange}
-                    disabled={isPending}
-                  >
-                    <FormControl>
-                      <DisabledFieldTooltip
-                        disabled={isPending}
-                        reason={isPending ? pendingReason : null}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                      </DisabledFieldTooltip>
-                    </FormControl>
-                    <SelectContent align='start'>
-                      <SelectItem value='next_month'>
-                        Next month ({formatMonthStart(1)})
-                      </SelectItem>
-                      <SelectItem value='current_month'>
-                        This month ({formatMonthStart(0)})
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormDescription>
-                    {field.value === 'current_month'
-                      ? "This month's close will pay commissions under the new assignment."
-                      : 'Earlier months keep paying the previous closer and originator; the Monthly Close switches at the boundary.'}
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          ) : null}
-          <div className='space-y-2'>
-            <FormLabel>Contacts</FormLabel>
-            <ClientContactPicker
+          </SheetSection>
+
+          <Separator />
+
+          <SheetSection
+            title='Contacts'
+            action={
+              <ClientContactLinkButton
+                availableContacts={availableContacts}
+                disabled={contactsAddButtonDisabled}
+                disabledReason={contactsAddButtonDisabledReason}
+                isPickerOpen={isContactPickerOpen}
+                isPending={isPending}
+                onPickerOpenChange={onContactPickerOpenChange}
+                onAddContact={onAddContact}
+                onCreateContact={onCreateContact}
+              />
+            }
+          >
+            <ClientContactList
               selectedContacts={selectedContacts}
-              availableContacts={availableContacts}
-              addButtonDisabled={contactsAddButtonDisabled}
-              addButtonDisabledReason={contactsAddButtonDisabledReason}
-              isPickerOpen={isContactPickerOpen}
               isPending={isPending}
               pendingReason={pendingReason}
-              onPickerOpenChange={onContactPickerOpenChange}
-              onAddContact={onAddContact}
-              onCreateContact={onCreateContact}
               onRequestRemoval={onRemoveContact}
+              onRequestLink={() => onContactPickerOpenChange(true)}
+              linkDisabled={contactsAddButtonDisabled}
+              linkDisabledReason={contactsAddButtonDisabledReason}
             />
-          </div>
+          </SheetSection>
+
           {feedback ? <p className={FEEDBACK_CLASSES}>{feedback}</p> : null}
         </form>
       </div>

@@ -1,10 +1,11 @@
 'use client'
 
 import { useState } from 'react'
-import { Building2, ChevronsUpDown, X } from 'lucide-react'
+import { Building2, Plus, X } from 'lucide-react'
 
 import { Button } from '@pts/ui/button'
 import { CommandCreateRows } from '@/components/ui/command-create-rows'
+import { SheetEmptyState } from '@/components/sheets/sheet-empty-state'
 import { DisabledFieldTooltip } from '@/components/ui/disabled-field-tooltip'
 import {
   Command,
@@ -13,11 +14,7 @@ import {
   CommandItem,
   CommandList,
 } from '@/components/ui/command'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@pts/ui/popover'
+import { Popover, PopoverContent, PopoverTrigger } from '@pts/ui/popover'
 
 export type ContactClientOption = {
   id: string
@@ -25,138 +22,148 @@ export type ContactClientOption = {
   slug: string
 }
 
-const assignedContainerClass =
-  'bg-muted/40 flex items-center justify-between rounded-md border px-3 py-2'
-
-const iconButtonClass = 'text-muted-foreground hover:text-destructive'
-
-export type ContactClientPickerProps = {
-  selectedClients: ContactClientOption[]
+export type ContactClientLinkButtonProps = {
   availableClients: ContactClientOption[]
-  addButtonDisabled: boolean
-  addButtonDisabledReason: string | null
+  disabled: boolean
+  disabledReason: string | null
   isPickerOpen: boolean
   isPending: boolean
-  pendingReason: string
   onPickerOpenChange: (open: boolean) => void
   onAddClient: (client: ContactClientOption) => void
-  onRequestRemoval: (client: ContactClientOption) => void
   /** Open the client create sheet, prefilled with the typed query. */
   onCreateClient: (query: string) => void
 }
 
-export function ContactClientPicker({
-  selectedClients,
+/** The "Link client" popover trigger — sits on the Clients section title row. */
+export function ContactClientLinkButton({
   availableClients,
-  addButtonDisabled,
-  addButtonDisabledReason,
+  disabled,
+  disabledReason,
   isPickerOpen,
   isPending,
-  pendingReason,
   onPickerOpenChange,
   onAddClient,
-  onRequestRemoval,
   onCreateClient,
-}: ContactClientPickerProps) {
+}: ContactClientLinkButtonProps) {
   const [query, setQuery] = useState('')
 
   return (
-    <div className='space-y-2'>
-      <Popover open={isPickerOpen} onOpenChange={onPickerOpenChange} modal>
-        <DisabledFieldTooltip
-          disabled={addButtonDisabled}
-          reason={addButtonDisabledReason}
-        >
-          <div className='w-full'>
-            <PopoverTrigger asChild>
-              <Button
-                type='button'
-                variant='outline'
-                className='w-full justify-between'
-                disabled={addButtonDisabled}
-              >
-                <span className='flex items-center gap-2'>
-                  <Building2 className='h-4 w-4' />
-                  {availableClients.length > 0
-                    ? 'Link client'
-                    : 'All clients linked'}
-                </span>
-                <ChevronsUpDown className='h-4 w-4 opacity-50' />
-              </Button>
-            </PopoverTrigger>
-          </div>
-        </DisabledFieldTooltip>
-        <PopoverContent className='w-[var(--radix-popover-trigger-width)] p-0' align='start'>
-          <Command>
-            <CommandInput
-              placeholder='Search clients...'
-              value={query}
-              onValueChange={setQuery}
-            />
-            <CommandList>
-              <CommandGroup heading='Clients'>
-                {availableClients.map(client => (
-                  <CommandItem
-                    key={client.id}
-                    value={client.name}
-                    onSelect={() => {
-                      if (isPending) {
-                        return
-                      }
-                      onAddClient(client)
-                    }}
-                  >
-                    <div className='flex items-center gap-2'>
-                      <Building2 className='text-muted-foreground h-4 w-4' />
-                      <span className='font-medium'>{client.name}</span>
-                    </div>
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-              <CommandCreateRows
-                query={query}
-                entityLabel='client'
-                onCreate={onCreateClient}
-              />
-            </CommandList>
-          </Command>
-        </PopoverContent>
-      </Popover>
-      <p className='text-muted-foreground text-xs'>
-        Link this contact to one or more clients.
-      </p>
-      <div className='space-y-2'>
-        {selectedClients.length === 0 ? (
-          <p className='text-muted-foreground text-sm'>
-            No clients linked yet.
-          </p>
-        ) : (
-          selectedClients.map(client => (
-            <div key={client.id} className={assignedContainerClass}>
-              <div className='flex items-center gap-2 text-sm leading-tight'>
-                <Building2 className='text-muted-foreground h-4 w-4 shrink-0' />
-                <span className='font-medium'>{client.name}</span>
-              </div>
-              <DisabledFieldTooltip
-                disabled={isPending}
-                reason={isPending ? pendingReason : null}
-              >
-                <Button
-                  type='button'
-                  variant='ghost'
-                  size='icon'
-                  className={iconButtonClass}
-                  onClick={() => onRequestRemoval(client)}
-                  disabled={isPending}
-                  aria-label={`Unlink ${client.name}`}
+    <Popover open={isPickerOpen} onOpenChange={onPickerOpenChange} modal>
+      <DisabledFieldTooltip
+        disabled={disabled}
+        reason={disabledReason}
+        className='w-auto'
+      >
+        <PopoverTrigger asChild>
+          <Button type='button' variant='outline' size='xs' disabled={disabled}>
+            <Plus />
+            Link client
+          </Button>
+        </PopoverTrigger>
+      </DisabledFieldTooltip>
+      <PopoverContent className='w-72 p-0' align='end'>
+        <Command>
+          <CommandInput
+            placeholder='Search clients...'
+            value={query}
+            onValueChange={setQuery}
+          />
+          <CommandList>
+            <CommandGroup heading='Clients'>
+              {availableClients.map(client => (
+                <CommandItem
+                  key={client.id}
+                  value={client.name}
+                  onSelect={() => {
+                    if (isPending) {
+                      return
+                    }
+                    onAddClient(client)
+                  }}
                 >
-                  <X className='h-4 w-4' />
-                </Button>
-              </DisabledFieldTooltip>
-            </div>
-          ))
-        )}
-      </div>
+                  <div className='flex items-center gap-2'>
+                    <Building2 className='text-muted-foreground h-4 w-4' />
+                    <span className='font-medium'>{client.name}</span>
+                  </div>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+            <CommandCreateRows
+              query={query}
+              entityLabel='client'
+              onCreate={onCreateClient}
+            />
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  )
+}
+
+export type ContactClientListProps = {
+  selectedClients: ContactClientOption[]
+  isPending: boolean
+  pendingReason: string
+  onRequestRemoval: (client: ContactClientOption) => void
+  /** Empty state: opens the same picker as the header's "Link client". */
+  onRequestLink: () => void
+  linkDisabled: boolean
+  linkDisabledReason: string | null
+}
+
+/** The linked clients, one row each, with the unlink control on the right. */
+export function ContactClientList({
+  selectedClients,
+  isPending,
+  pendingReason,
+  onRequestRemoval,
+  onRequestLink,
+  linkDisabled,
+  linkDisabledReason,
+}: ContactClientListProps) {
+  if (selectedClients.length === 0) {
+    return (
+      <DisabledFieldTooltip disabled={linkDisabled} reason={linkDisabledReason}>
+        <SheetEmptyState
+          message='No clients linked yet.'
+          label='Link client'
+          onClick={onRequestLink}
+          disabled={linkDisabled}
+        />
+      </DisabledFieldTooltip>
+    )
+  }
+
+  return (
+    <div className='flex flex-col gap-2'>
+      {selectedClients.map(client => (
+        <div
+          key={client.id}
+          className='bg-muted/40 flex items-center justify-between gap-3 rounded-md border py-1.5 pr-1.5 pl-3'
+        >
+          <div className='flex min-w-0 items-center gap-2 text-sm leading-tight'>
+            <Building2 className='text-muted-foreground h-4 w-4 shrink-0' />
+            <span className='truncate font-medium'>{client.name}</span>
+          </div>
+          <DisabledFieldTooltip
+            disabled={isPending}
+            reason={isPending ? pendingReason : null}
+            className='w-auto'
+          >
+            <Button
+              type='button'
+              variant='ghost'
+              size='icon'
+              className='text-muted-foreground hover:text-destructive h-8 w-8 shrink-0'
+              onClick={() => onRequestRemoval(client)}
+              disabled={isPending}
+              aria-label={`Unlink ${client.name}`}
+            >
+              <X className='h-4 w-4' />
+            </Button>
+          </DisabledFieldTooltip>
+        </div>
+      ))}
     </div>
   )
 }

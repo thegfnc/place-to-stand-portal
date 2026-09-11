@@ -8,7 +8,7 @@ import { ConfirmDialog } from '@pts/ui/confirm-dialog'
 import { useTaskComments } from '@/lib/projects/task-sheet/use-task-comments'
 import { isOptimisticComment } from '@/lib/projects/task-sheet/use-task-comments/mutations'
 
-import { TaskSheetEmptyState } from '../task-sheet-empty-state'
+import { SheetEmptyState } from '@/components/sheets/sheet-empty-state'
 
 import {
   TaskCommentComposer,
@@ -34,7 +34,7 @@ export function TaskCommentsPanel(props: TaskCommentsPanelProps) {
   if (!state.taskId) {
     return (
       <TaskCommentsPanelShell description='Save the task to start a threaded conversation with collaborators.'>
-        <TaskSheetEmptyState message='Comments activate after the task is created.' />
+        <SheetEmptyState message='Comments activate after the task is created.' />
       </TaskCommentsPanelShell>
     )
   }
@@ -95,7 +95,7 @@ export function TaskCommentsPanel(props: TaskCommentsPanelProps) {
                 ))}
               </>
             ) : (
-              <TaskSheetEmptyState message='No comments yet. Be the first to share an update.' />
+              <SheetEmptyState message='No comments yet. Be the first to share an update.' />
             )}
           </div>
           {/* Composer sits below the thread, directly under the newest

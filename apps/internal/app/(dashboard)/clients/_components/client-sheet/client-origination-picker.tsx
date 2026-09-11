@@ -12,11 +12,7 @@ import {
   CommandItem,
   CommandList,
 } from '@/components/ui/command'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@pts/ui/popover'
+import { Popover, PopoverContent, PopoverTrigger } from '@pts/ui/popover'
 import { cn } from '@/lib/utils'
 
 import type {
@@ -37,7 +33,6 @@ export type ClientOriginationPickerProps = {
   isContactPickerOpen: boolean
   isPending: boolean
   pendingReason: string
-  onModeChange: (mode: OriginationMode) => void
   onUserPickerOpenChange: (open: boolean) => void
   onContactPickerOpenChange: (open: boolean) => void
   onSelectUser: (user: PartnerUserOption) => void
@@ -47,6 +42,64 @@ export type ClientOriginationPickerProps = {
 
 function UserDisplayName(user: PartnerUserOption): string {
   return user.fullName?.trim() || user.email
+}
+
+type ClientOriginationModeToggleProps = {
+  mode: OriginationMode
+  disabled: boolean
+  onModeChange: (mode: OriginationMode) => void
+}
+
+/** The internal/external switch — rendered on the field's label row. */
+export function ClientOriginationModeToggle({
+  mode,
+  disabled,
+  onModeChange,
+}: ClientOriginationModeToggleProps) {
+  return (
+    <div
+      role='tablist'
+      aria-label='Origination source type'
+      className='bg-muted inline-flex rounded-md p-0.5 text-xs'
+    >
+      <Button
+        type='button'
+        role='tab'
+        size='sm'
+        variant='ghost'
+        aria-selected={mode === 'internal'}
+        className={cn(
+          'h-7 rounded-sm px-3 text-xs font-medium',
+          mode === 'internal'
+            ? 'bg-background text-foreground shadow-sm'
+            : 'text-muted-foreground hover:text-foreground'
+        )}
+        disabled={disabled}
+        onClick={() => onModeChange('internal')}
+      >
+        <User2 className='h-3.5 w-3.5' />
+        Internal partner
+      </Button>
+      <Button
+        type='button'
+        role='tab'
+        size='sm'
+        variant='ghost'
+        aria-selected={mode === 'external'}
+        className={cn(
+          'h-7 rounded-sm px-3 text-xs font-medium',
+          mode === 'external'
+            ? 'bg-background text-foreground shadow-sm'
+            : 'text-muted-foreground hover:text-foreground'
+        )}
+        disabled={disabled}
+        onClick={() => onModeChange('external')}
+      >
+        <LinkIcon className='h-3.5 w-3.5' />
+        External referrer
+      </Button>
+    </div>
+  )
 }
 
 export function ClientOriginationPicker({
@@ -61,93 +114,42 @@ export function ClientOriginationPicker({
   isContactPickerOpen,
   isPending,
   pendingReason,
-  onModeChange,
   onUserPickerOpenChange,
   onContactPickerOpenChange,
   onSelectUser,
   onSelectContact,
   onClear,
 }: ClientOriginationPickerProps) {
-  const controlsDisabled = disabled || isPending
+  if (mode === 'internal') {
+    return (
+      <InternalPartnerPicker
+        selectedUser={selectedUser}
+        availableUsers={availableUsers}
+        disabled={disabled}
+        disabledReason={disabledReason}
+        isPickerOpen={isUserPickerOpen}
+        isPending={isPending}
+        pendingReason={pendingReason}
+        onPickerOpenChange={onUserPickerOpenChange}
+        onSelect={onSelectUser}
+        onClear={onClear}
+      />
+    )
+  }
 
   return (
-    <div className='space-y-2'>
-      <div
-        role='tablist'
-        aria-label='Origination source type'
-        className='bg-muted inline-flex rounded-md p-0.5 text-xs'
-      >
-        <Button
-          type='button'
-          role='tab'
-          size='sm'
-          variant='ghost'
-          aria-selected={mode === 'internal'}
-          className={cn(
-            'h-7 rounded-sm px-3 text-xs font-medium',
-            mode === 'internal'
-              ? 'bg-background text-foreground shadow-sm'
-              : 'text-muted-foreground hover:text-foreground'
-          )}
-          disabled={controlsDisabled}
-          onClick={() => onModeChange('internal')}
-        >
-          <User2 className='mr-1 h-3.5 w-3.5' />
-          Internal partner
-        </Button>
-        <Button
-          type='button'
-          role='tab'
-          size='sm'
-          variant='ghost'
-          aria-selected={mode === 'external'}
-          className={cn(
-            'h-7 rounded-sm px-3 text-xs font-medium',
-            mode === 'external'
-              ? 'bg-background text-foreground shadow-sm'
-              : 'text-muted-foreground hover:text-foreground'
-          )}
-          disabled={controlsDisabled}
-          onClick={() => onModeChange('external')}
-        >
-          <LinkIcon className='mr-1 h-3.5 w-3.5' />
-          External referrer
-        </Button>
-      </div>
-
-      {mode === 'internal' ? (
-        <InternalPartnerPicker
-          selectedUser={selectedUser}
-          availableUsers={availableUsers}
-          disabled={disabled}
-          disabledReason={disabledReason}
-          isPickerOpen={isUserPickerOpen}
-          isPending={isPending}
-          pendingReason={pendingReason}
-          onPickerOpenChange={onUserPickerOpenChange}
-          onSelect={onSelectUser}
-          onClear={onClear}
-        />
-      ) : (
-        <ExternalReferrerPicker
-          selectedContact={selectedContact}
-          availableContacts={availableContacts}
-          disabled={disabled}
-          disabledReason={disabledReason}
-          isPickerOpen={isContactPickerOpen}
-          isPending={isPending}
-          pendingReason={pendingReason}
-          onPickerOpenChange={onContactPickerOpenChange}
-          onSelect={onSelectContact}
-          onClear={onClear}
-        />
-      )}
-
-      <p className='text-muted-foreground text-xs'>
-        Who sourced this client? Pick a PTS partner (internal) or a referring
-        contact (external). Drives the 10% origination commission.
-      </p>
-    </div>
+    <ExternalReferrerPicker
+      selectedContact={selectedContact}
+      availableContacts={availableContacts}
+      disabled={disabled}
+      disabledReason={disabledReason}
+      isPickerOpen={isContactPickerOpen}
+      isPending={isPending}
+      pendingReason={pendingReason}
+      onPickerOpenChange={onContactPickerOpenChange}
+      onSelect={onSelectContact}
+      onClear={onClear}
+    />
   )
 }
 
@@ -220,7 +222,9 @@ function InternalPartnerPicker({
     <Popover open={isPickerOpen} onOpenChange={onPickerOpenChange} modal>
       <DisabledFieldTooltip
         disabled={disabled || hasNoUsers}
-        reason={disabledReason ?? (hasNoUsers ? 'No admin users available' : null)}
+        reason={
+          disabledReason ?? (hasNoUsers ? 'No admin users available' : null)
+        }
       >
         <div className='w-full'>
           <PopoverTrigger asChild>
@@ -321,7 +325,9 @@ function ExternalReferrerPicker({
               </span>
             </>
           ) : (
-            <span className='truncate font-medium'>{selectedContact.email}</span>
+            <span className='truncate font-medium'>
+              {selectedContact.email}
+            </span>
           )}
         </div>
         <DisabledFieldTooltip
@@ -350,7 +356,9 @@ function ExternalReferrerPicker({
     <Popover open={isPickerOpen} onOpenChange={onPickerOpenChange} modal>
       <DisabledFieldTooltip
         disabled={disabled || hasNoContacts}
-        reason={disabledReason ?? (hasNoContacts ? 'No contacts available' : null)}
+        reason={
+          disabledReason ?? (hasNoContacts ? 'No contacts available' : null)
+        }
       >
         <div className='w-full'>
           <PopoverTrigger asChild>

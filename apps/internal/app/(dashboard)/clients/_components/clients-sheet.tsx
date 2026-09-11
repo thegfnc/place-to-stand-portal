@@ -82,7 +82,7 @@ export function ClientSheet(props: ClientSheetProps) {
       <Sheet open={props.open} onOpenChange={handleSheetOpenChange}>
         <SheetContent
           hideCloseButton
-          size='lg'
+          size='xl'
           className='flex w-full flex-col gap-0 overflow-hidden p-0'
         >
           <SheetFormHeader entity='client' title={sheetTitle} />
@@ -121,8 +121,12 @@ export function ClientSheet(props: ClientSheetProps) {
             originationPickerDisabledReason={originationPickerDisabledReason}
             originationError={originationError}
             onOriginationModeChange={handleOriginationModeChange}
-            onOriginationUserPickerOpenChange={handleOriginationUserPickerOpenChange}
-            onOriginationContactPickerOpenChange={handleOriginationContactPickerOpenChange}
+            onOriginationUserPickerOpenChange={
+              handleOriginationUserPickerOpenChange
+            }
+            onOriginationContactPickerOpenChange={
+              handleOriginationContactPickerOpenChange
+            }
             onSelectOriginationUser={handleSelectOriginationUser}
             onSelectOriginationContact={handleSelectOriginationContact}
             onClearOrigination={handleClearOrigination}
