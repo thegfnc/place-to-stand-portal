@@ -113,7 +113,10 @@ export function useFormHistory<T extends FieldValues>({
     (snapshot: FormSnapshot<T>, nextIndex: number) => {
       isApplyingRef.current = true
       flushPendingSnapshots()
-      form.reset(cloneValues(snapshot.values))
+      // Restore values without re-baselining: a plain reset(values) also
+      // replaces the defaults, so isDirty would read false after any undo or
+      // redo and closing the sheet would drop the edit without a prompt.
+      form.reset(cloneValues(snapshot.values), { keepDefaultValues: true })
 
       if (applyExternalState) {
         applyExternalState(snapshot.externalState ?? null)
