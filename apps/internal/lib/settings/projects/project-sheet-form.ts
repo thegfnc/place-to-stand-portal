@@ -6,11 +6,7 @@ import {
   PROJECT_STATUS_VALUES,
   type ProjectStatusValue,
 } from '@/lib/constants'
-import type {
-  DbClient,
-  DbProject,
-  ProjectTypeValue,
-} from '@/lib/types'
+import type { DbClient, DbProject, ProjectTypeValue } from '@/lib/types'
 
 type ProjectRow = DbProject
 export type ClientRow = Pick<DbClient, 'id' | 'name' | 'deleted_at'>
@@ -41,22 +37,18 @@ export const PROJECT_TYPE_ENUM_VALUES = [
 export const PROJECT_TYPE_OPTIONS: ReadonlyArray<{
   value: ProjectTypeValue
   label: string
-  description: string
 }> = [
   {
     value: 'CLIENT',
     label: 'Client project',
-    description: 'Linked to a client workspace for shared tracking.',
   },
   {
     value: 'PERSONAL',
     label: 'Personal project',
-    description: 'Visible only to you. Client selection is disabled.',
   },
   {
     value: 'INTERNAL',
     label: 'Internal project',
-    description: 'Visible to the whole team without a client link.',
   },
 ] as const
 
@@ -64,11 +56,7 @@ export const projectSheetFormSchema = z
   .object({
     name: z.string().min(1, 'Project name is required'),
     projectType: z.enum(PROJECT_TYPE_ENUM_VALUES).default('CLIENT'),
-    clientId: z
-      .string()
-      .uuid('Select a client')
-      .or(z.literal(''))
-      .optional(),
+    clientId: z.string().uuid('Select a client').or(z.literal('')).optional(),
     status: z.enum(PROJECT_STATUS_ENUM_VALUES),
     startsOn: z.string().optional().or(z.literal('')),
     endsOn: z.string().optional().or(z.literal('')),
@@ -77,11 +65,7 @@ export const projectSheetFormSchema = z
       .regex(/^[a-z0-9-]+$/, 'Lowercase letters, numbers, and dashes only')
       .or(z.literal(''))
       .optional(),
-    ownerId: z
-      .string()
-      .uuid()
-      .or(z.literal(''))
-      .optional(),
+    ownerId: z.string().uuid().or(z.literal('')).optional(),
   })
   .superRefine((data, ctx) => {
     if (data.startsOn && data.endsOn) {

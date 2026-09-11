@@ -6,7 +6,6 @@ import { useWatch, type Control } from 'react-hook-form'
 import { Badge } from '@/components/ui/badge'
 import {
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -188,7 +187,9 @@ export function LeadSheetFormFields({
               <Select
                 value={field.value ?? 'none'}
                 onValueChange={(value: string) =>
-                  field.onChange(value === 'none' ? null : value as LeadSourceTypeValue)
+                  field.onChange(
+                    value === 'none' ? null : (value as LeadSourceTypeValue)
+                  )
                 }
               >
                 <FormControl>
@@ -328,9 +329,6 @@ export function LeadSheetFormFields({
                 contentMinHeightClassName='[&_.ProseMirror]:min-h-[180px]'
               />
             </FormControl>
-            <FormDescription>
-              Capture context, meeting notes, or next steps.
-            </FormDescription>
             <FormMessage />
           </FormItem>
         )}
