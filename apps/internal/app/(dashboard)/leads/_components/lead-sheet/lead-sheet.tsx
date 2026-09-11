@@ -9,7 +9,6 @@ import { cn } from '@/lib/utils'
 
 import { LeadSheetDialogs } from './lead-sheet-dialogs'
 import { LeadSheetFormFields } from './lead-sheet-form-fields'
-import { LeadSheetHeader } from './lead-sheet-header'
 import { LeadSheetRightColumn } from './lead-sheet-right-column'
 import type { LeadSheetProps } from './types'
 
@@ -27,7 +26,6 @@ export function LeadSheet(props: LeadSheetProps) {
     setConvertDialogOpen,
     setActionParam,
     canConvert,
-    isConverted,
     selectedSourceType,
     submitDisabled,
     submitDisabledReason,
@@ -61,19 +59,7 @@ export function LeadSheet(props: LeadSheetProps) {
             entity='lead'
             title={isEditing ? 'Edit lead' : 'Add lead'}
             className='flex-shrink-0'
-          >
-            {isEditing && lead && (
-              <LeadSheetHeader
-                lead={lead}
-                canConvert={canConvert}
-                isConverted={isConverted}
-                onConvertToClient={() => {
-                  setConvertDialogOpen(true)
-                  setActionParam('convert')
-                }}
-              />
-            )}
-          </SheetFormHeader>
+          />
 
           {/* Two Column Layout */}
           <Form {...form}>
@@ -115,11 +101,16 @@ export function LeadSheet(props: LeadSheetProps) {
                 />
               </div>
 
-              {/* Right Column - Tasks (only for editing) */}
+              {/* Right Column - Conversion, tasks, updates (only for editing) */}
               {isEditing && lead && (
                 <LeadSheetRightColumn
                   lead={lead}
                   canManage={canManage}
+                  canConvert={canConvert}
+                  onConvertToClient={() => {
+                    setConvertDialogOpen(true)
+                    setActionParam('convert')
+                  }}
                   onSuccess={onSuccess}
                 />
               )}
