@@ -22,21 +22,23 @@ import {
   Users,
 } from 'lucide-react'
 
-import { Avatar, AvatarFallback, AvatarImage } from '@pts/ui/avatar'
-import { richTextToPlainText } from '@/components/ui/rich-text-editor/utils'
+import {
+  CardAssigneeAvatars,
+  type CardAssignee,
+} from '@/components/cards/card-assignee-avatars'
 import { ENTITY_ACCENTS } from '@/lib/entity-accents'
 import { cn } from '@/lib/utils'
-import type { ProjectTypeValue, TaskWithRelations, WorkerStatusValue } from '@/lib/types'
+import type {
+  ProjectTypeValue,
+  TaskWithRelations,
+  WorkerStatusValue,
+} from '@/lib/types'
 import {
   TASK_DUE_TONE_CLASSES,
   getTaskDueMeta,
 } from '@/lib/projects/task-due-date'
 
-type AssigneeInfo = {
-  id: string
-  name: string
-  avatarUrl: string | null
-}
+type AssigneeInfo = CardAssignee
 
 type TaskContextDetails = {
   clientLabel?: string
@@ -55,7 +57,6 @@ type TaskCardProps = {
   isActive?: boolean
   disableDropTransition?: boolean
   context?: TaskContextDetails
-  hideAssignees?: boolean
 }
 
 /**
@@ -68,27 +69,15 @@ const formatLoggedHours = (value: number) =>
     maximumFractionDigits: 2,
   })}h`
 
-const toPlainText = (value: string | null) =>
-  value ? richTextToPlainText(value) : ''
-
 function CardContent({
   task,
   assignees,
   context,
-  hideAssignees = false,
 }: {
   task: TaskWithRelations
   assignees: AssigneeInfo[]
   context?: TaskContextDetails
-  hideAssignees?: boolean
 }) {
-  const assignedSummary = assignees.length
-    ? assignees
-        .slice(0, 2)
-        .map(assignee => assignee.name)
-        .join(', ')
-    : 'Unassigned'
-  const descriptionPreview = toPlainText(task.description)
   const attachmentCount = task.attachmentCount ?? task.attachments?.length ?? 0
   const loggedHours = task.loggedHours ?? 0
   const dueMeta = task.due_on
@@ -98,134 +87,113 @@ function CardContent({
 
   return (
     <>
-      <div className='space-y-2'>
-        <h3
-          className={cn(
-            'text-foreground line-clamp-2 text-sm leading-snug font-semibold',
-            isCompleted && 'line-through'
-          )}
-        >
-          {task.title}
-        </h3>
-        {descriptionPreview ? (
-          <p className='text-muted-foreground line-clamp-3 text-xs'>
-            {descriptionPreview}
-          </p>
-        ) : null}
-      </div>
-      <div className='mt-4 space-y-2'>
-        {!hideAssignees ? (
-          <div className='text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-2 text-xs'>
-            <div className='inline-flex items-center gap-1.5'>
-              {assignees.length > 0 && assignees[0] ? (
-                <Avatar className='h-4 w-4'>
-                  {assignees[0].avatarUrl && (
-                    <AvatarImage
-                      src={`/api/storage/user-avatar/${assignees[0].id}`}
-                    />
-                  )}
-                  <AvatarFallback className='text-[8px]'>
-                    {assignees[0].name.slice(0, 2).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-              ) : (
-                <User className='h-3.5 w-3.5' />
-              )}
-              <span>{assignedSummary}</span>
-            </div>
-          </div>
-        ) : null}
-
-        {context?.clientLabel || context?.projectLabel ? (
-          <div
-            className={cn(
-              'text-muted-foreground text-xs',
-              context.layout === 'stacked'
-                ? 'align-start flex flex-col gap-2'
-                : 'flex flex-wrap items-center gap-3'
-            )}
-          >
-            {context.clientLabel ? (
-              context.clientHref ? (
-                <div className='flex items-center gap-1'>
-                  <Link
-                    href={context.clientHref}
-                    className='hover:text-foreground inline-flex items-center gap-1 underline-offset-4 transition hover:underline'
-                    onClick={event => event.stopPropagation()}
-                  >
-                    {renderProjectTypeIcon(context?.projectType, 'h-3.5 w-3.5')}
-                    {context.clientLabel}
-                  </Link>
-                </div>
-              ) : (
-                <span className='inline-flex items-center gap-1'>
-                  {renderProjectTypeIcon(context?.projectType, 'h-3.5 w-3.5')}
-                  {context.clientLabel}
-                </span>
-              )
-            ) : null}
-            {context.projectLabel ? (
-              context.projectHref ? (
-                <div className='flex items-center gap-1'>
-                  <Link
-                    href={context.projectHref}
-                    className='hover:text-foreground inline-flex items-center gap-1 underline-offset-4 transition hover:underline'
-                    onClick={event => event.stopPropagation()}
-                  >
-                    <FolderKanban className='h-3.5 w-3.5' aria-hidden />
-                    {context.projectLabel}
-                  </Link>
-                </div>
-              ) : (
-                <span className='inline-flex items-center gap-1'>
-                  <FolderKanban className='h-3.5 w-3.5' aria-hidden />
-                  {context.projectLabel}
-                </span>
-              )
-            ) : null}
-          </div>
-        ) : null}
-        {dueMeta ? (
-          <div className='text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-2 text-xs'>
+      <h3
+        className={cn(
+          'text-foreground line-clamp-2 text-sm leading-snug font-semibold',
+          isCompleted && 'line-through'
+        )}
+      >
+        {task.title}
+      </h3>
+      {/* Meta stacks down the left; the assignee stack pins bottom-right so
+          it never adds a row of its own. */}
+      <div className='mt-4 flex items-end justify-between gap-3'>
+        <div className='flex min-w-0 flex-1 flex-col gap-2'>
+          {context?.clientLabel || context?.projectLabel ? (
             <div
               className={cn(
-                'inline-flex items-center gap-1',
-                TASK_DUE_TONE_CLASSES[dueMeta.tone]
+                'text-muted-foreground text-xs',
+                context.layout === 'stacked'
+                  ? 'flex flex-col items-start gap-2'
+                  : 'flex flex-wrap items-center gap-3'
               )}
             >
-              <CalendarDays className='h-3.5 w-3.5' />
-              {dueMeta.label}
+              {context.clientLabel ? (
+                context.clientHref ? (
+                  <div className='flex items-center gap-1'>
+                    <Link
+                      href={context.clientHref}
+                      className='hover:text-foreground inline-flex items-center gap-1 underline-offset-4 transition hover:underline'
+                      onClick={event => event.stopPropagation()}
+                    >
+                      {renderProjectTypeIcon(
+                        context?.projectType,
+                        'h-3.5 w-3.5'
+                      )}
+                      {context.clientLabel}
+                    </Link>
+                  </div>
+                ) : (
+                  <span className='inline-flex items-center gap-1'>
+                    {renderProjectTypeIcon(context?.projectType, 'h-3.5 w-3.5')}
+                    {context.clientLabel}
+                  </span>
+                )
+              ) : null}
+              {context.projectLabel ? (
+                context.projectHref ? (
+                  <div className='flex items-center gap-1'>
+                    <Link
+                      href={context.projectHref}
+                      className='hover:text-foreground inline-flex items-center gap-1 underline-offset-4 transition hover:underline'
+                      onClick={event => event.stopPropagation()}
+                    >
+                      <FolderKanban className='h-3.5 w-3.5' aria-hidden />
+                      {context.projectLabel}
+                    </Link>
+                  </div>
+                ) : (
+                  <span className='inline-flex items-center gap-1'>
+                    <FolderKanban className='h-3.5 w-3.5' aria-hidden />
+                    {context.projectLabel}
+                  </span>
+                )
+              ) : null}
             </div>
-          </div>
-        ) : null}
-        {task.commentCount > 0 || attachmentCount > 0 || loggedHours > 0 ? (
-          <div className='text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-2 text-xs'>
-            {task.commentCount > 0 ? (
-              <span className='inline-flex items-center gap-1'>
-                <MessageCircle className='h-3.5 w-3.5' />
-                {task.commentCount}
-              </span>
-            ) : null}
-            {attachmentCount > 0 ? (
-              <span className='inline-flex items-center gap-1'>
-                <Paperclip className='h-3.5 w-3.5' />
-                {attachmentCount}
-              </span>
-            ) : null}
-            {loggedHours > 0 ? (
-              <span
-                className='inline-flex items-center gap-1'
-                title={`${formatLoggedHours(loggedHours)} logged`}
+          ) : null}
+          {dueMeta ? (
+            <div className='text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-2 text-xs'>
+              <div
+                className={cn(
+                  'inline-flex items-center gap-1',
+                  TASK_DUE_TONE_CLASSES[dueMeta.tone]
+                )}
               >
-                <Clock className='h-3.5 w-3.5' aria-hidden />
-                {formatLoggedHours(loggedHours)}
-              </span>
-            ) : null}
-          </div>
-        ) : null}
-        {task.worker_status ? (
-          <WorkerBadge status={task.worker_status} />
-        ) : null}
+                <CalendarDays className='h-3.5 w-3.5' />
+                {dueMeta.label}
+              </div>
+            </div>
+          ) : null}
+          {task.commentCount > 0 || attachmentCount > 0 || loggedHours > 0 ? (
+            <div className='text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-2 text-xs'>
+              {task.commentCount > 0 ? (
+                <span className='inline-flex items-center gap-1'>
+                  <MessageCircle className='h-3.5 w-3.5' />
+                  {task.commentCount}
+                </span>
+              ) : null}
+              {attachmentCount > 0 ? (
+                <span className='inline-flex items-center gap-1'>
+                  <Paperclip className='h-3.5 w-3.5' />
+                  {attachmentCount}
+                </span>
+              ) : null}
+              {loggedHours > 0 ? (
+                <span
+                  className='inline-flex items-center gap-1'
+                  title={`${formatLoggedHours(loggedHours)} logged`}
+                >
+                  <Clock className='h-3.5 w-3.5' aria-hidden />
+                  {formatLoggedHours(loggedHours)}
+                </span>
+              ) : null}
+            </div>
+          ) : null}
+          {task.worker_status ? (
+            <WorkerBadge status={task.worker_status} />
+          ) : null}
+        </div>
+        <CardAssigneeAvatars assignees={assignees} />
       </div>
     </>
   )
@@ -239,7 +207,6 @@ export function TaskCard({
   isActive = false,
   disableDropTransition = false,
   context,
-  hideAssignees = false,
 }: TaskCardProps) {
   const {
     attributes,
@@ -315,22 +282,14 @@ export function TaskCard({
         draggable ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer',
         isDragging && 'ring-primary ring-2',
         (isActive || isDragging) && 'border-primary/50 bg-primary/5 shadow-md',
-        !isActive &&
-          !isDragging &&
-          !isCompleted &&
-          ENTITY_ACCENTS.task.card,
+        !isActive && !isDragging && !isCompleted && ENTITY_ACCENTS.task.card,
         !isActive &&
           !isDragging &&
           isCompleted &&
           'hover:border-muted-foreground/30 hover:bg-muted/20 hover:shadow-md'
       )}
     >
-      <CardContent
-        task={task}
-        assignees={assignees}
-        context={context}
-        hideAssignees={hideAssignees}
-      />
+      <CardContent task={task} assignees={assignees} context={context} />
     </div>
   )
 }
@@ -346,14 +305,12 @@ export function TaskCardStatic({
   onClick,
   className,
   context,
-  hideAssignees = false,
 }: {
   task: TaskWithRelations
   assignees: AssigneeInfo[]
   onClick: () => void
   className?: string
   context?: TaskContextDetails
-  hideAssignees?: boolean
 }) {
   const isCompleted = task.status === 'DONE'
 
@@ -371,17 +328,12 @@ export function TaskCardStatic({
       className={cn(
         'group bg-card cursor-pointer rounded-lg border p-4 text-left shadow-sm transition',
         isCompleted
-          ? 'opacity-65 hover:border-muted-foreground/30 hover:bg-muted/20 hover:shadow-md'
+          ? 'hover:border-muted-foreground/30 hover:bg-muted/20 opacity-65 hover:shadow-md'
           : ENTITY_ACCENTS.task.card,
         className
       )}
     >
-      <CardContent
-        task={task}
-        assignees={assignees}
-        context={context}
-        hideAssignees={hideAssignees}
-      />
+      <CardContent task={task} assignees={assignees} context={context} />
     </div>
   )
 }
@@ -390,12 +342,10 @@ export function TaskCardPreview({
   task,
   assignees,
   context,
-  hideAssignees = false,
 }: {
   task: TaskWithRelations
   assignees: AssigneeInfo[]
   context?: TaskContextDetails
-  hideAssignees?: boolean
 }) {
   const isCompleted = task.status === 'DONE'
   return (
@@ -405,12 +355,7 @@ export function TaskCardPreview({
         isCompleted ? 'opacity-65' : ENTITY_ACCENTS.task.cardStatic
       )}
     >
-      <CardContent
-        task={task}
-        assignees={assignees}
-        context={context}
-        hideAssignees={hideAssignees}
-      />
+      <CardContent task={task} assignees={assignees} context={context} />
     </div>
   )
 }

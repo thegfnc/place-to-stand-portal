@@ -23,7 +23,6 @@ import { TaskCard, type TaskContextDetails } from '../task-card'
 
 type TaskCardOptions = {
   context?: TaskContextDetails
-  hideAssignees?: boolean
 }
 
 type KanbanColumnProps = {
@@ -158,7 +157,6 @@ export function KanbanColumn({
                   isActive={task.id === activeTaskId}
                   disableDropTransition={task.id === recentlyMovedTaskId}
                   context={cardOptions.context}
-                  hideAssignees={cardOptions.hideAssignees}
                 />
               </Fragment>
             )

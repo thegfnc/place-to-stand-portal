@@ -10,16 +10,12 @@ import {
 } from 'react'
 import { defaultAnimateLayoutChanges, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { CheckCircle, Mail, Phone, User } from 'lucide-react'
+import { CheckCircle, Mail, Phone } from 'lucide-react'
 
-import { Avatar, AvatarFallback, AvatarImage } from '@pts/ui/avatar'
+import { CardAssigneeAvatars } from '@/components/cards/card-assignee-avatars'
 import { Badge } from '@/components/ui/badge'
 import { ENTITY_ACCENTS } from '@/lib/entity-accents'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@pts/ui/tooltip'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@pts/ui/tooltip'
 import { getLeadSourceLabel } from '@/lib/leads/constants'
 import type { LeadRecord } from '@/lib/leads/types'
 import { cn } from '@/lib/utils'
@@ -150,7 +146,7 @@ function LeadCardContent({ lead }: { lead: LeadRecord }) {
   const convertedBadge = lead.convertedToClientId ? (
     <Badge
       variant='outline'
-      className='gap-1 bg-green-500/10 text-green-600 border-green-500/20 text-[10px] font-medium dark:text-green-400'
+      className='gap-1 border-green-500/20 bg-green-500/10 text-[10px] font-medium text-green-600 dark:text-green-400'
     >
       <CheckCircle className='h-3 w-3' aria-hidden />
       Converted
@@ -169,56 +165,56 @@ function LeadCardContent({ lead }: { lead: LeadRecord }) {
           </p>
         ) : null}
       </div>
-      <div className='mt-5 space-y-2'>
-        {lead.contactEmail ? (
-          <div className='text-muted-foreground flex flex-wrap items-center gap-2 text-xs'>
-            <AnchorRow
-              icon={Mail}
-              value={lead.contactEmail}
-              href={`mailto:${lead.contactEmail}`}
-            />
-          </div>
-        ) : null}
-        {lead.contactPhone ? (
-          <div className='text-muted-foreground flex flex-wrap items-center gap-2 text-xs'>
-            <AnchorRow
-              icon={Phone}
-              value={formatPhoneUS(lead.contactPhone)}
-              href={`tel:${lead.contactPhone}`}
-            />
-          </div>
-        ) : null}
-        <div className='text-muted-foreground flex flex-wrap items-center gap-1.5 text-xs'>
-          {lead.assigneeId ? (
-            <Avatar className='h-4 w-4'>
-              {lead.assigneeAvatarUrl && (
-                <AvatarImage
-                  src={`/api/storage/user-avatar/${lead.assigneeId}`}
-                />
+      {/* Same shape as the task card: meta stacks down the left, the
+          assignee avatar pins bottom-right without costing a row. */}
+      <div className='mt-4 flex items-end justify-between gap-3'>
+        <div className='flex min-w-0 flex-1 flex-col gap-2'>
+          {lead.contactEmail ? (
+            <div className='text-muted-foreground flex flex-wrap items-center gap-2 text-xs'>
+              <AnchorRow
+                icon={Mail}
+                value={lead.contactEmail}
+                href={`mailto:${lead.contactEmail}`}
+              />
+            </div>
+          ) : null}
+          {lead.contactPhone ? (
+            <div className='text-muted-foreground flex flex-wrap items-center gap-2 text-xs'>
+              <AnchorRow
+                icon={Phone}
+                value={formatPhoneUS(lead.contactPhone)}
+                href={`tel:${lead.contactPhone}`}
+              />
+            </div>
+          ) : null}
+          {convertedBadge || sourceBadge ? (
+            <div className='flex flex-wrap items-center gap-1.5'>
+              {showSourceTooltip && sourceBadge ? (
+                <Tooltip>
+                  <TooltipTrigger asChild>{sourceBadge}</TooltipTrigger>
+                  <TooltipContent side='top'>{sourceDetail}</TooltipContent>
+                </Tooltip>
+              ) : (
+                sourceBadge
               )}
-              <AvatarFallback className='text-[8px]'>
-                {assigneeDisplay.slice(0, 2).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-          ) : (
-            <User className='h-3.5 w-3.5' aria-hidden />
-          )}
-          <span>{assigneeDisplay}</span>
+              {convertedBadge}
+            </div>
+          ) : null}
         </div>
+        <CardAssigneeAvatars
+          assignees={
+            lead.assigneeId
+              ? [
+                  {
+                    id: lead.assigneeId,
+                    name: assigneeDisplay,
+                    avatarUrl: lead.assigneeAvatarUrl ?? null,
+                  },
+                ]
+              : []
+          }
+        />
       </div>
-      {(convertedBadge || sourceBadge) && (
-        <div className='mt-3 flex flex-wrap items-center gap-1.5'>
-          {showSourceTooltip && sourceBadge ? (
-            <Tooltip>
-              <TooltipTrigger asChild>{sourceBadge}</TooltipTrigger>
-              <TooltipContent side='top'>{sourceDetail}</TooltipContent>
-            </Tooltip>
-          ) : (
-            sourceBadge
-          )}
-          {convertedBadge}
-        </div>
-      )}
     </>
   )
 }
@@ -233,7 +229,7 @@ function AnchorRow({ icon: Icon, value, href }: AnchorRowProps) {
   return (
     <a
       href={href}
-      className='hover:text-foreground inline-flex min-w-0 max-w-full items-center gap-1 underline-offset-4 transition hover:underline'
+      className='hover:text-foreground inline-flex max-w-full min-w-0 items-center gap-1 underline-offset-4 transition hover:underline'
       onClick={event => event.stopPropagation()}
       title={value}
     >
