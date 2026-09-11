@@ -164,6 +164,6 @@ export const config = {
     // here they get gated like a page: a signed-out tab's icon request redirects
     // to /sign-in, the browser falls back to the static favicon.ico, and the DEV
     // band silently disappears from the sign-in screen only.
-    '/((?!_next/static|_next/image|favicon.ico|icon|apple-icon|robots.txt|sitemap.xml|assets/|relay-HVAq/|.*\\.(?:png|jpg|jpeg|gif|svg|ico|webp)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|icon|apple-icon|opengraph-image|twitter-image|robots.txt|sitemap.xml|assets/|relay-HVAq/|.*\\.(?:png|jpg|jpeg|gif|svg|ico|webp)$).*)',
   ],
 }

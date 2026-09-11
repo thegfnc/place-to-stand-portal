@@ -10,16 +10,38 @@ import {
 } from 'react'
 import { defaultAnimateLayoutChanges, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { CheckCircle, Mail, Phone } from 'lucide-react'
+import {
+  CalendarDays,
+  CheckCircle,
+  Globe,
+  Handshake,
+  Mail,
+  Phone,
+  type LucideIcon,
+} from 'lucide-react'
 
 import { CardAssigneeAvatars } from '@/components/cards/card-assignee-avatars'
 import { Badge } from '@/components/ui/badge'
 import { ENTITY_ACCENTS } from '@/lib/entity-accents'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@pts/ui/tooltip'
-import { getLeadSourceLabel } from '@/lib/leads/constants'
+import {
+  getLeadSourceLabel,
+  type LeadSourceTypeValue,
+} from '@/lib/leads/constants'
 import type { LeadRecord } from '@/lib/leads/types'
 import { cn } from '@/lib/utils'
 import { formatPhoneUS } from '@/lib/utils/phone-format'
+
+/**
+ * Glyph for the card's top-right source mark; the label lives in the tooltip.
+ * The mark sits in a 20px box so it centers on the same axis as the 20px
+ * assignee avatar pinned bottom-right.
+ */
+const LEAD_SOURCE_ICONS: Record<LeadSourceTypeValue, LucideIcon> = {
+  REFERRAL: Handshake,
+  WEBSITE: Globe,
+  EVENT: CalendarDays,
+}
 
 type LeadCardProps = {
   lead: LeadRecord
@@ -132,16 +154,28 @@ function LeadCardContent({ lead }: { lead: LeadRecord }) {
     ? getLeadSourceLabel(lead.sourceType)
     : null
   const sourceDetail = lead.sourceDetail?.trim()
-  const showSourceTooltip = Boolean(sourceDetail && sourceLabel)
+  const SourceIcon = lead.sourceType ? LEAD_SOURCE_ICONS[lead.sourceType] : null
+  const sourceSummary = sourceLabel
+    ? sourceDetail
+      ? `${sourceLabel} · ${sourceDetail}`
+      : sourceLabel
+    : null
 
-  const sourceBadge = sourceLabel ? (
-    <Badge
-      variant='outline'
-      className='text-muted-foreground text-[10px] font-medium tracking-wide uppercase'
-    >
-      {sourceLabel}
-    </Badge>
-  ) : null
+  const sourceMark =
+    SourceIcon && sourceSummary ? (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span
+            role='img'
+            aria-label={sourceSummary}
+            className='text-muted-foreground inline-flex size-5 shrink-0 items-center justify-center'
+          >
+            <SourceIcon className='size-4' aria-hidden />
+          </span>
+        </TooltipTrigger>
+        <TooltipContent side='top'>{sourceSummary}</TooltipContent>
+      </Tooltip>
+    ) : null
 
   const convertedBadge = lead.convertedToClientId ? (
     <Badge
@@ -155,15 +189,18 @@ function LeadCardContent({ lead }: { lead: LeadRecord }) {
 
   return (
     <>
-      <div className='space-y-0.5'>
-        <h3 className='text-foreground line-clamp-2 text-sm leading-snug font-semibold'>
-          {lead.contactName}
-        </h3>
-        {companyDisplay ? (
-          <p className='text-muted-foreground text-xs font-medium'>
-            {companyDisplay}
-          </p>
-        ) : null}
+      <div className='flex items-start justify-between gap-3'>
+        <div className='min-w-0 space-y-0.5'>
+          <h3 className='text-foreground line-clamp-2 text-sm leading-snug font-semibold'>
+            {lead.contactName}
+          </h3>
+          {companyDisplay ? (
+            <p className='text-muted-foreground text-xs font-medium'>
+              {companyDisplay}
+            </p>
+          ) : null}
+        </div>
+        {sourceMark}
       </div>
       {/* Same shape as the task card: meta stacks down the left, the
           assignee avatar pins bottom-right without costing a row. */}
@@ -187,16 +224,8 @@ function LeadCardContent({ lead }: { lead: LeadRecord }) {
               />
             </div>
           ) : null}
-          {convertedBadge || sourceBadge ? (
+          {convertedBadge ? (
             <div className='flex flex-wrap items-center gap-1.5'>
-              {showSourceTooltip && sourceBadge ? (
-                <Tooltip>
-                  <TooltipTrigger asChild>{sourceBadge}</TooltipTrigger>
-                  <TooltipContent side='top'>{sourceDetail}</TooltipContent>
-                </Tooltip>
-              ) : (
-                sourceBadge
-              )}
               {convertedBadge}
             </div>
           ) : null}

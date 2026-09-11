@@ -1,15 +1,15 @@
 'use client'
 
-import { useEffect, useMemo } from 'react'
+import { useEffect } from 'react'
 import Link from 'next/link'
-import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { Search } from 'lucide-react'
+
+import { BrandLogo, BrandLogoMark } from '@pts/ui/brand'
 
 import { cn } from '@/lib/utils'
 import type { AppUser } from '@/lib/auth/session'
 import { isNavItemActive } from '@/lib/navigation/active-route'
-import { useTheme } from '@/components/providers/theme-provider'
 import {
   Sidebar as SidebarRoot,
   SidebarContent,
@@ -33,8 +33,6 @@ import {
 import { UserMenu } from './user-menu'
 import { useCommandPalette } from './command-palette'
 import { NAV_GROUPS } from './navigation-config'
-import PTSLogoBlackTransparent from '../../public/pts-logo-black-transparent.png'
-import PTSLogoWhiteTransparent from '../../public/pts-logo-white-transparent.png'
 
 const isDev = process.env.NODE_ENV === 'development'
 
@@ -46,7 +44,6 @@ type Props = {
 
 export function Sidebar({ user, badges }: Props) {
   const pathname = usePathname()
-  const { theme, mounted: themeMounted } = useTheme()
   const { state: sidebarState, setOpenMobile } = useSidebar()
   const { setOpen: setPaletteOpen } = useCommandPalette()
 
@@ -56,34 +53,23 @@ export function Sidebar({ user, badges }: Props) {
     setOpenMobile(false)
   }, [pathname, setOpenMobile])
 
-  // Always start with black to match SSR; theme provider updates after mount.
-  const logoSrc = useMemo(() => {
-    if (!themeMounted) {
-      return PTSLogoBlackTransparent
-    }
-    return theme === 'dark' ? PTSLogoWhiteTransparent : PTSLogoBlackTransparent
-  }, [theme, themeMounted])
-
   return (
     <SidebarRoot collapsible='icon' className='border-r'>
-      <SidebarHeader className='space-y-4 px-3 pt-6 pb-4 group-data-[collapsible=icon]:space-y-3 group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:pt-4'>
-        <div
-          suppressHydrationWarning
-          className='flex flex-col items-center group-data-[collapsible=icon]:px-0'
-        >
-          <Link href='/my/home' className='block'>
-            <Image
-              key={logoSrc.src}
-              src={logoSrc}
-              alt='Place To Stand Agency logo'
-              className='max-w-[140px] group-data-[collapsible=icon]:hidden'
+      {/* pt-4 above the logo and 13px (+ the header's 8px gap) below it put
+          the search box on the same center line as the page tabs in
+          PageShell. The dev-only badge pushes it down; production has none. */}
+      <SidebarHeader className='space-y-[13px] px-3 pt-4 pb-4 group-data-[collapsible=icon]:space-y-3 group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:pt-4'>
+        <div className='flex flex-col items-center group-data-[collapsible=icon]:px-0'>
+          <Link
+            href='/my/home'
+            aria-label='Place To Stand — home'
+            className='block'
+          >
+            <BrandLogo size='md' className='group-data-[collapsible=icon]:hidden' />
+            <BrandLogoMark
+              size={20}
+              className='mx-auto hidden group-data-[collapsible=icon]:flex'
             />
-            <span
-              aria-hidden='true'
-              className='bg-primary text-primary-foreground mx-auto hidden size-7 items-center justify-center rounded-md text-sm font-bold group-data-[collapsible=icon]:flex'
-            >
-              P
-            </span>
           </Link>
         </div>
         {isDev ? (

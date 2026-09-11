@@ -1,7 +1,15 @@
 import type { Metadata } from 'next'
+import { Space_Grotesk } from 'next/font/google'
 import '@/styles/globals.css'
 
 import { ThemeProvider } from '@/components/providers/theme-provider'
+
+/** The marketing site's logo face — the `BrandLogo` wordmark reads it. */
+const spaceGrotesk = Space_Grotesk({
+  subsets: ['latin'],
+  variable: '--font-space-grotesk',
+  display: 'swap',
+})
 
 export const metadata: Metadata = {
   title: 'Place to Stand - Client Portal',
@@ -32,7 +40,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="font-sans antialiased">
+      <body className={`font-sans antialiased ${spaceGrotesk.variable}`}>
         <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>
