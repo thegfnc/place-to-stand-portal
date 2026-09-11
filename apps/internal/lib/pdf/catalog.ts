@@ -78,7 +78,7 @@ export function buildPdfTemplateCatalog(): PdfTemplateEntry[] {
         {
           label: 'Status',
           detail:
-            'PAID and VOID add a diagonal watermark; other statuses render plain',
+            'PAID and VOID replace the amount in the header with a stamp; other statuses render plain',
         },
       ],
       source: 'packages/pdf/src/invoice-pdf.ts',

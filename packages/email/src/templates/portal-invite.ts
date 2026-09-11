@@ -30,6 +30,7 @@ export function portalInviteEmail({
 
   return renderEmail("You're invited to the Place To Stand portal", {
     preheader: 'Your sign-in link for the Place To Stand client portal.',
+    label: 'Client portal',
     heading: "You're invited to the client portal",
     paragraphs: [
       `${greeting} been invited to the Place To Stand client portal. Use the button below to sign in — no password needed.`,

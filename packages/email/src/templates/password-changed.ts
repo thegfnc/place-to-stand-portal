@@ -22,6 +22,7 @@ export function passwordChangedEmail({
 }: PasswordChangedEmailArgs): RenderedEmail {
   return renderEmail('Your Place To Stand password was changed', {
     preheader: `The password for your account on ${destination} was just changed.`,
+    label: 'Password changed',
     heading: 'Your password was changed',
     paragraphs: [
       `The password for your account on ${destination} was just changed. If that was you, there's nothing to do — use your new password the next time you sign in.`,

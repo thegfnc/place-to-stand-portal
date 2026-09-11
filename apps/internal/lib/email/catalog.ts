@@ -227,6 +227,7 @@ export function buildEmailTemplateCatalog(): EmailTemplateEntry[] {
           label: 'Client',
           sample: renderUpdateEmail({
             subject: 'Sample Co updates',
+            clientName: 'Sample Co',
             greetingName: 'Jordan',
             intro:
               'Here is an update on the last three items from the website audit; all are live as of today.',

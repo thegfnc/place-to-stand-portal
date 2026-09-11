@@ -1,3 +1,5 @@
+import type { CSSProperties } from 'react'
+
 import { cn } from './cn'
 
 /**
@@ -16,6 +18,7 @@ import { cn } from './cn'
 /** Marketing brand tokens — see the marketing site's globals.css. */
 export const BRAND = {
   bg: '#0e0f11',
+  bgCard: '#1a1b1f',
   bgPanel: 'rgba(22, 24, 28, 0.88)',
   border: '#2a2b30',
   borderLight: '#3a3b40',
@@ -24,6 +27,49 @@ export const BRAND = {
   accent: '#b5f542',
   gridDot: '#2a2b30',
 } as const
+
+/** 24px dot grid, phased to match the marketing site's body background. */
+export const BRAND_DOT_GRID: CSSProperties = {
+  backgroundImage: `radial-gradient(circle, ${BRAND.gridDot} 1px, transparent 1px)`,
+  backgroundSize: '24px 24px',
+  backgroundPosition: '50% 12px',
+}
+
+/**
+ * The marketing site's registration marks: accent brackets on the top-left
+ * and bottom-right corners of a card. The parent must be `relative`; pass the
+ * bracket colour as a border-colour class.
+ */
+export function BlueprintCorners({
+  size = 12,
+  className,
+}: {
+  size?: number
+  className?: string
+}) {
+  const style = { width: size, height: size }
+
+  return (
+    <>
+      <span
+        aria-hidden
+        className={cn(
+          'pointer-events-none absolute -top-px -left-px z-10 border-t border-l',
+          className
+        )}
+        style={style}
+      />
+      <span
+        aria-hidden
+        className={cn(
+          'pointer-events-none absolute -right-px -bottom-px z-10 border-r border-b',
+          className
+        )}
+        style={style}
+      />
+    </>
+  )
+}
 
 /**
  * `theme` follows the portal's light/dark theme. The brand lime (#b5f542)

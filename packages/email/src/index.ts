@@ -1,4 +1,6 @@
 export {
+  EMAIL_COLORS,
+  EMAIL_FONTS,
   escapeHtml,
   formatExpiryWindow,
   renderEmail,
