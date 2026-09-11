@@ -192,7 +192,14 @@ export function useRichTextEditor({
           class: 'tiptap ProseMirror',
         },
       },
-      onUpdate: ({ editor: instance }) => {
+      onUpdate: ({ editor: instance, transaction }) => {
+        // Only document changes are edits. TipTap also emits `update` without
+        // one (`setEditable` does, on mount), and reading the re-serialized
+        // HTML then would dirty the form with no user change.
+        if (!transaction.docChanged) {
+          return
+        }
+
         const html = instance.getHTML()
         const normalized = isContentEmpty(html) ? '' : html
         if (normalized === lastEmittedValueRef.current) {
@@ -221,7 +228,10 @@ export function useRichTextEditor({
     }
 
     if (incoming !== current) {
-      editor.commands.setContent(incoming || '')
+      // Syncing from the form must not echo back into it: TipTap re-serializes
+      // stored HTML (e.g. legacy notes), and an emitted update would report
+      // that normalized HTML as a user edit, dirtying the form on open.
+      editor.commands.setContent(incoming || '', { emitUpdate: false })
     }
   }, [editor, value])
 
