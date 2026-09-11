@@ -3,13 +3,14 @@ import { cn } from './cn'
 /**
  * Place To Stand brand marks, matching the marketing site.
  *
- * Deliberately scoped to signed-out surfaces (the auth screens of both
- * portals). The signed-in apps keep their own header logos — do not swap those
- * out for these.
+ * `BrandLogo` is the marketing header lockup: the blueprint mark (an
+ * accent-bordered square holding an accent dot) beside "Place To Stand" in
+ * Space Grotesk. Every logo in both portals is this lockup — the signed-in
+ * headers, the public share pages, and the auth screens. The "PTS" tile with
+ * corner brackets is the favicon only (see `brand-icon-assets.ts`).
  *
- * Colours are literal hex rather than portal theme tokens on purpose: this is
- * the marketing palette, which is dark-only and independent of whichever theme
- * the portal is in.
+ * The wordmark reads `--font-space-grotesk`, which both apps' root layouts
+ * load.
  */
 
 /** Marketing brand tokens — see the marketing site's globals.css. */
@@ -25,35 +26,90 @@ export const BRAND = {
 } as const
 
 /**
- * The "PTS" tile: dark canvas, lime registration brackets at opposing corners.
- * Same geometry as the favicon (`brand-og-mark.tsx`), expressed in ems so it
- * scales with `size`.
+ * `theme` follows the portal's light/dark theme. The brand lime (#b5f542)
+ * is built for the dark marketing ground and all but vanishes on white, so
+ * light mode swaps in lime-600 for the mark. `brand` pins the dark marketing
+ * colours, for the always-dark auth screens.
  */
-export function BrandMark({
-  size = 40,
+type BrandTone = 'theme' | 'brand'
+
+const TONE_CLASSES: Record<
+  BrandTone,
+  { frame: string; dot: string; word: string }
+> = {
+  theme: {
+    frame: 'border-[#65a30d]/60 dark:border-[#b5f542]/50',
+    dot: 'bg-[#65a30d] dark:bg-[#b5f542]',
+    word: 'text-foreground',
+  },
+  brand: {
+    frame: 'border-[#b5f542]/50',
+    dot: 'bg-[#b5f542]',
+    word: 'text-[#e8e6e3]',
+  },
+}
+
+/**
+ * The blueprint mark on its own — for spaces too tight for the wordmark
+ * (the collapsed sidebar). Proportions follow the marketing header (24px
+ * square, 8px dot, 1px frame) and share card (36px, 12px dot, 2px frame).
+ */
+export function BrandLogoMark({
+  size = 24,
+  tone = 'theme',
   className,
 }: {
   size?: number
+  tone?: BrandTone
   className?: string
 }) {
-  const arm = size * 0.224
-  const stroke = Math.max(1, size * 0.047)
+  const dot = Math.round(size / 3)
 
   return (
     <span
       aria-hidden
-      className={cn('relative inline-flex shrink-0 items-center justify-center', className)}
-      style={{ width: size, height: size, backgroundColor: BRAND.bg }}
+      className={cn(
+        'inline-flex shrink-0 items-center justify-center border',
+        TONE_CLASSES[tone].frame,
+        className
+      )}
+      style={{ width: size, height: size, borderWidth: size >= 32 ? 2 : 1 }}
     >
-      <span style={{ position: 'absolute', top: 0, left: 0, width: arm, height: stroke, backgroundColor: BRAND.accent }} />
-      <span style={{ position: 'absolute', top: 0, left: 0, width: stroke, height: arm, backgroundColor: BRAND.accent }} />
-      <span style={{ position: 'absolute', bottom: 0, right: 0, width: arm, height: stroke, backgroundColor: BRAND.accent }} />
-      <span style={{ position: 'absolute', bottom: 0, right: 0, width: stroke, height: arm, backgroundColor: BRAND.accent }} />
+      <span className={TONE_CLASSES[tone].dot} style={{ width: dot, height: dot }} />
+    </span>
+  )
+}
+
+const LOGO_SIZES = {
+  sm: { mark: 16, text: 'text-[15px]', gap: 'gap-2' },
+  md: { mark: 20, text: 'text-lg', gap: 'gap-2.5' },
+  lg: { mark: 24, text: 'text-xl', gap: 'gap-3' },
+} as const
+
+/** Mark + wordmark, as in the marketing site header. `lg` is its exact size. */
+export function BrandLogo({
+  size = 'md',
+  tone = 'theme',
+  className,
+}: {
+  size?: keyof typeof LOGO_SIZES
+  tone?: BrandTone
+  className?: string
+}) {
+  const { mark, text, gap } = LOGO_SIZES[size]
+
+  return (
+    <span className={cn('inline-flex items-center', gap, className)}>
+      <BrandLogoMark size={mark} tone={tone} />
       <span
-        className="font-bold leading-none tracking-tight text-white"
-        style={{ fontSize: size * 0.34 }}
+        className={cn(
+          'leading-none font-bold tracking-tight whitespace-nowrap',
+          text,
+          TONE_CLASSES[tone].word
+        )}
+        style={{ fontFamily: 'var(--font-space-grotesk, inherit)' }}
       >
-        PTS
+        Place To Stand
       </span>
     </span>
   )
@@ -66,7 +122,7 @@ export function BrandMark({
 export function BrandLockup({ label }: { label: string }) {
   return (
     <div className="flex flex-col items-center gap-4">
-      <BrandMark size={44} />
+      <BrandLogoMark size={36} tone="brand" />
       <div className="flex flex-col items-center gap-2">
         <span
           className="text-xl font-bold tracking-tight"

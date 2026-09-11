@@ -1,11 +1,9 @@
 export const dynamic = 'force-dynamic'
 
-import Image from 'next/image'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 
-import logoBlack from '../../public/pts-logo-black-transparent.png'
-import logoWhite from '../../public/pts-logo-white-transparent.png'
+import { BrandLogo } from '@pts/ui/brand'
 
 import { requireClientUser } from '@/lib/auth/session'
 import { isAdmin } from '@/lib/auth/permissions'
@@ -46,25 +44,7 @@ export default async function PortalLayout({
             aria-label="Place to Stand Client Portal — home"
             className="flex min-w-0 items-center gap-3 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            {/* Two images swapped by CSS rather than one swapped in JS (which
-                is how the internal sidebar does it). The blocking theme script
-                stamps `.dark` before first paint, so the right one is showing
-                immediately — no `mounted` state, and this layout stays a
-                server component. Both are decorative; the link is named. */}
-            <Image
-              src={logoBlack}
-              alt=""
-              aria-hidden="true"
-              priority
-              className="h-4 w-auto shrink-0 dark:hidden"
-            />
-            <Image
-              src={logoWhite}
-              alt=""
-              aria-hidden="true"
-              priority
-              className="hidden h-4 w-auto shrink-0 dark:block"
-            />
+            <BrandLogo size="sm" className="shrink-0" />
 
             {/* Hidden on the narrowest screens: the wordmark alone is enough
                 there, and the account menu needs the room. */}

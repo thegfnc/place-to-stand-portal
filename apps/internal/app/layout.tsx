@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { Geist, Geist_Mono } from 'next/font/google'
+import { Geist, Geist_Mono, Space_Grotesk } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/react'
 
 import { AppProviders } from '@/components/providers/app-providers'
@@ -17,6 +17,13 @@ const geistSans = Geist({
 const geistMono = Geist_Mono({
   variable: '--font-geist-mono',
   subsets: ['latin'],
+})
+
+/** The marketing site's logo face — the `BrandLogo` wordmark reads it. */
+const spaceGrotesk = Space_Grotesk({
+  subsets: ['latin'],
+  variable: '--font-space-grotesk',
+  display: 'swap',
 })
 
 export const metadata: Metadata = {
@@ -64,7 +71,8 @@ export default async function RootLayout({
         className={cn(
           'bg-background h-screen overflow-hidden font-sans antialiased',
           geistSans.variable,
-          geistMono.variable
+          geistMono.variable,
+          spaceGrotesk.variable
         )}
       >
         <AppProviders>
